@@ -34,15 +34,16 @@ class ReleaseBuildPlanner
   def plan(state, files: nil)
     tailor_release_tools()
 
-    sources =
+    # A link-only name is no source of its own. Placed apart from the sources, one naming
+    # the object a source builds to joins it rather than colliding with it.
+    sources, link_only =
       if files.nil?
-        @configurator.collection_release_build_input +
-          @configurator.collection_release_artifact_extra_link_objects
+        [@configurator.collection_release_build_input, @configurator.collection_release_artifact_extra_link_objects]
       else
-        files.dup
+        [files.dup, []]
       end
 
-    state.objects        = @file_path_utils.form_release_build_objects_filelist( sources )
+    state.objects        = release_objects( sources, link_only )
     state.compile_flags   = @flaginator.flag_down( context: RELEASE_SYM, operation: OPERATION_COMPILE_SYM )
     state.assemble_flags  = @flaginator.flag_down( context: RELEASE_SYM, operation: OPERATION_ASSEMBLE_SYM )
     state.link_flags      = @flaginator.flag_down( context: RELEASE_SYM, operation: OPERATION_LINK_SYM )
@@ -51,6 +52,13 @@ class ReleaseBuildPlanner
   end
 
   private
+
+  def release_objects(sources, link_only)
+    objects = @file_path_utils.form_release_build_objects_filelist( sources ).to_a
+    return objects if link_only.empty?
+
+    return (objects + @file_path_utils.form_release_build_objects_filelist( link_only ).to_a).uniq
+  end
 
   # Shared libraries and static archives need compiler/linker argument tags
   # (-fPIC, -shared, or swapping the linker for `ar` outright) that a plain

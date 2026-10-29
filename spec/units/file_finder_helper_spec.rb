@@ -170,4 +170,33 @@ describe FileFinderHelper do
       end
     end
   end
+  # A module generator path hint is matched to the configured path it resembles most
+  describe '#find_best_path_in_collection' do
+    PATHS = ['src', 'src/lab', 'src/lab/x', 'test/lab'].freeze
+
+    it 'gives a path the collection holds itself' do
+      expect(@ff_helper.find_best_path_in_collection( 'src/lab/x', PATHS, :error, 'module' )).to eq( 'src/lab/x' )
+    end
+
+    it 'prefers the first path ending as the hint does over one merely holding its segments' do
+      expect(@ff_helper.find_best_path_in_collection( 'lab', PATHS, :error, 'module' )).to eq( 'src/lab' )
+      expect(@ff_helper.find_best_path_in_collection( 'test/lab', ['src/lab', 'test/lab/x', 'test/lab'], :error, 'module' )).to eq( 'test/lab' )
+    end
+
+    it 'raises for a hint matching nothing when told to' do
+      expect { @ff_helper.find_best_path_in_collection( 'nowhere', PATHS, :error, 'module' ) }
+        .to raise_error( CeedlingException, 'Found no path `nowhere` in module search paths.' )
+    end
+
+    it 'warns of a hint matching nothing, or keeps quiet, and gives the first path' do
+      expect(@ff_helper.find_best_path_in_collection( 'nowhere', PATHS, :warn, 'module' )).to eq( 'src' )
+      expect(@loginator).to have_received(:log).with( 'Found no path `nowhere` in module search paths.', Verbosity::COMPLAIN )
+
+      expect(@ff_helper.find_best_path_in_collection( 'nowhere', PATHS, :ignore, 'module' )).to eq( 'src' )
+    end
+
+    it 'raises without a collection' do
+      expect { @ff_helper.find_best_path_in_collection( 'lab', nil, :error, 'module' ) }.to raise_error( /No path list provided for module search/ )
+    end
+  end
 end

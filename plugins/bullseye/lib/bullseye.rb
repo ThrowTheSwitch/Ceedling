@@ -236,7 +236,7 @@ class Bullseye < Plugin
       untested_sources.each do |filepath|
         filename     = File.basename(filepath)
         object       = @ceedling[:file_path_utils].form_test_object_filepath( filepath, context: BULLSEYE_SYM )
-        dependencies = @ceedling[:file_path_utils].form_test_dependencies_filepath( filepath, context: BULLSEYE_SYM )
+        dependencies = @ceedling[:file_path_utils].form_test_dependencies_filepath( object, context: BULLSEYE_SYM )
         search_paths = @configurator.collection_paths_include
         # Defines and flags resolve as a tested source's do, against this source's filepath
         flags        = @ceedling[:test_build_setup].flags( context: BULLSEYE_SYM, operation: OPERATION_COMPILE_SYM, filepath: filepath )
@@ -262,6 +262,9 @@ class Bullseye < Plugin
           skipped += 1
           next
         end
+
+        @file_wrapper.mkdir( File.dirname( object ) )
+        @file_wrapper.mkdir( File.dirname( dependencies ) )
 
         begin
           @ceedling[:generator].generate_object_file_c(
@@ -559,11 +562,10 @@ class Bullseye < Plugin
     coverage_sources = []
     @test_invoker.each_test_with_sources { |_, srcs| coverage_sources.concat( srcs ) }
     coverage_sources.uniq!
-    # Every configured source extension is a valid ending for a mock/ignored-source name,
-    # so the two are joined into one regex alternation rather than matching just one.
-    source_extensions = EXTENSION_SOURCE.to_a.map { |ext| Regexp.escape(ext) }.join('|')
-    coverage_sources.delete_if {|item| item =~ /#{@configurator.cmock_mock_prefix}.+(?:#{source_extensions})$/}
-    coverage_sources.delete_if {|item| item =~ /(?:#{BULLSEYE_IGNORE_SOURCES.join('|')})(?:#{source_extensions})$/}
+    # Every configured source extension is a valid ending for a mock/ignored-source name
+    source_extensions = EXTENSION_SOURCE.pattern
+    coverage_sources.delete_if {|item| item =~ /#{@configurator.cmock_mock_prefix}.+#{source_extensions}$/}
+    coverage_sources.delete_if {|item| item =~ /(?:#{BULLSEYE_IGNORE_SOURCES.join('|')})#{source_extensions}$/}
 
     coverage_sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, [], source)

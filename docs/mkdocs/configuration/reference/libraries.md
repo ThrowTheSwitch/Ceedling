@@ -69,6 +69,9 @@ Command line argument format for specifying a library.
 Command line argument format for adding a library search path.
 
 Library search paths may be added to your project with `:paths` ↳ `:libraries`.
+Each directory those entries collect becomes one argument, as for any `:paths` 
+entry. A glob names each directory it matches, and a `-:` entry removes 
+directories. An entry that collects no existing directory adds no argument.
 
 **Default**: `-L "${1}"` (GCC format)
 

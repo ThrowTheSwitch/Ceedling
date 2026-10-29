@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/file_path_utils'
+require 'ceedling/project_paths'
 
 # Answers the question build output asks when it wants to avoid same-basename
 # collisions: given a resolved file and the raw (still possibly glob/decorator-laden)
@@ -23,12 +24,13 @@ class PathMirror
   end
 
   # Strips decorators and glob specifiers from each entry in `roots`, dropping any that
-  # end up empty. A caller mirroring many files against the same `roots` list -- a whole
+  # end up empty and every `-:` exclusion, which names no place a file lives below. A caller mirroring many files against the same `roots` list -- a whole
   # build's worth of sources against one project's configured paths, say -- can compute
   # this once and feed the result to `relative_subdir_from_clean_roots` for every file,
   # rather than every file's own call re-parsing the same still-decorated list from scratch.
   def self.clean_roots(roots)
     roots
+      .select { |root| FilePathUtils.add_path?(root) }
       .map { |root| FilePathUtils.no_decorators(root) }
       .reject(&:empty?)
   end
@@ -38,12 +40,13 @@ class PathMirror
   # fallback for placing build output but hides the difference from a caller deciding
   # whether a path belongs to a configured tree at all.
   def self.relative_subdir_if_rooted(filepath, roots)
-    clean    = clean_roots( roots )
-    file_dir = File.dirname( filepath )
+    return relative_subdir_if_rooted_in_clean_roots( filepath, clean_roots( roots ) )
+  end
 
-    return nil unless clean.any? { |root| file_dir == root || file_dir.start_with?( root + '/' ) }
-
-    return relative_subdir_from_clean_roots( filepath, clean )
+  # As `relative_subdir_if_rooted`, but takes roots already reduced by `clean_roots`, or
+  # canonical roots such as configuration's mirror roots
+  def self.relative_subdir_if_rooted_in_clean_roots(filepath, clean_roots)
+    return containing_subdir( File.dirname( filepath ), clean_roots )
   end
 
   # A path as lowercased segments, split on either separator. One spelling for every caller
@@ -56,18 +59,16 @@ class PathMirror
   # As `relative_subdir`, but takes roots already reduced by `clean_roots` instead of
   # raw, possibly glob/decorator-laden `:paths` entries.
   def self.relative_subdir_from_clean_roots(filepath, clean_roots)
-    file_dir = File.dirname(filepath)
-
-    matching_roots = clean_roots.select do |root|
-      file_dir == root || file_dir.start_with?(root + '/')
-    end
-
-    return '' if matching_roots.empty?
-
-    best_root = matching_roots.max_by(&:length)
-    return '' if file_dir == best_root
-
-    file_dir[(best_root.length + 1)..]
+    return containing_subdir( File.dirname( filepath ), clean_roots ) || ''
   end
+
+  # The directories from the most specific root truly containing `dir` down to it, or nil
+  # when no root does. Roots and `dir` are compared as places, however each is spelled, so
+  # the result never climbs out of its root.
+  def self.containing_subdir(dir, clean_roots)
+    subdirs = clean_roots.map { |root| ProjectPaths.subdir_below( root, dir ) }.compact
+    return subdirs.min_by( &:length )
+  end
+  private_class_method :containing_subdir
 
 end

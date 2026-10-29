@@ -62,8 +62,8 @@ ceedling_system_tests do
           expect(output).to_not match(/Ambiguous/)
           expect(output).to match(/^Linking /)
 
-          expect(File.exist?('build/release/out/foo/bar.o')).to be true
-          expect(File.exist?('build/release/out/baz/bar.o')).to be true
+          expect(File.exist?('build/release/out/src/foo/bar.o')).to be true
+          expect(File.exist?('build/release/out/src/baz/bar.o')).to be true
 
           binary = Dir.glob('build/artifacts/release/*.out').first
           run_output = `#{binary}`

@@ -29,6 +29,8 @@ Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Paths for `TEST_SOURCE_FILE(...)` remain relative to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, `TEST_SOURCE_FILE(...)` calls referencing moved files will need to be updated.
 1. The `ceedling` command of an installation before 1.2.2, such as a 1.2.1 gem, loads a 1.2.2 application that a project selects into its own process. The 1.2.2 application restarts itself in its own process. `new`, `example`, `examples`, `upgrade`, `docs`, and `help` without a project never load the application, so they still run on the older installation’s code. Upgrade the Ceedling whose `ceedling` command you run, typically the gem, to 1.2.2.
 1. The `ceedling` command you run parses your command line before it hands off to the installation a project selects. It rejects an option that only the selected installation knows. Run the selected installation’s own launcher instead, such as a `--local` project’s `./ceedling` launch script from the project root (`.\ceedling.cmd` on Windows).
+1. A mock `#include` written relative to the test file that climbs with `..` to a directory the mock search paths do not reach, such as `#include "../src/drivers/mock_foo.h"`, fails to compile, as in earlier releases. Include the mock relative to a search path instead, such as `#include "drivers/mock_foo.h"`.
+1. On Windows, a source far outside the project lengthens its build paths, since each `..` in its path from the project adds `_up_/`. Ceedling warns as a path nears Windows’ 260-character limit.
 
 ### Partials
 
@@ -55,6 +57,12 @@ Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Paths for `TEST_SOURCE_FILE(...)` remain relative to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, `TEST_SOURCE_FILE(...)` calls referencing moved files will need to be updated.
 1. The `ceedling` command loads the application of the installation a project selects — through `:project` ↳ `:which_ceedling`, `WHICH_CEEDLING`, or a `vendor/ceedling/` copy — into its own process, where the two installations’ code mixes. For example, the 1.2.1 gem’s `ceedling` command fails in a project vendoring 1.2.0, and a development checkout selected this way runs partly on the gem’s code. Upgrade the Ceedling whose `ceedling` command you run, typically the gem, to 1.2.2 ([#1365](https://github.com/ThrowTheSwitch/Ceedling/issues/1365)).
 1. A `--local` project’s `./ceedling` fails with “`vendor/ceedling/vendor/unity/test/targets` does not exist”, because vendoring leaves out Unity’s built-in mixins. Running the project with the gem’s `ceedling` command works around it.
+1. A mocked header found below a `:paths` root such as `../**`, beside headers far outside the project, has its mock written outside the build directory, and the build stops with “Found no file … in search paths”. Give those headers’ own directories as roots instead of `..` ([#1370](https://github.com/ThrowTheSwitch/Ceedling/issues/1370)).
+1. Same-named sources in one build can share one object, so that one replaces the other. This happens with release sources below two roots, sources below nested roots, and sources named by `:files`. Rename one of them.
+1. `:project` ↳ `:build_root: .` lets `clobber` delete the project’s own `test/` directory. Give the build a directory of its own, such as `build`.
+1. A `-:` `:paths` entry removes only the directory it names, not the directories below it. Add a `-:` entry for each, or use a glob such as `-:src/legacy/**`.
+1. `~` in a configured path names a directory called `~`, not your home directory. Write the full path instead.
+1. A `:files` glob such as `+:**/*.c` collects the build directory’s own mocks, runners, and vendored Unity and CMock sources, and test files, and a release build then stops compiling them. Write the glob below your own source directories, such as `+:src/**/*.c`. A source root holding the test root also collects test files into a release build; add a `-:` `:files` entry for them.
 
 ### Partials
 
@@ -66,7 +74,7 @@ Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
-Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, and most shell characters in a path stopping a test from running. The [Changelog](Changelog.md) lists every other fix since this release.
+Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. The [Changelog](Changelog.md) lists every other fix since this release.
 
 ---
 
@@ -83,6 +91,12 @@ Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Paths for `TEST_SOURCE_FILE(...)` remain relative to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, `TEST_SOURCE_FILE(...)` calls referencing moved files will need to be updated.
 1. The `ceedling` command loads the application of the installation a project selects — through `:project` ↳ `:which_ceedling`, `WHICH_CEEDLING`, or a `vendor/ceedling/` copy — into its own process, where the two installations’ code mixes. For example, the 1.2.1 gem’s `ceedling` command fails in a project vendoring 1.2.0, and a development checkout selected this way runs partly on the gem’s code. Upgrade the Ceedling whose `ceedling` command you run, typically the gem, to 1.2.2 ([#1365](https://github.com/ThrowTheSwitch/Ceedling/issues/1365)).
 1. A `--local` project’s `./ceedling` fails with “`vendor/ceedling/vendor/unity/test/targets` does not exist”, because vendoring leaves out Unity’s built-in mixins. Running the project with the gem’s `ceedling` command works around it.
+1. A mocked header found below a `:paths` root such as `../**`, beside headers far outside the project, has its mock written outside the build directory, and the build stops with “Found no file … in search paths”. Give those headers’ own directories as roots instead of `..` ([#1370](https://github.com/ThrowTheSwitch/Ceedling/issues/1370)).
+1. Same-named sources in one build can share one object, so that one replaces the other. This happens with release sources below two roots, sources below nested roots, and sources named by `:files`. Rename one of them.
+1. `:project` ↳ `:build_root: .` lets `clobber` delete the project’s own `test/` directory. Give the build a directory of its own, such as `build`.
+1. A `-:` `:paths` entry removes only the directory it names, not the directories below it. Add a `-:` entry for each, or use a glob such as `-:src/legacy/**`.
+1. `~` in a configured path names a directory called `~`, not your home directory. Write the full path instead.
+1. A `:files` glob such as `+:**/*.c` collects the build directory’s own mocks, runners, and vendored Unity and CMock sources, and test files, and a release build then stops compiling them. Write the glob below your own source directories, such as `+:src/**/*.c`. A source root holding the test root also collects test files into a release build; add a `-:` `:files` entry for them.
 
 ### Partials
 
@@ -94,7 +108,7 @@ Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
-Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, and most shell characters in a path stopping a test from running. The [Changelog](Changelog.md) lists every other fix since this release.
+Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. The [Changelog](Changelog.md) lists every other fix since this release.
 
 ---
 

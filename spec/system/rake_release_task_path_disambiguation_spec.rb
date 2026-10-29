@@ -61,8 +61,8 @@ ceedling_system_tests do
           expect(output).to match(/baz[\/\\]bar\.c/)
           expect(output).to match(/^Compiling bar\.c/)
 
-          expect(File.exist?('build/release/out/baz/bar.o')).to be true
-          expect(File.exist?('build/release/out/foo/bar.o')).to be false
+          expect(File.exist?('build/release/out/src/baz/bar.o')).to be true
+          expect(File.exist?('build/release/out/src/foo/bar.o')).to be false
         end
       end
 
@@ -73,8 +73,8 @@ ceedling_system_tests do
           expect(output).to match(/^Compiling bar\.c/)
           expect(output).to_not match(/^Linking /)
 
-          expect(File.exist?('build/release/out/foo/bar.o')).to be true
-          expect(File.exist?('build/release/out/baz/bar.o')).to be false
+          expect(File.exist?('build/release/out/src/foo/bar.o')).to be true
+          expect(File.exist?('build/release/out/src/baz/bar.o')).to be false
         end
       end
 
@@ -85,8 +85,8 @@ ceedling_system_tests do
           expect(output).to match(/^Compiling bar\.c/)
           expect(output).to_not match(/^Linking /)
 
-          expect(File.exist?('build/release/out/baz/bar.o')).to be true
-          expect(File.exist?('build/release/out/foo/bar.o')).to be false
+          expect(File.exist?('build/release/out/src/baz/bar.o')).to be true
+          expect(File.exist?('build/release/out/src/foo/bar.o')).to be false
         end
       end
 

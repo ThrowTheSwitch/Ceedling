@@ -80,16 +80,14 @@ describe ConfiguratorBuilder do
   class RecordingFileList
     include Enumerable
 
-    attr_reader :patterns, :excluded
+    attr_reader :patterns
 
     def initialize(found = [])
       @found    = found
       @patterns = []
-      @excluded = []
     end
 
     def include(*patterns) = @patterns.concat( patterns )
-    def exclude(*files)    = @excluded.concat( files )
     def resolve()          = self
     def include?(file)     = @found.include?( file )
     def each(&block)       = @found.each( &block )
@@ -201,6 +199,17 @@ describe ConfiguratorBuilder do
         expect(@builder.set_release_target( in_hash.merge( release_build_output: 'app.elf' ) )).to eq(
           project_release_build_target: 'build/release/app.elf', project_release_build_map: 'build/release/app.map'
         )
+      end
+
+      # The path handling audit around GH #1370: an absolute output names the release itself
+      it 'places a target named by an absolute or `~` path where it names, with its map beside it' do
+        output = File.expand_path( '/elsewhere/out/app.elf' )
+        expect(@builder.set_release_target( in_hash.merge( release_build_output: output ) )).to eq(
+          project_release_build_target: output, project_release_build_map: output.ext( '.map' )
+        )
+
+        expect(@builder.set_release_target( in_hash.merge( release_build_output: '~/out/app.elf' ) )[:project_release_build_target])
+          .to eq( File.join( Dir.home, 'out/app.elf' ) )
       end
     end
 
@@ -329,14 +338,36 @@ describe ConfiguratorBuilder do
         expect(revisions).to eq( ['+:a.s'] )
       end
 
-      it 'collects sources, filtering out tests that overlapping paths also matched' do
-        result, = collect( ['src/a.c', 'src/test_a.c'] ) { @builder.collect_source( in_hash, ['src/test_a.c'] ) }
+      it 'collects sources from source paths and revises them by :files ↳ :source' do
+        result, = collect { @builder.collect_source( in_hash, [] ) }
         file_list, revisions = result[:collection_all_source]
 
         expect(file_list.patterns).to eq( ['src/*.c'] )
-        expect(file_list.excluded).to eq( ['src/test_a.c'] )
         expect(revisions).to eq( ['-:src/skip.c'] )
+        expect(@loginator).to_not have_received(:log)
+      end
+
+      # A test reaches the sources through overlapping paths, or a :files revision
+      it 'filters out of the revised sources any test, warning of the overlap' do
+        allow(@file_wrapper).to receive(:instantiate_file_list_literal) { |files| RecordingFileList.new( files ) }
+        result, = collect do
+          allow(@collection_utils).to receive(:revise_filelist).and_return( ['src/a.c', 'src/test_a.c'] )
+          @builder.collect_source( in_hash, ['src/test_a.c'] )
+        end
+
+        expect(result[:collection_all_source].to_a).to eq( ['src/a.c'] )
         expect(@loginator).to have_received(:log).with(/overlap/, Verbosity::COMPLAIN)
+      end
+
+      it 'filters any test out of the release input, without warning again' do
+        allow(@file_wrapper).to receive(:instantiate_file_list_literal) { |files| RecordingFileList.new( files ) }
+        result, = collect do
+          allow(@collection_utils).to receive(:revise_filelist).and_return( ['src/a.c', 'test/test_a.c'] )
+          @builder.collect_release_build_input( in_hash.merge( collection_all_tests: ['test/test_a.c'] ) )
+        end
+
+        expect(result[:collection_release_build_input].to_a).to eq( ['src/a.c'] )
+        expect(@loginator).to_not have_received(:log)
       end
 
       it 'collects headers from test, support, and include paths' do

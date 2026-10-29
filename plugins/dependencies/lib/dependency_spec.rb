@@ -6,14 +6,15 @@
 # =========================================================================
 
 require 'ceedling/exceptions'
+require 'ceedling/project_paths'
 
 # One configured dependency, validated and normalized.
 #
 # Each dependency names its paths under :paths, and each path falls back to another when
 # left out: :source and :fetch to each other, :build to :source then :fetch, :artifact to
 # :build. With none configured, every path is `dependencies/<task name>`. Artifacts
-# (libraries, executables, includes, sources) live under the artifact path. An optional
-# :deploy path receives deployed copies.
+# (libraries, executables, includes, sources) live under the artifact path, unless named by
+# an absolute path. An optional :deploy path receives deployed copies.
 #
 # The task name is the configured name's word characters, which `dependencies:*` tasks
 # use, so it must be non-empty and unique among dependencies.
@@ -47,7 +48,7 @@ class DependencySpec
     @name      = dep[:name] or raise CeedlingException.new( 'Each dependency must have a :name.' )
     @task_name = task_name_for( @name )
     @fetch     = dep[:fetch] || {}
-    @paths     = dep[:paths] || {}
+    @paths     = standardized( dep[:paths] || {} )
     @artifacts = dep[:artifacts] || {}
 
     problem = fetch_problem
@@ -106,7 +107,7 @@ class DependencySpec
   # glob expands through `collector` against the disk, and anything else is a directory.
   def include_directories(collector)
     return Array( @artifacts[:includes] ).flat_map do |include|
-      path = File.join( artifact_path, include )
+      path = artifact_at( include )
       if include.end_with?( '.h' ) then [File.dirname( path )]
       elsif include.match?( INCLUDE_GLOB ) then collector.call( path )
       else [path]
@@ -128,7 +129,18 @@ class DependencySpec
   end
 
   def artifacts(kind)
-    return Array( @artifacts[kind] ).map { |path| File.join( artifact_path, path ) }
+    return Array( @artifacts[kind] ).map { |path| artifact_at( path ) }
+  end
+
+  # Configured paths, read as every configured path is read
+  def standardized(paths)
+    return paths.transform_values { |path| path.is_a?( String ) ? ProjectPaths.standardize( path ) : path }
+  end
+
+  # An artifact below the artifact path, or one named by an absolute path as written
+  def artifact_at(path)
+    path = ProjectPaths.standardize( path )
+    return ProjectPaths.absolute?( path ) ? path : File.join( artifact_path, path )
   end
 
   # What is wrong with the fetch configuration, or nil

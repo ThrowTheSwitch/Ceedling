@@ -203,7 +203,19 @@ paths.
 
 ## `:paths` configuration options & notes
 
-1. A path can be absolute (fully qualified) or relative.
+1. A path can be absolute (fully qualified) or relative. A relative path is relative to
+   the working directory, where you run `ceedling`, not to your project file’s
+   directory. For a project file named with `--project` from another directory, write
+   its paths relative to that other directory.
+1. `~` at the start of a path names your home directory. `~user` is a directory named
+   `~user`.
+1. A path reached through a symlink names the place the symlink leads to, so two
+   entries reaching one directory collect it once. Directories found below an entry
+   keep the spelling they are found by, as an `#include` reaches them.
+1. An entry based above the build root, such as `./**` or `../**`, collects nothing
+   from it. An entry within the build root collects from it with a warning, but no entry
+   collects from the directories Ceedling and its plugins create, such as `test/`,
+   `release/`, `vendor/`, and `artifacts/` below the build root, or the mocks directory.
 1. A path can include a glob matcher (more on this below).
 1. A path can use [inline Ruby string expansion][inline-ruby-string-expansion].
 1. Subtractive paths are possible and useful. See the documentation below.
@@ -266,6 +278,21 @@ By default, paths are additive. For pretty alignment in your YAML, you may also
 use `+:`, but strictly speaking, it’s not necessary.
 
 Subtractive paths may be simple paths or globs just like any other path entry.
+
+A subtractive entry removes the directories it names and every directory below them.
+An additive entry naming one of those directories more closely keeps it:
+
+```yaml
+:paths:
+  :source:
+    - src/**
+    - -:src/legacy       # Removes src/legacy/ and every directory below it...
+    - src/legacy/keep    # ...except src/legacy/keep/, which this entry names
+```
+
+A subtractive entry that names nothing logs a warning, so a mistyped entry does 
+not pass unnoticed. Below the build root, where nothing exists before a first
+build, it passes without a word.
 
 !!! warning "Quote the whole entry, decoration included"
     YAML keeps quote marks that begin partway through a value as part of the

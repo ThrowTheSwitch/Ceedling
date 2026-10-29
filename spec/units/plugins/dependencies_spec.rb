@@ -50,7 +50,7 @@ describe Dependencies do
       tool_validator: double( 'tool_validator' ).tap { |validator| allow(validator).to receive(:validate).and_return( true ) },
       loginator: double( 'loginator', lazy: nil ).tap { |log| allow(log).to receive(:log) { |message, *| logged << message } },
       file_path_collection_utils: double( 'file_path_collection_utils', collect_paths: [] ),
-      file_path_utils: double( 'file_path_utils', form_release_build_list_filepath: 'list', form_test_build_map_filepath: 'map' ) }
+      file_path_utils: double( 'file_path_utils', form_test_build_map_filepath: 'map' ).tap { |utils| allow(utils).to receive(:form_release_build_list_filepath) { |path| path.ext( '.lst' ) } } }
   end
 
   def dependency(name = 'dep', **overrides)
@@ -271,7 +271,7 @@ describe Dependencies do
       plugin_for( lib ).make_if_required( 'dep' )
 
       expect(generator).to have_received(:generate_object_file_c)
-        .with( hash_including( source: 'cc/src/b.c', object: 'cc/build/b.o', search_paths: ['cc/inc'], defines: ['FAST'] ) )
+        .with( hash_including( source: 'cc/src/b.c', object: 'cc/build/src/b.o', search_paths: ['cc/inc'], defines: ['FAST'] ) )
       expect(executed).not_to include( a_string_starting_with( 'cd ' ) )
     end
 
@@ -279,8 +279,29 @@ describe Dependencies do
       plugin_for( lib ).make_if_required( 'dep' )
 
       expect(generator).to have_received(:generate_executable_file)
-        .with( anything, anything, ['cc/build/a.o', 'cc/build/b.o'], [], 'cc/build/libcc.a', 'map', [], [] )
+        .with( anything, anything, ['cc/build/a.o', 'cc/build/src/b.o'], [], 'cc/build/libcc.a', 'map', [], [] )
       expect(file_wrapper).to have_received(:cp).with( 'cc/build/libcc.a', 'cc/out/libcc.a' )
+    end
+
+    it 'places two same-named sources\' objects apart, by their paths below the source path' do
+      allow(file_wrapper).to receive(:directory_listing) do |glob|
+        { 'cc/**/*.c' => ['cc/a/x.c', 'cc/b/x.c'] }.fetch( glob, [] )
+      end
+
+      plugin_for( lib ).make_if_required( 'dep' )
+
+      expect(generator).to have_received(:generate_executable_file)
+        .with( anything, anything, ['cc/build/a/x.o', 'cc/build/b/x.o'], [], 'cc/build/libcc.a', 'map', [], [] )
+      expect(file_wrapper).to have_received(:mkdir).with( 'cc/build/a' )
+      expect(file_wrapper).to have_received(:mkdir).with( 'cc/build/b' )
+    end
+
+    # The path handling audit around GH #1370: a list file named by its source alone lands in
+    # the working directory
+    it 'writes each object\'s list file beside it' do
+      plugin_for( lib ).make_if_required( 'dep' )
+
+      expect(generator).to have_received(:generate_object_file_c).with( hash_including( object: 'cc/build/src/b.o', list: 'cc/build/src/b.lst' ) )
     end
 
     it 'checks its compiler and archiver before building' do

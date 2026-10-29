@@ -10,10 +10,14 @@ require 'rake' # for ext()
 require 'fileutils'
 require 'pathname'
 require 'ceedling/exceptions'
+require 'set'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
 require 'ceedling/path_mirror'
 require 'ceedling/path_matcher'
+require 'ceedling/project_paths'
+require 'ceedling/build_subpath'
+require 'ceedling/destination_collision'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
@@ -26,9 +30,10 @@ class FilePathUtils
 
   constructor :configurator, :file_wrapper
 
-  # Test names stand in for path segments that cannot be build subdirectories
-  TEST_NAME_PARENT_SEGMENT   = '_up_'  unless const_defined?(:TEST_NAME_PARENT_SEGMENT, false)
-  TEST_NAME_ABSOLUTE_SEGMENT = '_abs_' unless const_defined?(:TEST_NAME_ABSOLUTE_SEGMENT, false)
+  def setup
+    @formed_lock  = Mutex.new
+    @formed_paths = Set.new
+  end
 
   ######### Class methods ##########
 
@@ -37,9 +42,7 @@ class FilePathUtils
   def self.standardize_in_place(path)
     if path.is_a? String
       raise CeedlingException.new("Attempted to standardize path in frozen string ⏩️ #{path.inspect}") if path.frozen?
-      path.strip!
-      path.tr!("\\", '/')
-      path.chomp!('/')
+      path.replace( ProjectPaths.standardize( path ) )
     end
     return path
   end
@@ -154,31 +157,24 @@ class FilePathUtils
   #   ['a/b', 'a/c', 'a']             =>  ['a']
   #   ['src', 'lib/core', 'lib/utils'] =>  ['src', 'lib/core', 'lib/utils']  (unchanged)
   #
-  # Comparison uses forward-slash-normalized copies; returned paths preserve the original
-  # form supplied by the caller.
+  # Paths compare as the directories they name (ProjectPaths.contains?), so `..` holds
+  # `../sib` but not `../../far/x`. Returned paths preserve the form the caller supplied.
   def self.collapse_to_common_parents(paths)
     return paths if paths.nil? || paths.length <= 1
 
-    # Pair each original path with a normalized form used only for ancestry comparison.
-    # Normalize to forward slashes and strip any trailing separator.
-    pairs = paths.map { |p| [p, p.tr('\\', '/').chomp('/')] }
+    # Shortest absolute spelling first, so an ancestor is always met before what it holds
+    pairs = paths.map { |path| [path, ProjectPaths.absolute( path )] }.sort_by { |_, absolute| absolute.length }
 
-    # Sort shallowest-first so ancestors are always encountered before their descendants.
-    # No tiebreaker for same-depth entries needed: Ruby's sort_by doesn't guarantee a
-    # stable order among ties, but two same-depth paths can never be each other's
-    # ancestor, so the ancestor-exclusion check below is correct regardless of which
-    # order same-depth ties come out in.
-    pairs.sort_by! { |_, normalized| normalized.count('/') }
-
-    kept = []
-    pairs.each do |original, normalized|
-      # Skip this path if any already-kept path is a proper ancestor of it.
-      next if kept.any? { |_, k| normalized.start_with?(k + '/') }
-      kept << [original, normalized]
-    end
-
-    kept.map { |original, _| original }
+    return outermost( pairs ).map { |original, _| original }
   end
+
+  # The [original, absolute] pairs no earlier pair's directory holds
+  def self.outermost(pairs)
+    return pairs.each_with_object( [] ) do |pair, kept|
+      kept << pair unless kept.any? { |_, held| ProjectPaths.contains?( held, pair.last ) }
+    end
+  end
+  private_class_method :outermost
 
 
   ######### Instance methods ##########
@@ -197,12 +193,7 @@ class FilePathUtils
   end
 
   def form_release_build_objects_filelist(files)
-    return mirror_build_objects(
-      files,
-      root:  @configurator.project_release_build_output_path,
-      ext:   @configurator.extension_object.primary,
-      roots: @configurator.paths_source
-    )
+    return mirror_build_objects( files, root: @configurator.project_release_build_output_path, ext: @configurator.extension_object.primary )
   end
 
   # `filepath` is an already-mirrored object path -- its own directory is exactly where its
@@ -212,12 +203,7 @@ class FilePathUtils
   end
 
   def form_release_dependencies_filelist(files)
-    return mirror_build_objects(
-      files,
-      root:  @configurator.project_release_dependencies_path,
-      ext:   @configurator.extension_dependencies.primary,
-      roots: @configurator.paths_source
-    )
+    return mirror_build_objects( files, root: @configurator.project_release_dependencies_path, ext: @configurator.extension_dependencies.primary )
   end
 
   ### Tests ###
@@ -228,22 +214,18 @@ class FilePathUtils
   # with each `..` written as `_up_`, and a path with no relative form (another Windows drive)
   # placed under `_abs_`, so no name reaches outside the build directory.
   def form_test_name(filepath)
-    path     = relative_to_working_dir( filepath.to_s.tr( '\\', '/' ) )
-    segments = path.ext( '' ).split( '/' ).reject { |segment| segment.empty? || segment == '.' }
-    segments = absolute_name_segments( path, segments )
-
-    return segments.map { |segment| segment == '..' ? TEST_NAME_PARENT_SEGMENT : segment }.join( '/' )
+    return BuildSubpath.encode( filepath.to_s.ext( '' ) )
   end
 
   def form_test_build_path(name, context: nil)
     form_build_context_path(BUILD_OUT_DIR, name: name, context: context)
   end
 
+  # Where a build places the object of `filepath`: below its test's build path, or below the
+  # context's own output root for a source compiled outside any test
   def form_test_object_filepath(filepath, name: nil, context: nil)
-    File.join(
-      form_build_context_path(BUILD_OUT_DIR, name: name, context: context),
-      File.basename(filepath).ext(@configurator.extension_object.primary)
-    )
+    root = form_build_context_path( BUILD_OUT_DIR, name: name, context: context )
+    return build_filepath( filepath, root: root, ext: @configurator.extension_object.primary, generated_roots: generated_roots( name ) )
   end
 
   # As `form_test_runners_path`: a test's results sit beneath the directories of its name,
@@ -269,51 +251,46 @@ class FilePathUtils
     form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
   end
 
-  # `filepath` is an already-mirrored object path -- recovering the mirrored subdirectory
-  # beyond the test's own build root and re-rooting it under this test's dependencies path
-  # keeps this dependencies file alongside the same-named object it accompanies, rather
-  # than colliding with another object's dependencies file at a shared flat basename.
-  # Without a test identity to recover that build root from, there's no mirroring to do --
-  # the dependencies file stays exactly where its context-level directory alone places it.
+  # `filepath` is an object path. Its dependencies file sits at the object's own place below
+  # the dependencies root, so it never collides with another same-named object's. Without a
+  # test, that place is below the context's own output root.
   def form_test_dependencies_filepath(filepath, name: nil, context: nil)
     root     = form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
     basename = File.basename(filepath).ext(@configurator.extension_dependencies.primary)
 
-    return File.join(root, basename) if name.nil?
-
-    subdir = PathMirror.relative_subdir( filepath, [form_test_build_path(name, context: context)] )
+    subdir = ProjectPaths.subdir_below( form_test_build_path( name, context: context ), File.dirname( filepath ) ) || ''
     return subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
   end
 
-  def form_test_mocks_path(name, context: nil)
+  def form_test_mocks_path(name)
     form_named_path(@configurator.cmock_mock_path, name)
   end
 
-  def form_test_partials_path(name, context: nil)
+  def form_test_partials_path(name)
     form_named_path(@configurator.project_test_partials_path, name)
   end
 
-  def form_test_preprocess_includes_path(name, context: nil)
+  def form_test_preprocess_includes_path(name)
     form_named_path(@configurator.project_test_preprocess_includes_path, name)
   end
 
-  def form_test_preprocess_files_path(name, context: nil)
+  def form_test_preprocess_files_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name)
   end
 
-  def form_test_preprocess_files_full_expansion_path(name, context: nil)
+  def form_test_preprocess_files_full_expansion_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_FULL_EXPANSION_DIR)
   end
 
-  def form_test_preprocess_files_directives_only_path(name, context: nil)
+  def form_test_preprocess_files_directives_only_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_DIRECTIVES_ONLY_DIR)
   end
 
-  def form_test_preprocess_files_raw_directives_only_path(name, context: nil)
+  def form_test_preprocess_files_raw_directives_only_path(name)
     form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_RAW_DIRECTIVES_ONLY_DIR)
   end
 
-  def form_test_preprocess_build_directives_path(name, context: nil)
+  def form_test_preprocess_build_directives_path(name)
     form_named_path(@configurator.project_test_preprocess_build_directives_path, name)
   end
 
@@ -342,7 +319,7 @@ class FilePathUtils
   # A test's runner sits beneath the directories of its name, so same-named tests in
   # different directories keep apart. Only a test at the project root uses the runners
   # directory itself.
-  def form_test_runners_path(name, context: nil)
+  def form_test_runners_path(name)
     subdir = mirrored_test_subdir(name)
     return @configurator.project_test_runners_path if subdir.empty?
     return File.join(@configurator.project_test_runners_path, subdir)
@@ -387,13 +364,7 @@ class FilePathUtils
   # the same filepath, so all of them agree on where the artifact lands without
   # coordinating.
   def preprocessed_file_subpath(filepath, test = nil)
-    roots = @configurator.paths_source +
-            @configurator.paths_support +
-            @configurator.paths_include +
-            @configurator.paths_test +
-            generated_roots( test )
-
-    subdir   = PathMirror.relative_subdir( filepath, roots )
+    subdir   = form_build_subpath( filepath, generated_roots: generated_roots( test ) )
     basename = File.basename( filepath )
 
     return basename if subdir.empty?
@@ -464,12 +435,7 @@ class FilePathUtils
   # standard roots mirrors it. Without its root here, two modules sharing a basename
   # collapse onto one object filename.
   def form_test_build_objects_filelist(path, sources, extra_roots: [])
-    return mirror_build_objects(
-      sources,
-      root:  path,
-      ext:   @configurator.extension_object.primary,
-      roots: @configurator.paths_source + @configurator.paths_support + extra_roots
-    )
+    return mirror_build_objects( sources, root: path, ext: @configurator.extension_object.primary, generated_roots: extra_roots )
   end
 
   # Where one mock's generated files sit: its test's mock root, plus the subdirectory
@@ -591,22 +557,6 @@ class FilePathUtils
     return path
   end
 
-  # Collection paths are already relative to the working directory. An absolute one is made
-  # relative too, so a test has one name however its path arrives. Another Windows drive has
-  # no relative form and stays absolute.
-  def relative_to_working_dir(path)
-    return path unless PathMatcher.absolute?( path )
-    return Pathname.new( path ).relative_path_from( Pathname.new( Dir.pwd ) ).to_s
-  rescue ::ArgumentError
-    return path
-  end
-
-  # A path left absolute keeps all of it beneath `_abs_`, a drive letter as a plain segment
-  def absolute_name_segments(path, segments)
-    return segments unless PathMatcher.absolute?( path )
-    return [TEST_NAME_ABSOLUTE_SEGMENT] + segments.each_with_index.map { |segment, index| index.zero? ? segment.delete_suffix( ':' ) : segment }
-  end
-
   # The directories of a test's name, excluding its basename: 'test/unit' for
   # 'test/unit/test_foo', or '' for a test at the project root.
   def mirrored_test_subdir(name)
@@ -631,15 +581,47 @@ class FilePathUtils
   # it contains a literal `[`/`]`. FileWrapper#instantiate_file_list_literal (`<<`, not
   # `.new`/`.include`) adds every entry as-is, with no glob interpretation at all -- the
   # correct construction for a list that's already the real, final answer.
-  def mirror_build_objects(files, root:, ext:, roots:)
-    clean_roots = PathMirror.clean_roots( roots )
+  def mirror_build_objects(files, root:, ext:, generated_roots: [])
+    sources = @file_wrapper.instantiate_file_list_literal( files ).to_a.uniq { |file| ProjectPaths.absolute( file ) }
+    objects = sources.map { |file| build_filepath( file, root: root, ext: ext, generated_roots: generated_roots ) }
 
-    objects = @file_wrapper.instantiate_file_list_literal(files).map do |file|
-      subdir   = PathMirror.relative_subdir_from_clean_roots( file, clean_roots )
-      basename = File.basename(file).ext(ext)
-      subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
-    end
+    validate_distinct_build_files!( sources, objects )
     return @file_wrapper.instantiate_file_list_literal( objects )
+  end
+
+  def build_filepath(file, root:, ext:, generated_roots:)
+    subdir   = form_build_subpath( file, generated_roots: generated_roots )
+    basename = File.basename( file ).ext( ext )
+    path     = subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
+
+    # A source far from the project gains a directory for each level its path climbs. Each
+    # path is checked once, however often it is formed.
+    @file_wrapper.check_path_length( path, origin: 'FilePathUtils#build_filepath' ) if first_formed?( path )
+    return path
+  end
+
+  def first_formed?(path)
+    return @formed_lock.synchronize { @formed_paths.add?( path ) }
+  end
+
+  # Where below a build output root the build file of `file` lands. A file below one of the
+  # caller's generated roots (a test's mocks or Partials) mirrors below that root; one
+  # below the build root otherwise (vendored frameworks, runners) lands flat; and any other
+  # lands by its own path from the project root, so two sources never share one.
+  def form_build_subpath(file, generated_roots: [])
+    generated = PathMirror.relative_subdir_if_rooted_in_clean_roots( file, generated_roots )
+    return generated unless generated.nil?
+    return '' if ProjectPaths.contains?( @configurator.project_build_root, file )
+
+    return BuildSubpath.of_directory( File.dirname( file ) )
+  end
+
+  # Two sources building to one file would leave one of them out of the build
+  def validate_distinct_build_files!(sources, built)
+    built_from = sources.zip( built ).to_h
+    DestinationCollision.find( sources ) { |source| built_from[source] }.each do |file, sharing|
+      DestinationCollision.raise_for( file, sharing, 'would build to the same file' )
+    end
   end
 
 end

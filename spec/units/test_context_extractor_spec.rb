@@ -124,6 +124,17 @@ describe TestContextExtractor do
     end
   end
 
+  # GH #1370 audit (G10): a TEST_INCLUDE_PATH() spelled another way gave its headers a
+  # second spelling beside the collection's own
+  context "#ingest_build_directive_include_paths" do
+    it "records each path in the one spelling every collection uses" do
+      @extractor.ingest_build_directive_include_paths( "path", ["./include/dir", "include\\other/", File.join( Dir.pwd, "inc" )] )
+
+      expect( @extractor.lookup_include_paths_list( "path" ) ).to eq( ["include/dir", "include/other", "inc"] )
+      expect( @extractor.lookup_all_include_paths ).to eq( ["include/dir", "include/other", "inc"] )
+    end
+  end
+
   context "#store_build_directives_cache and #load_build_directives_cache" do
     it "writes the currently known source files and include paths for a test file to the given cache filepath" do
       @extractor.ingest_build_directive_source_files( "path", ["extra.c"] )
@@ -172,6 +183,20 @@ describe TestContextExtractor do
   context "#collect_context" do
     it "should raise an execption for unknown symbol argument" do
       expect{ @extractor.collect_context( "path", StringIO.new(), :bad ) }.to raise_error( CeedlingException )
+    end
+
+    # A #include in a branch that is off, or a `..` spelling the mock search paths reach, both
+    # build, so a climbing mock #include is read like any other
+    it "resolves a mock #include that climbs with `..` against the test file's directory" do
+      @extractor.collect_context( "test/test_c.c", StringIO.new( "#include \"../x/mock_foo.h\"\n" ), TestContextExtractor::Context::INCLUDES )
+
+      expect( @extractor.lookup_mock_header_includes_list( "test/test_c.c" ) ).to eq( [MockInclude.new( 'x/mock_foo.h' )] )
+    end
+
+    it "keeps a non-mock #include that climbs with `..`, resolved against the test file's directory" do
+      @extractor.collect_context( "test/test_c.c", StringIO.new( "#include \"../inc/x/foo.h\"\n" ), TestContextExtractor::Context::INCLUDES )
+
+      expect( @extractor.lookup_all_header_includes_list( "test/test_c.c" ) ).to eq( [UserInclude.new( 'inc/x/foo.h' )] )
     end
 
     # collect_context() + lookup_all_header_includes_list() + lookup_mock_header_includes_list()

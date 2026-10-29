@@ -10,6 +10,7 @@ require 'ceedling/constants'
 require 'ceedling/includes/includes'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/standin_headerinator'
+require 'ceedling/test_invoker/mock_locator'
 
 describe StandinHeaderinator do
   before(:each) do
@@ -33,6 +34,11 @@ describe StandinHeaderinator do
     end
     allow(@mock_locator).to receive(:header_collection).and_return( ['src/drivers/foo.h'] )
     allow(@mock_locator).to receive(:locate).and_return( ['src/drivers/foo.h', 'drivers'] )
+    allow(@mock_locator).to receive(:placement) do |mocks_root:, subdir:, **|
+      dir = subdir.empty? ? mocks_root : File.join( mocks_root, subdir )
+      MockLocator::MockPlacement.new( folder: nil, directory: dir, root: dir, reach: dir )
+    end
+    allow(@mock_locator).to receive(:search_directories) { |placement| [placement.directory] }
 
     @standins = described_class.new(
       configurator: @configurator, loginator: @loginator, reportinator: @reportinator,
@@ -110,9 +116,33 @@ describe StandinHeaderinator do
       expect(dirs).to eq( ['build/test/mocks/a_test/drivers'] )
     end
 
-    it "gives no directories when the test has no mock root" do
+    # The test's #include reaches the stand-in only from the directory the folder climbs from, so it must exist
+    it "writes a climbing folder's stand-in where its mock will be, giving and making the directory it is reached from" do
+      climbing = MockLocator::MockPlacement.new( folder: '../x', directory: 'build/test/mocks/a_test/_up_/x', root: 'build/test/mocks/a_test/_up_/_up_', reach: 'build/test/mocks/a_test/_up_/_up_' )
+      allow(@mock_locator).to receive(:placement).with( mocks_root: 'build/test/mocks/a_test', subdir: 'drivers', include_path: '../x/MockFoo.h' ).and_return( climbing )
+      allow(@mock_locator).to receive(:search_directories).with( climbing ).and_return( [climbing.directory, climbing.root] )
+
+      expect(@file_wrapper).to receive(:mkdir).with( 'build/test/mocks/a_test/_up_/_up_' )
+      expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/_up_/x/MockFoo.h', anything )
+
+      expect(@standins.place( @testable, [Include.new( '../x/MockFoo.h' )] ))
+        .to eq( ['build/test/mocks/a_test/_up_/x', 'build/test/mocks/a_test/_up_/_up_'] )
+    end
+
+    # The real mock opens with the header as CMock names it, by the folder CMock is given
+    it "includes the header by the folder its mock is named by" do
+      named = MockLocator::MockPlacement.new( folder: 'drivers', directory: 'build/test/mocks/a_test/drivers', root: 'build/test/mocks/a_test', reach: 'build/test/mocks/a_test' )
+      allow(@mock_locator).to receive(:placement).and_return( named )
+
+      expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', "#{StandinHeaderinator::MARKER}\n#include \"drivers/foo.h\"\n" )
+
+      @standins.place( @testable, [Include.new( 'drivers/MockFoo.h' )] )
+    end
+
+    it "places no stand-in and gives no directories when the test has no mock root" do
       @testable.paths = {}
 
+      expect(@file_wrapper).to_not receive(:write)
       expect(@standins.place( @testable, [Include.new( 'MockFoo.h' )] )).to eq( [] )
     end
 

@@ -132,6 +132,23 @@ describe DependencySpec do
       expect(spec.include_directories( ->( glob ) { ["#{glob}/a", "#{glob}/b"] } )).to eq( ['out/inc/**/a', 'out/inc/**/b'] )
     end
 
+    # The path handling audit around GH #1370: an absolute artifact names itself
+    it 'keeps an absolute artifact or include path as written' do
+      lib = File.expand_path( '/opt/sdk/lib/libsdk.a' )
+      inc = File.expand_path( '/opt/sdk/inc' )
+      spec = spec_for( paths: { artifact: 'out' }, artifacts: { static_libraries: [lib], includes: [inc] } )
+
+      expect(spec.static_libraries).to eq( [lib] )
+      expect(spec.include_directories( ->( _glob ) { raise 'no glob here' } )).to eq( [inc] )
+    end
+
+    it 'reads its configured paths as every configured path is read, `~` as the home directory' do
+      spec = spec_for( paths: { source: '~/deps/w\\src\\', artifact: '~/deps/w/out' } )
+
+      expect(spec.source_path).to eq( File.join( Dir.home, 'deps/w/src' ) )
+      expect(spec.static_libraries).to eq( [File.join( Dir.home, 'deps/w/out/libworker.a' )] )
+    end
+
     it 'treats missing artifacts as empty' do
       spec = DependencySpec.build_all( [{ name: 'tool', fetch: { method: :none } }] ).first
 

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'tmpdir'
 require 'ceedling/file_finder'
 require 'ceedling/file_finder_helper'
 require 'ceedling/filename_extension'
@@ -124,6 +125,7 @@ describe FileFinder do
       allow(@configurator).to receive(:paths_test).and_return( [] )
       allow(@configurator).to receive(:paths_support).and_return( [] )
       allow(@configurator).to receive(:paths_include).and_return( ['src'] )
+      allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['src'] )
     end
 
     it 'resolves a mock header and its own mirrored subdirectory below the configured root that contains it' do
@@ -143,6 +145,26 @@ describe FileFinder do
       pathed, pathed_subdir = @file_finder.resolve_mock('drivers/Mockfoo.h')
       expect(bare).to eq(pathed)
       expect(bare_subdir).to eq(pathed_subdir)
+    end
+
+    # GH #1370: a `..` root "contained" a header far above it, so its mock left the build directory
+    it 'places a mock of a header far above a `..` root flat, below the root that truly holds it' do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['../../../opt/sdk/inc/sdk.h'] )
+      allow(@configurator).to receive(:paths_include).and_return( ['../**', File.expand_path( '../../../opt/sdk/inc' )] )
+      allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['..', '../../../opt/sdk/inc'] )
+
+      _source, subdir = @file_finder.resolve_mock('Mocksdk.h')
+      expect(subdir).to eq('')
+    end
+
+    # GH #1370 audit (G4): a glob in the middle of a root names one root per directory
+    it 'places a mock below the directory a glob-middle root names, not below the glob\'s base' do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['components/foo/include/foo.h'] )
+      allow(@configurator).to receive(:paths_include).and_return( ['components/*/include'] )
+      allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['components/foo/include'] )
+
+      _source, subdir = @file_finder.resolve_mock('Mockfoo.h')
+      expect(subdir).to eq('')
     end
 
     it 'still raises on a bogus (not-found) mock reference, exactly as find_header_input_for_mock does' do
@@ -234,18 +256,16 @@ describe FileFinder do
       expect(@file_finder.find_test_file_from_name('unit/test_foo')).to eq('unit/test_foo.c')
     end
 
-    it 'raises a clear CeedlingException naming .. as unsupported in a CLI task name, rather than a generic not-found' do
-      # A CLI task name has no file of its own to anchor a .. against -- unlike an
-      # #include or TEST_SOURCE_FILE() entry, which are always scoped to the test file
-      # that wrote them. Today's generic "Found no file" message happens to also
-      # contain the query text, so asserting on the query alone would pass for the
-      # wrong reason -- the message must specifically call out .. as the problem.
-      expect { @file_finder.find_test_file_from_name('../unit/test_foo') }.to raise_error(CeedlingException) do |error|
-        expect(error.message).to include('../unit/test_foo')
-        expect(error.message).not_to match(/Found no file/)
-        expect(error.message).to match(/\.\./)
-        expect(error.message).to match(/context/i)
-      end
+    # GH #1370 audit (G9): a task name is relative to the working directory, as every
+    # collected path is, so a leading `..` names a test outside the project
+    it 'resolves a name climbing out of the project, against the working directory' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['../tests/test_x.c', 'unit/test_foo.c'] )
+
+      expect(@file_finder.find_test_file_from_name('../tests/test_x')).to eq('../tests/test_x.c')
+    end
+
+    it 'resolves a name written with `./`' do
+      expect(@file_finder.find_test_file_from_name('./unit/test_foo')).to eq('unit/test_foo.c')
     end
   end
 
@@ -272,6 +292,7 @@ describe FileFinder do
       allow(@configurator).to receive(:project_build_root).and_return('build')
       # No configured include root contains these queries, so each keeps its own path.
       allow(@configurator).to receive(:paths_include).and_return( ['include'] )
+      allow(@configurator).to receive(:collection_mirror_roots_include).and_return( ['include'] )
 
       # A test is named by its path without its extension. Examples that look tests up by
       # name give their own test collection.
@@ -384,6 +405,7 @@ describe FileFinder do
 
     it 'resolves a test\'s own runner by its own runner subdirectory, without treating another same-named test\'s runner as ambiguous' do
       allow(@configurator).to receive(:project_test_runners_path).and_return('build/test/runners')
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['unit/test_foo.c', 'integration/test_foo.c'] )
 
       all_runners = {
         'build/test/runners/unit'        => ['build/test/runners/unit/test_foo_runner.c'],
@@ -407,6 +429,7 @@ describe FileFinder do
 
     it 'resolves a mock generated once per test, by the current test\'s own build directory, without treating that expected repetition as ambiguous' do
       allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['TestAdcModel.c', 'TestModel.c'] )
 
       all_mocks = {
         'build/test/mocks/TestAdcModel'  => ['build/test/mocks/TestAdcModel/MockTemperatureFilter.c'],
@@ -514,37 +537,78 @@ describe FileFinder do
       expect(found).to eq('build/test/mocks/TestModel/MockTemperatureFilter.c')
     end
 
-    it 'resolves a release object via its own mirrored subdirectory, even when another same-named source exists elsewhere' do
+    it 'resolves a release object to the source at its own path, even when another same-named source exists elsewhere' do
       allow(@configurator).to receive(:collection_release_build_input).and_return(
         ['drivers/foo/bar.c', 'drivers/baz/bar.c']
       )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/release/out/foo/bar.o', complain: :error, context: RELEASE_SYM
+        filepath: 'build/release/out/drivers/foo/bar.o', complain: :error, context: RELEASE_SYM
       )
       expect(found).to eq('drivers/foo/bar.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/release/out/baz/bar.o', complain: :error, context: RELEASE_SYM
+        filepath: 'build/release/out/drivers/baz/bar.o', complain: :error, context: RELEASE_SYM
       )
       expect(found).to eq('drivers/baz/bar.c')
     end
 
-    it 'resolves a module-under-test object via its own mirrored subdirectory, even when another same-named module exists elsewhere' do
+    it 'resolves a module-under-test object to the source at its own path, even when another same-named module exists elsewhere' do
       allow(@file_path_utils).to receive(:form_test_build_path).with('TestFoo', context: TEST_SYM).and_return('build/test/out/TestFoo')
       allow(@configurator).to receive(:collection_existing_test_build_input).and_return(
         ['drivers/foo/bar.c', 'drivers/baz/bar.c']
       )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestFoo/foo/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
+        filepath: 'build/test/out/TestFoo/drivers/foo/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
       )
       expect(found).to eq('drivers/foo/bar.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestFoo/baz/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
+        filepath: 'build/test/out/TestFoo/drivers/baz/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
       )
       expect(found).to eq('drivers/baz/bar.c')
+    end
+
+    # A tail match of `src/util` takes whichever of these comes first
+    it 'resolves an object to exactly its own source, never one whose path merely ends the same way' do
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['lib/src/util.c', 'src/util.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/src/util.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('src/util.c')
+    end
+
+    it 'resolves an object of a source above the project root' do
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['src/crc.c', '../shared/src/crc.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/_up_/shared/src/crc.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('../shared/src/crc.c')
+    end
+
+    it 'resolves an object of a file in the running Ceedling installation, placed below `_ceedling_`' do
+      helper = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins/fff/src/fff_unity_helper.c' )
+      allow(@file_path_utils).to receive(:form_test_build_path).with( 'test/test_x', context: TEST_SYM ).and_return( 'build/test/out/test/test_x' )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/fff_unity_helper.c', helper] )
+
+      Dir.mktmpdir do |project|
+        Dir.chdir( project ) do
+          found = @file_finder.find_build_input_file(
+            filepath: 'build/test/out/test/test_x/_ceedling_/plugins/fff/src/fff_unity_helper.o', complain: :error, context: TEST_SYM, test: 'test/test_x'
+          )
+          expect(found).to eq( helper )
+        end
+      end
+    end
+
+    it 'recovers a nested test\'s identity from its object\'s path, rather than its parent test\'s' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
+      allow(@file_path_utils).to receive(:form_test_build_path) { |name, **| File.join( 'build/test/out', name ) }
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/util.c'] )
+
+      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test_bar/test/test_foo/test_bar.o', complain: :error, context: TEST_SYM ))
+        .to eq('test/test_foo/test_bar.c')
+      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test/test_foo.o', complain: :error, context: TEST_SYM ))
+        .to eq('test/test_foo.c')
     end
 
     it 'still resolves a flat module-under-test object by basename when no test identity is given' do

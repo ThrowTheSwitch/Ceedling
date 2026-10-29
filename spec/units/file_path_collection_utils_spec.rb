@@ -143,6 +143,49 @@ describe FilePathCollectionUtils do
       expect( result ).to include( 'src' )
     end
 
+
+    # GH #1370 audit (G13): an exclusion dropped only the directory it named, keeping those below
+    it 'excludes every directory below a `-:` exclusion' do
+      kept, dropped, deep = File.expand_path( 'src/a' ), File.expand_path( 'src/exp' ), File.expand_path( 'src/exp/deep' )
+      allow( @file_wrapper ).to receive( :directory_listing ).with( 'src/**/**' ).and_return( [kept, dropped, deep] )
+      allow( @file_wrapper ).to receive( :directory_listing ).with( 'src/exp' ).and_return( [dropped] )
+      allow( @file_wrapper ).to receive( :directory? ).and_return( true )
+
+      expect( @fpcu.collect_paths( ['+:src/**', '-:src/exp'] ) ).to match_array( ['src', 'src/a'] )
+    end
+
+    # GH #1370 audit (G15): a root above the build root collected the build tree
+    it 'excludes every directory below an excluded path' do
+      src, build = File.expand_path( 'src' ), File.expand_path( 'build/test/mocks' )
+      allow( @file_wrapper ).to receive( :directory_listing ).with( './**/**' ).and_return( [src, build] )
+      allow( @file_wrapper ).to receive( :directory? ).and_return( true )
+
+      expect( @fpcu.collect_paths( ['./**'], exclude: ['build'] ) ).to_not include( 'build/test/mocks' )
+    end
+  end
+
+
+  # GH #1370 audit: the places build files mirror below, each spelled canonically
+  describe '#collect_mirror_roots' do
+    it 'roots a recursive entry at its base, and a plain entry at itself' do
+      expect( @fpcu.collect_mirror_roots( ['src/**', 'include', './lib/*'] ) ).to eq( ['src', 'include', 'lib'] )
+    end
+
+    it 'roots a glob within an entry at each directory it names' do
+      named = [File.expand_path( 'components/a/include' ), File.expand_path( 'components/b/include' )]
+      allow( @file_wrapper ).to receive( :directory_listing ).with( 'components/*/include' ).and_return( named )
+      allow( @file_wrapper ).to receive( :directory? ).and_return( true )
+
+      expect( @fpcu.collect_mirror_roots( ['components/*/include'] ) ).to eq( ['components/a/include', 'components/b/include'] )
+    end
+
+    it 'roots nothing at a `-:` exclusion, and keeps a literal bracket as part of a name' do
+      expect( @fpcu.collect_mirror_roots( ['+:src/**', '-:src/exp', 'src/[legacy]'] ) ).to eq( ['src', 'src/[legacy]'] )
+    end
+
+    it 'returns [] for nil input' do
+      expect( @fpcu.collect_mirror_roots( nil ) ).to eq( [] )
+    end
   end
 
 
@@ -228,4 +271,141 @@ describe FilePathCollectionUtils do
 
   end
 
+end
+
+# The path handling audit around GH #1370: one place collected under two spellings is still
+# one place, so an exclusion names it however it was reached
+describe FilePathCollectionUtils, 'on disk' do
+  require 'tmpdir'
+  require 'fileutils'
+  require 'ceedling/file_wrapper'
+
+  POSIX_ONLY_COLLECTION = { unless: Gem.win_platform? }.freeze
+
+  around(:each) do |example|
+    Dir.mktmpdir do |dir|
+      @ws = File.realpath( dir )
+      FileUtils.mkdir_p( File.join( @ws, 'app/src/a' ) )
+      FileUtils.mkdir_p( File.join( @ws, 'vendor/ext' ) )
+      File.write( File.join( @ws, 'vendor/ext/foo.c' ), '' )
+      File.write( File.join( @ws, 'app/src/a/bar.c' ), '' )
+      Dir.chdir( File.join( @ws, 'app' ) ) { example.run }
+    end
+  end
+
+  before(:each) do
+    file_wrapper = FileWrapper.new( { loginator: double( 'loginator' ).as_null_object, verbosinator: double( 'verbosinator' ).as_null_object } )
+    @fpcu = described_class.new( { file_wrapper: file_wrapper } )
+  end
+
+  def link_ext
+    File.symlink( File.join( @ws, 'vendor/ext' ), File.join( @ws, 'app/src/ext' ) )
+  end
+
+  it 'leaves out a symlinked directory below a root its `-:` entry names', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.collect_paths( ['+:src/**', '-:src/ext'] )).to eq( ['src', 'src/a'] )
+  end
+
+  it 'collects a symlinked directory once, however many entries reach it', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/ext'] ).count { |dir| dir.end_with?( 'ext' ) }).to eq( 1 )
+  end
+
+  # An #include or a test name spells a place below a root through the root as listed,
+  # as the compiler and the command line do
+  it 'spells a symlinked directory below an entry\'s base as it is listed', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.collect_paths( ['+:src/**'] )).to include( 'src/ext' )
+    expect(@fpcu.revise_filelist( ['src/ext/foo.c'], ['+:src/a/*.c'] ).to_a).to eq( ['src/ext/foo.c', 'src/a/bar.c'] )
+  end
+
+  it 'spells an entry\'s symlinked base as it really is', **POSIX_ONLY_COLLECTION do
+    File.symlink( File.join( @ws, 'vendor' ), File.join( @ws, 'app/vend' ) )
+
+    expect(@fpcu.collect_paths( ['+:vend/**'] )).to eq( ['../vendor', '../vendor/ext'] )
+  end
+
+  it 'removes a file below a symlinked directory that a `-:` revision names', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.revise_filelist( ['src/a/bar.c', 'src/ext/foo.c'], ['-:src/ext/foo.c'] ).to_a).to eq( ['src/a/bar.c'] )
+    expect(@fpcu.revise_filelist( ['src/ext/foo.c'], ['+:src/ext/foo.c'] ).to_a.size).to eq( 1 )
+  end
+
+  # macOS spells /tmp as /private/tmp, and a build root may be written through any symlink
+  it 'excludes a build root written through a symlink', **POSIX_ONLY_COLLECTION do
+    FileUtils.mkdir_p( 'build/test' )
+    File.symlink( File.join( @ws, 'app' ), File.join( @ws, 'link' ) )
+
+    expect(@fpcu.collect_paths( ['+:./**'], exclude: [File.join( @ws, 'link/build' )] )).to eq( ['.', 'src', 'src/a'] )
+  end
+
+  it 'keeps a directory an additive entry names below a `-:` entry, and leaves out one both name' do
+    FileUtils.mkdir_p( ['src/legacy/keep', 'src/legacy/other'] )
+
+    expect(@fpcu.collect_paths( ['+:src/**', '-:src/legacy', '+:src/legacy/keep'] )).to eq( ['src', 'src/a', 'src/legacy/keep'] )
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy', '-:src/legacy'] )).to eq( ['src', 'src/a'] )
+  end
+
+  it 'leaves out the files a revision glob matches below an excluded root, but keeps those a revision based there names' do
+    FileUtils.mkdir_p( ['build/gen', 'build/test/mocks'] )
+    File.write( 'build/gen/table.c', '' )
+    File.write( 'build/test/mocks/mock_x.c', '' )
+
+    expect(@fpcu.revise_filelist( ['src/a/bar.c'], ['+:**/*.c'], exclude: ['build'] ).to_a).to eq( ['src/a/bar.c'] )
+    expect(@fpcu.revise_filelist( [], ['+:build/gen/table.c'], exclude: ['build'] ).to_a).to eq( ['build/gen/table.c'] )
+    expect(@fpcu.revise_filelist( [], ['+:build/**/*.c'], exclude: ['build'] ).to_a).to eq( ['build/gen/table.c', 'build/test/mocks/mock_x.c'] )
+  end
+
+  it 'adds no file below a reserved directory, however a revision names it' do
+    FileUtils.mkdir_p( ['build/gen', 'build/test/mocks'] )
+    File.write( 'build/gen/table.c', '' )
+    File.write( 'build/test/mocks/mock_x.c', '' )
+
+    expect(@fpcu.revise_filelist( [], ['+:build/**/*.c'], exclude: ['build'], reserved: ['build/test'] ).to_a).to eq( ['build/gen/table.c'] )
+    expect(@fpcu.revise_filelist( [], ['+:build/test/mocks/mock_x.c'], reserved: ['build/test'] ).to_a).to be_empty
+  end
+
+  it 'collects what an entry based below an excluded root names, less any reserved directory' do
+    FileUtils.mkdir_p( ['build/gen/sub', 'build/test/mocks'] )
+
+    expect(@fpcu.collect_paths( ['+:build/**'], exclude: ['build'], reserved: ['build/test'] )).to contain_exactly( 'build', 'build/gen', 'build/gen/sub' )
+    expect(@fpcu.collect_paths( ['+:build/test/mocks'], exclude: ['build'], reserved: ['build/test'] )).to be_empty
+    expect(@fpcu.collect_paths( ['+:./**'], exclude: ['build'], reserved: ['build/test'] )).to_not include( 'build/gen' )
+  end
+
+  # Only the entries that name a directory decide whether it is kept
+  it 'judges each directory by the entries that name it, not every entry\'s base' do
+    FileUtils.mkdir_p( ['src/legacy/x/inc', 'src/legacy/keep/sub'] )
+
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy/*/inc', '-:src'] )).to eq( ['src/legacy/x/inc'] )
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy/keep', '-:src/legacy'] )).to contain_exactly( 'src', 'src/a', 'src/legacy/keep' )
+  end
+
+  it 'leaves out many directories below a `-:` entry quickly' do
+    200.times { |index| FileUtils.mkdir_p( "vendor_tree/d#{index}/x" ) }
+    200.times { |index| FileUtils.mkdir_p( "src/m#{index}" ) }
+
+    started = Process.clock_gettime( Process::CLOCK_MONOTONIC )
+    result  = @fpcu.collect_paths( ['+:./**', '-:vendor_tree/**'] )
+
+    expect(result).to_not include( 'vendor_tree' )
+    expect(Process.clock_gettime( Process::CLOCK_MONOTONIC ) - started).to be < 2.0
+  end
+
+  describe '#collect_mirror_roots' do
+    it 'reads a literal bracket in an entry with a glob as part of a name (#104)' do
+      FileUtils.mkdir_p( 'lib[v2]/x/inc' )
+
+      expect(@fpcu.collect_mirror_roots( ['lib[v2]/*/inc'] )).to eq( ['lib[v2]/x/inc'] )
+    end
+
+    it 'roots a doubled recursive glob at its base' do
+      expect(@fpcu.collect_mirror_roots( ['src/**/**'] )).to eq( ['src'] )
+    end
+  end
 end

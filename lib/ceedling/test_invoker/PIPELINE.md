@@ -23,7 +23,7 @@ The seven stage classes never call each other. `TestPipelineManager` alone seque
 Three collaborators hold logic more than one stage needs, so the stages cannot drift apart:
 
 - **`TestSearchPaths`** composes a test's search paths in the order the compiler searches them, and sets a test's mock search paths (stages 2, 3, and 4).
-- **`MockLocator`** resolves a mock's real header and the directory mirroring it below the test's mock root (stages 2, 4, and 5).
+- **`MockLocator`** resolves a mock's real header and places the mock: its directory below the test's mock root, the folder and root CMock writes it by, and the directory its `#include` as written reaches it from (stages 2, 4, 5, and 10).
 - **`StandinHeaderinator`** places stand-in headers for mocks and Partials (stage 4).
 
 ## `PipelineState` and `Testable`
@@ -66,7 +66,7 @@ Stages 2 and 3 run before stage 4, so anything they derive from the `#include`s 
 
 **Mocks (stages 9-10)** run only when the project uses mocks and this run has any. A transform flattens every test's planned mocks into one list, as the Partials transform does. Stage 9, with mock preprocessing on (`:mocks` or `:all`), preprocesses each header to be mocked. Stage 10 generates each mock's source and header with CMock, into a directory that mirrors its real header's location below the test's mock root. The `:mocking` stop point ends the run here.
 
-Two same-named headers mocked by directory stay distinct through `:cmock` ↳ `:mock_name_include_folder`, on by default. CMock names a mock's include guard and lifecycle functions by the folder its `#include` names, and the runner names its calls by the same `#include`, so the two always agree. `TestBuildExecutor#mock_folder_and_path` hands CMock that folder. When the folder ends the mirrored directory, the mock stays there. An `#include` spelling more path than the mirror holds puts its mock at the written path below the test's mock root instead, which the root search path still reaches.
+Two same-named headers mocked by directory stay distinct through `:cmock` ↳ `:mock_name_include_folder`, on by default. CMock names a mock's include guard and lifecycle functions by the folder its `#include` names, and the runner names its calls by the same `#include`, so the two always agree. `MockLocator#placement` decides where each mock goes, and generation, the planner's mock sources, the stand-ins, and the mock search paths all use it. When the folder ends the header's mirrored subdirectory, the mock stays in the mirrored directory. An `#include` spelling more path than the mirror holds puts its mock at the written path below the test's mock root instead, and one climbing with `..` stays below the mock root with an `_up_` directory for each `..`. The directory the `#include` as written reaches the mock from joins the mock search paths.
 
 **Test file preprocessing and runners (stages 11-13)** work on the test file itself. Stages 11 and 12 run only with test preprocessing on. Stage 11 preprocesses the test file, extracts its `TEST_SOURCE_FILE()` directives from the result, and checks them. Each test checks only its own entries, once, under its own name. Stage 12 parses test case names from that output. Stage 13 always runs and generates the Unity test runner, from the preprocessed test file when there is one and the original otherwise. The `:test_runner` stop point ends the run here.
 
@@ -110,7 +110,7 @@ Pass 1 places stand-ins whether its list was just extracted or recalled from cac
 
 ### Mock search paths
 
-A mock is generated into a directory mirroring its real header's location, and the compiler finds it only if that directory is on the search path. C's `#include` resolution has no recursive search path. So each test's search paths carry one mirrored directory per mock, after the flat mock root, and `mock_search_paths` records which entries those are.
+A mock is generated into a directory mirroring its real header's location, and the compiler finds it only if that directory is on the search path. C's `#include` resolution has no recursive search path. So each test's search paths carry each mock's directory, and the directory its `#include` reaches it from when that differs, after the flat mock root. `mock_search_paths` records which entries those are.
 
 Where the paths come from follows which `#include` list drives the build:
 

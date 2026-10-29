@@ -97,8 +97,13 @@ Add a collection of library paths to be included when linking.
 
 ## `:files` options & notes
 
-1. A path can be absolute (fully qualified) or relative.
-1. A path can include a glob matcher (more on this below).
+1. A path can be absolute (fully qualified) or relative. A relative path is relative to
+   the working directory, where you run `ceedling`.
+1. `~` at the start of a path names your home directory.
+1. A path can include a glob matcher (more on this below). A glob based above the build
+   root, such as `+:**/*.c`, adds nothing from it.
+1. An entry within the build root adds from it with a warning, but no entry adds a file
+   from the directories Ceedling and its plugins create there, or from the mocks directory.
 1. A path can use [inline Ruby string expansion][inline-ruby-string-expansion].
 1. Subtractive paths prepended with a `-:` decorator are possible and useful.
    See the documentation below.
@@ -138,6 +143,7 @@ Tailoring a file collection includes adding to it but also subtracting from it.
 
 Put simply, with an optional preceding decorator `-:`, you can instruct Ceedling
 to remove certain file paths from a collection after it builds that collection.
+A subtractive entry that names no file logs a warning, except below the build root.
 
 By default, paths are additive. For pretty alignment in your YAML, you may also
 use `+:`, but strictly speaking, it’s not necessary.

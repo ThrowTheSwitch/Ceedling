@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'digest'
 require 'fileutils'
 require 'tmpdir'
 require 'open3'
@@ -142,6 +143,7 @@ RSpec.configure do |config|
       $stderr.puts "\n" + ("=" * 72)
       $stderr.puts "FAILED: #{format_description.call(example)}"
       $stderr.puts "Temp dir: #{@c.dir}"
+      $stderr.puts "Project:  #{@proj_name}" if defined?(@proj_name) && @proj_name
       $stderr.puts "Log file: #{log_path}"
       if @c.respond_to?(:console_summary) && !@c.console_summary.nil?
         $stderr.puts "-" * 72
@@ -259,13 +261,12 @@ def html_docs_bundle_available?
   Dir.exist?(File.join(File.dirname(__FILE__), '..', '..', '..', 'site-local'))
 end
 
+# A project directory name unique to the current example, kept short because Windows
+# paths stop at 260 characters and a project's deepest build file sits well over 100
+# below it. The full description, nested groups and all, tells apart same-named examples
+# sharing one spec file's temp dir. Failure reports print the name beside the example.
 def unique_proj_name(prefix)
-  safe = RSpec.current_example.description
-    .downcase
-    .gsub(/[^a-z0-9]+/, '_')
-    .gsub(/\A_+|_+\z/, '')
-    .slice(0, 60)
-  "#{prefix}_#{safe}"
+  "#{prefix}_#{Digest::SHA256.hexdigest( RSpec.current_example.full_description )[0, 8]}"
 end
 
 def convert_slashes(path)

@@ -173,22 +173,8 @@ class ConsoleReportinator < GcovReportinator
   def run_gcov_summary(test, source, opts)
     filename = File.basename(source)
 
-    # A module-under-test's object (and its accompanying .gcno/.gcda) mirrors its source's own
-    # subdirectory below whichever configured root it came from -- the same convention its actual
-    # compile step already follows -- so the directory gcov is told to search must include that
-    # mirrored subdirectory too, not just the flat <build>/gcov/out/<test name> root.
-    # A generated Partial sits below its own test's Partials build root rather than a
-    # configured source root, so the source roots mirror nothing for it. Its own root is
-    # what carries the module's subdirectory.
-    roots =
-      if File.basename(source).match?(PATTERNS::PARTIAL_IMPL_FILENAME)
-        [File.join( @configurator.project_test_partials_path, test )]
-      else
-        @configurator.paths_source + @configurator.paths_support
-      end
-
-    subdir  = PathMirror.relative_subdir( source, roots )
-    obj_dir = subdir.empty? ? File.join(GCOV_BUILD_OUTPUT_PATH, test) : File.join(GCOV_BUILD_OUTPUT_PATH, test, subdir)
+    # The coverage data sits beside the object, wherever the test's build placed it
+    obj_dir = File.dirname( @file_path_utils.form_test_object_filepath( source, name: test, context: GCOV_SYM ) )
 
     # Run gcov to extract the coverage summary
     command = @tool_executor.build_command_line(
@@ -197,7 +183,7 @@ class ConsoleReportinator < GcovReportinator
       (opts[:gcov_mcdc] ? ['-g'] : []),
       # Argument replacement
       filename, # .c source file compiled with coverage
-      obj_dir # <build>/gcov/out/<test name>[/mirrored subdir] for coverage data files
+      obj_dir # <build>/gcov/out/<test name>[/source directory] for coverage data files
     )
 
     # Do not raise an exception if `gcov` terminates with a non-zero exit code, just note it and move on.

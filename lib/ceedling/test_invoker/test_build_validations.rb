@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/destination_collision'
+
 # Test-build configuration validators shared by more than one test pipeline stage
 # class -- each raises CeedlingException on a real, user-facing mistake it's
 # positioned to catch (a project using mocking or Partials without configuring for
@@ -15,20 +17,14 @@
 module TestBuildValidations
 
   # A name is its test's path without its extension, so two tests share one only when they
-  # differ in extension alone (`test_a.c` and `test_a.cpp`), or when a path outside the
-  # project maps onto a real one (`../x` and a project directory named `_up_/x`, or another
-  # drive's path and a project directory named `_abs_`). Sharing
-  # would silently drop one test, so a build with either in it stops. A build without them
-  # is unaffected.
+  # differ in extension alone (`test_a.c` and `test_a.cpp`). Sharing would silently drop one
+  # test, so a build with them in it stops. A build without them is unaffected.
   def validate_unique_test_names!(tests:)
-    by_name = @configurator.collection_all_tests.map( &:to_s ).uniq.group_by { |test| @file_path_utils.form_test_name( test ) }
+    shared = DestinationCollision.find( @configurator.collection_all_tests.map( &:to_s ) ) { |test| @file_path_utils.form_test_name( test ) }
 
     tests.each do |test|
-      name  = @file_path_utils.form_test_name( test )
-      files = by_name.fetch( name, [] )
-      next if files.size < 2
-
-      raise CeedlingException.new( "Test files #{files.join( ' and ' )} map to one build name `#{name}`. Rename or move one of them." )
+      name = @file_path_utils.form_test_name( test )
+      DestinationCollision.raise_for( name, shared[name], 'share the build name' ) if shared.key?( name )
     end
   end
 

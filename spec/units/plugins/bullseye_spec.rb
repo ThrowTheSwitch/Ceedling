@@ -831,7 +831,7 @@ describe Bullseye do
           ceedling:     services,
           configurator: configurator,
           test_invoker: test_invoker,
-          file_wrapper: double('file_wrapper', exist?: false)
+          file_wrapper: double('file_wrapper', exist?: false, mkdir: nil)
         }.merge(ivars)
       )
     end
@@ -881,6 +881,19 @@ describe Bullseye do
         expect(dependinator).to_not receive(:flush)
 
         bullseye.process_untested_sources(sources: [])
+      end
+
+      # An untested source's object sits at its path below the output root, in a
+      # directory no test build made
+      it 'makes the object\'s and dependencies file\'s directories before compiling' do
+        allow(dependinator).to receive(:stale?).and_return(true)
+        untested_wrapper = double('file_wrapper', exist?: false)
+        bullseye = build_process_bullseye({ bullseye_untested_sources: BULLSEYE_UNTESTED_SOURCES_COMPILE }, file_wrapper: untested_wrapper)
+
+        expect(untested_wrapper).to receive(:mkdir).with('build/bullseye/out/src').twice.ordered
+        expect(generator).to receive(:generate_object_file_c).ordered
+
+        bullseye.process_untested_sources(sources: ['src/a.c'])
       end
 
       it 'skips compilation for an already-fresh object' do

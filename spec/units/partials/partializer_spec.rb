@@ -31,6 +31,7 @@ describe Partializer do
     allow(@configurator).to receive(:paths_test).and_return( ['test'] )
     allow(@configurator).to receive(:paths_support).and_return( [] )
     allow(@configurator).to receive(:paths_include).and_return( ['include'] )
+    allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['test', 'include'] )
 
     @partializer = described_class.new(
       {

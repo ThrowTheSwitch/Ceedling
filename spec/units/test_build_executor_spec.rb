@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/filename_extension'
 require 'rake'
 require 'ceedling/test_invoker/test_build_executor'
+require 'ceedling/test_invoker/mock_locator'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
 require 'ceedling/test_context_extractor'
@@ -109,6 +110,7 @@ describe TestBuildExecutor do
     allow(@dependinator).to receive(:mark_fresh)
     allow(@test_source_file_directive_resolver).to receive(:validate!)
     allow(@library_resolver).to receive(:link_files).and_return( [] )
+    allow(@library_resolver).to receive(:search_path_arguments).and_return( [] )
 
     @executor = described_class.new(
       {
@@ -126,7 +128,10 @@ describe TestBuildExecutor do
         :gcc_dependency_parser   => @gcc_dependency_parser,
         :quote_include_isolator  => @quote_include_isolator,
         :generator_helper        => @generator_helper,
-        :library_resolver        => @library_resolver
+        :library_resolver        => @library_resolver,
+        :mock_locator            => MockLocator.new(
+          configurator: @configurator, include_pathinator: double( 'include_pathinator' ), file_finder: @file_finder, file_path_utils: @file_path_utils
+        )
       }
     )
 
@@ -1691,7 +1696,7 @@ describe TestBuildExecutor do
         include_as( 'sub/MockFoo.h' )
 
         expect(@generator).to receive(:generate_mock)
-          .with( hash_including( output_path: 'build/test/mocks/sub', folder: 'sub' ) )
+          .with( hash_including( output_path: 'build/test/mocks/sub', mock_root: 'build/test/mocks', folder: 'sub' ) )
 
         @executor.stage_generate_mocks( @state )
       end
@@ -1714,6 +1719,30 @@ describe TestBuildExecutor do
         expect(@generator).to receive(:generate_mock)
           .with( hash_including( output_path: 'build/test/mocks/more/sub', folder: 'more/sub' ) )
         expect(@dependinator).to receive(:mark_fresh).with( 'build/test/mocks/more/sub/MockFoo.c' )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The path handling audit around GH #1370: a folder that climbs must not carry the
+      # mock out of its test's mocks directory
+      it "G14: keeps the mock below its test's mocks directory for a folder that climbs" do
+        include_as( '../x/MockFoo.h' )
+
+        expect(@generator).to receive(:generate_mock) do |args|
+          expect(args[:output_path].split( '/' )).to_not include( '..' )
+        end
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The compiler finds the mock as written only through CMock's root, so it must exist
+      it "roots CMock as deep as a climbing folder climbs, and makes that root" do
+        include_as( '../x/MockFoo.h' )
+
+        expect(@file_wrapper).to receive(:mkdir).with( 'build/test/mocks/_up_/x' )
+        expect(@file_wrapper).to receive(:mkdir).with( 'build/test/mocks/_up_/_up_' )
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( output_path: 'build/test/mocks/_up_/x', mock_root: 'build/test/mocks/_up_/_up_', folder: '../x' ) )
 
         @executor.stage_generate_mocks( @state )
       end

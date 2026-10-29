@@ -241,7 +241,7 @@ describe Generator do
     def generate(**extra)
       @generator.generate_mock(
         context: :test, mock: :mock_config, test: 'test_both', input_filepath: 'src/drivers/uart/config.h',
-        output_path: 'build/test/mocks/test_both/drivers/uart', **extra
+        output_path: 'build/test/mocks/test_both/drivers/uart', mock_root: 'build/test/mocks/test_both/drivers/uart', **extra
       )
     end
 
@@ -252,16 +252,16 @@ describe Generator do
       expect(@cmock).to have_received(:setup_mocks).with( 'src/drivers/uart/config.h', nil )
     end
 
-    # CMock writes below its root at the folder, so the root is the directory less the folder
-    it 'roots CMock above the folder and hands it the folder, which names the mock' do
-      generate( folder: 'drivers/uart' )
+    # CMock writes below its root at the folder
+    it 'roots CMock where it is told and hands it the folder, which names the mock' do
+      generate( folder: 'drivers/uart', mock_root: 'build/test/mocks/test_both' )
 
       expect(@generator_mocks).to have_received(:build_configuration).with( 'build/test/mocks/test_both', overrides: {} )
       expect(@cmock).to have_received(:setup_mocks).with( 'src/drivers/uart/config.h', 'drivers/uart' )
     end
 
     it 'still reports the mock\'s own directory to plugins' do
-      generate( folder: 'drivers/uart' )
+      generate( folder: 'drivers/uart', mock_root: 'build/test/mocks/test_both' )
 
       expect(@plugin_manager).to have_received(:pre_mock_generate).with( hash_including( output_path: 'build/test/mocks/test_both/drivers/uart' ) )
     end

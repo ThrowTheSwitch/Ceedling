@@ -135,6 +135,8 @@ describe 'Partial module resolution (integration)' do
     before(:each) do
       allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:paths_include).and_return( ['include/**'] )
+      allow(@configurator).to receive(:collection_mirror_roots_include).and_return( ['include'] )
+      allow(@configurator).to receive(:collection_mirror_roots_headers).and_return( ['include'] )
       allow(@configurator).to receive(:paths_source).and_return( ['src/**'] )
       allow(@configurator).to receive(:paths_support).and_return( [] )
       allow(@configurator).to receive(:release_build_use_assembly).and_return( false )

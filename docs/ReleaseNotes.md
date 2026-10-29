@@ -12,11 +12,12 @@ These release notes are complemented by three other documents:
 
 ## ⚠️ Breaking changes in a patch release
 
-1.2.2 is a patch release, yet [Breaking Changes](BreakingChanges.md) lists several entries for 1.2.2. Each entry is a bug fix that changes a behavior that a project or script might rely on and is, therefore, technically a breaking change. Despite this, we decided to maintain 1.2.2 as only a patch version for three reasons:
+1.2.2 is a patch release, yet [Breaking Changes](BreakingChanges.md) lists several entries for 1.2.2. Each entry is a bug fix that changes a behavior that a project might rely on and is, therefore, technically a breaking change. Despite this, we decided to maintain 1.2.2 as only a patch version for a few reasons:
 
 1. **Core builds are unaffected.** A correctly configured project builds and tests as before. The first test build after upgrading rebuilds everything once because of changes to how ephemeral build directory output is organized that impacts delta builds.
-1. **Plugin changes are limited to artifact paths.** Plugins that write per-test logs and reports, such as Valgrind, Sanitize, and Raw Output Log, write them to new paths because of build directory output fixes (see [1]). In a Ceedling build, every plugin is optional, and these changes do not impact test suites or release builds. But, admittedly, these toe right up to the breaking change line.
-1. **The fixes resolve latent bugs.** Nobody reported them, and they persisted across several versions in non-core support and developer features: complete diambiguation of same-named tests, `TEST_SOURCE_FILE()` checking, [Which Ceedling](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/which-ceedling/), CLI `--local` vendoring, `ceedling upgrade`, and `ceedling version`. With the fixes, these features do what they were meant to do.
+1. **Plugin changes are limited to artifact paths.** Plugins that write per-test logs and reports, such as Valgrind, Sanitize, and Raw Output Log, write them to new paths because of build directory output fixes (see [1]). In a Ceedling build, every plugin is optional, and these changes do not impact test suites or release builds.
+1. **The fixes resolve latent bugs.** Nobody reported these bugs and some persisted across several versions: complete diambiguation of same-named tests, `TEST_SOURCE_FILE()` checking, [Which Ceedling](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/which-ceedling/), CLI `--local` vendoring, `ceedling upgrade`, and `ceedling version`. With the fixes, these features now do what they were meant to do.
+1. **Path configuration changes reach only unusual layouts.** A `-:` `:paths` entry now also removes the directories below the one it names. A build root that is the project directory or a directory above it is now refused, because `clobber` could delete the project’s own files. A `:paths` or `:files` entry within the build root now logs a warning, and no entry collects from the directories Ceedling creates there. See [Breaking Changes](BreakingChanges.md).
 
 ---
 

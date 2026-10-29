@@ -39,6 +39,7 @@ require 'ceedling/config/configurator_setup'
 require 'ceedling/config/configurator_builder'
 require 'ceedling/config/configurator_plugins'
 require 'ceedling/config/configurator_validator'
+require 'ceedling/config/configurator_paths_validator'
 
 module ConfiguratorIntegrationHelpers
 
@@ -58,11 +59,10 @@ module ConfiguratorIntegrationHelpers
 
     o[:configurator_plugins]   = ConfiguratorPlugins.new( o.slice( :file_wrapper, :system_wrapper ) )
     o[:configurator_builder]   = ConfiguratorBuilder.new( o.slice( :file_path_collection_utils, :loginator, :file_wrapper, :system_wrapper ) )
-    o[:configurator_validator] = ConfiguratorValidator.new(
-      o.slice( :config_walkinator, :file_wrapper, :loginator, :reportinator, :tool_validator )
-    )
+    o[:configurator_validator] = ConfiguratorValidator.new( o.slice( :config_walkinator, :loginator, :reportinator, :tool_validator ) )
+    o[:configurator_paths_validator] = ConfiguratorPathsValidator.new( o.slice( :config_walkinator, :file_wrapper, :loginator, :reportinator ) )
     o[:configurator_setup] = ConfiguratorSetup.new(
-      o.slice( :configurator_builder, :configurator_validator, :loginator, :reportinator,
+      o.slice( :configurator_builder, :configurator_validator, :configurator_paths_validator, :loginator, :reportinator,
                :file_wrapper, :system_wrapper, :tool_executor )
     )
     o[:configurator] = Configurator.new(

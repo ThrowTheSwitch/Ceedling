@@ -25,6 +25,8 @@ EXTENSION_HEADER       = FilenameExtension.new('.h')  unless defined?(EXTENSION_
 describe TestBuildPlanner do
   before(:each) do
     @configurator           = double( "Configurator" )
+    # Ceedling always defaults it, and the mock locator reads it
+    allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
     @loginator               = double( "Loginator" )
     @reportinator             = double( "Reportinator" )
     @batchinator               = double( "Batchinator" )
@@ -167,6 +169,7 @@ describe TestBuildPlanner do
 
     context "with a non-Partial mocked header" do
       before(:each) do
+        allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
         mock = MockInclude.new( 'MockFoo.h' )
         allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
           .with( 'test/TestFoo.c' ).and_return( [mock] )
@@ -202,6 +205,23 @@ describe TestBuildPlanner do
 
         expect(@testable.mocks[:'drivers/MockFoo'].input).to eq( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
       end
+    end
+
+    # Two headers directly in two include roots mirror alike, and only their #include
+    # folders tell their mocks apart
+    it "keeps two same-named mocks whose #include folders alone differ" do
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'a/MockFoo.h' ), MockInclude.new( 'b/MockFoo.h' )] )
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+      allow(@file_finder).to receive(:resolve_mock).with( 'a/MockFoo.h', collection: [], complain: :error ).and_return( ['inc/a/foo.h', ''] )
+      allow(@file_finder).to receive(:resolve_mock).with( 'b/MockFoo.h', collection: [], complain: :error ).and_return( ['inc/b/foo.h', ''] )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
+
+      @planner.stage_determine_files( @state )
+
+      expect(@testable.mocks.keys).to contain_exactly( :'a/MockFoo', :'b/MockFoo' )
+      expect(@testable.mocks.values.map( &:source )).to contain_exactly( 'inc/a/foo.h', 'inc/b/foo.h' )
     end
 
     context "with a Partial mocked header" do
@@ -431,6 +451,23 @@ describe TestBuildPlanner do
       expect( captured ).to include('build/test/mocks/a_test/drivers/spi/Mockconfig.c')
     end
 
+    it "compiles a mock whose #include folder climbs from where it is written, below the mock root" do
+      allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
+      @testable.mocks = {
+        :'x/Mockconfig' => TestInvokerTypes::MockDetails.new( name: 'Mockconfig', path: 'x', partial: false, include_path: '../x/Mockconfig.h' )
+      }
+
+      captured = nil
+      allow(@file_path_utils).to receive(:form_test_build_objects_filelist) do |_path, files, **_kw|
+        captured ||= files
+        []
+      end
+
+      @planner.stage_determine_artifacts( @state )
+
+      expect( captured ).to include('build/test/mocks/a_test/_up_/x/Mockconfig.c')
+    end
+
     # A mock and a generated Partial both sit below their own generated root rather than a
     # configured source root, so nothing in the standard roots mirrors them. Without those
     # roots, two same-named mocks or modules collapse onto one object filename.
@@ -484,13 +521,34 @@ describe TestBuildPlanner do
         allow(@test_source_file_directive_resolver).to receive(:resolve)
           .with( 'test/TestFoo.c', :test ).and_return( [['src/Foo.c'], {}] )
         allow(@test_context_extractor).to receive(:lookup_source_includes_list)
-          .with( 'test/TestFoo.c' ).and_return( ['src/Foo.c'] )
+          .with( 'test/TestFoo.c' ).and_return( [UserInclude.new( 'src/Foo.c' )] )
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'src/Foo.c', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/Foo.c' )
       end
 
       it "resolves it as a source to compile but excludes its object from what gets linked" do
         @planner.stage_determine_artifacts( @state )
 
         expect(@testable.sources).to include( 'src/Foo.c' )
+        expect(@testable.objects).to_not include( 'src/Foo.o' )
+      end
+    end
+
+    # A test #includes a source by the name its own #include spells, and that source's object
+    # sits at the source's path, not the #include's
+    context "when a test #includes a source by its name alone" do
+      before(:each) do
+        allow(@test_source_file_directive_resolver).to receive(:resolve)
+          .with( 'test/TestFoo.c', :test ).and_return( [['src/Foo.c'], {}] )
+        allow(@test_context_extractor).to receive(:lookup_source_includes_list)
+          .with( 'test/TestFoo.c' ).and_return( [UserInclude.new( 'Foo.c' )] )
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'Foo.c', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/Foo.c' )
+      end
+
+      it "excludes the object of the source it names from what gets linked" do
+        @planner.stage_determine_artifacts( @state )
+
         expect(@testable.objects).to_not include( 'src/Foo.o' )
       end
     end
@@ -696,7 +754,20 @@ describe TestBuildPlanner do
 
       result = @planner.collect_test_framework_sources( true )
 
-      expect(result).to include( 'test/support/unity_helper' )
+      expect(result).to include( 'test/support/unity_helper.c' )
+    end
+
+    # The path handling audit around GH #1370: :unity_helper_path names the helper's header,
+    # and its source is what compiles
+    it "G25: compiles the source beside a Unity helper named by its header" do
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:cmock_unity_helper_path).and_return( ['test/support/unity_helper.h'] )
+      allow(@file_wrapper).to receive(:exist?).with( 'test/support/unity_helper.c' ).and_return( true )
+
+      result = @planner.collect_test_framework_sources( true )
+
+      expect(result).to include( 'test/support/unity_helper.c' )
+      expect(result).to_not include( 'test/support/unity_helper.h' )
     end
 
     it "omits a Unity helper source file that doesn't exist on disk" do

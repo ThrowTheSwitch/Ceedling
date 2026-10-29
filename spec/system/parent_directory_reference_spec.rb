@@ -98,12 +98,14 @@ ceedling_system_tests do
 
       before { copy_dotdot_include_assets }
 
-      it "fails clearly, naming .. as unsupported rather than a generic file-not-found" do
+      # GH #1370 audit (G9): a task name is relative to the working directory, as every
+      # collected path is, so `..` names a place outside the project, where no test exists here
+      it "looks for the test outside the project, and names it when none is there" do
         in_project do
           output = @c.ceedling_build_exec("test:../unit/test_dotdot_include")
           expect(@c.last_exit_status).to_not eq(0)
-          expect(output).to match(/\.\./)
-          expect(output).to match(/context/i)
+          expect(output).to include("../unit/test_dotdot_include")
+          expect(output).to_not match(/no file context/i)
         end
       end
 

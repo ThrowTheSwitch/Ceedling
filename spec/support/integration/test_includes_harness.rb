@@ -52,6 +52,10 @@ module IntegrationSpecHelpers
     def get_cmock_config
       {}
     end
+
+    def cmock_mock_name_include_folder
+      true
+    end
     def project_use_mocks
       true
     end
@@ -84,6 +88,13 @@ module IntegrationSpecHelpers
       []
     end
     def paths_include
+      ['src']
+    end
+    # The canonical roots configuration computes from the three above
+    def collection_mirror_roots_headers
+      ['test', 'src']
+    end
+    def collection_mirror_roots_include
       ['src']
     end
     def collection_paths_support

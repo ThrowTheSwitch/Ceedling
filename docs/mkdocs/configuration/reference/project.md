@@ -37,6 +37,15 @@ Example first logging line:
 
 Top level directory into which generated path structure and files are placed.
 
+`ceedling clobber` empties the build root’s test and release trees, so Ceedling refuses a
+build root that is empty, the project directory, or a directory above it.
+
+An entry based above the build root, such as the `:paths` entry `../**` or the `:files`
+glob `+:**/*.c`, collects nothing from it. A `:paths` or `:files` entry within the build
+root, such as one naming generated code in `build/gen`, collects from it with a warning.
+No entry collects from the directories Ceedling and its plugins create there, such as
+`test/`, `release/`, `vendor/`, and `artifacts/`.
+
 !!! note "Build configuration requirement"
     This is one of the handful of configuration values that must be set for 
     any project. `:project` ↳ `:build_root` must be set for any build — release 

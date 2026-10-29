@@ -18,6 +18,8 @@ require 'ceedling/test_invoker/standin_headerinator'
 describe TestIncludesExtractinator do
   before(:each) do
     @configurator            = double( "Configurator" )
+    # Ceedling always defaults it, and the mock locator reads it
+    allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
     @loginator               = double( "Loginator" )
     @reportinator            = double( "Reportinator" )
     @batchinator             = double( "Batchinator" )
@@ -393,8 +395,10 @@ describe TestIncludesExtractinator do
         allow(@file_wrapper).to receive(:exist?).and_return( false )
         allow(@file_wrapper).to receive(:mkdir)
         allow(@file_wrapper).to receive(:write)
-        allow(@file_path_utils).to receive(:form_mock_header_filepath).and_return( 'build/test/mocks/a_test/MockFoo.h' )
         allow(@file_finder).to receive(:resolve_mock).and_return( ['src/Foo.h', ''] )
+        allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
+        # A test mocks only when its build mocks, which gives it a mock root
+        @testable.paths = { mocks: 'build/test/mocks/a_test' }
       end
 
       it "places a stand-in for each mock on a freshly extracted bare-includes list" do

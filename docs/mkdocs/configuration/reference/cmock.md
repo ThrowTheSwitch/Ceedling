@@ -86,7 +86,8 @@ for more details.
 `:unity_helper_path` may be a single string or a list. Each value must be a
 relative path from your Ceedling working directory to a Unity helper header file
 (these are typically organized within containing Ceedling `:paths` ↳ `:support`
-directories).
+directories). A test build compiles the source file beside each helper header,
+of the same name, when one exists.
 
 **Default**: `[]` (empty)
 

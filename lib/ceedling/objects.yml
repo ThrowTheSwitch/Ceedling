@@ -87,6 +87,7 @@ configurator_setup:
   compose:
     - configurator_builder
     - configurator_validator
+    - configurator_paths_validator
     - loginator
     - reportinator
     - file_wrapper
@@ -101,10 +102,16 @@ configurator_plugins:
 configurator_validator:
   compose:
     - config_walkinator
-    - file_wrapper
     - loginator
     - reportinator
     - tool_validator
+
+configurator_paths_validator:
+  compose:
+    - config_walkinator
+    - file_wrapper
+    - loginator
+    - reportinator
 
 configurator_builder:
   compose:
@@ -565,6 +572,7 @@ test_build_executor:
     - quote_include_isolator
     - generator_helper
     - library_resolver
+    - mock_locator
 
 partials_manager:
   compose:

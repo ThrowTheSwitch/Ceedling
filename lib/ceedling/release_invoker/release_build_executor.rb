@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/filename_extension'
 require 'ceedling/release_invoker/release_invoker_types'
 
 # Does the actual work of a release build: compiling objects, linking the
@@ -45,7 +46,7 @@ class ReleaseBuildExecutor
   def link(state)
     objects, libraries = sort_objects_and_libraries( state.objects )
     lib_args  = convert_libraries_to_arguments( libraries )
-    lib_paths = get_library_paths_to_arguments()
+    lib_paths = @library_resolver.search_path_arguments()
     library_files = @library_resolver.link_files( release_library_entries( libraries ) )
     target    = @configurator.project_release_build_target
 
@@ -59,6 +60,8 @@ class ReleaseBuildExecutor
     stale = @dependinator.stale?( target )
 
     if stale
+      # A target named by an absolute :output may sit in a directory no build made
+      @file_wrapper.mkdir( File.dirname( target ) )
       @generator.generate_executable_file(
         @configurator.tools_release_linker,
         RELEASE_SYM,
@@ -216,49 +219,26 @@ class ReleaseBuildExecutor
     return entries.flatten.compact
   end
 
-  def get_library_paths_to_arguments()
-    paths = (defined? PATHS_LIBRARIES) ? (PATHS_LIBRARIES || []).clone : []
-    if (defined? LIBRARIES_PATH_FLAG)
-      paths.map! { |v| LIBRARIES_PATH_FLAG.gsub(/\$\{1\}/, v) }
-    end
-    return paths
-  end
-
   # A release's object list can include precompiled libraries/archives
   # alongside plain compiled objects (via :libraries ↳ :release or extra
   # link-only entries) -- these need to reach the linker as -l-style
   # arguments rather than as ordinary link inputs, so they're split out here
   # by file extension before linking.
   def sort_objects_and_libraries(both)
-    # A library type may be named by several extensions at once (.a and .so, say), so its
-    # regex alternation is built from however many are configured -- one entry needs no
-    # alternation at all, several are joined into one. Enumerable is the test rather than
-    # Array specifically, since a library-type extension is a FilenameExtension by the time
-    # it reaches here, not a raw Array, even though both are iterable the same way.
-    extension = if ((defined? EXTENSION_SUBPROJECTS) && (defined? EXTENSION_LIBRARIES))
-      extension_libraries = if (EXTENSION_LIBRARIES.is_a? Enumerable)
-                              EXTENSION_LIBRARIES.to_a.join(")|(?:\\")
-                            else
-                              EXTENSION_LIBRARIES
-                            end
-      "(?:\\#{EXTENSION_SUBPROJECTS})|(?:\\#{extension_libraries})"
-    elsif (defined? EXTENSION_SUBPROJECTS)
-      "\\#{EXTENSION_SUBPROJECTS}"
-    elsif (defined? EXTENSION_LIBRARIES)
-      if (EXTENSION_LIBRARIES.is_a? Enumerable)
-        "(?:\\#{EXTENSION_LIBRARIES.to_a.join(")|(?:\\")})"
-      else
-        "\\#{EXTENSION_LIBRARIES}"
-      end
-    else
-      "\\.LIBRARY"
-    end
     # Compile once rather than once per entry in `both`
-    library_pattern = /.+#{extension}$/
+    library_pattern = /.+#{library_endings()}$/
     sorted_objects = both.group_by { |v| v.match?( library_pattern ) ? :libraries : :objects }
-    libraries = sorted_objects[:libraries] || []
-    objects   = sorted_objects[:objects]   || []
-    return objects, libraries
+    return (sorted_objects[:objects] || []), (sorted_objects[:libraries] || [])
+  end
+
+  # A library type may be named by several extensions at once (.a and .so, say), and a
+  # subproject's by its own
+  def library_endings
+    endings = []
+    endings << FilenameExtension.new( EXTENSION_SUBPROJECTS ).pattern if defined? EXTENSION_SUBPROJECTS
+    endings << FilenameExtension.new( EXTENSION_LIBRARIES ).pattern if defined? EXTENSION_LIBRARIES
+    endings << Regexp.escape( '.LIBRARY' ) if endings.empty?
+    return "(?:#{endings.join( '|' )})"
   end
 
   # States, in one line, how many targets a build step left untouched because nothing

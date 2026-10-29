@@ -88,37 +88,40 @@ class PathMatcher
     query_segments = segments(query)
     return query unless query_segments.include?('..')
 
-    if anchor.nil?
-      raise CeedlingException.new(
-        "Relative path reference '..' in '#{query}' has no file context to resolve against here."
-      )
-    end
+    require_anchor!(query, anchor)
 
     # segments() strips the empty string a leading "/" splits off, so a Unix
     # absolute anchor's own "/"-ness has to be remembered separately here and
     # reapplied below -- otherwise the result quietly turns into a relative-looking
     # path carrying the same text minus its leading "/".
-    anchor_was_absolute = anchor.start_with?('/')
+    absolute = anchor.start_with?('/')
     resolved = segments(anchor)
-
-    # A `..` beyond a relative anchor's own segments names a directory above it, as a
-    # project's paths outside its own root do (`../shared`), so it stays in the result.
-    # Nothing lies above an absolute anchor's root.
-    query_segments.each do |segment|
-      if segment != '..'
-        resolved << segment
-      elsif !resolved.empty? and resolved.last != '..'
-        resolved.pop
-      elsif anchor_was_absolute
-        raise CeedlingException.new("Relative path reference '..' in '#{query}' climbs above the filesystem root.")
-      else
-        resolved << '..'
-      end
-    end
+    query_segments.each { |segment| step(resolved, segment, query, absolute) }
 
     joined = resolved.join('/')
-    anchor_was_absolute ? "/#{joined}" : joined
+    absolute ? "/#{joined}" : joined
   end
+
+  def self.require_anchor!(query, anchor)
+    return unless anchor.nil?
+
+    raise CeedlingException.new( "Relative path reference '..' in '#{query}' has no file context to resolve against here." )
+  end
+  private_class_method :require_anchor!
+
+  # Applies one query segment to the segments resolved so far. A `..` beyond a relative
+  # anchor's own segments names a directory above it, as a project's paths outside its own
+  # root do (`../shared`), so it stays in the result. Nothing lies above an absolute
+  # anchor's root.
+  def self.step(resolved, segment, query, absolute)
+    return resolved << segment if segment != '..'
+    return resolved.pop if !resolved.empty? and resolved.last != '..'
+
+    raise CeedlingException.new("Relative path reference '..' in '#{query}' climbs above the filesystem root.") if absolute
+
+    resolved << '..'
+  end
+  private_class_method :step
 
   # Two filepaths correspond if the shorter one's path segments equal the longer
   # one's own trailing segments, exactly, in order -- checked without regard for
@@ -138,8 +141,9 @@ class PathMatcher
 
   ### Private ###
 
+  # A `.` segment names nothing, so it is dropped with the empty ones
   def self.segments(path)
-    path.split(/[\\\/]/).reject(&:empty?)
+    path.split(/[\\\/]/).reject { |segment| segment.empty? || segment == '.' }
   end
   private_class_method :segments
 

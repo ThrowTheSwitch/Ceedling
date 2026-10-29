@@ -30,12 +30,18 @@ describe ConsoleReportinator do
   let(:test_invoker)        { double('test_invoker') }
   let(:tool_executor)       { double('tool_executor') }
   let(:configurator) do
-    double('configurator', paths_source: ['src'], paths_support: ['support'], cmock_mock_prefix: 'mock_')
+    double(
+      'configurator',
+      paths_source: ['src'], paths_support: ['support'], cmock_mock_prefix: 'mock_',
+      project_build_root: 'build', extension_object: FilenameExtension.new('.o'),
+      project_use_partials: true, project_use_mocks: true,
+      project_test_partials_path: 'build/test/partials', cmock_mock_path: 'build/test/mocks'
+    )
   end
-  # Real, so reversing a generated Partial filename here exercises the same code that
-  # builds those filenames rather than a restatement of it. Touches no filesystem.
+  # Real, so reversing a generated Partial filename, or placing an object, exercises the
+  # same code the build uses rather than a restatement of it. Touches no filesystem.
   let(:file_path_utils) do
-    FilePathUtils.new({ configurator: configurator, file_wrapper: double('file_wrapper') })
+    FilePathUtils.new({ configurator: configurator, file_wrapper: double('file_wrapper', check_path_length: nil) })
   end
   let(:system_objects) do
     {
@@ -195,33 +201,28 @@ describe ConsoleReportinator do
       reportinator.send(:run_gcov_summary, 'test_foo', 'src/foo.c', {})
     end
 
-    it 'searches a nested source\'s mirrored subdirectory, not the flat test-output root' do
-      allow(configurator).to receive(:paths_source).and_return(['src'])
-      allow(configurator).to receive(:paths_support).and_return([])
+    # The test's build placed the object, and its coverage data, at the source's path from
+    # the project root
+    it 'searches the directory its test\'s build placed the source\'s object in' do
       stub_exec(exit_code: 0, output: 'coverage text')
       expect(tool_executor).to receive(:build_command_line)
-        .with(TOOLS_GCOV_SUMMARY, [], 'foo.c', File.join('build/gcov/out/test_foo', 'nested'))
+        .with(TOOLS_GCOV_SUMMARY, [], 'foo.c', 'build/gcov/out/test_foo/src/nested')
         .and_return({ options: {} })
       reportinator.send(:run_gcov_summary, 'test_foo', 'src/nested/foo.c', {})
     end
 
-    it 'searches the flat test-output root for a source directly under a configured path' do
-      allow(configurator).to receive(:paths_source).and_return(['src'])
-      allow(configurator).to receive(:paths_support).and_return([])
+    it 'searches the test-output root for a source at the project root' do
       stub_exec(exit_code: 0, output: 'coverage text')
       expect(tool_executor).to receive(:build_command_line)
         .with(TOOLS_GCOV_SUMMARY, [], 'foo.c', 'build/gcov/out/test_foo')
         .and_return({ options: {} })
-      reportinator.send(:run_gcov_summary, 'test_foo', 'src/foo.c', {})
+      reportinator.send(:run_gcov_summary, 'test_foo', 'foo.c', {})
     end
 
     # A generated Partial sits below its own test's Partials build root, not a configured
     # source root, so measuring against the source roots yields no subdirectory at all and
     # gcov is pointed at the flat root while the coverage data sits one level down.
     it 'searches a generated Partial\'s own mirrored subdirectory' do
-      allow(configurator).to receive(:paths_source).and_return(['src'])
-      allow(configurator).to receive(:paths_support).and_return([])
-      allow(configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
       stub_exec(exit_code: 0, output: 'coverage text')
 
       expect(tool_executor).to receive(:build_command_line)
@@ -238,9 +239,6 @@ describe ConsoleReportinator do
     end
 
     it 'searches the flat root for a Partial of a module named without a directory' do
-      allow(configurator).to receive(:paths_source).and_return(['src'])
-      allow(configurator).to receive(:paths_support).and_return([])
-      allow(configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
       stub_exec(exit_code: 0, output: 'coverage text')
 
       expect(tool_executor).to receive(:build_command_line)

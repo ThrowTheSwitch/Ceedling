@@ -194,8 +194,8 @@ ceedling_system_tests do
           # is untouched by the override), so its own NOTICE still fires -- but the
           # correctly-linked pass above already proves only beta/dup.c was ever compiled,
           # not both. A duplicate-symbol link error would have failed the build otherwise.
-          expect(File.exist?('build/test/out/test/test_dup_override/beta/dup.o')).to be true
-          expect(File.exist?('build/test/out/test/test_dup_override/alpha/dup.o')).to be false
+          expect(File.exist?('build/test/out/test/test_dup_override/src/beta/dup.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_override/src/alpha/dup.o')).to be false
 
           # A second, distinct NOTICE -- from extract_sources's own override, not the
           # header-ambiguity NOTICE above -- names the winning TEST_SOURCE_FILE() entry
@@ -224,8 +224,8 @@ ceedling_system_tests do
           expect(output).to match(/TESTED:\s+1/)
           expect(output).to match(/PASSED:\s+1/)
 
-          expect(File.exist?('build/test/out/test/test_dup_subtractive/alpha/dup.o')).to be false
-          expect(File.exist?('build/test/out/test/test_dup_subtractive/gamma/dup_gamma.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_subtractive/src/alpha/dup.o')).to be false
+          expect(File.exist?('build/test/out/test/test_dup_subtractive/src/gamma/dup_gamma.o')).to be true
 
           expect(output).to match(/TEST_SOURCE_FILE\(.*-:alpha[\/\\]dup\.c.*\)/)
           expect(output).to match(/removed/)
@@ -251,7 +251,7 @@ ceedling_system_tests do
           expect(output).to match(/TESTED:\s+1/)
           expect(output).to match(/PASSED:\s+1/)
 
-          expect(File.exist?('build/test/out/test/test_dup_subtractive_noop/alpha/dup.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_subtractive_noop/src/alpha/dup.o')).to be true
 
           expect(output).to_not match(/TEST_SOURCE_FILE\(.*removed/)
         end

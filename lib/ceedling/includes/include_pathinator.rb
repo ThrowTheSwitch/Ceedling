@@ -8,8 +8,13 @@
 require 'pathname'
 require 'ceedling/exceptions'
 require 'ceedling/file_path_utils'
+require 'ceedling/project_paths'
 
 class IncludePathinator
+
+  NO_HEADERS_MESSAGE = "No header files found in project.\n" +
+                       "Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.\n" +
+                       "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
 
   constructor :configurator, :test_context_extractor, :loginator, :file_wrapper
 
@@ -52,12 +57,7 @@ class IncludePathinator
 
     headers.uniq!
 
-    if headers.length == 0
-      error = "No header files found in project.\n" +
-              "Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.\n" +
-              "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
-      @loginator.log( error, Verbosity::COMPLAIN )
-    end
+    @loginator.log( NO_HEADERS_MESSAGE, Verbosity::COMPLAIN ) if headers.empty?
 
     return headers
   end
@@ -88,10 +88,10 @@ class IncludePathinator
   # reference that distinguishes nothing resolving exactly as it did before.
   def prioritized_header_files(search_paths)
     roots = search_paths.map { |path| FilePathUtils.no_decorators( path ) }.reject(&:empty?)
+    ranks = root_ranks( roots )
 
     @configurator.collection_all_headers.to_a.each_with_index.sort_by do |header, index|
-      rank = roots.index { |root| header == root || header.start_with?( root + '/' ) } || roots.length
-      [rank, index]
+      [header_rank( header, ranks, roots.length ), index]
     end.map(&:first)
   end
 
@@ -114,6 +114,34 @@ class IncludePathinator
     end
 
     return paths
+  end
+
+  private
+
+  # Each root's place in the search order by its absolute path, the first one kept, so a
+  # header's rank comes from walking up its own directories rather than trying every root
+  def root_ranks(roots)
+    return roots.each_with_index.with_object( {} ) { |(root, index), ranks| ranks[rank_key( ProjectPaths.absolute( root ) )] ||= index }
+  end
+
+  # The earliest-searched root a header lies below, or `none` for no root
+  def header_rank(header, ranks, none)
+    rank = none
+    path = ProjectPaths.absolute( header )
+    loop do
+      parent = File.dirname( path )
+      break if parent == path
+
+      path = parent
+      rank = [rank, ranks.fetch( rank_key( path ), none )].min
+    end
+
+    return rank
+  end
+
+  # Windows compares paths without regard to case
+  def rank_key(path)
+    return ProjectPaths::WINDOWS ? path.downcase : path
   end
 
 end

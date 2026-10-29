@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/project_paths'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 require 'ceedling/test_invoker/test_build_validations'
@@ -72,11 +73,11 @@ class TestBuildPlanner
         # the mock stays findable by the compiler regardless
         # of how much path the #include itself happened to spell out.
         #
-        # Keyed by that directory alongside the name. Two modules sharing a basename are
-        # two modules, each needing its own mock, and a key of the name alone lets the
-        # second displace the first. `name` stays bare: it is the filename the mock is
-        # written under, joined with `path` at generation.
-        mocks[mock_key( name, subdir )] = MockDetails.new(
+        # Keyed by the directory the mock is written to alongside the name. Two modules
+        # sharing a basename are two modules, each needing its own mock, and a key of the
+        # name alone lets the second displace the first. `name` stays bare: it is the
+        # filename the mock is written under, at generation.
+        mocks[mock_key( name, partial ? subdir : placed_subdir( testable, subdir, include ) )] = MockDetails.new(
           name:     name,
           filepath: source,
           path:     subdir,
@@ -185,7 +186,7 @@ class TestBuildPlanner
       test_no_link_objects =
         @file_path_utils.form_test_build_objects_filelist(
           testable.paths[:build],
-          fetch_shallow_source_includes( filepath ),
+          fetch_shallow_source_includes( filepath, state.context, testable.name ),
           extra_roots: generated_roots
         )
 
@@ -237,10 +238,11 @@ class TestBuildPlanner
     sources << File.join( PROJECT_BUILD_VENDOR_CEXCEPTION_PATH, CEXCEPTION_C_FILE ) if @configurator.project_use_exceptions
 
     if @configurator.project_use_mocks
+      # :unity_helper_path names a helper's header, or its path without an extension. The
+      # source beside it is what compiles.
       @configurator.cmock_unity_helper_path.each do |helper|
-        if @file_wrapper.exist?( helper.ext( EXTENSION_SOURCE.primary ) )
-          sources << helper
-        end
+        source = helper.ext( EXTENSION_SOURCE.primary )
+        sources << source if @file_wrapper.exist?( source )
       end
     end
 
@@ -313,14 +315,28 @@ class TestBuildPlanner
     )
   end
 
-  def fetch_shallow_source_includes(test_filepath)
-    return @test_context_extractor.lookup_source_includes_list( test_filepath )
+  # The sources a test #includes, which it must not link a second time. Each is the file its
+  # #include names, since that file's object sits at its own path, not the #include's.
+  def fetch_shallow_source_includes(test_filepath, context, test_name)
+    return @test_context_extractor.lookup_source_includes_list( test_filepath ).map do |include|
+      @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context, test: test_name ) || include.filepath
+    end
   end
 
   # Every stage resolving a mock's real header must agree on the same winner, or a
   # stand-in, a mock search path, and the real mock would land in different directories
   def ordered_mock_header_collection(testable)
     @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
+  end
+
+  # The mock's directory below its test's mock root, where generation writes it. Two
+  # same-named headers may mirror alike and differ only by the folders their #includes name.
+  def placed_subdir(testable, subdir, include)
+    root = testable.paths[:mocks]
+    return subdir if root.nil?
+
+    placement = @mock_locator.placement( mocks_root: root, subdir: subdir, include_path: include.filepath )
+    return ProjectPaths.subdir_below( root, placement.directory ) || subdir
   end
 
   # One mock's identity within its test. A mock directly in the mock root keeps the bare
@@ -331,8 +347,8 @@ class TestBuildPlanner
     return File.join( subdir, name ).to_sym
   end
 
-  # Each mock's own generated source, below this test's mock root in the subdirectory
-  # mirroring whatever it mocks -- the same place mock generation writes it.
+  # Each mock's own generated source, below this test's mock root where mock generation
+  # writes it (MockLocator#placement)
   #
   # Named by its own path rather than its basename so two same-named mocks in one test
   # stay distinct, and so each one's object mirrors that subdirectory too.
@@ -342,10 +358,8 @@ class TestBuildPlanner
     return [] if root.nil?
 
     testable.mocks.each_value.map do |details|
-      File.join(
-        @file_path_utils.form_mock_output_path( root, details.path ),
-        details.name + EXTENSION_CORE_SOURCE
-      )
+      placement = @mock_locator.placement( mocks_root: root, subdir: details.path, include_path: details.include_path )
+      File.join( placement.directory, details.name + EXTENSION_CORE_SOURCE )
     end
   end
 

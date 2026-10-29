@@ -58,6 +58,7 @@ describe ReleaseBuildExecutor do
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
     allow(@library_resolver).to receive(:link_files).and_return( [] )
+    allow(@library_resolver).to receive(:search_path_arguments).and_return( [] )
 
     @executor = described_class.new(
       {
@@ -281,6 +282,18 @@ describe ReleaseBuildExecutor do
       @executor.link( @state )
     end
 
+    it "separates every configured library extension, and a subproject's, from plain objects" do
+      stub_const( "EXTENSION_LIBRARIES", FilenameExtension.new( ['.a', '.so'] ) )
+      stub_const( "EXTENSION_SUBPROJECTS", '.lib' )
+      @state.objects = ['build/release/out/foo.o', 'vendor/libbar.a', 'vendor/libbaz.so', 'sub/x.lib', 'build/release/out/so.o']
+
+      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, objects, *_rest|
+        expect(objects).to eq( ['build/release/out/foo.o', 'build/release/out/so.o'] )
+      end
+
+      @executor.link( @state )
+    end
+
     it "formats a separated library as a linker argument via the configured flag template" do
       stub_const( "EXTENSION_LIBRARIES", FilenameExtension.new('.a') )
       stub_const( "LIBRARIES_FLAG", '-l${1}' )
@@ -305,9 +318,8 @@ describe ReleaseBuildExecutor do
       @executor.link( @state )
     end
 
-    it "formats configured library search paths as linker arguments via the configured flag template" do
-      stub_const( "PATHS_LIBRARIES", ['vendor/lib'] )
-      stub_const( "LIBRARIES_PATH_FLAG", '-L${1}' )
+    it "links with the library search path arguments the resolver gives" do
+      allow(@library_resolver).to receive(:search_path_arguments).and_return( ['-Lvendor/lib'] )
 
       expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, _lib_args, lib_paths|
         expect(lib_paths).to eq( ['-Lvendor/lib'] )
@@ -316,14 +328,12 @@ describe ReleaseBuildExecutor do
       @executor.link( @state )
     end
 
-    # Quoted like every other default path argument, so a path with a space survives the shell
-    it "quotes each library search path under the default flag template" do
-      stub_const( "PATHS_LIBRARIES", ['vendor/third party/lib'] )
-      stub_const( "LIBRARIES_PATH_FLAG", DEFAULT_CEEDLING_PROJECT_CONFIG[:libraries][:path_flag] )
+    # A target named by an absolute :output may sit in a directory no build made
+    it "makes the target's directory before linking" do
+      allow(@configurator).to receive(:project_release_build_target).and_return( '/elsewhere/out/app.elf' )
 
-      expect(@generator).to receive(:generate_executable_file) do |_tool, _sym, _objects, _flags, _target, _map, _lib_args, lib_paths|
-        expect(lib_paths).to eq( ['-L "vendor/third party/lib"'] )
-      end
+      expect(@file_wrapper).to receive(:mkdir).with( '/elsewhere/out' ).ordered
+      expect(@generator).to receive(:generate_executable_file).ordered
 
       @executor.link( @state )
     end
@@ -341,8 +351,7 @@ describe ReleaseBuildExecutor do
     it "registers the resolved link flags and library arguments, not just the object files, as meta" do
       stub_const( "LIBRARIES_SYSTEM", ['m'] )
       stub_const( "LIBRARIES_FLAG", '-l${1}' )
-      stub_const( "PATHS_LIBRARIES", ['vendor/lib'] )
-      stub_const( "LIBRARIES_PATH_FLAG", '-L${1}' )
+      allow(@library_resolver).to receive(:search_path_arguments).and_return( ['-Lvendor/lib'] )
       @state.link_flags = ['-Wall']
 
       expect(@dependinator).to receive(:register).with(

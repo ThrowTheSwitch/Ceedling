@@ -76,6 +76,13 @@ describe PartializerConfig do
         expect( result['drivers/uart/config'].module ).to eq( 'drivers/uart/config' )
       end
 
+      # GH #1370 audit: a `.` segment names nothing, so `./drivers/uart` is `drivers/uart`
+      it "keys the config on the directory without its `.` segments" do
+        result = @config.extract_configs('TEST_PARTIAL_PUBLIC_MODULE_AT(./drivers/./uart, config)')
+
+        expect( result.keys ).to eq( ['drivers/uart/config'] )
+      end
+
       it "keeps two modules sharing a basename distinct" do
         result = @config.extract_configs(
           "TEST_PARTIAL_ALL_MODULE_AT(drivers/uart, config)\n" \

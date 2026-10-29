@@ -8,10 +8,12 @@
 require 'rubygems'
 require 'rake'                     # for ext() method
 require 'ceedling/file_path_utils' # for class methods
+require 'ceedling/project_paths'
 require 'ceedling/defaults'
 require 'ceedling/constants'       # for Verbosity constants class & base file paths
 require 'ceedling/filename_extension'
 require 'ceedling/rake_app/rakefile_component_resolver'
+require 'ceedling/config/build_root_policy'
 
 class ConfiguratorBuilder
 
@@ -130,17 +132,18 @@ class ConfiguratorBuilder
 
 
   # A release is named by :release_build ↳ :output, or by default and the executable
-  # extension. Its map file shares its name.
+  # extension. Its map file shares its name. A relative name is below the release build root,
+  # and an absolute one names the release itself.
   def set_release_target(in_hash)
     return {} if (not in_hash[:project_release_build])
 
-    output = in_hash[:release_build_output]
+    output = in_hash[:release_build_output]&.then { |name| ProjectPaths.standardize( name ) }
     target = output || DEFAULT_RELEASE_TARGET_NAME.ext( in_hash[:extension_executable].primary )
     map    = (output || DEFAULT_RELEASE_TARGET_NAME).ext( in_hash[:extension_map].primary )
 
     # tempted to make a helper method in file_path_utils? stop right there, pal. you'll introduce a cyclical dependency
     root = in_hash[:project_build_release_root]
-    return { project_release_build_target: File.join( root, target ), project_release_build_map: File.join( root, map ) }
+    return { project_release_build_target: release_place( root, target ), project_release_build_map: release_place( root, map ) }
   end
 
 
@@ -163,13 +166,27 @@ class ConfiguratorBuilder
   end
 
 
-  # Every :paths entry becomes a collection of the directories its globs name
+  # Every :paths entry becomes a collection of the directories its globs name, leaving out
+  # the build root, which a root above it (`../**`, `./**`) would otherwise sweep in, and
+  # the directories Ceedling creates
   def expand_all_path_globs(in_hash)
     path_keys = in_hash.keys.select { |key| key.to_s.start_with?( 'paths' ) }
 
-    return path_keys.to_h { |key| [:"collection_#{key}", @file_path_collection_utils.collect_paths( in_hash[key] )] }
+    return path_keys.to_h { |key| [:"collection_#{key}", @file_path_collection_utils.collect_paths( in_hash[key], **build_exclusions( in_hash ) )] }
   end
 
+
+  # The roots build files mirror below, each spelled canonically: those of :paths ↳ :include,
+  # for a header's source by convention, and those every header is collected from
+  def collect_mirror_roots(in_hash)
+    include = Array( in_hash[:paths_include] )
+    headers = Array( in_hash[:paths_test] ) + Array( in_hash[:paths_support] ) + include
+
+    return {
+      :collection_mirror_roots_include => @file_path_collection_utils.collect_mirror_roots( include ),
+      :collection_mirror_roots_headers => @file_path_collection_utils.collect_mirror_roots( headers )
+    }
+  end
 
   def collect_source_and_include_paths(in_hash)
     return {
@@ -228,7 +245,7 @@ class ConfiguratorBuilder
     end
 
     # Add / subtract files via :files ↳ :test
-    tests = file_collection( patterns, in_hash[:files_test] )
+    tests = file_collection( in_hash, patterns, in_hash[:files_test] )
     return { :collection_all_tests => tests }, tests
   end
 
@@ -242,19 +259,16 @@ class ConfiguratorBuilder
     paths = in_hash[:collection_paths_source] + in_hash[:collection_paths_support]
 
     # Add / subtract files via :files ↳ :assembly
-    return { :collection_all_assembly => file_collection( code_patterns( paths, in_hash[:extension_assembly] ), in_hash[:files_assembly] ) }
+    return { :collection_all_assembly => file_collection( in_hash, code_patterns( paths, in_hash[:extension_assembly] ), in_hash[:files_assembly] ) }
   end
 
 
-  # Source files, less any test files that overlapping test and source paths also matched
+  # Source files, less any test files that overlapping test and source paths, or :files
+  # revisions, also matched
   def collect_source(in_hash, test_list)
-    sources = file_list( code_patterns( in_hash[:collection_paths_source], in_hash[:extension_source] ) )
-
-    mixed_in = test_list.select { |test| sources.include?( test ) }
-    exclude_tests( sources, mixed_in ) unless mixed_in.empty?
-
     # Add / subtract files via :files ↳ :source
-    return { :collection_all_source => @file_path_collection_utils.revise_filelist( sources, in_hash[:files_source] ) }
+    sources = file_collection( in_hash, code_patterns( in_hash[:collection_paths_source], in_hash[:extension_source] ), in_hash[:files_source] )
+    return { :collection_all_source => without_tests( sources, test_list ) }
   end
 
 
@@ -262,12 +276,12 @@ class ConfiguratorBuilder
     paths = in_hash[:collection_paths_test] + in_hash[:collection_paths_support] + in_hash[:collection_paths_include]
 
     # Add / subtract files via :files ↳ :include
-    return { :collection_all_headers => file_collection( code_patterns( paths, in_hash[:extension_header] ), in_hash[:files_include] ) }
+    return { :collection_all_headers => file_collection( in_hash, code_patterns( paths, in_hash[:extension_header] ), in_hash[:files_include] ) }
   end
 
 
   # Source files, plus CException's when exceptions are in use and assembly files when the
-  # release build assembles
+  # release build assembles, less any test file. Source collection already warned of those.
   def collect_release_build_input(in_hash)
     assembly = in_hash[:release_build_use_assembly]
     vendor   = in_hash[:project_use_exceptions] ? [in_hash[:project_build_vendor_cexception_path]] : []
@@ -275,7 +289,7 @@ class ConfiguratorBuilder
 
     # Add / subtract files via :files ↳ :source & :files ↳ :assembly
     revisions = in_hash[:files_source] + (assembly ? in_hash[:files_assembly] : [])
-    return { :collection_release_build_input => file_collection( patterns, revisions ) }
+    return { :collection_release_build_input => without_tests( file_collection( in_hash, patterns, revisions ), in_hash[:collection_all_tests], warn: false ) }
   end
 
 
@@ -285,7 +299,7 @@ class ConfiguratorBuilder
     paths    = in_hash[:collection_paths_test] + in_hash[:collection_paths_support] + in_hash[:collection_paths_source]
     patterns = vendor_patterns( test_vendor_paths( in_hash ) ) + code_patterns( paths, *code_extensions( in_hash, assembly ) )
 
-    return { :collection_existing_test_build_input => file_collection( patterns, test_build_revisions( in_hash, assembly ) ) }
+    return { :collection_existing_test_build_input => file_collection( in_hash, patterns, test_build_revisions( in_hash, assembly ) ) }
   end
 
 
@@ -306,7 +320,7 @@ class ConfiguratorBuilder
     patterns   = code_patterns( in_hash[:collection_paths_support], *extensions )
 
     # Add / subtract files via :files ↳ :support
-    sources = file_collection( patterns, in_hash[:files_support] ).to_a
+    sources = file_collection( in_hash, patterns, in_hash[:files_support] ).to_a
     objects = sources.map { |file| File.basename( file ).ext( in_hash[:extension_object].primary ) }
 
     return { :collection_all_support => sources, :collection_test_fixture_extra_link_objects => objects }
@@ -324,6 +338,11 @@ class ConfiguratorBuilder
   ### Private ###
 
   private
+
+  # A relative release name is below the release build root, and an absolute one names itself
+  def release_place(root, name)
+    return ProjectPaths.absolute?( name ) ? name : File.join( root, name )
+  end
 
   def flatten_section(section, value)
     case value
@@ -443,8 +462,18 @@ class ConfiguratorBuilder
   end
 
   # Files matching `patterns`, revised by a :files list of additions and removals
-  def file_collection(patterns, revisions)
-    return @file_path_collection_utils.revise_filelist( file_list( patterns ), revisions )
+  def file_collection(in_hash, patterns, revisions)
+    return revised( in_hash, file_list( patterns ), revisions )
+  end
+
+  # A :files glob adds nothing from the build root it is based above, and no :files entry
+  # adds anything from the directories Ceedling creates
+  def revised(in_hash, list, revisions)
+    return @file_path_collection_utils.revise_filelist( list, revisions, **build_exclusions( in_hash ) )
+  end
+
+  def build_exclusions(in_hash)
+    return { exclude: [in_hash[:project_build_root]].compact, reserved: BuildRootPolicy.reserved( in_hash ) }
   end
 
   # FileList expands its patterns lazily, so they are expanded here
@@ -454,12 +483,13 @@ class ConfiguratorBuilder
     return list.resolve()
   end
 
-  def exclude_tests(sources, tests)
-    sources.exclude( *tests )
-    @loginator.log(
-      "Test file paths and source file paths overlap -- test files have been filtered out of the source file collection",
-      Verbosity::COMPLAIN
-    )
+  # `files` less any of `tests`, compared as collected, warning of any
+  def without_tests(files, tests, warn: true)
+    mixed_in = files.to_a & tests.to_a
+    return files if mixed_in.empty?
+
+    @loginator.log( 'Test file paths and source file paths overlap -- test files have been filtered out of the source file collection', Verbosity::COMPLAIN ) if warn
+    return @file_wrapper.instantiate_file_list_literal( files.to_a - mixed_in ).resolve()
   end
 
 end

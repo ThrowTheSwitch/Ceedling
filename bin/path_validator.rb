@@ -5,44 +5,27 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/project_paths'
+
 class PathValidator
 
   constructor :file_wrapper, :loginator
 
+  # Logs why each of `paths` fails as a `type` (:filepath or :directory), and whether none did
   def validate(paths:, source:, type: :filepath)
-    validated = true
+    problems = paths.filter_map { |path| path_problem( path, type ) }
+    problems.each { |problem| @loginator.log( "#{source} #{problem}", Verbosity::ERRORS ) }
 
-    paths.each do |path|
-      # Error out on empty paths
-      if path.empty?
-        validated = false
-        @loginator.log( "#{source} contains an empty path", Verbosity::ERRORS )
-        next
-      end
-
-      # Error out if path is not a directory / does not exist
-      if (type == :directory) and !@file_wrapper.directory?( path )
-        validated = false
-        @loginator.log( "#{source} '#{path}' does not exist as a directory in the filesystem", Verbosity::ERRORS )
-      end
-
-      # Error out if filepath does not exist
-      if (type == :filepath) and !@file_wrapper.exist?( path )
-        validated = false
-        @loginator.log( "#{source} '#{path}' does not exist in the filesystem", Verbosity::ERRORS )
-      end
-    end
-
-    return validated
+    return problems.empty?
   end
 
-  # Ensure any Windows backslashes are converted to Ruby path forward slashes.
-  # Returns new values in the same order as the arguments given, rather than
-  # mutating the caller's own String objects in place.
+  # Each path spelled as configuration spells it (ProjectPaths.standardize): forward slashes,
+  # `~` as the home directory, no trailing separator. Returns new values in the same order as
+  # the arguments given, rather than mutating the caller's own String objects in place.
   def standardize_paths( *paths )
     paths.map do |path|
-      next path if path.nil? or path.empty?
-      path.tr( "\\", '/' )
+      next path if path.nil? or path.strip.empty?
+      ProjectPaths.standardize( path )
     end
   end
 
@@ -50,6 +33,19 @@ class PathValidator
   def filepath?(str)
     # If argument includes a file extension or a path separator, it's a filepath
     return (!File.extname( str ).empty?) || (str.include?( File::SEPARATOR ))
+  end
+
+  ### Private ###
+
+  private
+
+  # Why `path` fails as a `type`, or nil
+  def path_problem(path, type)
+    return 'contains an empty path' if path.empty?
+    return "'#{path}' does not exist as a directory in the filesystem" if (type == :directory) and !@file_wrapper.directory?( path )
+    return "'#{path}' does not exist in the filesystem" if (type == :filepath) and !@file_wrapper.exist?( path )
+
+    return nil
   end
 
 end

@@ -7,6 +7,7 @@
 
 require 'ceedling/exceptions'
 require 'ceedling/constants'
+require 'ceedling/filename_extension'
 require 'gcov_types'
 require 'gcov_reportinator'
 require 'gcovr_thresholds'
@@ -508,9 +509,8 @@ class GcovrReportinator < GcovReportinator
     data = build_exclusion_data
     patterns = []
 
-    # A source extension can be configured as more than one string, so its escaped forms
-    # are joined into one alternation rather than assuming there's only ever one to match.
-    src_extension_alternation = data[:src_extension].to_a.map { |ext| Regexp.escape(ext) }.join('|')
+    # A source extension can be configured as more than one string, so any one of them matches
+    src_extension_alternation = FilenameExtension.new( data[:src_extension] ).pattern
     test_prefix = Regexp.escape(data[:test_prefix].to_s)
     build_root = Regexp.escape(strip_leading_dot_slash(data[:build_root].to_s))
 
