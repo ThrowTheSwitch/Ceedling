@@ -28,10 +28,6 @@ describe FffCMockWrapper do
     end
   end
 
-  before(:each) do
-    allow( $stdout ).to receive( :write )
-  end
-
   def fake(options = {})
     mock_path = File.join( @root, 'mocks' )
     config = { :mock_prefix => 'mock_', :mock_path => mock_path, :includes => [], :verbosity => 0 }
@@ -104,6 +100,29 @@ describe FffCMockWrapper do
     files = fake( :unity_helper_path => [helper] )
 
     expect( position( files[:c], '#include "../support/helper.h"' ) ).to be > position( files[:c], '#include "mock_bar.h"' )
+  end
+
+  # CMock's :verbosity levels: 0 errors only, 1 warnings, 2 normal, 3 verbose
+  context 'at CMock\'s verbosity levels' do
+
+    it 'prints nothing for errors only or warnings' do
+      expect { fake( :verbosity => 0 ) }.not_to output.to_stdout
+      expect { fake( :verbosity => 1 ) }.not_to output.to_stdout
+    end
+
+    it 'announces each fake at normal verbosity, as CMock announces each mock' do
+      expect { fake( :verbosity => 2 ) }.to output( "Creating fake functions for bar...\n" ).to_stdout
+    end
+
+    it 'also names the files written at verbose' do
+      path = File.join( @root, 'mocks', 'mock_bar' )
+
+      expect { fake( :verbosity => 3 ) }.to output(
+        "Creating fake functions for bar...\n" \
+        "Creating fake functions: #{path}.h and #{path}.c\n"
+      ).to_stdout
+    end
+
   end
 
 end
