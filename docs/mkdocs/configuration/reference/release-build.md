@@ -31,6 +31,9 @@ _&lt;build path&gt;/artifacts/release/_. Ceedling sets the default artifact
 file extension to that as is explicitly specified in the `:extension`
 section or as is system specific otherwise.
 
+An absolute path, or one beginning with `~`, names the release itself. Its
+map file sits beside it.
+
 **Default**: `project.exe` or `project.out`
 
 ## `:use_assembly`

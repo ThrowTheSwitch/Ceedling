@@ -119,7 +119,8 @@ are not exercised by any test. It takes one of three values:
   appear in the final report with 0% coverage (since no test exercises
   them). This causes all source files to appear in any generated reporting.
   If a source file fails to compile, Ceedling logs guidance at the console,
-  and the build fails.
+  and the build fails. Each untested source’s object sits below `build/gcov/out/`
+  at the source’s path from your project’s root.
 
 ```yaml
 :plugins:

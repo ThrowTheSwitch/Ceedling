@@ -86,8 +86,9 @@ If the dependency is part of your repository (its fetch `:method` is `:none`), `
 is where its code already lives. Paths may lie outside your project, such as
 `../shared/lib`, and headers found there work in test and release builds alike.
 
-Every artifact is relative to the `:artifact` path. With several include directories,
-choose the highest level and list the rest relative to it.
+Every artifact is relative to the `:artifact` path, unless it is an absolute path, which
+names the artifact itself. With several include directories, choose the highest level
+and list the rest relative to it. A path may begin with `~` to name your home directory.
 
 ## Fetching dependencies
 
@@ -268,7 +269,9 @@ The compiler, assembler, and archiver are checked just before `:build_lib` uses 
 a project without `:build_lib` needs none of them.
 
 `:build_lib` compiles every C file anywhere under the dependency’s `:source` path, with
-every directory holding a header there as a search path. It then archives the objects
+every directory holding a header there as a search path. Each object, and its list file,
+sits in the `:build` path at its source’s path below the `:source` path, so same-named
+sources in different directories keep apart. It then archives the objects
 into the first library under `:artifacts` ↳ `:static_libraries`, built in the `:build`
 path and copied to the `:artifact` path when the two differ. A dependency’s own
 `:defines` and `:flags` apply to its compilation, and `:libraries` and `:libpaths` to its

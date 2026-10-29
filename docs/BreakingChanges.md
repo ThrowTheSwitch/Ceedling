@@ -24,6 +24,26 @@ Update anything that reads per-test output by path:
 
 The first build after upgrading rebuilds everything once. Run `ceedling clobber` to remove the output left in the old layout. Until then, any coverage reports also read the old coverage data.
 
+## Build files are placed by each source’s path from the project root
+
+An object, preprocessed file, or dependencies file now sits below its build directory at its source’s path from the project root. Before 1.2.2, it sat at the source’s path below its `:paths` root, or flat. In a test, `src/drivers/uart.c` builds to `build/test/out/<test name>/src/drivers/uart.o`, not `build/test/out/<test name>/drivers/uart.o`. A release builds it to `build/release/out/src/drivers/uart.o`. Each `..` in a path outside the project becomes `_up_`, and a file of the running Ceedling installation outside the project sits below `_ceedling_`. Mocks, runners, and vendored framework objects keep their places.
+
+The first build after upgrading recompiles each moved object once. Run `ceedling clobber` to remove objects left in the old layout. Until then, coverage reports also include the old coverage data.
+
+## A `-:` `:paths` entry removes the directories below it
+
+A `-:` entry in `:paths` used to remove only the directory it named. It now also removes every directory below that directory. An additive entry naming one of those directories more closely keeps it, as `+:src/legacy/keep` does beside `-:src/legacy`. A project that relied on subdirectories surviving a `-:` entry must name them in entries of their own.
+
+## A build root holding the project is refused
+
+`:project` ↳ `:build_root` can no longer be empty, the project directory, or a directory above it. `clobber` empties the build root’s test and release trees, so with `:build_root: .` it deleted the project’s own `test/` directory. Configuration now stops with an error naming the problem.
+
+A `:paths` or `:files` entry within the build root, such as one naming generated code in `build/gen`, still collects from it, with a warning. No entry collects from the directories Ceedling and its plugins create, such as `test/`, `release/`, `vendor/`, and `artifacts/` below the build root, or the mocks directory. A project that named one of them in `:paths` or `:files` loses those files from its collections.
+
+## `-L` arguments name the directories `:paths` ↳ `:libraries` collects
+
+Linker `-L` arguments used to repeat `:paths` ↳ `:libraries` entries exactly as written. They now name the directories those entries collect, as any `:paths` entry does. A glob names each directory it matches, a `-:` entry removes directories, and an entry that collects no existing directory adds no argument.
+
 ## `TEST_SOURCE_FILE()` entries are checked without test preprocessing
 
 With `:project` ↳ `:use_test_preprocessor` set to `:none` or `:mocks`, a `TEST_SOURCE_FILE()` entry naming a file that doesn’t exist, or that isn’t a source file, was previously silently dropped. A build now stops with an error naming the entry and its test file, as it already did with test preprocessing.

@@ -51,6 +51,9 @@ The following are evaluated in order:
    `ceedling` launcher is running. In the typical case this is the default 
    gem installation.
 
+A path in `WHICH_CEEDLING` or `:which_ceedling` may begin with `~` to name 
+your home directory, as in `:which_ceedling: ~/ceedlings/1.2.0`.
+
 !!! note "Configuration entry (2) does not make sense in some scenarios"
     `ceedling new`, `ceedling examples`, `ceedling example`, `ceedling docs`,
     and `ceedling help` outside a project have no project file to read. They

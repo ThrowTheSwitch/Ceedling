@@ -251,21 +251,33 @@ test gets its own build output, even when test files share a filename.
 
 The name places a test’s output beneath each build directory:
 
-* Objects and executable: `build/test/out/test/unit/test_calc/`
+* Executable: `build/test/out/test/unit/test_calc/`
 * Results: `build/test/results/test/unit/test_calc.pass`
 * Logs from plugins and backtraces, such as
   `build/artifacts/valgrind/test/unit/test_calc.log` or
   `build/logs/test/test/unit/test_calc/<test case>.gdb.log`
 
-A test outside your project keeps its whole path. Each `..` becomes `_up_`, so
-`../shared/test/test_io.c` is named `_up_/shared/test/test_io`. A test with no
-path relative to your project, such as one on another Windows drive, is named
-beneath `_abs_`. Neither name reaches outside the build directory.
+Within a test’s directory, each object sits at its source’s own path from your
+project’s root, so same-named sources never share a path. `src/drivers/uart.c`
+compiles to `build/test/out/test/unit/test_calc/src/drivers/uart.o`. Preprocessed
+files and dependency files follow the same layout, and a release build places its
+objects the same way below `build/release/out/`. Mocks sit below their test’s own
+mock directory, and runners and Unity, CMock, and CException objects sit directly in
+the test’s directory.
+
+A test or source outside your project keeps its whole path. Each `..` becomes
+`_up_`, so `../shared/test/test_io.c` is named `_up_/shared/test/test_io`. A path
+with no relative form, such as one on another Windows drive, sits beneath `_abs_`,
+and a file of the running Ceedling installation outside your project, such as a
+plugin’s source, beneath `_ceedling_`. None of these reaches outside the build
+directory. A directory of your project that is itself named like one of these
+gains a leading `_` (e.g. `__up_/`), so it never shares a name with a path outside
+your project.
 
 Two tests share a name only if their paths differ in extension alone (e.g.
-`test_a.c` and `test_a.cpp`), or if a test outside your project maps onto a real
-directory named `_up_` or `_abs_`. A build that includes either test stops with
-an error naming both files.
+`test_a.c` and `test_a.cpp`). A build that includes either test stops with an
+error naming both files. Two sources that would build to one file stop a build the
+same way.
 
 ### Source & mock files to compile and link
 
