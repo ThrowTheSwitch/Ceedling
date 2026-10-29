@@ -211,13 +211,9 @@ describe FileWrapper do
     end
   end
 
-  # Same transient-visibility race as #open_with_retry, here hitting FileUtils.cp_r's
-  # own internal stat-then-open sequence instead of a bare File.open (Issue #1292:
-  # a vendor destination briefly reporting the wrong file/directory type mid-copy).
-  # Stub-based, matching #open_with_retry's own spec above -- no real filesystem or
-  # timing involved.
-  # A transient error mid-copy (a path briefly the wrong type, a file another process holds
-  # open on Windows) is retried; one that never clears names the destination.
+  # A transient error mid-copy, such as a file another process holds open on Windows, is
+  # retried; one that never clears names the file. An error retrying cannot clear fails at
+  # once (GH #1376). FileTree's own specs cover the walk and the healing.
   describe '#sync_tree retries' do
     before(:each) do
       allow(@file_wrapper).to receive(:sleep)
@@ -241,12 +237,12 @@ describe FileWrapper do
       end
     end
 
-    it 'retries past a SystemCallError and succeeds once the copy stops raising' do
+    it 'retries past a transient error and succeeds once the copy stops raising' do
       with_tree do |source, dest|
         calls = 0
         allow(@file_wrapper).to receive(:replace_file).and_wrap_original do |original, *args|
           calls += 1
-          raise Errno::EISDIR, 'transient' if calls < 3
+          raise Errno::EACCES, 'transient' if calls < 3
           original.call( *args )
         end
 
@@ -260,12 +256,21 @@ describe FileWrapper do
 
     it 'raises a CeedlingException naming the destination once every retry is exhausted, and logs it' do
       with_tree do |source, dest|
-        allow(@file_wrapper).to receive(:replace_file).and_raise( Errno::ENOTDIR, 'still wrong type' )
+        allow(@file_wrapper).to receive(:replace_file).and_raise( Errno::EACCES, 'still held open' )
 
         expect { @file_wrapper.sync_tree( source, dest ) }.to raise_error( CeedlingException, /#{Regexp.escape( dest )}/ )
-        expect(@loginator).to have_received(:log).with( a_string_including( dest ), Verbosity::ERRORS )
+        expect(@loginator).to have_received(:log).with( a_string_including( dest ), Verbosity::ERRORS, LogLabels::AUTO )
         # Initial attempt plus one retry for each configured delay
         expect(@file_wrapper).to have_received(:replace_file).exactly( FileWrapper::TRANSIENT_IO_RETRY_DELAYS.size + 1 ).times
+      end
+    end
+
+    it 'fails at once on an error retrying cannot clear' do
+      with_tree do |source, dest|
+        allow(@file_wrapper).to receive(:replace_file).and_raise( Errno::ENOTDIR, 'wrong type' )
+
+        expect { @file_wrapper.sync_tree( source, dest ) }.to raise_error( Errno::ENOTDIR )
+        expect(@file_wrapper).not_to have_received(:sleep)
       end
     end
 
@@ -296,6 +301,25 @@ describe FileWrapper do
         expect( File.dirname( checked.first ) ).to eq( File.dirname( destination ) )
         expect( checked.first.length ).to be > destination.length
         expect( Dir.children( File.dirname( destination ) ) ).to eq( ['unity.h'] )
+      end
+    end
+
+    # Windows refuses to rename over a read-only file
+    it 'leaves the destination owner-writable, from a read-only source over a read-only destination' do
+      Dir.mktmpdir do |dir|
+        source = File.join( dir, 'unity.h' )
+        destination = File.join( dir, 'out', 'unity.h' )
+        File.write( source, "new\n" )
+        FileUtils.mkdir_p( File.dirname( destination ) )
+        File.write( destination, "old\n" )
+        File.chmod( 0o444, source )
+        File.chmod( 0o444, destination )
+        allow(@file_wrapper).to receive(:check_path_length)
+
+        @file_wrapper.replace_file( source, destination )
+
+        expect( File.read( destination ) ).to eq( "new\n" )
+        expect( File.stat( destination ).mode & 0o200 ).to eq( 0o200 )
       end
     end
   end

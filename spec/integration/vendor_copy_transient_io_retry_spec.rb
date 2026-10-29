@@ -8,26 +8,29 @@
 # ConfiguratorSetup#vendor_frameworks_and_support_files with a real FileWrapper on a real
 # filesystem. A build brings build/vendor up to date with the gem's frameworks. It writes only
 # a file that differs from its source, and replaces it whole by renaming a temporary copy over
-# it, so a concurrent build never reads a half-written header (GH #1361). A transient copy
-# fault, such as a path briefly the wrong type (GH #1292), is retried, and one that never
+# it, so a concurrent build never reads a half-written header (GH #1361). An entry of the
+# wrong type, such as a directory where a file belongs, is replaced (GH #1292, #1376). A
+# transient copy fault, such as a scanner holding a file open, is retried, and one that never
 # clears names the destination.
 #
 # Faults are injected at FileWrapper#replace_file, the one write of each file, so the retry
-# loop in FileWrapper#sync_tree is what runs.
+# loop in FileTree is what runs.
 
 require 'spec_helper'
 require 'spec_integration_helper'
+require 'file_tree_helper'
 require 'ceedling/config/configurator_setup'
 require 'ceedling/constants'
 
 describe 'Vendor copy into build/vendor (integration)' do
   include IntegrationSpecHelpers
+  include FileTreeHelper
 
   # A real FileWrapper whose #replace_file raises for files beneath `fault_dir` the first
   # `raises_left` times. Named apart from other specs' faulting wrappers, since top-level
   # classes share one RSpec process.
   class ReplaceFaultingFileWrapper < FileWrapper
-    def initialize(fault_dir:, raises_left: 1, error: Errno::EISDIR, **kwargs)
+    def initialize(fault_dir:, raises_left: 1, error: Errno::EACCES, **kwargs)
       super(**kwargs)
       @fault_dir = fault_dir
       @raises_left = raises_left
@@ -37,7 +40,7 @@ describe 'Vendor copy into build/vendor (integration)' do
     def replace_file(source, destination)
       if destination.start_with?( @fault_dir ) && @raises_left > 0
         @raises_left -= 1
-        raise @error, "simulated transient type-mismatch on #{destination}"
+        raise @error, "simulated fault on #{destination}"
       end
       super
     end
@@ -174,6 +177,68 @@ describe 'Vendor copy into build/vendor (integration)' do
       expect {
         vendor( file_wrapper( fault_dir: dest, raises_left: 999 ), dir, config )
       }.to raise_error( CeedlingException, /#{Regexp.escape( dest )}/ )
+    end
+  end
+  # GH #1376: a deduplicated file the reporter's lstat called a directory left one where any
+  # vendored file belongs, not only the framework's own .c file
+  it "replaces a directory where any vendored file belongs" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+      FileUtils.mkdir_p( File.join( dest, 'unity.h' ) )
+      write( File.join( dest, 'internal', 'unity_internals.h', 'junk' ) )
+
+      vendor( file_wrapper, dir, config )
+
+      expect( File.read( File.join( dest, 'unity.h' ) ) ).to eq( "// stand-in for unity.h\n" )
+      expect( File.file?( File.join( dest, 'internal', 'unity_internals.h' ) ) ).to be(true)
+    end
+  end
+
+  it "vendors every file as a file when lstat reports files as directories" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+      lie_about_lstat( %r{gem_vendor/} )
+
+      vendor( file_wrapper, dir, config )
+      # The temporary directory is removed by an lstat-based remover
+      allow(File).to receive(:lstat).and_call_original
+
+      expect( File.file?( File.join( dest, 'unity.c' ) ) ).to be(true)
+      expect( File.file?( File.join( dest, 'internal', 'unity_internals.h' ) ) ).to be(true)
+    end
+  end
+
+  # A read-only gem install would otherwise vendor read-only files, which Windows will not
+  # let a later rename replace
+  it "vendors owner-writable files from a read-only source, and replaces a read-only destination" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+      source = File.join( config[:unity_vendor_path], 'unity', 'src', 'unity.h' )
+      File.chmod( 0o444, source )
+      vendor( file_wrapper, dir, config )
+      expect( File.stat( File.join( dest, 'unity.h' ) ).mode & 0o200 ).to eq( 0o200 )
+
+      File.chmod( 0o644, source )
+      File.write( source, "// a newer unity.h\n" )
+      File.chmod( 0o444, File.join( dest, 'unity.h' ) )
+      vendor( file_wrapper, dir, config )
+
+      expect( File.read( File.join( dest, 'unity.h' ) ) ).to eq( "// a newer unity.h\n" )
+    end
+  end
+
+  it "fails at once on an error retrying cannot clear" do
+    with_source_tree({}) do |dir|
+      config = flattened_config( dir )
+      dest = config[:project_build_vendor_unity_path]
+      faulting = file_wrapper( fault_dir: dest, raises_left: 999, error: Errno::ENOSPC )
+      allow(faulting).to receive(:sleep)
+
+      expect { vendor( faulting, dir, config ) }.to raise_error( Errno::ENOSPC )
+      expect(faulting).not_to have_received(:sleep)
     end
   end
 end
