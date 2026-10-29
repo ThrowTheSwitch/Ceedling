@@ -17,17 +17,17 @@ class FilePathCollectionUtils
   
   constructor :file_wrapper
 
-  # The directories one or more (+:/-:) paths and globs name. A `-:` entry, and each path in
-  # `exclude`, drops the directories it names and every directory below them.
+  # The directories one or more (+:/-:) paths and globs name, each spelled canonically, once.
+  # A `-:` entry, and each path in `exclude`, drops the directories it names and every
+  # directory below them, except one an additive entry names nearer to it.
   def collect_paths(paths, exclude: [])
     # Nil input (e.g. unconfigured section) is treated as an empty list
     return [] if paths.nil?
 
-    excluded = Set.new( exclude.map { |path| ProjectPaths.absolute( path ) } )
-    plus, minus = aggregate( paths, minus: excluded ) { |path| entry_directories( path ) }
+    additive, subtractive = paths.partition { |entry| FilePathUtils.add_path?( entry ) }
 
-    kept = plus.reject { |dir| minus.any? { |root| ProjectPaths.contains?( root, dir ) } }
-    return kept.map { |dir| shortest_path_from_working( dir ) }
+    kept = spelled_directories( additive ).select( &kept_by( additive, subtractive, exclude ) )
+    return kept.map { |_dir, real| ProjectPaths.relative( real ) }.uniq
   end
 
   # Given a file list, add to it or remove from it considering (+:/-:) aggregation operators.
@@ -37,13 +37,14 @@ class FilePathCollectionUtils
     # Nil list produces an empty FileList; nil revisions leaves the list unchanged
     return FileList.new([]) if list.nil?
 
-    listed = Set.new( list.map { |path| File.expand_path( path ) } )
-    plus, minus = aggregate( revisions || [], plus: listed ) { |revision| revision_files( revision ) }
+    additive, subtractive = (revisions || []).partition { |revision| FilePathUtils.add_path?( revision ) }
+    minus = left_out( subtractive )
+    kept  = listed_and_added( list, additive ).reject { |path| minus.include?( key( path ) ) }
 
     # #104 -- every entry here is already a concrete, real file, but plain FileList.new or
     # #include re-reads each as a glob, silently dropping a literal `[`/`]`.
     # FileWrapper#instantiate_file_list_literal adds every entry as-is.
-    result = @file_wrapper.instantiate_file_list_literal( (plus - minus).map { |path| shortest_path_from_working( path ) } )
+    result = @file_wrapper.instantiate_file_list_literal( kept.map { |path| ProjectPaths.relative( path ) } )
     result.resolve() # Force expansion to prevent race conditions in threaded context
     return result
   end
@@ -60,25 +61,48 @@ class FilePathCollectionUtils
 
   # A path relative to the working directory, or absolute when it has no relative form
   def shortest_path_from_working(path)
-    return ProjectPaths.relative( File.expand_path( path ) )
+    return ProjectPaths.relative( ProjectPaths.absolute( path ) )
   end
 
   private
 
-  # The paths each entry names, gathered into those to add and those to remove by its decorator
-  def aggregate(entries, plus: Set.new, minus: Set.new)
-    entries.each { |entry| (FilePathUtils.add_path?( entry ) ? plus : minus).merge( yield( entry ) ) }
-    return plus, minus
+  # Whether a directory lies nearer to an additive entry than to anything left out
+  def kept_by(additive, subtractive, exclude)
+    bases = spellings( additive.map { |entry| FilePathUtils.no_decorators( entry ) } )
+    minus = spellings( directories_of( subtractive ) + exclude )
+    return ->(spelled) { nearer( spelled, bases ) < nearer( spelled, minus ) }
   end
 
-  # Every directory one entry names, absolute and spelled through its base as the base
-  # really is, so one place is never collected under two spellings
+  # The files `-:` revisions name, compared as `key` spells them
+  def left_out(subtractive)
+    return Set.new( files_of( subtractive ).map { |path| key( path ) } )
+  end
+
+  # A file list's files and those additive revisions name, once each
+  def listed_and_added(list, additive)
+    return (list.map { |path| file_spelling( path ) } + files_of( additive )).uniq { |path| key( path ) }
+  end
+
+  def directories_of(entries)
+    return entries.flat_map { |entry| entry_directories( entry ) }
+  end
+
+  # Every directory `entries` name, once, by its as-listed and its real spelling
+  def spelled_directories(entries)
+    return directories_of( entries ).uniq.map { |dir| [dir, ProjectPaths.real_absolute( dir )] }
+  end
+
+  def files_of(revisions)
+    return revisions.flat_map { |revision| revision_files( revision ) }
+  end
+
+  # Every directory one entry names, absolute as listed
   def entry_directories(entry)
     path = ProjectPaths.standardize( FilePathUtils.no_aggregation_decorators( entry ) )
     dirs = listed_directories( path )
     dirs = with_parents( dirs, path ) if path.end_with?( '/**', '/*' )
 
-    return through_real_base( dirs.map { |dir| File.expand_path( dir ) }, path )
+    return dirs.map { |dir| ProjectPaths.absolute( dir ) }
   end
 
   # #104 -- FilePathUtils.subdirectory_glob escapes a literal `[`/`]` in the path itself, so
@@ -97,27 +121,53 @@ class FilePathCollectionUtils
   end
 
   def entry_roots(entry)
-    path = ProjectPaths.standardize( FilePathUtils.no_aggregation_decorators( entry ) ).sub( %r{/\*\*?\z}, '' )
+    path = ProjectPaths.standardize( FilePathUtils.no_aggregation_decorators( entry ) ).sub( %r{(?:/\*\*?)+\z}, '' )
     return [path] unless path.match?( /[*?{]/ )
 
-    return @file_wrapper.directory_listing( path ).sort.select { |listed| @file_wrapper.directory?( listed ) }
+    listing = @file_wrapper.directory_listing( FilePathUtils.escape_glob_brackets( path ) )
+    return listing.sort.select { |listed| @file_wrapper.directory?( listed ) }
   end
 
-  # Every file one :files revision names, absolute and spelled through its base as the base
-  # really is. #104 -- a literal `[`/`]` is escaped as in `listed_directories`.
+  # Every file one :files revision names, each spelled through its directory as it really
+  # is. #104 -- a literal `[`/`]` is escaped as in `listed_directories`.
   def revision_files(revision)
     path  = ProjectPaths.standardize( FilePathUtils.no_aggregation_decorators( revision ) )
     files = @file_wrapper.directory_listing( FilePathUtils.escape_glob_brackets( path ) ).sort.reject { |entry| @file_wrapper.directory?( entry ) }
 
-    return through_real_base( files.map { |file| File.expand_path( file ) }, path )
+    return files.map { |file| file_spelling( file ) }
   end
 
-  # `paths`, found below the base of `pattern`, respelled below the base's real path
-  def through_real_base(paths, pattern)
-    base = File.expand_path( FilePathUtils.no_decorators( pattern ) )
-    real = File.expand_path( ProjectPaths.canonical( base ) )
-    return paths if base == real
+  # A file's absolute path through its directory as it really is, keeping its own name
+  def file_spelling(file)
+    return File.join( ProjectPaths.real_absolute( File.dirname( file ) ), File.basename( file ) )
+  end
 
-    return paths.map { |path| path == base || path.start_with?( "#{base}/" ) ? real + path[base.length..] : path }
+  # Both the as-listed and the real spelling of each of `paths`, so either reaches it
+  def spellings(paths)
+    return Set.new( paths.flat_map { |path| [ProjectPaths.absolute( path ), ProjectPaths.real_absolute( path )] }.map { |path| key( path ) } )
+  end
+
+  # How many directories above a directory, by either of its two spellings, the nearest one
+  # in `spelled` lies: 0 for the directory itself, or infinity for none
+  def nearer(spellings, spelled)
+    return spellings.map { |path| distance( path, spelled ) }.min
+  end
+
+  def distance(path, spelled)
+    steps = 0
+    loop do
+      return steps if spelled.include?( key( path ) )
+
+      parent = File.dirname( path )
+      return Float::INFINITY if parent == path
+
+      path   = parent
+      steps += 1
+    end
+  end
+
+  # Windows compares paths without regard to case
+  def key(path)
+    return ProjectPaths::WINDOWS ? path.downcase : path
   end
 end

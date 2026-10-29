@@ -454,9 +454,9 @@ class FileFinder
 
     return '' if dir == '.'
 
-    # Matched at a path boundary. A directory merely beginning with the build root's own
-    # name is an ordinary relative directory and still names its module.
-    return '' if dir == root || dir.start_with?( root + '/' )
+    # Compared as directories. A directory merely beginning with the build root's own name
+    # is an ordinary relative directory and still names its module.
+    return '' if ProjectPaths.contains?( root, dir )
 
     return dir
   end

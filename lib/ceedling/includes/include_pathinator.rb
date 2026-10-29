@@ -88,10 +88,10 @@ class IncludePathinator
   # reference that distinguishes nothing resolving exactly as it did before.
   def prioritized_header_files(search_paths)
     roots = search_paths.map { |path| FilePathUtils.no_decorators( path ) }.reject(&:empty?)
+    ranks = root_ranks( roots )
 
     @configurator.collection_all_headers.to_a.each_with_index.sort_by do |header, index|
-      rank = roots.index { |root| ProjectPaths.contains?( root, header ) } || roots.length
-      [rank, index]
+      [header_rank( header, ranks, roots.length ), index]
     end.map(&:first)
   end
 
@@ -114,6 +114,34 @@ class IncludePathinator
     end
 
     return paths
+  end
+
+  private
+
+  # Each root's place in the search order by its absolute path, the first one kept, so a
+  # header's rank comes from walking up its own directories rather than trying every root
+  def root_ranks(roots)
+    return roots.each_with_index.with_object( {} ) { |(root, index), ranks| ranks[rank_key( ProjectPaths.absolute( root ) )] ||= index }
+  end
+
+  # The earliest-searched root a header lies below, or `none` for no root
+  def header_rank(header, ranks, none)
+    rank = none
+    path = ProjectPaths.absolute( header )
+    loop do
+      parent = File.dirname( path )
+      break if parent == path
+
+      path = parent
+      rank = [rank, ranks.fetch( rank_key( path ), none )].min
+    end
+
+    return rank
+  end
+
+  # Windows compares paths without regard to case
+  def rank_key(path)
+    return ProjectPaths::WINDOWS ? path.downcase : path
   end
 
 end

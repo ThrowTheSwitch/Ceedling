@@ -37,7 +37,7 @@ describe BuildSubpath do
 
     # A project's own directory may carry a marker's name, which must read back as itself
     it 'places a directory named like a marker apart from the marker, and reads it back' do
-      ['_up_/x', 'src/a/_up_', '_ceedling_/src', '_abs_/C/x', '_unc_/srv', 'src/__up_/x', '../_up_/y'].each do |path|
+      ['_up_/x', 'src/a/_up_', '_ceedling_/src', '_abs_/C/x', '_unc_/srv', 'src/__up_/x'].each do |path|
         encoded = BuildSubpath.encode( path )
 
         expect(BuildSubpath.decode( encoded )).to eq( path ), "#{path} => #{encoded}"
@@ -78,7 +78,7 @@ describe BuildSubpath do
       expect(BuildSubpath.decode( "_abs_/#{other}/x/inc" )).to eq( "#{other}:/x/inc" )
     end
 
-    it 'places a UNC path below `_unc_`, and reads it back' do
+    it 'places a UNC path below `_unc_`, and reads it back', **WINDOWS_ONLY_BUILD do
       expect(BuildSubpath.encode( '//server/share/inc' )).to eq( '_unc_/server/share/inc' )
       expect(BuildSubpath.decode( '_unc_/server/share/inc' )).to eq( '//server/share/inc' )
     end

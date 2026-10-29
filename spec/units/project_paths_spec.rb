@@ -41,6 +41,26 @@ describe ProjectPaths do
     it 'keeps a filesystem root' do
       expect(ProjectPaths.standardize( '/' )).to eq( '/' )
     end
+
+    it 'reads `~` after a decorator and a space, and drops every trailing separator' do
+      expect(ProjectPaths.standardize( '+: ~/inc' )).to eq( "+:#{File.join( Dir.home, 'inc' )}" )
+      expect(ProjectPaths.standardize( 'src//' )).to eq( 'src' )
+    end
+  end
+
+  describe '.absolute' do
+    it 'reads `~user` as a directory of that name, never the user\'s home' do
+      expect(ProjectPaths.absolute( '~nosuchuser/inc' )).to eq( File.join( @ws, 'app', '~nosuchuser/inc' ) )
+    end
+
+    it 'reads a doubled leading separator as the filesystem root', **POSIX_ONLY do
+      expect(ProjectPaths.absolute( '//usr/include' )).to eq( '/usr/include' )
+      expect(ProjectPaths.contains?( '/usr', '//usr/include' )).to be true
+    end
+
+    it 'keeps a UNC path\'s `..` below its share', **WINDOWS_ONLY do
+      expect(ProjectPaths.absolute( '//srv/sh/a/../../../x' )).to eq( '//srv/sh/x' )
+    end
   end
 
   describe '.canonical' do

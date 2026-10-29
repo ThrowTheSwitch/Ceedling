@@ -38,8 +38,8 @@ module ProjectPaths
   def self.standardize(path)
     path = path.to_s.strip.tr( '\\', '/' )
     decorator = path[DECORATOR] || ''
-    path = expand_home( path.delete_prefix( decorator ) )
-    path = path.chomp( '/' ) unless path.match?( %r{\A(?:[A-Za-z]:)?/\z} )
+    path = expand_home( path.delete_prefix( decorator ).strip )
+    path = path.sub( %r{/+\z}, '' ) unless path.match?( %r{\A(?:[A-Za-z]:)?/+\z} )
     return decorator + path
   end
 
@@ -47,6 +47,8 @@ module ProjectPaths
   # without reading the disk. A drive letter is upper case. Remembered for each working
   # directory and home directory, since a build compares the same few roots many times.
   def self.absolute(path)
+    return path if clean_absolute?( path )
+
     key    = [Dir.pwd, Dir.home, path.to_s]
     cached = @lock.synchronize { @absolutes[key] }
     return cached unless cached.nil?
@@ -59,7 +61,12 @@ module ProjectPaths
   # symlinks along its existing part resolved. A path with no relative form (another drive,
   # a UNC share) stays absolute. Reads the disk.
   def self.canonical(path)
-    return relative( real( absolute( path ) ) )
+    return relative( real_absolute( path ) )
+  end
+
+  # `absolute` with the symlinks along its existing part resolved. Reads the disk.
+  def self.real_absolute(path)
+    return real( absolute( path ) )
   end
 
   # `absolute` relative to the working directory, or absolute when it has no relative form.
@@ -67,7 +74,12 @@ module ProjectPaths
   def self.relative(absolute)
     return absolute if unc?( absolute )
 
-    return Pathname.new( absolute ).relative_path_from( Pathname.new( working_dir ) ).to_s
+    # Most paths lie below the working directory, which needs no Pathname walk
+    base = working_dir
+    return '.' if same?( absolute, base )
+    return absolute[(base.length + 1)..] if clean_absolute?( absolute ) and starts_with?( absolute, "#{base}/" )
+
+    return Pathname.new( absolute ).relative_path_from( Pathname.new( base ) ).to_s
   rescue ::ArgumentError
     return absolute
   end
@@ -99,8 +111,9 @@ module ProjectPaths
     return path.start_with?( '/' ) || path.match?( %r{\A[A-Za-z]:/} )
   end
 
+  # A Windows share. Elsewhere a doubled leading separator is the filesystem root.
   def self.unc?(path)
-    return path.start_with?( '//' )
+    return WINDOWS && path.start_with?( '//' )
   end
 
   # Whether two spellings are the same text, folding case on Windows
@@ -112,10 +125,29 @@ module ProjectPaths
     return WINDOWS ? path.downcase.start_with?( prefix.downcase ) : path.start_with?( prefix )
   end
 
+  # Already absolute as `absolute` would spell it: rooted (with an upper case drive on
+  # Windows), with no `.` or `..` segment, doubled or trailing `/`, or backslash
+  def self.clean_absolute?(path)
+    return false unless path.is_a?( String )
+    return false unless WINDOWS ? path.match?( %r{\A[A-Z]:/} ) : path.start_with?( '/' )
+
+    return !path.match?( %r{//|/\.\.?(?:/|\z)|\\} ) && (path.length <= 3 || !path.end_with?( '/' ))
+  end
+
+  # A `~user` path names a directory of that name, which File.expand_path would read as the
+  # user's home (or raise for no such user). A share's `..` never leaves the share.
   def self.absolute_of(path)
     path = standardize( path )
-    absolute = unc?( path ) ? path.squeeze( '/' ).sub( %r{\A/}, '//' ) : File.expand_path( path, working_dir )
-    return absolute.sub( /\A[a-z](?=:)/ ) { |drive| drive.upcase }
+    return unc_absolute( path ) if unc?( path )
+
+    path = "./#{path}" if path.start_with?( '~' )
+    return File.expand_path( path, working_dir ).squeeze( '/' ).sub( /\A[a-z](?=:)/ ) { |drive| drive.upcase }
+  end
+
+  def self.unc_absolute(path)
+    server, share, *rest = path.split( '/' ).reject { |segment| segment.empty? || segment == '.' }
+    kept = rest.each_with_object( [] ) { |segment, resolved| segment == '..' ? resolved.pop : resolved.push( segment ) }
+    return "//#{[server, share, *kept].compact.join( '/' )}"
   end
 
   def self.expand_home(path)
@@ -126,6 +158,8 @@ module ProjectPaths
 
   # The real path of the longest existing part of `absolute`, with the rest appended
   def self.real(absolute)
+    return File.realpath( absolute ) if File.exist?( absolute )
+
     existing = absolute
     missing  = []
     until File.exist?( existing ) || existing == File.dirname( existing )
@@ -138,6 +172,6 @@ module ProjectPaths
     return File.join( File.realpath( existing ), *missing )
   end
 
-  private_class_method :absolute_of, :expand_home, :real
+  private_class_method :clean_absolute?, :absolute_of, :unc_absolute, :expand_home, :real
 
 end

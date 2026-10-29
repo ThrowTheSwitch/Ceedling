@@ -272,3 +272,90 @@ describe FilePathCollectionUtils do
   end
 
 end
+
+# The path handling audit around GH #1370: one place collected under two spellings is still
+# one place, so an exclusion names it however it was reached
+describe FilePathCollectionUtils, 'on disk' do
+  require 'tmpdir'
+  require 'fileutils'
+  require 'ceedling/file_wrapper'
+
+  POSIX_ONLY_COLLECTION = { unless: Gem.win_platform? }.freeze
+
+  around(:each) do |example|
+    Dir.mktmpdir do |dir|
+      @ws = File.realpath( dir )
+      FileUtils.mkdir_p( File.join( @ws, 'app/src/a' ) )
+      FileUtils.mkdir_p( File.join( @ws, 'vendor/ext' ) )
+      File.write( File.join( @ws, 'vendor/ext/foo.c' ), '' )
+      File.write( File.join( @ws, 'app/src/a/bar.c' ), '' )
+      Dir.chdir( File.join( @ws, 'app' ) ) { example.run }
+    end
+  end
+
+  before(:each) do
+    file_wrapper = FileWrapper.new( { loginator: double( 'loginator' ).as_null_object, verbosinator: double( 'verbosinator' ).as_null_object } )
+    @fpcu = described_class.new( { file_wrapper: file_wrapper } )
+  end
+
+  def link_ext
+    File.symlink( File.join( @ws, 'vendor/ext' ), File.join( @ws, 'app/src/ext' ) )
+  end
+
+  it 'leaves out a symlinked directory below a root its `-:` entry names', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.collect_paths( ['+:src/**', '-:src/ext'] )).to eq( ['src', 'src/a'] )
+  end
+
+  it 'collects a symlinked directory once, however many entries reach it', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/ext'] ).count { |dir| dir.end_with?( 'ext' ) }).to eq( 1 )
+  end
+
+  it 'removes a file below a symlinked directory that a `-:` revision names', **POSIX_ONLY_COLLECTION do
+    link_ext
+
+    expect(@fpcu.revise_filelist( ['src/a/bar.c', 'src/ext/foo.c'], ['-:src/ext/foo.c'] ).to_a).to eq( ['src/a/bar.c'] )
+    expect(@fpcu.revise_filelist( ['src/ext/foo.c'], ['+:src/ext/foo.c'] ).to_a.size).to eq( 1 )
+  end
+
+  # macOS spells /tmp as /private/tmp, and a build root may be written through any symlink
+  it 'excludes a build root written through a symlink', **POSIX_ONLY_COLLECTION do
+    FileUtils.mkdir_p( 'build/test' )
+    File.symlink( File.join( @ws, 'app' ), File.join( @ws, 'link' ) )
+
+    expect(@fpcu.collect_paths( ['+:./**'], exclude: [File.join( @ws, 'link/build' )] )).to eq( ['.', 'src', 'src/a'] )
+  end
+
+  it 'keeps a directory an additive entry names below a `-:` entry, and leaves out one both name' do
+    FileUtils.mkdir_p( ['src/legacy/keep', 'src/legacy/other'] )
+
+    expect(@fpcu.collect_paths( ['+:src/**', '-:src/legacy', '+:src/legacy/keep'] )).to eq( ['src', 'src/a', 'src/legacy/keep'] )
+    expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy', '-:src/legacy'] )).to eq( ['src', 'src/a'] )
+  end
+
+  it 'leaves out many directories below a `-:` entry quickly' do
+    200.times { |index| FileUtils.mkdir_p( "vendor_tree/d#{index}/x" ) }
+    200.times { |index| FileUtils.mkdir_p( "src/m#{index}" ) }
+
+    started = Process.clock_gettime( Process::CLOCK_MONOTONIC )
+    result  = @fpcu.collect_paths( ['+:./**', '-:vendor_tree/**'] )
+
+    expect(result).to_not include( 'vendor_tree' )
+    expect(Process.clock_gettime( Process::CLOCK_MONOTONIC ) - started).to be < 2.0
+  end
+
+  describe '#collect_mirror_roots' do
+    it 'reads a literal bracket in an entry with a glob as part of a name (#104)' do
+      FileUtils.mkdir_p( 'lib[v2]/x/inc' )
+
+      expect(@fpcu.collect_mirror_roots( ['lib[v2]/*/inc'] )).to eq( ['lib[v2]/x/inc'] )
+    end
+
+    it 'roots a doubled recursive glob at its base' do
+      expect(@fpcu.collect_mirror_roots( ['src/**/**'] )).to eq( ['src'] )
+    end
+  end
+end

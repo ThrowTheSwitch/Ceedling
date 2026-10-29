@@ -151,31 +151,24 @@ class FilePathUtils
   #   ['a/b', 'a/c', 'a']             =>  ['a']
   #   ['src', 'lib/core', 'lib/utils'] =>  ['src', 'lib/core', 'lib/utils']  (unchanged)
   #
-  # Comparison uses forward-slash-normalized copies; returned paths preserve the original
-  # form supplied by the caller.
+  # Paths compare as the directories they name (ProjectPaths.contains?), so `..` holds
+  # `../sib` but not `../../far/x`. Returned paths preserve the form the caller supplied.
   def self.collapse_to_common_parents(paths)
     return paths if paths.nil? || paths.length <= 1
 
-    # Pair each original path with a normalized form used only for ancestry comparison.
-    # Normalize to forward slashes and strip any trailing separator.
-    pairs = paths.map { |p| [p, p.tr('\\', '/').chomp('/')] }
+    # Shortest absolute spelling first, so an ancestor is always met before what it holds
+    pairs = paths.map { |path| [path, ProjectPaths.absolute( path )] }.sort_by { |_, absolute| absolute.length }
 
-    # Sort shallowest-first so ancestors are always encountered before their descendants.
-    # No tiebreaker for same-depth entries needed: Ruby's sort_by doesn't guarantee a
-    # stable order among ties, but two same-depth paths can never be each other's
-    # ancestor, so the ancestor-exclusion check below is correct regardless of which
-    # order same-depth ties come out in.
-    pairs.sort_by! { |_, normalized| normalized.count('/') }
-
-    kept = []
-    pairs.each do |original, normalized|
-      # Skip this path if any already-kept path is a proper ancestor of it.
-      next if kept.any? { |_, k| normalized.start_with?(k + '/') }
-      kept << [original, normalized]
-    end
-
-    kept.map { |original, _| original }
+    return outermost( pairs ).map { |original, _| original }
   end
+
+  # The [original, absolute] pairs no earlier pair's directory holds
+  def self.outermost(pairs)
+    return pairs.each_with_object( [] ) do |pair, kept|
+      kept << pair unless kept.any? { |_, held| ProjectPaths.contains?( held, pair.last ) }
+    end
+  end
+  private_class_method :outermost
 
 
   ######### Instance methods ##########

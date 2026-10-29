@@ -37,6 +37,12 @@ describe FilePathUtils do
       expect(result).to match_array(['a'])
     end
 
+    # The path handling audit around GH #1370: `..` holds `../sib` but not `../../far/x`
+    it 'keeps a path above the project that no other path holds' do
+      result = FilePathUtils.collapse_to_common_parents(['..', '../../far/x', '../sib'])
+      expect(result).to match_array(['..', '../../far/x'])
+    end
+
     it 'handles deeply nested redundant paths' do
       result = FilePathUtils.collapse_to_common_parents(['src', 'src/a/b/c', 'lib'])
       expect(result).to match_array(['src', 'lib'])
