@@ -67,6 +67,14 @@ A project can select another Ceedling installation through `:project` ↳ `:whic
 
 `ceedling version` reads your project file when one is available, as `build` does, and reports the installation the project selects. For a project that selects another installation, it lists `Ceedling Launcher =>` and `Ceedling App =>` instead of a single `Ceedling =>` line. A tool that parses `version` for the project’s Ceedling should read `Ceedling App =>` when present.
 
+## Impacts on third-party plugins by file and path code moved to `lib/ceedling/filesystem/`
+
+Ceedling plugin development currently makes no guarantees about the location and interface of internal Ceedling resources. And, it is unlikely that custom plugins would rely on the reorganized filesystem handling code to begin with.
+
+Ceedling’s file and path code now sits in `lib/ceedling/filesystem/`. A plugin that requires one of these files directly must name its new path, such as `require 'ceedling/filesystem/file_path_utils'` in place of `require 'ceedling/file_path_utils'`. A require of an old path fails with a `LoadError`. Where an older Ceedling gem is installed, Ruby can instead load that gem’s copy of the file, and the build fails with an unrelated error such as `wrong number of arguments`. Plugins that reach these objects through `@ceedling[:file_wrapper]` and the like need no change. A plugin that names the new paths no longer loads in Ceedling 1.2.1 or earlier.
+
+The moved files are `project_paths`, `build_subpath`, `path_spellings`, `path_exclusions`, `path_mirror`, `path_matcher`, `destination_collision`, `file_path_utils`, `file_path_collection_utils`, `file_finder`, `file_finder_helper`, `file_wrapper`, and `file_system_wrapper`.
+
 ---
 
 # [1.2.0] — 2026-10-21

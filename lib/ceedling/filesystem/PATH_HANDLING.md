@@ -30,7 +30,7 @@ The project root is the working directory. It is where `ceedling` runs, and ever
 
 ### Code organization
 
-The path modules sit at the top of `lib/ceedling/`. Most are pure module functions with no DIY dependency, so the launcher in `bin/` can use them too.
+The path modules sit in `lib/ceedling/filesystem/`, whose [README](README.md) lists every file there. Most are pure module functions with no DIY dependency, so the launcher in `bin/` can use them too. Paths below are relative to that directory.
 
 | File | Module or class | Role |
 | --- | --- | --- |
@@ -44,9 +44,9 @@ The path modules sit at the top of `lib/ceedling/`. Most are pure module functio
 | `file_path_collection_utils.rb` | `FilePathCollectionUtils` | Collecting `:paths` directories and `:files` revisions |
 | `file_path_utils.rb` | `FilePathUtils` | Test names and every build file's path |
 | `file_finder.rb` | `FileFinder` | Finding a build file's input from the build file's path |
-| `config/build_root_policy.rb` | `BuildRootPolicy` | What a build root may be, and what Ceedling creates in it |
-| `config/configurator_builder.rb` | `ConfiguratorBuilder` | Building collections with the exclusions applied |
-| `test_invoker/mock_locator.rb` | `MockLocator` | Where a mock is generated and how its test reaches it |
+| `../config/build_root_policy.rb` | `BuildRootPolicy` | What a build root may be, and what Ceedling creates in it |
+| `../config/configurator_builder.rb` | `ConfiguratorBuilder` | Building collections with the exclusions applied |
+| `../test_invoker/mock_locator.rb` | `MockLocator` | Where a mock is generated and how its test reaches it |
 
 ### Invariants
 
@@ -114,7 +114,7 @@ The project root itself encodes as `''`. Its files sit directly below the output
 
 ### Choosing a marker
 
-`encode(path)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies in one of `INSTALLED_DIRS`, the file is Ceedling's own and goes under `_ceedling_`. `INSTALLED_DIRS` are the `assets`, `bin`, `lib`, `plugins`, and `vendor` directories of `INSTALLATION_ROOT`, the directory two levels above `lib/ceedling/`. If the relative form is still absolute, the path takes `_abs_` or `_unc_`. Otherwise each `..` becomes `_up_`.
+`encode(path)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies in one of `INSTALLED_DIRS`, the file is Ceedling's own and goes under `_ceedling_`. `INSTALLED_DIRS` are the `assets`, `bin`, `lib`, `plugins`, and `vendor` directories of `INSTALLATION_ROOT`, the directory above `lib/`. If the relative form is still absolute, the path takes `_abs_` or `_unc_`. Otherwise each `..` becomes `_up_`.
 
 `_ceedling_` keeps Ceedling's own files short and stable. A gem installation can sit many directories away from a project. Without the marker its plugin sources would encode as a long chain of `_up_` segments that changes with every install location. A Ceedling copy vendored inside the project lies within the working directory, so it encodes by its ordinary path. A project may also sit inside a Ceedling checkout, as the system specs' projects do. Its sibling directories lie outside `INSTALLED_DIRS`, so they encode by `_up_` like any other.
 
@@ -296,6 +296,6 @@ A change to path code keeps the invariants by following the patterns above. Thes
 
 Each tier pins a different layer of this design.
 
-- **Unit.** `spec/units/project_paths_spec.rb`, `build_subpath_spec.rb`, `path_mirror_spec.rb`, `path_matcher_spec.rb`, `destination_collision_spec.rb`, `file_path_utils_spec.rb`, `file_path_collection_utils_spec.rb`, `file_finder_spec.rb`, `mock_locator_spec.rb`, `library_resolver_spec.rb`, and `spec/units/config/build_root_policy_spec.rb`. Windows drive and UNC examples run only on Windows.
+- **Unit.** `spec/units/filesystem/project_paths_spec.rb`, `build_subpath_spec.rb`, `path_mirror_spec.rb`, `path_matcher_spec.rb`, `destination_collision_spec.rb`, `file_path_utils_spec.rb`, `file_path_collection_utils_spec.rb`, and `file_finder_spec.rb`, with `spec/units/mock_locator_spec.rb`, `spec/units/library_resolver_spec.rb`, and `spec/units/config/build_root_policy_spec.rb`. Windows drive and UNC examples run only on Windows.
 - **Integration.** `spec/integration/path_scenarios_spec.rb` and `path_intake_scenarios_spec.rb` configure real projects in temporary workspaces through `spec/support/integration/path_scenario_harness.rb`. `expect_collections_outside_build` and `expect_one_spelling_each` assert the invariants.
 - **System.** `spec/system/path_handling_probes_spec.rb`, `build_output_mirroring_spec.rb`, `rake_release_task_path_disambiguation_spec.rb`, `bracket_path_handling_spec.rb`, and `special_path_characters_spec.rb` run full builds.
