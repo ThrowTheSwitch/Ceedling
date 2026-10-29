@@ -741,18 +741,16 @@ jobs:
           if-no-files-found: ignore
 
   # Job: Run FileTree's specs on filesystems the test legs never use
-  # An SMB path and a separate NTFS volume on Windows, and a FAT volume on Linux, each
-  # with its own rules for links, names, and timestamps. The specs read
-  # CEEDLING_TEST_FS_ROOT and build their trees there.
+  # An SMB path, the system drive, and a separate NTFS volume on Windows, and a FAT
+  # volume on Linux, each with its own rules for links, names, timestamps, and
+  # compression. The specs read CEEDLING_TEST_FS_ROOT and build their trees there.
   #
-  # Advisory: continue-on-error, and absent from CI Gate's needs, until a few runs
-  # prove these filesystems set up reliably on hosted runners. A step that cannot set
-  # up its filesystem warns, names why, and skips.
+  # A failing spec fails the job, and CI Gate with it. A step that cannot set up its
+  # filesystem warns, names why, and skips, since that says nothing about Ceedling.
   tests-filesystem-substrates:
     name: "Filesystem Substrates"
     needs: changes
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
-    continue-on-error: true
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -790,7 +788,19 @@ jobs:
           $env:CEEDLING_TEST_FS_ROOT = '//localhost/C$/ceedling-fs-unc'
           bundle exec rspec spec/units/filesystem --tag filesystem --format documentation
 
-      # Runs even after the UNC step fails, so one result never hides the other
+      # The test legs build their trees on D:, which refuses NTFS compression, so the
+      # system drive gives the WOF example a volume that may allow it. Runs even after an
+      # earlier step fails, so one result never hides another.
+      - name: Run Filesystem Specs on the System Drive
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force C:\ceedling-fs-c | Out-Null
+          $env:CEEDLING_TEST_FS_ROOT = 'C:/ceedling-fs-c'
+          bundle exec rspec spec/units/filesystem --tag filesystem --format documentation
+
+      # 4 KB clusters, since NTFS compresses only volumes with clusters of 4 KB or less.
+      # Runs even after an earlier step fails, so one result never hides another.
       - name: Run Filesystem Specs on a VHD-Backed NTFS Volume
         if: ${{ !cancelled() && runner.os == 'Windows' }}
         shell: pwsh
@@ -799,7 +809,7 @@ jobs:
           create vdisk file=C:\ceedling-fs.vhdx maximum=256 type=expandable
           attach vdisk
           create partition primary
-          format fs=ntfs quick label=CEEDLINGFS
+          format fs=ntfs quick label=CEEDLINGFS unit=4096
           assign letter=T
           "@ | Set-Content C:\ceedling-fs-diskpart.txt
           diskpart /s C:\ceedling-fs-diskpart.txt | Out-Host
@@ -842,8 +852,8 @@ jobs:
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
 
-    # continue-on-error makes findings visible without failing the build. Like Filesystem
-    # Substrates, this job does not block, and that is a starting position rather
+    # continue-on-error makes findings visible without failing the build. This is the
+    # only non-blocking job in this workflow, and that is a starting position rather
     # than the intent: with a 1,200-entry .rubocop_todo.yml baseline, a regression is
     # still common enough that blocking would mostly obstruct. Drop this line once
     # the baseline has been burned down far enough that a new offense is a genuine
@@ -1005,6 +1015,7 @@ jobs:
       - tests-macos
       - tests-linux-locale
       - tests-linux-encoding-stress
+      - tests-filesystem-substrates
       - lint
       - build-gem
       - changes
@@ -1141,6 +1152,7 @@ jobs:
       - tests-macos
       - tests-linux-locale
       - tests-linux-encoding-stress
+      - tests-filesystem-substrates
       - lint
       - build-gem
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}

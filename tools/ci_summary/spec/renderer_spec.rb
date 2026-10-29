@@ -64,15 +64,6 @@ describe CiSummary::Renderer do
     expect(render( jobs: running )).not_to include( 'CI Summary](' )
   end
 
-  # An advisory job may finish before or after the summary reads the run, so it is never
-  # counted either way
-  it 'leaves out advisory jobs' do
-    advisory = jobs + [{ 'name' => 'Filesystem Substrates (windows-latest)', 'conclusion' => 'failure', 'url' => 'https://ci/5' }]
-
-    expect(render( jobs: advisory )).to include( '✅ 2/2 jobs passed' )
-    expect(render( jobs: advisory )).not_to include( 'Filesystem Substrates' )
-  end
-
   it 'leads with the failing jobs, each linked' do
     failing = jobs.dup
     failing[0] = jobs[0].merge( 'conclusion' => 'failure' )

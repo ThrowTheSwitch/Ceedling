@@ -10,10 +10,11 @@ require 'spec_helper'
 require 'file_tree_helper'
 require 'ceedling/filesystem/file_tree'
 
-# GH #1376: Windows reparse points. A junction is a link to a directory. A file compressed
-# by the Windows Overlay Filter (WOF) carries a reparse point that is not a link, like a
-# deduplicated file. Each example skips itself when its runner cannot make the reparse
-# point, saying why, and prints a canary line recording how Ruby classifies it.
+# GH #1376: Windows reparse points. A junction is a link to a directory, and Ruby reports it
+# as one. A file compressed by the Windows Overlay Filter (WOF) carries a reparse point that
+# is not a link, like a deduplicated file. Each example skips itself when its runner cannot
+# make the reparse point, saying why, and prints a canary line recording how Ruby classifies
+# it.
 describe 'FileTree on Windows reparse points', filesystem: true, if: Gem.win_platform? do
   include FileTreeHelper
 
@@ -43,6 +44,8 @@ describe 'FileTree on Windows reparse points', filesystem: true, if: Gem.win_pla
   end
 
   it 'descends a junction to a directory' do
+    skip 'Windows makes junctions only on local NTFS volumes, not on a UNC share' if @root.start_with?( '//', '\\\\' )
+
     write( File.join( @root, 'elsewhere/inner.c' ), 'int x;' )
     FileUtils.mkdir_p( @src )
     made, detail = run( 'cmd', '/c', 'mklink', '/J', windows( File.join( @src, 'junction' ) ), windows( File.join( @root, 'elsewhere' ) ) )

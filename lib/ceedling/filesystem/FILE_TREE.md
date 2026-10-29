@@ -128,7 +128,7 @@ A file's sync raising one of `TRANSIENT_ERRORS` at any step waits the next delay
 
 - **Windows.**
   - Reparse points are the case this design exists for.
-  - A junction is a link to a directory, and the walk descends it **[verified]**. Whether `File.symlink?` reports one is unknown **[unverified]**. A junction cannot be made on a UNC share.
+  - A junction is a link to a directory. Ruby reports it as one, `File.symlink?` true and `lstat` a link, and the walk descends it **[verified]**. Windows makes junctions only on local NTFS volumes, never on a UNC share **[verified]**.
   - `File.rename` replaces an existing file. Windows refuses to replace a read-only one, though Ruby may clear the attribute itself **[inferred]**. `#replace_file` clears it first either way.
   - Names cannot hold `*` or `?`.
   - Paths stop near 260 characters. The temporary name adds about 20 characters beyond the destination's, and `check_path_length` warns as a path nears the limit.
@@ -183,13 +183,14 @@ Specs elsewhere cover the callers:
 ### Windows reparse points
 
 `spec/units/filesystem/file_tree_windows_spec.rb` runs only on Windows.
-- **Junction.** The first example makes a junction with `mklink /J` and copies through it. A canary line prints what `File.symlink?`, `lstat`, and `stat` report for the junction, without asserting any of them.
+- **Junction.** The first example makes a junction with `mklink /J` and copies through it. A canary line prints what `File.symlink?`, `lstat`, and `stat` report for the junction, without asserting any of them. On a UNC share, where Windows cannot make a junction, it skips without trying.
 - **WOF canary.** The second compresses a file with `compact /exe:lzx`, confirms its reparse tag is `0x80000017`, and prints the same canary line for the file. It then asserts the copy is a regular file of full size.
 - Each skips when its runner cannot make the reparse point. The skip names the command that failed, its exit status, and its output. A failed `compact` also reports the state of the WOF driver.
 
 On hosted Windows runners:
-- The junction example passes on the runner's own NTFS drive and on a VHD-backed NTFS volume **[verified]**. `mklink /J` cannot make a junction on the UNC share, so it skips there.
-- `compact /exe` fails on every volume tried: the runner's drive, the UNC share, and the VHD volume. The WOF canary has not run, and whether Ruby misreports a WOF file is unknown **[unverified]**.
+- The junction example passes on the runner's `D:` drive and on a VHD-backed NTFS volume. Its canary reads `symlink?=true lstat.ftype=link stat.ftype=directory` **[verified]**.
+- `compact /exe` has failed on every volume tried, though the WOF driver runs. `D:` and a VHD volume formatted with default clusters answer "The file system does not support compression". The UNC share answers "The request is not supported". NTFS compresses only volumes whose clusters are 4 KB or smaller **[inferred]**, so the job also tries the system drive `C:` and a VHD volume formatted with 4 KB clusters.
+- The WOF canary has not run, and whether Ruby misreports a WOF file is unknown **[unverified]**.
 
 ### Other filesystems
 
@@ -201,11 +202,12 @@ Every `FileTree` spec carries `filesystem: true`, so `rspec spec/units/filesyste
 | ext4 | The Linux baseline | Linux test legs, and locally in Docker | **[verified]** |
 | tmpfs | Memory-backed | The Linux Ruby 3.3 leg, with `CEEDLING_TEST_FS_ROOT=/dev/shm` | **[verified]** in CI and locally in Docker |
 | NTFS | The Windows baseline | Windows test legs | **[verified]** |
-| UNC administrative share | Reaches the local drive through the SMB client | The Filesystem Substrates job | **[verified]**, the junction example skipping |
-| VHD-backed NTFS volume | A separate volume made with `diskpart` | The Filesystem Substrates job | **[verified]** |
+| UNC administrative share | Reaches the local drive through the SMB client | The Filesystem Substrates job | **[verified]**, the junction and WOF examples skipping |
+| System drive `C:` | The Windows system volume, with 4 KB clusters | The Filesystem Substrates job | **[unverified]** |
+| VHD-backed NTFS volume | A separate volume made with `diskpart`, with 4 KB clusters | The Filesystem Substrates job | **[verified]**, before 4 KB clusters |
 | Loopback FAT image | No links, restricted names, 2 s timestamps | The Filesystem Substrates job | **[verified]**, the link examples skipping |
 
-The Filesystem Substrates job is advisory. A step that cannot set up its filesystem warns, names why, and skips. Each step runs whatever the others did. The UNC step first enables Windows' evaluation of links on a share that name places on a share. The CI summary leaves the job out of its verdict.
+A failing spec in the Filesystem Substrates job fails CI Gate. A step that cannot set up its filesystem warns, names why, and skips, since that says nothing about Ceedling. Each step runs whatever the others did. The UNC step first enables Windows' evaluation of links on a share that name places on a share.
 
 ### Proof the specs can fail
 
@@ -224,10 +226,10 @@ The Filesystem Substrates job is advisory. A step that cannot set up its filesys
 | Tree shapes, glob names, unchanged and changed files | Real trees | yes | yes | yes |
 | Healing entries of the wrong type | Real trees | yes | yes | yes |
 | Links | Real trees, skipping without links | yes | yes | where permitted |
-| Junctions | Windows real trees, canary | n/a | n/a | yes, except on a UNC share |
-| WOF reparse points | Windows real trees, canary | n/a | n/a | skips: `compact /exe` fails on hosted runners |
+| Junctions | Windows real trees, canary | n/a | n/a | yes, except on a UNC share, which cannot hold one |
+| WOF reparse points | Windows real trees, canary | n/a | n/a | skips so far: `compact /exe` has failed on every hosted volume tried |
 | Retries and failures | Injected faults | yes | yes | yes |
-| Other filesystems | `CEEDLING_TEST_FS_ROOT` | tmpfs, FAT | none | UNC, VHD |
+| Other filesystems | `CEEDLING_TEST_FS_ROOT` | tmpfs, FAT | none | UNC, `C:`, VHD |
 
 ### Not covered
 
