@@ -351,6 +351,15 @@ describe FilePathCollectionUtils, 'on disk' do
     expect(@fpcu.collect_paths( ['+:src/**', '+:src/legacy', '-:src/legacy'] )).to eq( ['src', 'src/a'] )
   end
 
+  it 'leaves out the files a revision glob matches below an excluded root, but keeps one it names exactly' do
+    FileUtils.mkdir_p( ['build/gen', 'build/test/mocks'] )
+    File.write( 'build/gen/table.c', '' )
+    File.write( 'build/test/mocks/mock_x.c', '' )
+
+    expect(@fpcu.revise_filelist( ['src/a/bar.c'], ['+:**/*.c'], exclude: ['build'] ).to_a).to eq( ['src/a/bar.c'] )
+    expect(@fpcu.revise_filelist( [], ['+:build/gen/table.c'], exclude: ['build'] ).to_a).to eq( ['build/gen/table.c'] )
+  end
+
   # Only the entries that name a directory decide whether it is kept
   it 'judges each directory by the entries that name it, not every entry\'s base' do
     FileUtils.mkdir_p( ['src/legacy/x/inc', 'src/legacy/keep/sub'] )

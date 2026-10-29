@@ -169,7 +169,7 @@ class ConfiguratorBuilder
   # the build root, which a root above it (`../**`, `./**`) would otherwise sweep in
   def expand_all_path_globs(in_hash)
     path_keys = in_hash.keys.select { |key| key.to_s.start_with?( 'paths' ) }
-    exclude   = [in_hash[:project_build_root]].compact
+    exclude   = build_exclusion( in_hash )
 
     return path_keys.to_h { |key| [:"collection_#{key}", @file_path_collection_utils.collect_paths( in_hash[key], exclude: exclude )] }
   end
@@ -244,7 +244,7 @@ class ConfiguratorBuilder
     end
 
     # Add / subtract files via :files ↳ :test
-    tests = file_collection( patterns, in_hash[:files_test] )
+    tests = file_collection( in_hash, patterns, in_hash[:files_test] )
     return { :collection_all_tests => tests }, tests
   end
 
@@ -258,7 +258,7 @@ class ConfiguratorBuilder
     paths = in_hash[:collection_paths_source] + in_hash[:collection_paths_support]
 
     # Add / subtract files via :files ↳ :assembly
-    return { :collection_all_assembly => file_collection( code_patterns( paths, in_hash[:extension_assembly] ), in_hash[:files_assembly] ) }
+    return { :collection_all_assembly => file_collection( in_hash, code_patterns( paths, in_hash[:extension_assembly] ), in_hash[:files_assembly] ) }
   end
 
 
@@ -270,7 +270,7 @@ class ConfiguratorBuilder
     exclude_tests( sources, mixed_in ) unless mixed_in.empty?
 
     # Add / subtract files via :files ↳ :source
-    return { :collection_all_source => @file_path_collection_utils.revise_filelist( sources, in_hash[:files_source] ) }
+    return { :collection_all_source => revised( in_hash, sources, in_hash[:files_source] ) }
   end
 
 
@@ -278,7 +278,7 @@ class ConfiguratorBuilder
     paths = in_hash[:collection_paths_test] + in_hash[:collection_paths_support] + in_hash[:collection_paths_include]
 
     # Add / subtract files via :files ↳ :include
-    return { :collection_all_headers => file_collection( code_patterns( paths, in_hash[:extension_header] ), in_hash[:files_include] ) }
+    return { :collection_all_headers => file_collection( in_hash, code_patterns( paths, in_hash[:extension_header] ), in_hash[:files_include] ) }
   end
 
 
@@ -291,7 +291,7 @@ class ConfiguratorBuilder
 
     # Add / subtract files via :files ↳ :source & :files ↳ :assembly
     revisions = in_hash[:files_source] + (assembly ? in_hash[:files_assembly] : [])
-    return { :collection_release_build_input => file_collection( patterns, revisions ) }
+    return { :collection_release_build_input => file_collection( in_hash, patterns, revisions ) }
   end
 
 
@@ -301,7 +301,7 @@ class ConfiguratorBuilder
     paths    = in_hash[:collection_paths_test] + in_hash[:collection_paths_support] + in_hash[:collection_paths_source]
     patterns = vendor_patterns( test_vendor_paths( in_hash ) ) + code_patterns( paths, *code_extensions( in_hash, assembly ) )
 
-    return { :collection_existing_test_build_input => file_collection( patterns, test_build_revisions( in_hash, assembly ) ) }
+    return { :collection_existing_test_build_input => file_collection( in_hash, patterns, test_build_revisions( in_hash, assembly ) ) }
   end
 
 
@@ -322,7 +322,7 @@ class ConfiguratorBuilder
     patterns   = code_patterns( in_hash[:collection_paths_support], *extensions )
 
     # Add / subtract files via :files ↳ :support
-    sources = file_collection( patterns, in_hash[:files_support] ).to_a
+    sources = file_collection( in_hash, patterns, in_hash[:files_support] ).to_a
     objects = sources.map { |file| File.basename( file ).ext( in_hash[:extension_object].primary ) }
 
     return { :collection_all_support => sources, :collection_test_fixture_extra_link_objects => objects }
@@ -464,8 +464,17 @@ class ConfiguratorBuilder
   end
 
   # Files matching `patterns`, revised by a :files list of additions and removals
-  def file_collection(patterns, revisions)
-    return @file_path_collection_utils.revise_filelist( file_list( patterns ), revisions )
+  def file_collection(in_hash, patterns, revisions)
+    return revised( in_hash, file_list( patterns ), revisions )
+  end
+
+  # A :files glob adds nothing from the build root
+  def revised(in_hash, list, revisions)
+    return @file_path_collection_utils.revise_filelist( list, revisions, exclude: build_exclusion( in_hash ) )
+  end
+
+  def build_exclusion(in_hash)
+    return [in_hash[:project_build_root]].compact
   end
 
   # FileList expands its patterns lazily, so they are expanded here

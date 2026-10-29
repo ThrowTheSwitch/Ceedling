@@ -39,12 +39,14 @@ class FilePathCollectionUtils
 
   # Given a file list, add to it or remove from it considering (+:/-:) aggregation operators.
   # Rake's FileList does not robustly handle relative filepaths and patterns.
-  # So, we rebuild the FileList ourselves and return it.
-  def revise_filelist(list, revisions)
+  # So, we rebuild the FileList ourselves and return it. A revision adds no file below a
+  # path in `exclude` unless the revision names that file, or a place below that path.
+  def revise_filelist(list, revisions, exclude: [])
     # Nil list produces an empty FileList; nil revisions leaves the list unchanged
     return FileList.new([]) if list.nil?
 
-    kept = kept_files( list, *(revisions || []).partition { |revision| FilePathUtils.add_path?( revision ) } )
+    additive, subtractive = (revisions || []).partition { |revision| FilePathUtils.add_path?( revision ) }
+    kept = kept_files( list, additive, subtractive, PathSpellings.of( exclude ) )
 
     # #104 -- every entry here is already a concrete, real file, but plain FileList.new or
     # #include re-reads each as a glob, silently dropping a literal `[`/`]`.
@@ -92,15 +94,25 @@ class FilePathCollectionUtils
 
   # The listed files and those additive revisions name, less those `-:` revisions name, each
   # compared through its directory as it really is
-  def kept_files(list, additive, subtractive)
+  def kept_files(list, additive, subtractive, excluded)
     real  = {}
     minus = Set.new( files_of( subtractive ).map { |path| real_key( path, real ) } )
-    return listed_and_added( list, additive, real ).reject { |path| minus.include?( real_key( path, real ) ) }
+    added = added_files( additive, excluded, real )
+    return (list.map { |path| ProjectPaths.absolute( path ) } + added).uniq { |path| real_key( path, real ) }.reject { |path| minus.include?( real_key( path, real ) ) }
   end
 
-  # A file list's files and those additive revisions name, once each by their real spelling
-  def listed_and_added(list, additive, real)
-    return (list.map { |path| ProjectPaths.absolute( path ) } + files_of( additive )).uniq { |path| real_key( path, real ) }
+  # The files additive revisions name, less those below an excluded path nearer than the
+  # base of the revision naming them
+  def added_files(additive, excluded, real)
+    return files_of( additive ) if excluded.empty?
+
+    return additive.flat_map do |revision|
+      bases = PathSpellings.of( [FilePathUtils.no_decorators( revision )] )
+      revision_files( revision ).select do |file|
+        spellings = [file, real_spelling( file, real )]
+        PathSpellings.nearer( spellings, bases ) < PathSpellings.nearer( spellings, excluded )
+      end
+    end
   end
 
   def directories_of(entries)
@@ -156,8 +168,12 @@ class FilePathCollectionUtils
   # A file compared through its directory as it really is, keeping its own name. Each
   # directory is resolved once per call, in `real`.
   def real_key(file, real)
+    return PathSpellings.key( real_spelling( file, real ) )
+  end
+
+  def real_spelling(file, real)
     dir = File.dirname( file )
-    return PathSpellings.key( File.join( (real[dir] ||= ProjectPaths.real_absolute( dir )), File.basename( file ) ) )
+    return File.join( (real[dir] ||= ProjectPaths.real_absolute( dir )), File.basename( file ) )
   end
 
 end

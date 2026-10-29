@@ -243,6 +243,22 @@ describe 'Path scenarios (integration)' do
         expect_collections_outside_build( scene[:configurator] )
       end
     end
+
+    # A release compiles every collected source, so generated mocks and runners broke it
+    it 'collects nothing from an existing build directory through a `:files` glob' do
+      files = {
+        'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C,
+        'app/build/test/mocks/test/test_m/mock_main.c' => c( 'mock' ), 'app/build/vendor/unity/src/unity.c' => c( 'unity' )
+      }
+      in_workspace( files ) do |ws, app|
+        yaml  = scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: ['src/**'] }, files: { source: ['+:**/*.c'] } )
+        scene = scenario( yaml )
+
+        expect_collections_outside_build( scene[:configurator] )
+        expect(scene[:configurator].collection_release_build_input.to_a.grep( %r{\Abuild/} )).to be_empty
+        expect(scene[:configurator].collection_existing_test_build_input.to_a.grep( %r{\Abuild/test/} )).to be_empty
+      end
+    end
   end
 
   # --- G12: the working directory reached through a symlink -------------------------------
