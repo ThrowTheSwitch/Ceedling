@@ -10,6 +10,7 @@
 #   ⏩️ https://github.com/ElectronVector/fake_function_framework
 # =========================================================================
 
+require 'fileutils'
 require 'ceedling/plugins/plugin'
 require 'fff_mock_generator'
 
@@ -36,16 +37,17 @@ end # class Fff
 
 class FffCMockWrapper
 
-    def initialize(options=nil)
+  def initialize(options=nil)
     @cm_config      = CMockConfig.new(options)
     @cm_parser      = CMockHeaderParser.new(@cm_config)
-    @silent        = (@cm_config.verbosity < 2)
+    # CMock's levels: 0 errors only, 1 warnings, 2 normal, 3 verbose
+    @verbosity      = @cm_config.verbosity
 
-    # These are the additional files to include in the mock files.
-    @includes_h_pre_orig_header  = (@cm_config.includes || @cm_config.includes_h_pre_orig_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
-    @includes_h_post_orig_header = (@cm_config.includes_h_post_orig_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
-    @includes_c_pre_header       = (@cm_config.includes_c_pre_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
-    @includes_c_post_header      = (@cm_config.includes_c_post_header || []).map{|h| h.match?(/</) ? h : "\"#{h}\""}
+    # The additional files to include in the fake files, gathered as CMock gathers them
+    @includes_h_pre_orig_header  = quoted( @cm_config.includes, @cm_config.includes_h_pre_orig_header )
+    @includes_h_post_orig_header = quoted( @cm_config.includes_h_post_orig_header )
+    @includes_c_pre_header       = quoted( @cm_config.includes_c_pre_header )
+    @includes_c_post_header      = quoted( @cm_config.includes_c_post_header )
   end
 
   # Matches CMock's own entry point, which Ceedling calls with the folder a mock's
@@ -57,37 +59,14 @@ class FffCMockWrapper
   end
 
   def generate_mock(header_file_to_mock, folder=nil)
-      module_name = File.basename(header_file_to_mock, '.h')
-      puts( "Creating fake functions for #{module_name}..." ) unless @silent
-      mock_name = @cm_config.mock_prefix + module_name + @cm_config.mock_suffix
-      mock_path = folder.nil? ? @cm_config.mock_path : File.join(@cm_config.mock_path, folder)
-      if @cm_config.subdir
-          # If a subdirectory has been configured, append it to the mock path.
-          mock_path = "#{mock_path}/#{@cm_config.subdir}"
-      end
-      full_path_for_mock = "#{mock_path}/#{mock_name}"
-      c_name = c_name_for(mock_name, folder)
+    module_name = File.basename(header_file_to_mock, '.h')
+    puts( "Creating fake functions for #{module_name}..." ) unless @verbosity < 2
+    mock_name = @cm_config.mock_prefix + module_name + @cm_config.mock_suffix
 
-      # Parse the header file so we know what to mock.
-      parsed_header = @cm_parser.parse(module_name, File.read(header_file_to_mock))
+    # Parse the header file so we know what to mock.
+    parsed_header = @cm_parser.parse(module_name, File.read(header_file_to_mock))
 
-      # Create the directory if it doesn't exist.
-      mkdir_p full_path_for_mock.pathmap("%d")
-
-      # Generate the fake function header file.
-      puts( "Creating fake functions: #{full_path_for_mock}.h" )
-
-      # Create the mock header.
-      File.open("#{full_path_for_mock}.h", 'w') do |f|
-        f.write(FffMockGenerator.create_mock_header(module_name, mock_name, parsed_header,
-          @includes_h_pre_orig_header, @includes_h_post_orig_header, c_name: c_name))
-      end
-
-      # Create the mock source file.
-      File.open("#{full_path_for_mock}.c", 'w') do |f|
-        f.write(FffMockGenerator.create_mock_source(mock_name, parsed_header,
-          @includes_c_pre_orig_header, @includes_c_post_orig_header, c_name: c_name))
-      end
+    write_fake( "#{mock_path_for( folder )}/#{mock_name}", module_name, mock_name, parsed_header, c_name_for( mock_name, folder ) )
   end
 
   # The name for a fake's guard and control functions, as CMock forms it. With
@@ -101,6 +80,33 @@ class FffCMockWrapper
 
     identity = File.join( *mock_folder, '' ).sub( %r{\A(?:\.[/\\])+}, '' ) + mock_name
     return identity.gsub( %r{[-/\\.,\s]}, '_' )
+  end
+
+  private
+
+  # The directory a fake is written to: the mock root, the folder its #include names,
+  # then any configured :subdir
+  def mock_path_for(folder)
+    mock_path = folder.nil? ? @cm_config.mock_path : File.join( @cm_config.mock_path, folder )
+    return @cm_config.subdir ? "#{mock_path}/#{@cm_config.subdir}" : mock_path
+  end
+
+  # Writes the fake's header and source at `path`, which ends in the mock's name
+  def write_fake(path, module_name, mock_name, parsed_header, c_name)
+    FileUtils.mkdir_p( File.dirname( path ) )
+
+    puts( "Creating fake functions: #{path}.h and #{path}.c" ) unless @verbosity < 3
+    File.write( "#{path}.h", FffMockGenerator.create_mock_header( module_name, mock_name, parsed_header,
+      @includes_h_pre_orig_header, @includes_h_post_orig_header, c_name: c_name ) )
+
+    File.write( "#{path}.c", FffMockGenerator.create_mock_source( mock_name, parsed_header,
+      @includes_c_pre_header, @includes_c_post_header, c_name: c_name ) )
+  end
+
+  # Joins include lists, each named once, as #include operands. A name holding `<` is
+  # kept as written, and any other is quoted, as CMock does.
+  def quoted(*lists)
+    return lists.compact.flatten.uniq.map { |name| name.match?( /</ ) ? name : "\"#{name}\"" }
   end
 
 end

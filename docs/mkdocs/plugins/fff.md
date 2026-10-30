@@ -207,21 +207,35 @@ All of the fake functions and any fff global state are all reset automatically b
 
 ## CMock configuration
 
-We still use some CMock configuration options for setting things like the mock prefix and for including additional header files in the mock files.
+Fakes still use some CMock settings, such as the mock prefix and the extra
+header files to include.
 
 ```yaml
 :cmock:
-    :mock_prefix: mock_
-        :includes:
-            - ...
-        :includes_h_pre_orig_header:
-            - ...
-        :includes_h_post_orig_header:
-            - ...
-        :includes_c_pre_header:
-            - ...
-        :includes_c_post_header:
+  :mock_prefix: mock_
+  :includes:
+    - ...
+  :includes_h_pre_orig_header:
+    - ...
+  :includes_h_post_orig_header:
+    - ...
+  :includes_c_pre_header:
+    - ...
+  :includes_c_post_header:
+    - ...
 ```
+
+Each include setting puts its headers in a fake where CMock puts them in a mock.
+
+| Setting | Where the `#include` goes |
+|---|---|
+| `:includes`, `:includes_h_pre_orig_header` | The fake’s header, before the original header |
+| `:includes_h_post_orig_header` | The fake’s header, after the original header |
+| `:includes_c_pre_header` | The fake’s source, before the fake’s header |
+| `:includes_c_post_header` | The fake’s source, after the fake’s header |
+
+A [Unity helper](../configuration/reference/cmock.md#unity_helper_path) is
+included in a fake’s header and source, as it is in a mock’s.
 
 ### Fakes of same-named headers
 
