@@ -16,9 +16,9 @@ Each release has its own section, listing every issue known to affect it. An iss
 
 ---
 
-## 1.2.2 — Unreleased
+## 1.2.2 — 2026-10-31
 
-Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
+Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
 1. The new internal pipeline as of 1.0.0 that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. Delta builds (as of 1.2.0) offer considerable build time savings as do the speedup gains due to parallelization as of 1.0.0. Future releases will optimize away duplication of build steps.
 1. An `#include` directive must resolve to a file within your project’s configured `:paths` search collection. A path that would resolve outside your configured search paths (e.g. via relative paths beyond search paths or excessive `..` parent-directory segments) is now rejected with a clear, specific error rather than silently causing a confusing downstream build failure.
@@ -46,7 +46,7 @@ Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
 
 ## 1.2.1 — 2026-10-24
 
-Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
+Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
 1. The new internal pipeline as of 1.0.0 that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. Delta builds (as of 1.2.0) offer considerable build time savings as do the speedup gains due to parallelization as of 1.0.0. Future releases will optimize away duplication of build steps.
 1. An `#include` directive must resolve to a file within your project’s configured `:paths` search collection. A path that would resolve outside your configured search paths (e.g. via relative paths beyond search paths or excessive `..` parent-directory segments) is now rejected with a clear, specific error rather than silently causing a confusing downstream build failure.
@@ -81,7 +81,7 @@ Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing
 
 ## 1.2.0 — 2026-10-21
 
-Ceedling 1.2 requires Ruby 3+ but only unofficially supports Ruby 4.
+Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
 1. The new internal pipeline as of 1.0.0 that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. Delta builds (as of 1.2.0) offer considerable build time savings as do the speedup gains due to parallelization as of 1.0.0. Future releases will optimize away duplication of build steps.
 1. An `#include` directive must resolve to a file within your project’s configured `:paths` search collection. A path that would resolve outside your configured search paths (e.g. via relative paths beyond search paths or excessive `..` parent-directory segments) is now rejected with a clear, specific error rather than silently causing a confusing downstream build failure.

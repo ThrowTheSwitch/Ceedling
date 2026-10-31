@@ -10,7 +10,7 @@ A release has a section only if it breaks something. Each section lists what cha
 
 ---
 
-# [1.2.2] — Unreleased
+# [1.2.2] — 2026-10-31
 
 ## Test build output is organized by each test’s path from the project root
 
