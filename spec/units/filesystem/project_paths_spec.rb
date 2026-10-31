@@ -126,4 +126,22 @@ describe ProjectPaths do
       expect(ProjectPaths.subdir_below( 'C:/Proj/Src', 'c:/proj/src/a' )).to eq( 'a' )
     end
   end
+
+  # A build asks for the working directory tens of thousands of times, and asking the
+  # operating system costs tens of microseconds on macOS
+  describe '.working_dir' do
+    it 'reads the working directory once, however often it is asked' do
+      ProjectPaths.working_dir
+      expect(Dir).not_to receive(:pwd)
+
+      3.times { expect(ProjectPaths.working_dir).to eq( File.join( @ws, 'app' ) ) }
+    end
+
+    it 'answers a remembered path without reading the working directory' do
+      ProjectPaths.absolute( 'src/drv' )
+      expect(Dir).not_to receive(:pwd)
+
+      expect(ProjectPaths.absolute( 'src/drv' )).to eq( File.join( @ws, 'app/src/drv' ) )
+    end
+  end
 end
