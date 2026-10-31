@@ -49,6 +49,10 @@ class TestBuildPlanner
       mocks   = {}
       _mocks  = @context_extractor.lookup_mock_header_includes_list( filepath )
 
+      # Built at the first real mock and shared by the rest, since nothing here changes
+      # this test's search paths
+      collection = nil
+
       _mocks.each do |include|
         name    = File.basename( include.filename ).ext()
         source  = nil
@@ -61,7 +65,8 @@ class TestBuildPlanner
           input  = source
           subdir = partial_mock_subdir( include )
         else
-          source, subdir     = @mock_locator.locate( include, collection: ordered_mock_header_collection( testable ) )
+          collection       ||= ordered_mock_header_collection( testable )
+          source, subdir     = @mock_locator.locate( include, collection: collection )
           preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
           input             = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
         end
