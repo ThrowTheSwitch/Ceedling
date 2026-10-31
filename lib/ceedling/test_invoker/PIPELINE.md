@@ -120,6 +120,8 @@ Where the paths come from follows which `#include` list drives the build:
 
 Every stage that resolves a mock's header does so through `MockLocator`, against the test's search paths minus its `mock_search_paths`, so stages 2, 4, and 5 resolve each mock identically.
 
+Resolving needs every header on those search paths, in search order. `IncludePathinator#ordered_header_files` builds that list from each search path's own listing. A directory outside the build root keeps its listing for the whole test build: the build never writes there, and every stage asks for the same directories for every test. A directory under the build root, such as a mock or Partials directory, is listed on every call, since the build fills it as it runs. Stage 5 builds the list once per test and shares it across the test's mocks. `TestInvoker` forgets the listings at the start of each test build, after the `pre_test_build` hook.
+
 ## Stop points
 
 A run can stop early by including one of four mutually exclusive Symbols in `PipelineState#options`. Each names a different place to stop, so supplying more than one is rejected.
