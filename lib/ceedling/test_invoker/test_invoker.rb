@@ -22,7 +22,8 @@ class TestInvoker
     :dependinator,
     :loginator,
     :verbosinator,
-    :test_pipeline_manager
+    :test_pipeline_manager,
+    :include_pathinator
   )
 
   def setup
@@ -39,6 +40,10 @@ class TestInvoker
   def setup_and_invoke(tests:, context: TEST_SYM, options: [])
     timestamp_s = SystemWrapper.time_stopwatch_s()
     @plugin_manager.pre_test_build( context, timestamp_s )
+
+    # After the hook, so a header it writes is listed, and once per run, so a later run in
+    # the same process lists every search path afresh
+    @include_pathinator.forget_header_listings
 
     # `identifier: context` isolates this run's own cache file (see Dependinator#open) --
     # a plugin building its own variant of the test pipeline under a distinct context

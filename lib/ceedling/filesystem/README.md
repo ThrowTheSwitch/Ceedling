@@ -13,6 +13,7 @@ Pure modules with no state beyond memos.
 | File | Module | Role |
 | --- | --- | --- |
 | [`project_paths.rb`](project_paths.rb) | `ProjectPaths` | One spelling for every path. Absolute, relative, and canonical forms, and containment by whole directories |
+| [`working_dir.rb`](working_dir.rb) | `WorkingDir` | The working directory, read once, and `chdir`, the one way Ceedling code changes it |
 | [`build_subpath.rb`](build_subpath.rb) | `BuildSubpath` | A build file's place from its source's path from the project root, with the `_up_`, `_abs_`, `_unc_`, and `_ceedling_` markers, and back |
 | [`path_spellings.rb`](path_spellings.rb) | `PathSpellings` | A place's listed and real spellings, and how far one place lies below another |
 | [`path_exclusions.rb`](path_exclusions.rb) | `PathExclusions` | What collection leaves out: `-:` entries, excluded places, and reserved places |
@@ -37,4 +38,4 @@ DIY objects that apply the modules above to a project's configuration.
 | --- | --- | --- |
 | [`file_wrapper.rb`](file_wrapper.rb) | `FileWrapper` | The DIY object most code uses to read, write, list, and copy files. It checks path lengths, retries transient I/O errors, and replaces files whole; this class is mocked for unit testing against |
 | [`file_tree.rb`](file_tree.rb) | `FileTree` | A pure module that walks a tree classifying entries by `stat`, and brings a copy up to date, replacing entries of the wrong type. See [FILE_TREE.md](FILE_TREE.md) |
-| [`file_system_wrapper.rb`](file_system_wrapper.rb) | `FileSystemWrapper` | Changing the working directory for the length of a block |
+| [`file_system_wrapper.rb`](file_system_wrapper.rb) | `FileSystemWrapper` | Changing the working directory for the length of a block, through `WorkingDir` |

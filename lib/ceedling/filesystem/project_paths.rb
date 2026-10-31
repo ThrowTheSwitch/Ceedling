@@ -7,6 +7,7 @@
 
 require 'pathname'
 require 'rbconfig'
+require 'ceedling/filesystem/working_dir'
 
 # One spelling for every path a project names.
 #
@@ -29,14 +30,12 @@ module ProjectPaths
   ROOT_LENGTH = WINDOWS ? 3 : 1
   UNCLEAN     = WINDOWS ? %r{//|/\.\.?(?:/|\z)|\\|~|[. ](?:/|\z)} : %r{//|/\.\.?(?:/|\z)|\\}
 
-  @lock         = Mutex.new
-  @working_dirs = {}
-  @absolutes    = {}
+  @lock      = Mutex.new
+  @absolutes = {}
 
-  # The working directory with every symlink resolved. Reads the disk once per directory.
+  # The working directory with every symlink resolved, read once (see WorkingDir)
   def self.working_dir
-    pwd = Dir.pwd
-    return @lock.synchronize { @working_dirs[pwd] ||= File.realpath( pwd ) }
+    return WorkingDir.path
   end
 
   # A path written as a project file writes it, in Ceedling's form: trimmed, `/`-separated,
@@ -56,7 +55,7 @@ module ProjectPaths
   def self.absolute(path)
     return path if clean_absolute?( path )
 
-    key    = [Dir.pwd, Dir.home, path.to_s]
+    key    = [working_dir, Dir.home, path.to_s]
     cached = @lock.synchronize { @absolutes[key] }
     return cached unless cached.nil?
 

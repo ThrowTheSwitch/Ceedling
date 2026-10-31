@@ -28,6 +28,8 @@ Five rules govern path handling. Each later section expands one of them.
 
 The project root is the working directory. It is where `ceedling` runs, and every relative path in configuration resolves against it. Mixins also search the project file's directory, but resolved paths are still relative to the working directory. `ProjectPaths.working_dir` is that directory with its symlinks resolved.
 
+`WorkingDir` reads the working directory once and remembers it. A build resolves paths against it tens of thousands of times, and each read from the operating system costs tens of microseconds on macOS. Ceedling code changes directory only through `WorkingDir.chdir`, which forgets the remembered directory as it enters its block and again as it leaves. Paths resolved inside the block resolve against the new directory, and paths resolved after it against the old one. The Dependencies plugin's commands and `FileSystemWrapper#cd` go through it. A plain `Dir.chdir` leaves the remembered directory unchanged. The spec suite's `spec/support/working_dir_tracking.rb` forgets it on every `Dir.chdir`, because specs change directory in-process.
+
 ### Code organization
 
 The path modules sit in `lib/ceedling/filesystem/`, whose [README](README.md) lists every file there. Most are pure module functions with no DIY dependency, so the launcher in `bin/` can use them too. Paths below are relative to that directory.
@@ -35,6 +37,7 @@ The path modules sit in `lib/ceedling/filesystem/`, whose [README](README.md) li
 | File | Module or class | Role |
 | --- | --- | --- |
 | `project_paths.rb` | `ProjectPaths` | Spelling, absolute and relative forms, containment |
+| `working_dir.rb` | `WorkingDir` | The working directory, read once, and the one way to change it |
 | `build_subpath.rb` | `BuildSubpath` | Encoding a directory into a build subpath and back |
 | `path_spellings.rb` | `PathSpellings` | A place's listed and real spellings, and distances between places |
 | `path_exclusions.rb` | `PathExclusions` | The three kinds of exclusion collection applies |
@@ -67,7 +70,7 @@ Every change to path code must keep these invariants. Specs pin each one.
 
 | Function | Result | Reads disk |
 | --- | --- | --- |
-| `working_dir` | `Dir.pwd` with symlinks resolved, memoized per `Dir.pwd` | Once per directory |
+| `working_dir` | `Dir.pwd` with symlinks resolved, remembered by `WorkingDir` | Once |
 | `standardize(path)` | Trimmed, `/`-separated, no trailing separator, `~` expanded, `+:`/`-:` decorator kept | No |
 | `absolute(path)` | Absolute, with `.` and `..` resolved against `working_dir`, drive letter upper case | No |
 | `real_absolute(path)` | `absolute` with the symlinks of its longest existing prefix resolved | Yes |
@@ -84,7 +87,7 @@ Every change to path code must keep these invariants. Specs pin each one.
 
 ### Absolute form and its memo
 
-`absolute` resolves a path without touching the disk. A path that is already clean and absolute returns unchanged through `clean_absolute?`. Any other result is memoized per `[Dir.pwd, Dir.home, path]` and frozen. A build asks for the same few roots thousands of times, so the memo keeps placement and lookup cheap. A `~user` path is prefixed with `./` before `File.expand_path`, so Ruby never reads it as a user's home.
+`absolute` resolves a path without touching the disk. A path that is already clean and absolute returns unchanged through `clean_absolute?`. Any other result is memoized per `[working_dir, Dir.home, path]` and frozen. A build asks for the same few roots thousands of times, so the memo keeps placement and lookup cheap. A `~user` path is prefixed with `./` before `File.expand_path`, so Ruby never reads it as a user's home.
 
 ### Canonical form
 

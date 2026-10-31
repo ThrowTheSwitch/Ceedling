@@ -9,6 +9,7 @@ require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/project_paths'
+require 'ceedling/filesystem/working_dir'
 require 'dependency_spec'
 require 'dependency_commands'
 require 'dependency_environment'
@@ -176,7 +177,7 @@ class Dependencies < Plugin
 
   # The one place this plugin changes directory, around a dependency's own commands
   def in_directory(path, &block)
-    Dir.chdir( path, &block )
+    WorkingDir.chdir( path, &block )
   end
 
   # A fetch path that already holds files is taken as fetched, so fetching again, or

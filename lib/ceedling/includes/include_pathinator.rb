@@ -16,6 +16,9 @@ class IncludePathinator
                        "Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.\n" +
                        "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
 
+  # What `header_listing` remembers for a directory under the build root
+  LISTED_FRESH = :listed_fresh
+
   constructor :configurator, :test_context_extractor, :loginator, :file_wrapper
 
   def setup
@@ -25,6 +28,10 @@ class IncludePathinator
 
     # Alias for brevity
     @extractor = @test_context_extractor
+
+    # Each search path's header listing for one test build (see `header_listing`)
+    @listings      = {}
+    @listings_lock = Mutex.new
   end
 
   def validate_test_build_directive_paths
@@ -70,9 +77,14 @@ class IncludePathinator
   def ordered_header_files(search_paths)
     headers = []
     search_paths.each do |path|
-      headers += @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
+      headers.concat( header_listing( path ) )
     end
     return headers.uniq
+  end
+
+  # Starts a test build with every search path listed afresh
+  def forget_header_listings
+    @listings_lock.synchronize { @listings.clear }
   end
 
   # The project's whole header collection, reordered so headers beneath this test's
@@ -117,6 +129,23 @@ class IncludePathinator
   end
 
   private
+
+  # One search path's headers. A directory outside the build root keeps its listing for the
+  # test build, since a build never writes there, and a test's search paths are listed
+  # several times a test. One under the build root is listed every time, since the build
+  # fills it as it runs.
+  def header_listing(path)
+    key        = [ProjectPaths.working_dir, path]
+    remembered = @listings_lock.synchronize { @listings[key] }
+    return remembered if remembered.is_a?( Array )
+
+    listing = @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns( path ) ).freeze
+    return listing if remembered == LISTED_FRESH
+
+    kept = ProjectPaths.contains?( @configurator.project_build_root, path ) ? LISTED_FRESH : listing
+    @listings_lock.synchronize { @listings[key] ||= kept }
+    return listing
+  end
 
   # Each root's place in the search order by its absolute path, the first one kept, so a
   # header's rank comes from walking up its own directories rather than trying every root

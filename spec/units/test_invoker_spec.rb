@@ -18,7 +18,9 @@ describe TestInvoker do
     @loginator              = double( "Loginator" )
     @verbosinator           = double( "Verbosinator" )
     @test_pipeline_manager  = double( "TestPipelineManager" )
+    @include_pathinator     = double( "IncludePathinator" )
 
+    allow(@include_pathinator).to receive(:forget_header_listings)
     allow(@plugin_manager).to receive(:pre_test_build)
     allow(@plugin_manager).to receive(:post_test_build)
     allow(@dependinator).to receive(:open)
@@ -32,7 +34,8 @@ describe TestInvoker do
         :dependinator           => @dependinator,
         :loginator              => @loginator,
         :verbosinator           => @verbosinator,
-        :test_pipeline_manager  => @test_pipeline_manager
+        :test_pipeline_manager  => @test_pipeline_manager,
+        :include_pathinator     => @include_pathinator
       }
     )
   end
@@ -63,6 +66,16 @@ describe TestInvoker do
       expect(@test_pipeline_manager).to receive(:run).ordered
       expect(@dependinator).to receive(:flush).ordered
       expect(@plugin_manager).to receive(:post_test_build).ordered
+
+      @invoker.setup_and_invoke( tests: [] )
+    end
+
+    # A header a `pre_test_build` hook writes is listed, and a later test build in the same
+    # process lists each directory afresh
+    it "forgets remembered header listings after the pre-test-build hook and before the run" do
+      expect(@plugin_manager).to receive(:pre_test_build).ordered
+      expect(@include_pathinator).to receive(:forget_header_listings).ordered
+      expect(@test_pipeline_manager).to receive(:run).ordered
 
       @invoker.setup_and_invoke( tests: [] )
     end
