@@ -224,6 +224,28 @@ describe TestBuildPlanner do
       expect(@testable.mocks.values.map( &:source )).to contain_exactly( 'inc/a/foo.h', 'inc/b/foo.h' )
     end
 
+    # Nothing in the loop over a test's mocks changes its search paths, so one collection
+    # serves every mock. Validation lists the whole search paths, mock directories included.
+    it "builds one mock header collection for all of a test's real mocks" do
+      mocks = %w[MockFoo.h MockBar.h MockBaz.h].map { |name| MockInclude.new( name ) }
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/TestFoo.c' ).and_return( mocks )
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+      allow(@file_finder).to receive(:resolve_mock) { |mock, **| ["src/#{mock.delete_prefix( 'Mock' )}", ''] }
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
+      allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
+      @testable.search_paths      = ['build/test/mocks/a_test', 'src']
+      @testable.mock_search_paths = ['build/test/mocks/a_test']
+
+      collections = 0
+      allow(@include_pathinator).to receive(:ordered_header_files).with( ['src'] ) { collections += 1; ['src/Foo.h'] }
+
+      @planner.stage_determine_files( @state )
+
+      expect(@testable.mocks.length).to eq( 3 )
+      expect(collections).to eq( 1 )
+    end
+
     context "with a Partial mocked header" do
       before(:each) do
         mock = MockInclude.new( 'Mockceedling_partial_foo_interface.h' )
@@ -237,6 +259,15 @@ describe TestBuildPlanner do
 
       # A Partial mock has no real header to resolve against, so its directory comes
       # from the generated #include rather than from a mirrored source location.
+      it "builds no mock header collection, having no real header to resolve" do
+        @testable.search_paths      = ['build/test/mocks/a_test', 'src']
+        @testable.mock_search_paths = ['build/test/mocks/a_test']
+
+        expect(@include_pathinator).to_not receive(:ordered_header_files).with( ['src'] )
+
+        @planner.stage_determine_files( @state )
+      end
+
       it "stays flat when its generated #include names no directory" do
         expect(@file_finder).to_not receive(:resolve_mock)
 
