@@ -413,6 +413,7 @@ test_invoker:
     - loginator
     - verbosinator
     - test_pipeline_manager
+    - include_pathinator
 
 test_pipeline_manager:
   compose:

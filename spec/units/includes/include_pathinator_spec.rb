@@ -78,6 +78,7 @@ describe IncludePathinator do
         ['build/test/mocks/a.h'],
         ['build/test/mocks/a.h', 'build/test/mocks/b.h']
       )
+      expect(ProjectPaths).to receive(:contains?).once.and_call_original
 
       expect(@pathinator.ordered_header_files(['build/test/mocks'])).to eq( ['build/test/mocks/a.h'] )
       expect(@pathinator.ordered_header_files(['build/test/mocks'])).to eq( ['build/test/mocks/a.h', 'build/test/mocks/b.h'] )
