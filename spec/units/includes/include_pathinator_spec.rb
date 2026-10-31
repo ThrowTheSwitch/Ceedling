@@ -20,6 +20,7 @@ describe IncludePathinator do
     @file_wrapper = double( "FileWrapper" )
 
     allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new('.h') )
+    allow(@configurator).to receive(:project_build_root).and_return( 'build' )
 
     @pathinator = described_class.new(
       {
@@ -62,6 +63,33 @@ describe IncludePathinator do
       allow(@file_wrapper).to receive(:directory_listing).with(['inc/*.h']).and_return( ['inc/foo.h'] )
 
       expect(@pathinator.ordered_header_files(['inc', 'inc'])).to eq( ['inc/foo.h'] )
+    end
+
+    # A test's search paths are listed several times a test, and nothing in a build writes
+    # into the project's own directories
+    it 'lists a directory outside the build root once' do
+      expect(@file_wrapper).to receive(:directory_listing).with(['inc/*.h']).once.and_return( ['inc/foo.h'] )
+
+      2.times { expect(@pathinator.ordered_header_files(['inc'])).to eq( ['inc/foo.h'] ) }
+    end
+
+    it 'lists a directory under the build root on every call, so headers the build writes appear' do
+      expect(@file_wrapper).to receive(:directory_listing).with(['build/test/mocks/*.h']).twice.and_return(
+        ['build/test/mocks/a.h'],
+        ['build/test/mocks/a.h', 'build/test/mocks/b.h']
+      )
+
+      expect(@pathinator.ordered_header_files(['build/test/mocks'])).to eq( ['build/test/mocks/a.h'] )
+      expect(@pathinator.ordered_header_files(['build/test/mocks'])).to eq( ['build/test/mocks/a.h', 'build/test/mocks/b.h'] )
+    end
+
+    it 'lists every directory again after the listings are forgotten' do
+      expect(@file_wrapper).to receive(:directory_listing).with(['inc/*.h']).twice.and_return( ['inc/foo.h'], ['inc/foo.h', 'inc/new.h'] )
+
+      @pathinator.ordered_header_files(['inc'])
+      @pathinator.forget_header_listings
+
+      expect(@pathinator.ordered_header_files(['inc'])).to eq( ['inc/foo.h', 'inc/new.h'] )
     end
   end
 
