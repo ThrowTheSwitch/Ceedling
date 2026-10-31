@@ -5,12 +5,13 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/filesystem/working_dir'
+
 class FileSystemWrapper
 
-  def cd(path)
-    FileUtils.cd path do
-      yield
-    end
+  # Through WorkingDir, so paths resolved inside the block resolve against `path`
+  def cd(path, &block)
+    return WorkingDir.chdir( path, &block )
   end
 
 end
