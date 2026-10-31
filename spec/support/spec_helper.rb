@@ -59,3 +59,5 @@ $: << File.join(here, '../../bin')
 $: << File.join(here, '../../lib')
 $: << File.join(here, '../../vendor/cmock/lib')
 $: << File.join(here, '../../vendor/unity/auto')
+
+require 'working_dir_tracking'
