@@ -250,6 +250,16 @@ This setting enables a `report:bullseye` task.
  > ceedling report:bullseye
 ```
 
+The report task can also follow a `bullseye:` task on the same command line.
+
+```shell
+ > ceedling bullseye:all report:bullseye
+```
+
+Either way, its reports leave out the same sources as automatic reports (see
+[Report exclusions](#report-exclusions)). With no coverage file yet, the task
+says so and writes nothing.
+
 Large projects may prefer this. Report generation can be time intensive.
 
 ### `:license_manager_file:`
@@ -353,7 +363,8 @@ Framework and test sources are excluded from reports automatically. Unity,
 CMock, CException, files matching your test file prefix, and generated mocks
 are all excluded. Aggregate percentages therefore reflect your production code.
 
-Exclusions apply to console totals, HTML reports, and XML reports alike.
+Exclusions apply to console totals, HTML reports, and XML reports alike,
+including those `report:bullseye` writes.
 
 Bullseye calls the underlying concept a region. A region is an inclusion or
 exclusion rule. Regions can match by filename, directory, function, or C++

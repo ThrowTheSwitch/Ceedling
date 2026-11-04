@@ -16,6 +16,34 @@ Each release has its own section, listing every issue known to affect it. An iss
 
 ---
 
+## 1.2.3 — Unreleased
+
+Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
+
+1. The new internal pipeline as of 1.0.0 that allows builds to be parallelized and configured per-test-executable can mean a fair amount of duplication of steps. A header file may be mocked identically multiple times. The same source file may be compiled identically multiple times. Delta builds (as of 1.2.0) offer considerable build time savings as do the speedup gains due to parallelization as of 1.0.0. Future releases will optimize away duplication of build steps.
+1. An `#include` directive must resolve to a file within your project’s configured `:paths` search collection. A path that would resolve outside your configured search paths (e.g. via relative paths beyond search paths or excessive `..` parent-directory segments) is now rejected with a clear, specific error rather than silently causing a confusing downstream build failure.
+1. With test preprocessing enabled, a test file’s `#include` of a mock whose name comes from a macro defined only in a header, as in `#include MOCK_HEADER` with `MOCK_HEADER` defined in another header, cannot be found. Define the macro under `:defines` ↳ `:test` so the test file sees it directly.
+1. Fallback preprocessing remains a best effort with no guarantees. It is used where your toolchain’s preprocessor does not support `-fdirectives-only` or where you force it with `:test_build` ↳ `:preprocess_force_fallback`. Its handling of conditional compilation is limited and may not resolve the same branches your compiler would. Macro expansion is not supported at all.
+1. Delta builds track a library only when they find its file on `:paths` ↳ `:libraries`, or the Dependencies plugin builds it. An “untracked” library found only among your toolchain’s internal search paths, or through a `-L` written into `:flags`, relinks nothing when it changes. Run `ceedling clobber` after such a library changes.
+1. On Linux and macOS, a test, source, or build path holding `"`, `$`, a backtick, or `\` can still break the commands Ceedling runs. So can any path in a tool you define with an unquoted `${1}`. Quote your own tools’ paths, as [`:tools`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/tools/) describes.
+1. Paths for `TEST_SOURCE_FILE(...)` remain relative to **_project root_** — that is, from where you execute `ceedling` at the command line. If you move source files or change your directory structure, `TEST_SOURCE_FILE(...)` calls referencing moved files will need to be updated.
+1. The `ceedling` command of an installation before 1.2.2, such as a 1.2.1 gem, loads a 1.2.3 application that a project selects into its own process. The 1.2.3 application restarts itself in its own process. `new`, `example`, `examples`, `upgrade`, `docs`, and `help` without a project never load the application, so they still run on the older installation’s code. Upgrade the Ceedling whose `ceedling` command you run, typically the gem, to 1.2.3.
+1. The `ceedling` command you run parses your command line before it hands off to the installation a project selects. It rejects an option that only the selected installation knows. Run the selected installation’s own launcher instead, such as a `--local` project’s `./ceedling` launch script from the project root (`.\ceedling.cmd` on Windows).
+1. A mock `#include` written relative to the test file that climbs with `..` to a directory the mock search paths do not reach, such as `#include "../src/drivers/mock_foo.h"`, fails to compile, as in earlier releases. Include the mock relative to a search path instead, such as `#include "drivers/mock_foo.h"`.
+1. On Windows, a source far outside the project lengthens its build paths, since each `..` in its path from the project adds `_up_/`. Ceedling warns as a path nears Windows’ 260-character limit.
+
+### Partials
+
+1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.
+1. A type created by a macro invocation rather than written out — the list and queue building macros in `sys/queue.h`, for instance — is not recognized as a type, and a Partial using one fails to compile with an `unknown type name` error.
+1. A `struct`, `union`, or `enum` written directly on a variable, as in `static struct { int depth; } slot;`, is treated as a variable alone. The generated Partial states the type twice and fails to compile.
+1. A `struct`, `union`, or `enum` named but not defined, as in `struct node;`, is reproduced in the generated Partial as an invalid declaration. Builds treating warnings as errors fail on it.
+1. A macro the module retires with `#undef` is carried into the generated Partial anyway, so the name stays visible to your test file and can collide with another macro of the same name.
+1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
+1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
+
+---
+
 ## 1.2.2 — 2026-10-31
 
 Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
@@ -31,6 +59,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. The `ceedling` command you run parses your command line before it hands off to the installation a project selects. It rejects an option that only the selected installation knows. Run the selected installation’s own launcher instead, such as a `--local` project’s `./ceedling` launch script from the project root (`.\ceedling.cmd` on Windows).
 1. A mock `#include` written relative to the test file that climbs with `..` to a directory the mock search paths do not reach, such as `#include "../src/drivers/mock_foo.h"`, fails to compile, as in earlier releases. Include the mock relative to a search path instead, such as `#include "drivers/mock_foo.h"`.
 1. On Windows, a source far outside the project lengthens its build paths, since each `..` in its path from the project adds `_up_/`. Ceedling warns as a path nears Windows’ 260-character limit.
+1. With `:bullseye` ↳ `:report_task: TRUE`, a `report:bullseye` task on the same command line as a fresh `bullseye:` build writes HTML and XML reports that include Unity, generated test runners, and test files. Run `report:bullseye` again, or run it as its own command after the build ([#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385)).
 
 ### Partials
 
@@ -41,6 +70,8 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. A macro the module retires with `#undef` is carried into the generated Partial anyway, so the name stays visible to your test file and can collide with another macro of the same name.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
+
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build.
 
 ---
 
@@ -64,6 +95,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. A `-:` `:paths` entry removes only the directory it names, not the directories below it. Add a `-:` entry for each, or use a glob such as `-:src/legacy/**`.
 1. `~` in a configured path names a directory called `~`, not your home directory. Write the full path instead.
 1. A `:files` glob such as `+:**/*.c` collects the build directory’s own mocks, runners, and vendored Unity and CMock sources, and test files, and a release build then stops compiling them. Write the glob below your own source directories, such as `+:src/**/*.c`. A source root holding the test root also collects test files into a release build; add a `-:` `:files` entry for them.
+1. With `:bullseye` ↳ `:report_task: TRUE`, a `report:bullseye` task on the same command line as a fresh `bullseye:` build writes HTML and XML reports that include Unity, generated test runners, and test files. Run `report:bullseye` again, or run it as its own command after the build ([#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385)).
 
 ### Partials
 
@@ -76,6 +108,8 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
 Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. Also resolved: a directory left in `build/vendor/` for a file `lstat` misreported failing every build. The [Changelog](Changelog.md) lists every other fix since this release.
+
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build.
 
 ---
 
@@ -99,6 +133,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. A `-:` `:paths` entry removes only the directory it names, not the directories below it. Add a `-:` entry for each, or use a glob such as `-:src/legacy/**`.
 1. `~` in a configured path names a directory called `~`, not your home directory. Write the full path instead.
 1. A `:files` glob such as `+:**/*.c` collects the build directory’s own mocks, runners, and vendored Unity and CMock sources, and test files, and a release build then stops compiling them. Write the glob below your own source directories, such as `+:src/**/*.c`. A source root holding the test root also collects test files into a release build; add a `-:` `:files` entry for them.
+1. With `:bullseye` ↳ `:report_task: TRUE`, a `report:bullseye` task on the same command line as a fresh `bullseye:` build writes HTML and XML reports that include Unity, generated test runners, and test files. Run `report:bullseye` again, or run it as its own command after the build ([#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385)).
 
 ### Partials
 
@@ -111,6 +146,8 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
 Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. Also resolved: frameworks vendor copying failing on files `lstat` misreports as directories. The [Changelog](Changelog.md) lists every other fix since this release.
+
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build.
 
 ---
 

@@ -12,6 +12,14 @@ Each release has its own section, listing only what changed in that release.
 
 ---
 
+# [1.2.3] — Unreleased
+
+## 💪 Fixed
+
+- [#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385) Fixed the [Bullseye plugin’s](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) `report:bullseye` task including Unity, generated test runners, and test files in its HTML and XML reports when run on the same command line as a fresh `bullseye:` build, as in `ceedling bullseye:all report:bullseye`. Its reports now leave out the same sources as automatic reports. With no coverage file yet, it reports that and writes nothing, rather than failing with a license hint.
+
+---
+
 # [1.2.2] — 2026-10-31
 
 ## 💪 Fixed
