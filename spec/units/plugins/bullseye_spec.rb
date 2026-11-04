@@ -609,6 +609,40 @@ describe Bullseye do
     end
   end
 
+  # The report task runs before post_build, so it cannot rely on post_build's exclusions
+  describe '#generate_coverage_reports' do
+    it 'applies report exclusions before writing the HTML and XML reports' do
+      bullseye = build_bullseye({ bullseye_summaries: true })
+
+      expect(bullseye).to receive(:apply_report_exclusions).ordered
+      expect(bullseye).to receive(:generate_html_report).ordered
+      expect(bullseye).to receive(:generate_xml_report).ordered
+
+      bullseye.generate_coverage_reports()
+    end
+
+    it 'applies report exclusions even when summaries are disabled' do
+      bullseye = build_bullseye({ bullseye_summaries: false })
+
+      expect(bullseye).to receive(:apply_report_exclusions)
+      allow(bullseye).to receive(:generate_html_report)
+      allow(bullseye).to receive(:generate_xml_report)
+
+      bullseye.generate_coverage_reports()
+    end
+
+    it 'logs that there is no coverage file and writes nothing when there is none' do
+      bullseye = build_bullseye({}, file_wrapper: double('file_wrapper', exist?: false))
+
+      expect(loginator).to receive(:log).with(/No coverage file\./)
+      expect(bullseye).to_not receive(:apply_report_exclusions)
+      expect(bullseye).to_not receive(:generate_html_report)
+      expect(bullseye).to_not receive(:generate_xml_report)
+
+      bullseye.generate_coverage_reports()
+    end
+  end
+
   ##
   ## License diagnostics
   ##

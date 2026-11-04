@@ -200,6 +200,48 @@ module BullseyeCommonTestCases
     end
   end
 
+  # Rake runs the report task before post_build applies its exclusions. On a fresh
+  # coverage file, the report task must apply them itself.
+  def bullseye_report_task_same_command_line
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        copy_branch_coverage_fixture
+        add_bullseye_option('report_task', 'TRUE')
+        add_bullseye_option('xml_report', ':cobertura')
+
+        @c.ceedling_build_exec('clobber')
+        output = @c.ceedling_build_exec('bullseye:all report:bullseye')
+
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/XML coverage report/)
+
+        contents = read_spec_file(File.join('build', 'artifacts', 'bullseye', 'coverage.xml'))
+        expect(contents).to match(/branchy\.c/)
+        expect(contents).not_to match(/unity\.c/)
+        expect(contents).not_to match(/_runner\.c/)
+        expect(contents).not_to match(/test_branchy\.c/)
+      end
+    end
+  end
+
+  def bullseye_report_task_without_coverage
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        add_bullseye_option('report_task', 'TRUE')
+
+        @c.ceedling_build_exec('clobber')
+        output = @c.ceedling_build_exec('report:bullseye')
+
+        expect(@c.last_exit_status).to eq(0)
+        expect(output).to match(/No coverage file\./)
+        expect(output).not_to match(/coverage report:/)
+        expect(File.exist?('test.cov')).to eq false
+      end
+    end
+  end
+
   ##
   ## Coverage thresholds
   ##

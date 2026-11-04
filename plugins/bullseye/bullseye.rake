@@ -131,9 +131,7 @@ namespace BULLSEYE_REPORT_NAMESPACE_SYM do
 
   desc "Generate coverage reports (Note: a #{BULLSEYE_SYM}: task must be executed first)"
   task BULLSEYE_SYM do
-    @ceedling[:bullseye].generate_html_report()
-    # Does nothing unless :xml_report names a format
-    @ceedling[:bullseye].generate_xml_report()
+    @ceedling[:bullseye].generate_coverage_reports()
   end
 
 end

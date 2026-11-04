@@ -68,6 +68,8 @@ ceedling_system_tests do
       test_case :bullseye_xml_report_disabled_by_default
       test_case :bullseye_xml_report_cobertura
       test_case :bullseye_xml_report_native
+      test_case :bullseye_report_task_same_command_line
+      test_case :bullseye_report_task_without_coverage
     end
 
     describe "Coverage thresholds" do
