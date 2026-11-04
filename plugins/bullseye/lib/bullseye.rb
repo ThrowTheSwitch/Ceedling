@@ -311,8 +311,21 @@ class Bullseye < Plugin
     end
   end
 
+  # Generates the HTML and XML reports from the coverage file on disk.
+  # Called externally by plugin Rakefile (report:bullseye).
+  #
+  # Rake runs a report task on the command line before post_build, so this applies the
+  # report exclusions itself. A fresh coverage file has none yet.
+  def generate_coverage_reports()
+    return if (verify_coverage_file() == false)
+
+    apply_report_exclusions()
+    generate_html_report()
+    generate_xml_report()
+  end
+
   # Generates a full interactive HTML coverage report to the artifacts directory.
-  # Called within class and also externally by plugin Rakefile (report:bullseye / post_build).
+  # Called by post_build and generate_coverage_reports.
   def generate_html_report()
     begin
       @ceedling[:tool_validator].validate( tool: TOOLS_BULLSEYE_REPORT_COVHTML, boom: true )
@@ -329,7 +342,7 @@ class Bullseye < Plugin
   end
 
   # Generates a machine-readable coverage report for CI tooling.
-  # Called within class and also externally by plugin Rakefile (report:bullseye / post_build).
+  # Called by post_build and generate_coverage_reports.
   # Does nothing unless :xml_report names a format.
   def generate_xml_report()
     format = @project_config[:bullseye_xml_report]
