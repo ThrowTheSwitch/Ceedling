@@ -103,10 +103,13 @@ module CiSummary
       return Dir.exist?( @results_dir ) ? Dir.children( @results_dir ).sort : []
     end
 
+    # A file a killed or cancelled run left empty or cut short reads as missing
     def read_json(path)
       return nil if path.nil? or !File.exist?( path )
 
       return JSON.parse( File.read( path, encoding: 'UTF-8' ) )
+    rescue JSON::ParserError
+      return nil
     end
 
   end
