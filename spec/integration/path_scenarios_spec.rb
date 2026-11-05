@@ -14,6 +14,8 @@
 
 require 'spec_helper'
 require 'path_scenario_harness'
+require 'yaml'
+require 'ceedling/filesystem/build_subpath'
 
 describe 'Path scenarios (integration)' do
   include PathScenarioHarness
@@ -73,6 +75,81 @@ describe 'Path scenarios (integration)' do
           expect_inside_build( placed[:preprocessed] )
           expect_inside_build( placed[:test_objects] )
         end
+      end
+    end
+  end
+
+  # --- #1387: long roots shorten to a marker in build paths -------------------------------
+
+  # A vendor's include root far outside the project, and a source root nested deep inside
+  # it, add their whole locations to every build path below them. Each gives way to a short
+  # marker, and everything below the root keeps its path.
+  context '#1387: a long root outside the project and one deep inside it' do
+    def files
+      {
+        'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ),
+        'app/lib/vendor/acme/hal/hal.c' => c( 'hal' ), 'app/lib/vendor/acme/hal/hal.h' => h( 'hal' ),
+        'app/test/test_m.c' => TEST_C
+      }
+    end
+
+    def paths
+      {
+        test:    ['test/**'],
+        source:  ['src/**', 'lib/vendor/acme/hal/**'],
+        include: ['src/**', 'lib/vendor/acme/hal/**', '%{far}/inc/**']
+      }
+    end
+
+    def roots_of(scene)
+      table = scene[:paths].build_roots
+      far   = table.entries.map( &:first ).find { |root| root.end_with?( 'inc' ) }
+      return [table, far, 'lib/vendor/acme/hal']
+    end
+
+    it 'places build files below each root\'s marker, and finds each source from them exactly' do
+      in_workspace( files, far: { 'inc/os/cmsis_os2.h' => h( 'os' ) } ) do |ws, app|
+        scene = scenario( scenario_yaml( ws: ws, app: app, paths: paths ) )
+        table, far, hal = roots_of( scene )
+        placed = placements( scene )
+
+        expect(table.entries.map( &:first )).to contain_exactly( far, hal )
+        expect(placed[:release_objects]).to include( "build/release/out/#{table.marker_for( hal )}/hal.o", 'build/release/out/src/main.o' )
+        expect(placed[:preprocessed]).to include( end_with( "/#{table.marker_for( far )}/os/cmsis_os2.h" ) )
+        placed.each_value { |kind| expect_inside_build( kind ) }
+        expect_collections_outside_build( scene[:configurator] )
+
+        object = "build/release/out/#{table.marker_for( hal )}/hal.o"
+        expect(scene[:finder].find_build_input_file( filepath: object, complain: :error, context: RELEASE_SYM )).to eq( "#{hal}/hal.c" )
+      end
+    end
+
+    it 'shortens a vendor header\'s build path by exactly its root\'s climb and location' do
+      in_workspace( files, far: { 'inc/os/cmsis_os2.h' => h( 'os' ) } ) do |ws, app|
+        scene = scenario( scenario_yaml( ws: ws, app: app, paths: paths ) )
+        table, far, _hal = roots_of( scene )
+        header  = scene[:configurator].collection_all_headers.find { |path| path.end_with?( 'cmsis_os2.h' ) }
+        testable = scene[:state].testables.values.first
+
+        shortened = scene[:paths].form_preprocessed_file_filepath( header, testable.name )
+        former    = File.join( scene[:configurator].project_test_preprocess_files_path, testable.name, BuildSubpath.encode( File.dirname( header ) ), 'cmsis_os2.h' )
+
+        expect(shortened).to eq( former.sub( BuildSubpath.encode( far ), table.marker_for( far ) ) )
+        expect(former.length - shortened.length).to eq( BuildSubpath.encode( far ).length - table.marker_for( far ).length )
+      end
+    end
+
+    it 'writes the roots it shortened to the build root, and removes the map once none is' do
+      in_workspace( files, far: { 'inc/os/cmsis_os2.h' => h( 'os' ) } ) do |ws, app|
+        scene = scenario( scenario_yaml( ws: ws, app: app, paths: paths ) )
+        table, = roots_of( scene )
+
+        scene[:paths].publish_build_roots
+        expect(YAML.safe_load( File.read( 'build/build_roots.yml' ) )).to eq( table.entries.to_h { |root, marker| [marker, root] } )
+
+        shallow = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: ['src/**'] } ) )
+        shallow[:paths].publish_build_roots
+        expect(File.exist?( 'build/build_roots.yml' )).to be( false )
       end
     end
   end

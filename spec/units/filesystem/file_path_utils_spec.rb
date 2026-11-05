@@ -9,6 +9,8 @@ require 'spec_helper'
 require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/filename_extension'
+require 'ceedling/filesystem/build_roots'
+require 'yaml'
 
 describe FilePathUtils do
 
@@ -725,6 +727,83 @@ describe FilePathUtils do
     it 'keeps a generated file directly in its test root flat' do
       expect( @fpu.form_preprocessed_file_filepath('build/test/mocks/test_both/Mockconfig.h', 'test_both') )
         .to eq('build/test/preprocess/files/test_both/Mockconfig.h')
+    end
+  end
+
+  # GH #1387: a long configured root's location gives way to its marker in build paths
+  describe 'shortened roots' do
+    let(:external_root) { '../vendor/acme/sdk/v3/include' }
+    let(:deep_root)     { 'lib/vendor/acme/hal' }
+    let(:table)         { BuildRoots.table( [external_root, deep_root, 'src'] ) }
+
+    before(:each) do
+      @configurator = double('configurator')
+      @file_wrapper = double('file_wrapper', check_path_length: nil)
+      @fpu = described_class.new({ :configurator => @configurator, :file_wrapper => @file_wrapper })
+
+      allow(@configurator).to receive(:collection_build_roots).and_return( [external_root, deep_root, 'src'] )
+      allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
+      allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+    end
+
+    it 'places objects below a shortened root at its marker, keeping their path below the root' do
+      objects = @fpu.form_test_build_objects_filelist(
+        'build/test/out/TestFoo', ["#{external_root}/os/x.c", "#{deep_root}/y.c", 'src/drv/z.c']
+      )
+
+      expect( objects ).to eq([
+        "build/test/out/TestFoo/#{table.marker_for( external_root )}/os/x.o",
+        "build/test/out/TestFoo/#{table.marker_for( deep_root )}/y.o",
+        'build/test/out/TestFoo/src/drv/z.o'
+      ])
+    end
+
+    it 'places preprocessed files below a shortened root the same way' do
+      expect( @fpu.form_preprocessed_file_raw_directives_only_filepath( "#{external_root}/cmsis_os2.h", 'test_os' ) )
+        .to eq( "build/test/preprocess/files/test_os/directives_only/raw/#{table.marker_for( external_root )}/cmsis_os2.h" )
+    end
+
+    it 'names a test below a shortened root by its whole path, as always' do
+      expect( @fpu.form_test_name( "#{deep_root}/test/test_hal.c" ) ).to eq( "#{deep_root}/test/test_hal" )
+    end
+
+    it 'holds one table for the configured roots' do
+      expect(BuildRoots).to receive(:table).once.and_call_original
+
+      3.times { @fpu.build_roots }
+      expect( @fpu.build_roots.entries ).to eq( table.entries )
+    end
+
+    # gcov exclusions match the layout as it would be without shortened roots
+    it 'expands each marker in a build path back to its root\'s former spelling' do
+      marker = table.marker_for( external_root )
+
+      expect( @fpu.expanded_build_path( "build/gcov/out/test/test_os/#{marker}/os/x.gcno" ) )
+        .to eq( "build/gcov/out/test/test_os/#{BuildSubpath.encode( external_root )}/os/x.gcno" )
+      expect( @fpu.expanded_build_path( 'build/gcov/out/test/test_os/src/x.gcno' ) ).to eq( 'build/gcov/out/test/test_os/src/x.gcno' )
+    end
+
+    describe '#publish_build_roots' do
+      it 'writes each marker and its root to the build root, and returns them' do
+        expect(@file_wrapper).to receive(:mkdir).with( 'build' )
+        expect(@file_wrapper).to receive(:write) do |path, contents|
+          expect(path).to eq( 'build/build_roots.yml' )
+          expect(YAML.safe_load( contents )).to eq( table.entries.to_h { |root, marker| [marker, root] } )
+        end
+
+        expect( @fpu.publish_build_roots ).to eq( table.entries )
+      end
+
+      it 'removes the map when no root is shortened' do
+        allow(@configurator).to receive(:collection_build_roots).and_return( ['src'] )
+        expect(@file_wrapper).to receive(:rm_f).with( 'build/build_roots.yml' )
+        expect(@file_wrapper).not_to receive(:write)
+
+        expect( @fpu.publish_build_roots ).to be_empty
+      end
     end
   end
 
