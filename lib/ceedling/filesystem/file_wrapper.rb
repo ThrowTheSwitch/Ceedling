@@ -248,11 +248,7 @@ class FileWrapper
       # which is how a previous attempt at "fixing" this cop was caught.
       open(filepath, flags) { |file| yield(file) } # rubocop:disable Security/Open
     rescue SystemCallError => e
-      if attempts_remaining.empty?
-        msg = "Failed to open '#{filepath}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}"
-        @loginator.log(msg, Verbosity::ERRORS)
-        raise CeedlingException, msg
-      end
+      retries_exhausted!(filepath, e) if attempts_remaining.empty?
       delay = attempts_remaining.shift
       @loginator.log("Retrying read of '#{filepath}' after a transient error: #{e.message}", Verbosity::DEBUG)
       sleep(delay)
@@ -433,6 +429,13 @@ class FileWrapper
       sleep:        ->( delay ) { sleep( delay ) },
       log:          ->( message, verbosity, label ) { @loginator.log( message, verbosity, label ) }
     }
+  end
+
+  # #open_with_retry's last attempt failed too
+  def retries_exhausted!(filepath, error)
+    msg = "Failed to open '#{filepath}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{error.message}"
+    @loginator.log(msg, Verbosity::ERRORS)
+    raise CeedlingException, msg
   end
 
   def owner_writable(path)
