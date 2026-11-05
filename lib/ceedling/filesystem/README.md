@@ -20,6 +20,7 @@ Pure modules with no state beyond memos.
 | [`path_mirror.rb`](path_mirror.rb) | `PathMirror` | A file's subdirectory below the most specific configured root that contains it |
 | [`path_matcher.rb`](path_matcher.rb) | `PathMatcher` | Resolving `..` in a query, and matching a query's trailing segments against a collection |
 | [`destination_collision.rb`](destination_collision.rb) | `DestinationCollision` | Stopping a build when two inputs map to one output |
+| [`win_long_paths.rb`](win_long_paths.rb) | `WinLongPaths` | Windows' path length limits, and a probe of whether this Ruby can create and list paths past 260 characters |
 
 ## Path services
 
