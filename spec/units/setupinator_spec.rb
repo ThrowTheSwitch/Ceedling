@@ -12,17 +12,18 @@ describe Setupinator do
   # FileWrapper is built before any configuration exists, so setup hands it the Windows
   # path limit once the configuration is built
   describe 'Windows path limit' do
-    it 'gives FileWrapper the configured mode and the build root to probe below' do
-      configurator = double( 'configurator', project_win_path_limit: :auto, project_build_root: 'build' )
+    it 'gives FileWrapper the configured mode and the build root to probe below, once the configuration is built' do
+      configurator = double( 'configurator', project_win_path_limit: :auto, project_build_root: 'build', build: nil )
       file_wrapper = double( 'file_wrapper' )
       objects      = Setupinator::COLLABORATORS.to_h { |name| [name, double( name.to_s )] }
 
       setupinator = described_class.new
       setupinator.ceedling = objects.merge( configurator: configurator, file_wrapper: file_wrapper )
 
-      expect(file_wrapper).to receive(:configure_win_path_limit).with( mode: :auto, probe_root: 'build' )
+      expect(configurator).to receive(:build).ordered
+      expect(file_wrapper).to receive(:configure_win_path_limit).with( mode: :auto, probe_root: 'build' ).ordered
 
-      setupinator.send( :configure_path_length_limit )
+      setupinator.send( :build_configuration, { ceedling_lib_path: 'lib', logging_path: 'logs' } )
     end
   end
 end

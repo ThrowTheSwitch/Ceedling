@@ -20,6 +20,8 @@ require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_tree'
 require 'ceedling/filesystem/project_paths'
+require 'ceedling/filesystem/win_long_paths'
+require 'ceedling/filesystem/win_path_limit'
 
 
 class FileWrapper
@@ -29,9 +31,23 @@ class FileWrapper
   # The paths already reported by check_path_length. Only a path in the warning band or past
   # the limit is ever recorded, so the record holds the few long paths a build makes, not
   # every path it checks.
+  #
+  # The Windows path limit starts as the classic one. Setup configures it once the
+  # project's configuration exists (see #configure_win_path_limit). Whether long paths are
+  # in effect stays unknown until a path first nears the classic limit and the probe runs.
   def setup
-    @path_reports = Set.new
-    @path_lock    = Mutex.new
+    @path_reports   = Set.new
+    @path_lock      = Mutex.new
+    @win_path_limit = :max_path
+    @probe_root     = nil
+    @long_paths     = nil
+    @probe_lock     = Mutex.new
+  end
+
+  # :project ↳ :win_path_limit, and the directory the long path probe may work below
+  def configure_win_path_limit(mode:, probe_root:)
+    @win_path_limit = mode
+    @probe_root     = probe_root
   end
 
   # Platform practical filepath length ceilings, used only as a diagnostic heuristic --
@@ -45,7 +61,7 @@ class FileWrapper
   # headers (a project can opt into longer paths on some platforms, but that's not
   # safely assumable here, so these stay conservative).
   PATH_LENGTH_LIMITS = {
-    windows: 260,
+    windows: WinLongPaths::LIMITS[:max_path],
     macos:   1024,
     linux:   4096,
   }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
@@ -352,7 +368,7 @@ class FileWrapper
   end
 
   def mkdir(folder)
-    check_path_length(folder, origin: 'FileWrapper#mkdir')
+    check_path_length(folder, origin: 'FileWrapper#mkdir', directory: true)
     return FileUtils.mkdir_p(folder)
   end
 
@@ -368,7 +384,7 @@ class FileWrapper
   # the same `parent` -- Dir.mktmpdir retries internally on name clash.
   def mkdir_tmp(prefix, parent)
     path = Dir.mktmpdir(prefix, parent)
-    check_path_length(path, origin: 'FileWrapper#mkdir_tmp')
+    check_path_length(path, origin: 'FileWrapper#mkdir_tmp', directory: true)
     return path
   end
 
@@ -388,27 +404,26 @@ class FileWrapper
   # spelling is the key, so two spellings of one place count once. `ProjectPaths.absolute`
   # is memoized, so a repeated check reads neither the disk nor the working directory, and
   # a path below the warning band returns before taking any lock.
-  def check_path_length(path, origin:)
-    limit    = path_length_limit
+  #
+  # On Windows, a directory (`directory: true`) stops at 248 characters under the classic
+  # limits. The first path to near the classic limit runs the long path probe, if the
+  # project asked for long paths, and the limit is read again from its answer.
+  def check_path_length(path, origin:, directory: false)
     absolute = ProjectPaths.absolute( path.to_s )
     length   = absolute.length
+    limit    = path_length_limit( directory )
 
     return if length < (limit - WARNING_MARGIN)
+
+    if probe_wanted?
+      probe_long_paths()
+      limit = path_length_limit( directory )
+      return if length < (limit - WARNING_MARGIN)
+    end
+
     return unless @path_lock.synchronize { @path_reports.add?( absolute ) }
 
-    prefix = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
-
-    if length >= limit
-      @loginator.log(
-        "#{prefix}Path length (#{length}) reaches or exceeds this platform's practical limit (#{limit}): #{path}",
-        Verbosity::ERRORS
-      )
-    else
-      @loginator.log(
-        "#{prefix}Path length (#{length}) is approaching this platform's practical limit (#{limit}): #{path}",
-        Verbosity::COMPLAIN
-      )
-    end
+    log_path_length( path, length, limit, origin )
   end
 
   private
@@ -427,10 +442,56 @@ class FileWrapper
     File.chmod( mode | 0o200, path ) if (mode & 0o200).zero?
   end
 
-  def path_length_limit
-    return PATH_LENGTH_LIMITS[:windows] if SystemWrapper.windows?
+  def path_length_limit(directory = false)
+    return windows_path_limit( directory ) if SystemWrapper.windows?
     return PATH_LENGTH_LIMITS[:macos] if SystemWrapper.macos?
     return PATH_LENGTH_LIMITS[:linux]
+  end
+
+  def windows_path_limit(directory)
+    return WinLongPaths::LIMITS[:long_paths] if @long_paths
+    return WinLongPaths::LIMITS[directory ? :max_directory : :max_path]
+  end
+
+  def probe_wanted?
+    return SystemWrapper.windows? && (@win_path_limit != :max_path) && @long_paths.nil?
+  end
+
+  # Runs once per process. A thread that waited here finds the answer already set.
+  def probe_long_paths
+    @probe_lock.synchronize do
+      next unless @long_paths.nil?
+
+      decision    = WinPathLimit.decision( WinLongPaths.probe( @probe_root || '.' ), @win_path_limit )
+      @long_paths = decision[:long_paths]
+      @loginator.log( *decision[:log] )
+    end
+  end
+
+  def log_path_length(path, length, limit, origin)
+    prefix = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
+
+    if SystemWrapper.windows?
+      subject = (limit == WinLongPaths::LIMITS[:max_directory]) ? 'Directory path length' : 'Path length'
+      bound   = WinPathLimit.limit_name( limit )
+    else
+      subject = 'Path length'
+      bound   = "this platform's practical limit (#{limit})"
+    end
+
+    if length < limit
+      @loginator.log( "#{prefix}#{subject} (#{length}) is approaching #{bound}: #{path}", Verbosity::COMPLAIN )
+      return
+    end
+
+    message = "#{prefix}#{subject} (#{length}) reaches or exceeds #{bound}: #{path}"
+    message += "\nIf this host has long paths enabled, see :project ↳ :win_path_limit." if pointer_wanted?( limit )
+    @loginator.log( message, Verbosity::ERRORS )
+  end
+
+  # The setting can help only a project still on the classic limits by its own choice
+  def pointer_wanted?(limit)
+    return SystemWrapper.windows? && (@win_path_limit == :max_path) && (limit != WinLongPaths::LIMITS[:long_paths])
   end
 
 end

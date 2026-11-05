@@ -28,7 +28,7 @@ class Setupinator
 
   # The application objects setup uses, taken from the object hash rather than a DIY
   # constructor, which validates aspects of setup
-  COLLABORATORS = %i[configurator loginator reportinator plugin_manager plugin_reportinator test_runner_manager].freeze
+  COLLABORATORS = %i[configurator loginator reportinator plugin_manager plugin_reportinator test_runner_manager file_wrapper].freeze
 
   attr_reader :config_hash
 
@@ -66,8 +66,7 @@ class Setupinator
     complete_configuration( app_cfg )                                  # 5.
     validate_final_configuration()                                     # 6.
 
-    # 7. Partially flatten config + build Configurator accessors and globals
-    @configurator.build( app_cfg[:ceedling_lib_path], app_cfg[:logging_path], config_hash, :environment )
+    build_configuration( app_cfg )                                     # 7.
 
     load_plugins()                                                     # 8.
   end
@@ -190,6 +189,18 @@ private
     log_step( 'Validating final project configuration', heading: false )
 
     @configurator.validate_final( config_hash )
+  end
+
+  ##
+  ## 7. Build configuration
+  ##
+
+  # Partially flatten config + build Configurator accessors and globals. FileWrapper
+  # reports path lengths from the first file a command touches, before any configuration
+  # exists, so it learns the Windows path limit, and where it may probe, here.
+  def build_configuration(app_cfg)
+    @configurator.build( app_cfg[:ceedling_lib_path], app_cfg[:logging_path], config_hash, :environment )
+    @file_wrapper.configure_win_path_limit( mode: @configurator.project_win_path_limit, probe_root: @configurator.project_build_root )
   end
 
   ##

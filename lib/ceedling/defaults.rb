@@ -278,7 +278,9 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :test_threads => 1,
     :test_file_prefix => 'test_',
     :release_build => false,
-    :use_backtrace => :simple
+    :use_backtrace => :simple,
+    # Windows' classic 260-character limit, the long path limit, or a probe for which applies
+    :win_path_limit => :max_path
     },
 
   :release_build => {
