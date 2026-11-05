@@ -71,7 +71,8 @@ module WinPathLimit
       return ["long paths are not enabled on this host (#{WinLongPaths::REGISTRY_KEY} ↳ #{WinLongPaths::REGISTRY_VALUE} is not 1)",
               ' Enable "Win32 long paths" and run Ceedling again.']
     when :process_not_aware
-      return ["long paths are enabled on this host, but this Ruby (#{RbConfig.ruby}) is not long-path-aware", '']
+      return ["long paths are enabled on this host, but this Ruby (#{RbConfig.ruby}) could not use them in the build " \
+              "directory. Either it is not long-path-aware, or that directory's drive does not support long paths", '']
     else
       return ["the Windows registry could not be read to check for long path support (#{result[:error]})", '']
     end

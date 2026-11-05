@@ -400,18 +400,18 @@ class FileWrapper
   # verbosity -- otherwise the message stays plain, since the path itself is normally
   # enough and repeated origin labels add noise at everyday verbosity levels.
   #
-  # A path is reported once per process, however many operations check it. Its absolute
-  # spelling is the key, so two spellings of one place count once. `ProjectPaths.absolute`
-  # is memoized, so a repeated check reads neither the disk nor the working directory, and
-  # a path below the warning band returns before taking any lock.
+  # A path is measured expanded against the remembered working directory, which costs no
+  # system call and remembers nothing. A path below the warning band, nearly every path,
+  # returns there, before any lock. One in the band is reported once per process, however
+  # many operations check it, keyed by its `ProjectPaths.absolute` spelling so two
+  # spellings of one place count once. Only those reported paths are remembered.
   #
   # On Windows, a directory (`directory: true`) stops at 248 characters under the classic
   # limits. The first path to near the classic limit runs the long path probe, if the
   # project asked for long paths, and the limit is read again from its answer.
   def check_path_length(path, origin:, directory: false)
-    absolute = ProjectPaths.absolute( path.to_s )
-    length   = absolute.length
-    limit    = path_length_limit( directory )
+    length = File.expand_path( path.to_s, ProjectPaths.working_dir ).length
+    limit  = path_length_limit( directory )
 
     return if length < (limit - WARNING_MARGIN)
 
@@ -421,6 +421,7 @@ class FileWrapper
       return if length < (limit - WARNING_MARGIN)
     end
 
+    absolute = ProjectPaths.absolute( path.to_s )
     return unless @path_lock.synchronize { @path_reports.add?( absolute ) }
 
     log_path_length( path, length, limit, origin )

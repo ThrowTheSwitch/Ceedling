@@ -158,16 +158,16 @@ describe FileWrapper do
 
       it 'remembers nothing, and takes no lock, for a path below the warning band' do
         expect(@file_wrapper.instance_variable_get(:@path_lock)).not_to receive(:synchronize)
+        expect(ProjectPaths).not_to receive(:absolute)
 
-        @file_wrapper.check_path_length('/short/path.c', origin: 'Test')
+        @file_wrapper.check_path_length('src/short/path.c', origin: 'Test')
 
         expect(@file_wrapper.instance_variable_get(:@path_reports)).to be_empty
       end
 
-      it 'measures a repeated relative path from memory, without expanding it again' do
-        @file_wrapper.check_path_length('src/file.c', origin: 'Test')
+      it 'measures a relative path against the remembered working directory, not the process\'s' do
+        expect(File).to receive(:expand_path).with('src/file.c', ProjectPaths.working_dir).and_call_original
 
-        expect(File).not_to receive(:expand_path)
         @file_wrapper.check_path_length('src/file.c', origin: 'Test')
       end
     end
