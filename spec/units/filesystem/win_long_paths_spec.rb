@@ -133,34 +133,51 @@ describe WinLongPaths do
       expect(probe( WinLongPathsSpec::FakeDisk.new, query: query )).to eq( { support: :full } )
     end
 
-    it 'builds a path past 260 characters from segments well under 255' do
-      disk = WinLongPathsSpec::FakeDisk.new
-      probe( disk )
-
-      deep     = directories_made( disk ).first
-      segments = deep.delete_prefix( "#{root}/" ).split( '/' )
-
-      expect(deep.length).to be > described_class::LIMITS[:max_path]
-      expect(segments.map(&:length).max).to be < 255
+    # Each directory from `deep` up to `base`, deepest first. It stops at the top of the
+    # path too, so a wrong base fails the example instead of climbing forever.
+    def ancestry(deep, base)
+      chain = [deep]
+      chain << File.dirname( chain.last ) until chain.last == base || File.dirname( chain.last ) == chain.last
+      return chain
     end
 
-    [
-      ['every test passing',      {}],
-      ['a listing failing',       { children: Errno::ENAMETOOLONG.new }],
-      ['a write failing midway',  { write: Errno::ENOENT.new }]
-    ].each do |description, raises|
-      it "removes its file and every directory it made, deepest first, after #{description}" do
-        disk = WinLongPathsSpec::FakeDisk.new( raises: raises )
-        probe( disk )
+    # The probe expands its root, and on Windows that adds a drive letter. Stubbing the
+    # expansion specifies both spellings on every OS.
+    { 'a root without a drive' => '/build', 'a root with a drive letter' => 'D:/build' }.each do |kind, expanded|
+      context "below #{kind}" do
+        before(:each) do
+          allow(File).to receive(:expand_path).and_call_original
+          allow(File).to receive(:expand_path).with( root ).and_return( expanded )
+        end
 
-        deep     = directories_made( disk ).first
-        base     = File.join( root, deep.delete_prefix( "#{root}/" ).split( '/' ).first )
-        expected = [deep]
-        expected << File.dirname( expected.last ) while expected.last != base
-        removed  = disk.calls.select { |name, _| name == :rmdir }.map(&:last)
+        it 'builds a path past 260 characters from segments well under 255' do
+          disk = WinLongPathsSpec::FakeDisk.new
+          probe( disk )
 
-        expect(disk.calls.map(&:first)).to include( :delete )
-        expect(removed).to eq( expected )
+          deep = directories_made( disk ).first
+
+          expect(deep).to start_with( "#{expanded}/" )
+          expect(deep.length).to be > described_class::LIMITS[:max_path]
+          expect(deep.delete_prefix( "#{expanded}/" ).split( '/' ).map(&:length).max).to be < 255
+        end
+
+        [
+          ['every test passing',      {}],
+          ['a listing failing',       { children: Errno::ENAMETOOLONG.new }],
+          ['a write failing midway',  { write: Errno::ENOENT.new }]
+        ].each do |description, raises|
+          it "removes its file and every directory it made, deepest first, after #{description}" do
+            disk = WinLongPathsSpec::FakeDisk.new( raises: raises )
+            probe( disk )
+
+            deep    = directories_made( disk ).first
+            base    = File.join( expanded, deep.delete_prefix( "#{expanded}/" ).split( '/' ).first )
+            removed = disk.calls.select { |name, _| name == :rmdir }.map(&:last)
+
+            expect(disk.calls.map(&:first)).to include( :delete )
+            expect(removed).to eq( ancestry( deep, base ) )
+          end
+        end
       end
     end
 
