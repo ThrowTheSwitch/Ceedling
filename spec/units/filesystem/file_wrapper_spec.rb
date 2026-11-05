@@ -260,9 +260,15 @@ describe FileWrapper do
             expect(@logged).to be_empty
           end
 
+          # Windows' own path functions can't expand a path past 32,767 characters, so the
+          # measured length is given rather than taken from File.expand_path on every OS
           it 'reports a path past the long limit against it' do
             configure(mode, long_paths: true)
-            check(32_800)
+            path = path_of_length(300)
+            allow(File).to receive(:expand_path).and_call_original
+            allow(File).to receive(:expand_path).with(path, ProjectPaths.working_dir).and_return('/' + ('a' * 32_799))
+
+            @file_wrapper.check_path_length(path, origin: 'Test')
 
             expect(@logged.first.first).to match( /reaches or exceeds Windows' 32,767-character long path limit/ )
           end
