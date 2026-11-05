@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'ceedling/filesystem/file_wrapper'
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
 
@@ -32,15 +33,15 @@ describe FileWrapper do
     allow(SystemWrapper).to receive(:macos?).and_return(false)
   end
 
-  # Absolute paths throughout: check_path_length measures File.expand_path(path).length,
+  # Absolute paths throughout: check_path_length measures the path's absolute spelling,
   # so a relative path would pick up the test-runner's own CWD and throw off the
   # precise threshold arithmetic these examples depend on. The padding is sized off
-  # File.expand_path('/')'s own actual length rather than assumed to be 1, since Windows
-  # expands a bare '/' by prepending a drive letter (e.g. "C:/") -- without probing that
-  # overhead first, expanded lengths on Windows would run a couple characters longer than
-  # intended and throw off the precise threshold boundaries these examples depend on.
+  # the absolute spelling of '/' rather than assumed to be 1, since Windows spells a bare
+  # '/' with a drive letter (e.g. "C:/") -- without probing that overhead first, lengths
+  # on Windows would run a couple characters longer than intended and throw off the
+  # precise threshold boundaries these examples depend on.
   def path_of_length(n)
-    overhead = File.expand_path('/').length - 1
+    overhead = ProjectPaths.absolute('/').length - 1
     '/' + ('a' * (n - 1 - overhead))
   end
 
@@ -123,6 +124,49 @@ describe FileWrapper do
       it 'falls back to the Linux limit (4096) when neither Windows nor macOS' do
         @file_wrapper.check_path_length(path_of_length(4096), origin: 'Test')
         expect(@loginator).to have_received(:log).with(any_args, Verbosity::ERRORS)
+      end
+    end
+
+    # A build file is created, opened, and written through separate FileWrapper calls, and
+    # each checks its path. One report per path keeps a real failure from being buried.
+    context 'one report per path' do
+      it 'reports a long path once, whichever operation checks it' do
+        path = path_of_length(5000)
+        ['FileWrapper#mkdir', 'FileWrapper#open', 'FileWrapper#write'].each do |origin|
+          @file_wrapper.check_path_length(path, origin: origin)
+        end
+
+        expect(@loginator).to have_received(:log).once
+      end
+
+      it 'reports a relative and an absolute spelling of one path once' do
+        relative = 'b' * 5000
+        @file_wrapper.check_path_length(relative, origin: 'Test')
+        @file_wrapper.check_path_length(File.join(ProjectPaths.working_dir, relative), origin: 'Test')
+
+        expect(@loginator).to have_received(:log).once
+      end
+
+      it 'reports each of two long paths' do
+        @file_wrapper.check_path_length(path_of_length(5000), origin: 'Test')
+        @file_wrapper.check_path_length(path_of_length(5001), origin: 'Test')
+
+        expect(@loginator).to have_received(:log).twice
+      end
+
+      it 'remembers nothing, and takes no lock, for a path below the warning band' do
+        expect(@file_wrapper.instance_variable_get(:@path_lock)).not_to receive(:synchronize)
+
+        @file_wrapper.check_path_length('/short/path.c', origin: 'Test')
+
+        expect(@file_wrapper.instance_variable_get(:@path_reports)).to be_empty
+      end
+
+      it 'measures a repeated relative path from memory, without expanding it again' do
+        @file_wrapper.check_path_length('src/file.c', origin: 'Test')
+
+        expect(File).not_to receive(:expand_path)
+        @file_wrapper.check_path_length('src/file.c', origin: 'Test')
       end
     end
   end
