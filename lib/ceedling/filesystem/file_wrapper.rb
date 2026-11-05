@@ -415,11 +415,8 @@ class FileWrapper
 
     return if length < (limit - WARNING_MARGIN)
 
-    if probe_wanted?
-      probe_long_paths()
-      limit = path_length_limit( directory )
-      return if length < (limit - WARNING_MARGIN)
-    end
+    limit = probed_limit( directory ) if probe_wanted?
+    return if length < (limit - WARNING_MARGIN)
 
     absolute = ProjectPaths.absolute( path.to_s )
     return unless @path_lock.synchronize { @path_reports.add?( absolute ) }
@@ -458,6 +455,12 @@ class FileWrapper
     return SystemWrapper.windows? && (@win_path_limit != :max_path) && @long_paths.nil?
   end
 
+  # The limit once the probe has answered
+  def probed_limit(directory)
+    probe_long_paths()
+    return path_length_limit( directory )
+  end
+
   # Runs once per process. A thread that waited here finds the answer already set.
   def probe_long_paths
     @probe_lock.synchronize do
@@ -470,24 +473,22 @@ class FileWrapper
   end
 
   def log_path_length(path, length, limit, origin)
-    prefix = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
+    prefix         = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
+    subject, bound = length_terms( limit )
 
-    if SystemWrapper.windows?
-      subject = (limit == WinLongPaths::LIMITS[:max_directory]) ? 'Directory path length' : 'Path length'
-      bound   = WinPathLimit.limit_name( limit )
-    else
-      subject = 'Path length'
-      bound   = "this platform's practical limit (#{limit})"
-    end
-
-    if length < limit
-      @loginator.log( "#{prefix}#{subject} (#{length}) is approaching #{bound}: #{path}", Verbosity::COMPLAIN )
-      return
-    end
+    return @loginator.log( "#{prefix}#{subject} (#{length}) is approaching #{bound}: #{path}", Verbosity::COMPLAIN ) if length < limit
 
     message = "#{prefix}#{subject} (#{length}) reaches or exceeds #{bound}: #{path}"
     message += "\nIf this host has long paths enabled, see :project ↳ :win_path_limit." if pointer_wanted?( limit )
     @loginator.log( message, Verbosity::ERRORS )
+  end
+
+  # What a length message calls the path, and the limit it nears or passes
+  def length_terms(limit)
+    return ['Path length', "this platform's practical limit (#{limit})"] unless SystemWrapper.windows?
+
+    subject = (limit == WinLongPaths::LIMITS[:max_directory]) ? 'Directory path length' : 'Path length'
+    return [subject, WinPathLimit.limit_name( limit )]
   end
 
   # The setting can help only a project still on the classic limits by its own choice
