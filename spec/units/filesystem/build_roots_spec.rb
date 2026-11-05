@@ -15,8 +15,9 @@ require 'ceedling/filesystem/build_subpath'
 describe BuildRoots do
   let(:keil_include) { "#{'../' * 7}Keil_v5/ARM/PACK/ARM/CMSIS/5.9.0/CMSIS/RTOS2/Include" }
 
-  # The marker the module documents: the root's name, then 8 hex digits of its encoded spelling
-  def expected_marker(root, name, windows: false)
+  # The marker the module documents: the root's name, then 8 hex digits of its encoded spelling,
+  # case-folded on Windows as the module folds it by default
+  def expected_marker(root, name, windows: ProjectPaths::WINDOWS)
     key = BuildSubpath.encode( root )
     key = key.downcase if windows
     return "_#{name}_#{Digest::SHA256.hexdigest( key )[0, 8].upcase}"
