@@ -20,6 +20,8 @@ Pure modules with no state beyond memos.
 | [`path_mirror.rb`](path_mirror.rb) | `PathMirror` | A file's subdirectory below the most specific configured root that contains it |
 | [`path_matcher.rb`](path_matcher.rb) | `PathMatcher` | Resolving `..` in a query, and matching a query's trailing segments against a collection |
 | [`destination_collision.rb`](destination_collision.rb) | `DestinationCollision` | Stopping a build when two inputs map to one output |
+| [`win_long_paths.rb`](win_long_paths.rb) | `WinLongPaths` | Windows' path length limits, and a probe of whether this Ruby can create and list paths past 260 characters, given a registry query to name the cause of a failure |
+| [`win_path_limit.rb`](win_path_limit.rb) | `WinPathLimit` | What `:project` ↳ `:win_path_limit` means once the probe answers: the limit that applies, and the one message saying why |
 
 ## Path services
 
@@ -31,6 +33,7 @@ DIY objects that apply the modules above to a project's configuration.
 | [`file_path_collection_utils.rb`](file_path_collection_utils.rb) | `FilePathCollectionUtils` | Collecting `:paths` directories and `:files` revisions, with exclusions applied |
 | [`file_finder.rb`](file_finder.rb) | `FileFinder` | Finding a build file's input from the build file's own path |
 | [`file_finder_helper.rb`](file_finder_helper.rb) | `FileFinderHelper` | Resolving a query against a collection: its one match, the first of several with a notice, or a report of none |
+| [`win_path_prober.rb`](win_path_prober.rb) | `WinPathProber` | Whether Windows long paths are in effect for `:project` ↳ `:win_path_limit`: the probe, run once below the build root, with the registry read through the `:windows_registry_query` tool |
 
 ## File I/O
 

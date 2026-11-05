@@ -82,7 +82,7 @@ Example YAML:
 ## `:use_mocks`
 
 Configures the build environment to make use of CMock. Note that if you do not
-use mocks, there's no harm in leaving this setting as its default value.
+use mocks, there’s no harm in leaving this setting as its default value.
 
 **Default**: TRUE
 
@@ -169,7 +169,7 @@ will drop considerably as compared to running a build with a single thread.
 
 Tuning the number of threads for peak performance is an art more than a
 science. A special value of `:auto` instructs Ceedling to query the host
-system's number of virtual cores. To this value it adds a constant of 4. This
+system’s number of virtual cores. To this value it adds a constant of 4. This
 is often a good value sufficient to "max out" available resources without
 overloading available resources.
 
@@ -357,7 +357,7 @@ IGNORED: 0
    command line arguments (passed to the test executable). If you are targeting
    a simulator with your test executable binaries, `:simple` is unlikely to
    work for you. In the simplest case, you may simply fall back to `:none`.
-   With some work and using Ceedling's various features, much more sophisticated
+   With some work and using Ceedling’s various features, much more sophisticated
    options are possible.
 1. The `:gdb` option currently only supports the native build platform. That is,
    the `:gdb` backtrace option cannot handle backtrace for cross-compiled code
@@ -367,5 +367,103 @@ IGNORED: 0
 [gdb-homebrew]: https://sourceware.org/gdb/wiki/PermissionsDarwin
 
 **Default**: `:simple`
+
+## `:win_path_limit`
+
+Tells Ceedling which Windows path length limit applies to your build, so its
+path length messages are true for your host. It applies only on Windows, and
+Ceedling ignores it on other platforms. It is still checked on every host, so
+a project file shared across hosts is validated everywhere.
+
+```yaml
+:project:
+  :win_path_limit: :auto
+```
+
+Ceedling checks the length of each build path it creates. A path near the
+limit gets a warning, and one at or past the limit gets an error. Each path is
+reported once. The messages never stop a build. A Windows path that is truly 
+too long fails on its own, often as “No such file or directory” rather than a 
+length error. Ceedling’s message is then the clue to the real cause.
+
+This setting changes only what Ceedling reports. It does not enable long-path 
+safety. Long-paths on Windows requires a registry setting and application
+support.
+
+### Windows‘ two limits
+
+1. **The classic limit, 260 characters.** It applies on every Windows host
+   unless long paths are in effect. A directory path maxes out at 248
+   characters leaving room for a classic 8.3 filename within it.
+1. **Long paths, 32,767 characters.** They are in effect for a program only
+   when both of these hold:
+    1. [Long paths are enabled on the host via registry setting][long-paths-registry].
+       Windows reads it when a program starts, so run Ceedling again after 
+       changing it.
+    1. The program is long-path-aware, as its manifest declares. Every program
+       decides this for itself: Ruby, your compiler, your linker.
+
+In all cases, no single Windows directory or filename may exceed 255 
+characters.
+
+[long-paths-registry]: https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry#registry-setting-to-enable-long-paths
+
+### `:classic`
+
+Reports paths against the classic limits: 260 characters for a file and 248
+for a directory. An error past the limit points you to this setting.
+
+### `:long_paths`
+
+Reports paths against the long path limit. The first time a build path nears
+260 characters, Ceedling checks once whether Ceedling’s runtime can really work 
+past that limit. It writes, reads, and lists a file in a directory nested past 
+260 characters below your build root, then removes it.
+
+Outcomes:
+
+- **Ruby can write and list long paths:** Ceedling stays quiet about lengths up
+  to 32,767 characters.
+- **Ruby can write long paths but can't list them:** Ceedling keeps the long
+  limit and warns once (see [Ruby before 4.0](#ruby-before-40)).
+- **Long paths do not work:** Ceedling warns once, naming the cause (below)
+  and then reports against the classic limits thereafter.
+  - The host may not have long paths enabled.
+  - The application runtime may not be long-path-aware.
+  - The build directory’s drive may not support long paths.
+
+To name the cause, Ceedling reads the host’s registry setting with the
+[`:windows_registry_query`][windows-registry-query] tool.
+
+[windows-registry-query]: tools.md#windows_registry_query
+
+### `:auto`
+
+Runs the same check as `:long_paths`, but lifts the limit only when Ruby can
+both write and list long paths. Otherwise Ceedling keeps the classic limits and
+says why once, in a notice.
+
+### Ruby before 4.0
+
+Builds of Ruby 3.x are generally long-path-aware for files. They create, read,
+and write files past 260 characters when long paths are enabled. But, they
+cannot list a directory that deep. Globs, directory listings, and recursive
+copies and removals fail there, or silently leave entries out. Ruby 4.0 lists
+them.
+
+On Ruby 3.x, a build directory past 260 characters can make Ceedling’s own
+directory scans fail. `clean` and `clobber` can leave such a directory behind.
+Delete it by hand, for example with `rmdir /s /q build` in a Windows shell, or 
+use Ruby 4.0. With `:auto`, Ceedling keeps the classic limits on Ruby 3.x, so 
+its messages still point at every path past 260 characters.
+
+### Checking your toolchain
+
+Your compiler, linker, and other tools have path limits of their own, and
+Ceedling doesn‘t test them. To check a tool, create a directory more than 260
+characters deep, then compile and link a trivial C file there with your
+project’s own tools.
+
+**Default**: `:classic`
 
 <br/><br/>

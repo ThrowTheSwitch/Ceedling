@@ -85,6 +85,7 @@ jobs:
     name: "Classify Changes"
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # It has needed a minute at most
     outputs:
       code: ${{ steps.classify.outputs.code }}
     steps:
@@ -158,6 +159,7 @@ jobs:
     # Pinned: ruby/setup-ruby has no pre-built Ruby 3.0, 3.1, or 3.5 preview for ubuntu-26.04,
     # which ubuntu-latest became in October 2026. The 3.5 leg also carries the ASan+UBSan build.
     runs-on: ubuntu-24.04
+    timeout-minutes: 60  # About twice the longest green run, 21 min
     strategy:
       fail-fast: false
       matrix:
@@ -216,6 +218,7 @@ jobs:
       # which suite is instrumenting -- see spec_helper.rb's own comment for why a bare
       # on/off flag isn't enough.
       - name: Run Unit Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
           CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'units' || 'false' }}
@@ -224,6 +227,7 @@ jobs:
       # FileTree's specs again, with their trees on a tmpfs. One leg is enough: the
       # filesystem differs, not Ruby. The Filesystem Substrates job covers the others.
       - name: Run Filesystem Specs on tmpfs
+        timeout-minutes: 15  # It has needed 2 min at most
         if: matrix.ruby == '3.3'
         env:
           CEEDLING_TEST_FS_ROOT: /dev/shm
@@ -237,6 +241,7 @@ jobs:
       # raw resultset (see spec_helper.rb) so `coverage:report` builds a standalone
       # integration report and still folds it into the combined one.
       - name: Run Integration Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
           CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'integration' || 'false' }}
@@ -247,14 +252,17 @@ jobs:
       # where tools/ does not exist. Run across every Ruby in the matrix, the generator
       # being expected to work wherever Ceedling does.
       - name: Run SBOM Generator Specs
+        timeout-minutes: 15  # It has needed 2 min at most
         run: rake sbom:specs
 
       # The CI summary's own specs, which live in tools/ for the same reason
       - name: Run CI Summary Specs
+        timeout-minutes: 15  # It has needed 2 min at most
         run: rake ci:summary:specs
 
       # The coverage report tooling's own specs, which live in tools/ for the same reason
       - name: Run Coverage Report Specs
+        timeout-minutes: 15  # It has needed 2 min at most
         run: rake coverage:specs
 
       # Install gdb for backtrace feature testing
@@ -340,6 +348,7 @@ jobs:
       # flavor beside it leaves leaks off, for telling a leak from a memory
       # error or UB when something does fire.
       - name: Run System Tests
+        timeout-minutes: 45  # About twice the longest green run, 19 min
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
@@ -351,6 +360,7 @@ jobs:
       # own coverage input) must exist on disk before that step merges/formats the
       # report, or they'd be silently excluded from it.
       - name: Run Plugin Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         uses: ./.github/actions/run-plugin-tests
         with:
           coverage: ${{ matrix.ruby == '3.3' && 'system' || 'false' }}
@@ -390,6 +400,7 @@ jobs:
     needs: [changes, generate-docs]
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: windows-latest
+    timeout-minutes: 120  # About twice the longest green run, 55 min
     strategy:
       fail-fast: false
       matrix:
@@ -427,12 +438,14 @@ jobs:
       # installation steps — so unit failures surface as quickly as possible.
       # Unit tests have no dependency on gcovr, ReportGenerator, or cppcheck.
       - name: Run Unit Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:units
 
       # See the Linux job for why integration tests run here (need only gcc).
       - name: Run Integration Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:integration
@@ -463,12 +476,14 @@ jobs:
 
       # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
       - name: Run System Tests
+        timeout-minutes: 100  # About twice the longest green run, 50 min
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
 
       # Common plugin test steps
       - name: Run Plugin Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         uses: ./.github/actions/run-plugin-tests
 
       # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
@@ -494,6 +509,7 @@ jobs:
     needs: [changes, generate-docs]
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: macos-latest
+    timeout-minutes: 60  # About twice the longest green run, 20 min
     strategy:
       fail-fast: false
       matrix:
@@ -529,6 +545,7 @@ jobs:
       # installation steps — so unit failures surface as quickly as possible.
       # Unit tests have no dependency on cppcheck, gcovr, or ReportGenerator.
       - name: Run Unit Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:units
@@ -538,6 +555,7 @@ jobs:
       # as GCC does. Specs covering the text-scan fallback force it rather than relying on
       # the toolchain to lack the flag, so they run here and on Linux and Windows alike.
       - name: Run Integration Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:integration
@@ -574,12 +592,14 @@ jobs:
 
       # Run system tests via the run-system-tests action (CI batch debug mode: failures only preserved)
       - name: Run System Tests
+        timeout-minutes: 45  # About twice the longest green run, 18 min
         uses: ./.github/actions/run-system-tests
         with:
           ruby: ${{ matrix.ruby }}
 
       # Common plugin test steps
       - name: Run Plugin Tests
+        timeout-minutes: 15  # It has needed 2 min at most
         uses: ./.github/actions/run-plugin-tests
 
       # The CI summary reads each leg's RSpec counts from here, and the coverage leg's
@@ -606,6 +626,7 @@ jobs:
     needs: changes
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # It has needed a minute at most
     steps:
       - uses: actions/cache@v6
         with:
@@ -679,6 +700,7 @@ jobs:
     needs: changes
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # It has needed a minute at most
     steps:
       - uses: actions/cache@v6
         with:
@@ -752,6 +774,7 @@ jobs:
     needs: changes
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 5  # It has needed a minute at most
     strategy:
       fail-fast: false
       matrix:
@@ -849,6 +872,7 @@ jobs:
     needs: changes
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # It has needed a minute at most
 
     # continue-on-error makes findings visible without failing the build. This is the
     # only non-blocking job in this workflow, and that is a starting position rather
@@ -910,6 +934,7 @@ jobs:
       - tests-linux-encoding-stress
     if: success() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # It has needed a minute at most
 
     steps:
       # Use a cache for our tools to speed up builds
@@ -1019,6 +1044,7 @@ jobs:
       - changes
     if: ${{ !cancelled() && needs.changes.outputs.code == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # It has needed a minute at most
 
     # actions: read lists this run's jobs and downloads the baseline from a base-branch run
     permissions:
@@ -1155,6 +1181,7 @@ jobs:
       - build-gem
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # It has needed a minute at most
     steps:
       - name: Decide
         env:

@@ -17,6 +17,11 @@ Each release has its own section, listing only what changed in that release.
 ## 💪 Fixed
 
 - [#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385) Fixed the [Bullseye plugin’s](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) `report:bullseye` task including Unity, generated test runners, and test files in its HTML and XML reports when run on the same command line as a fresh `bullseye:` build, as in `ceedling bullseye:all report:bullseye`. Its reports now leave out the same sources as automatic reports. With no coverage file yet, it reports that and writes nothing, rather than failing with a license hint.
+- Fixed one long build path being reported several times, once for each step that created or wrote it. Ceedling now reports each path once.
+
+## 🌟 Added
+
+- [#1386](https://github.com/ThrowTheSwitch/Ceedling/issues/1386) Added [`:project` ↳ `:win_path_limit`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/project/#win_path_limit) for Windows. `:classic`, the default, keeps Windows’ 260-character limit and now also flags a directory Ceedling creates past 248 characters. `:long_paths` and `:auto` stop long path logging warnings/errors on a host with long paths enabled, after checking once that Ruby can work with long paths. If that check fails, the new optional [`:windows_registry_query`](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/tools/#windows_registry_query) tool reads the host’s registry setting to name the cause. On Ruby before 4.0, which can create long paths but not list them, `:auto` keeps the classic limit, and `:long_paths` warns once about what can fail. The setting changes only what Ceedling reports.
 
 ---
 

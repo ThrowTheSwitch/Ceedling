@@ -766,8 +766,9 @@ describe FilePathUtils do
 
     # A source far from the project gains a directory for each level its path climbs, which
     # can reach Windows' path length limit
-    it 'checks the length of each object\'s whole path, once' do
-      expect(@file_wrapper).to receive(:check_path_length).with( 'build/test/out/TestFoo/_up_/_up_/far/src/x.o', origin: 'FilePathUtils#build_filepath' ).once
+    # FileWrapper reports each path once, however often it is checked
+    it 'checks the length of each object\'s whole path, each time it is formed' do
+      expect(@file_wrapper).to receive(:check_path_length).with( 'build/test/out/TestFoo/_up_/_up_/far/src/x.o', origin: 'FilePathUtils#build_filepath' ).twice
 
       2.times { @fpu.form_test_build_objects_filelist( 'build/test/out/TestFoo', ['../../far/src/x.c'] ) }
     end

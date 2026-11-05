@@ -212,6 +212,20 @@ DEFAULT_TEST_BACKTRACE_GDB_TOOL = {
     ].freeze
   }
 
+# Reads one registry value, for the Windows long path probe (see WinPathProber). Optional:
+# the probe reads the registry only to explain a failure, so a missing reg.exe must not
+# stop a build.
+DEFAULT_WINDOWS_REGISTRY_QUERY_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('reg').freeze,
+  :name => 'default_windows_registry_query'.freeze,
+  :optional => true.freeze,
+  :arguments => [
+    'query'.freeze,
+    '"${1}"'.freeze, # Registry key, quoted
+    '/v ${2}'.freeze # Value name
+    ].freeze
+  }
+
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
@@ -263,6 +277,12 @@ DEFAULT_TOOLS_RELEASE_DEPENDENCIES = {
     }
   }
 
+DEFAULT_TOOLS_WINDOWS_REGISTRY_QUERY = {
+  :tools => {
+    :windows_registry_query => DEFAULT_WINDOWS_REGISTRY_QUERY_TOOL,
+    }
+  }
+
 
 DEFAULT_RELEASE_TARGET_NAME = 'project'
 
@@ -278,7 +298,9 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :test_threads => 1,
     :test_file_prefix => 'test_',
     :release_build => false,
-    :use_backtrace => :simple
+    :use_backtrace => :simple,
+    # Windows' classic 260-character limit, the long path limit, or a probe for which applies
+    :win_path_limit => :classic
     },
 
   :release_build => {

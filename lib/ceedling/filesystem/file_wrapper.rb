@@ -14,15 +14,41 @@ require 'tmpdir'
 # once and single-threaded, settles the class before any thread first reaches for it,
 # which Digest's lazy autoload does not survive under contention.
 require 'digest/sha2'
+require 'set'
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_tree'
+require 'ceedling/filesystem/project_paths'
+require 'ceedling/filesystem/win_long_paths'
+require 'ceedling/filesystem/win_path_limit'
 
 
 class FileWrapper
 
   constructor :loginator, :verbosinator
+
+  # The paths already reported by check_path_length. Only a path in the warning band or past
+  # the limit is ever recorded, so the record holds the few long paths a build makes, not
+  # every path it checks.
+  #
+  # The Windows path limit starts as the classic one. Setup configures it once the
+  # project's configuration exists (see #configure_win_path_limit). Whether long paths are
+  # in effect stays unknown until a path first nears the classic limit and the prober answers.
+  def setup
+    @path_reports   = Set.new
+    @path_lock      = Mutex.new
+    @win_path_limit = :classic
+    @prober         = nil
+    @long_paths     = nil
+  end
+
+  # :project ↳ :win_path_limit, and the WinPathProber that decides whether long paths are in
+  # effect for it
+  def configure_win_path_limit(mode:, prober:)
+    @win_path_limit = mode
+    @prober         = prober
+  end
 
   # Platform practical filepath length ceilings, used only as a diagnostic heuristic --
   # neither Ruby nor the host OS exposes a portable, runtime-queryable API for this.
@@ -35,7 +61,7 @@ class FileWrapper
   # headers (a project can opt into longer paths on some platforms, but that's not
   # safely assumable here, so these stay conservative).
   PATH_LENGTH_LIMITS = {
-    windows: 260,
+    windows: WinLongPaths::LIMITS[:classic],
     macos:   1024,
     linux:   4096,
   }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
@@ -222,11 +248,7 @@ class FileWrapper
       # which is how a previous attempt at "fixing" this cop was caught.
       open(filepath, flags) { |file| yield(file) } # rubocop:disable Security/Open
     rescue SystemCallError => e
-      if attempts_remaining.empty?
-        msg = "Failed to open '#{filepath}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{e.message}"
-        @loginator.log(msg, Verbosity::ERRORS)
-        raise CeedlingException, msg
-      end
+      retries_exhausted!(filepath, e) if attempts_remaining.empty?
       delay = attempts_remaining.shift
       @loginator.log("Retrying read of '#{filepath}' after a transient error: #{e.message}", Verbosity::DEBUG)
       sleep(delay)
@@ -342,7 +364,7 @@ class FileWrapper
   end
 
   def mkdir(folder)
-    check_path_length(folder, origin: 'FileWrapper#mkdir')
+    check_path_length(folder, origin: 'FileWrapper#mkdir', directory: true)
     return FileUtils.mkdir_p(folder)
   end
 
@@ -358,7 +380,7 @@ class FileWrapper
   # the same `parent` -- Dir.mktmpdir retries internally on name clash.
   def mkdir_tmp(prefix, parent)
     path = Dir.mktmpdir(prefix, parent)
-    check_path_length(path, origin: 'FileWrapper#mkdir_tmp')
+    check_path_length(path, origin: 'FileWrapper#mkdir_tmp', directory: true)
     return path
   end
 
@@ -373,23 +395,29 @@ class FileWrapper
   # rejects the path. The calling context (`origin:`) is only included at DEBUG
   # verbosity -- otherwise the message stays plain, since the path itself is normally
   # enough and repeated origin labels add noise at everyday verbosity levels.
-  def check_path_length(path, origin:)
-    limit  = path_length_limit
-    length = File.expand_path(path).length
+  #
+  # A path is measured expanded against the remembered working directory, which costs no
+  # system call and remembers nothing. A path below the warning band, nearly every path,
+  # returns there, before any lock. One in the band is reported once per process, however
+  # many operations check it, keyed by its `ProjectPaths.absolute` spelling so two
+  # spellings of one place count once. Only those reported paths are remembered.
+  #
+  # On Windows, a directory (`directory: true`) stops at 248 characters under the classic
+  # limits. The first path to near the classic limit asks the prober whether long paths are
+  # in effect, if the project asked for them, and the limit is read again from its answer.
+  def check_path_length(path, origin:, directory: false)
+    length = File.expand_path( path.to_s, ProjectPaths.working_dir ).length
+    limit  = path_length_limit( directory )
 
-    prefix = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
+    return if length < (limit - WARNING_MARGIN)
 
-    if length >= limit
-      @loginator.log(
-        "#{prefix}Path length (#{length}) reaches or exceeds this platform's practical limit (#{limit}): #{path}",
-        Verbosity::ERRORS
-      )
-    elsif length >= (limit - WARNING_MARGIN)
-      @loginator.log(
-        "#{prefix}Path length (#{length}) is approaching this platform's practical limit (#{limit}): #{path}",
-        Verbosity::COMPLAIN
-      )
-    end
+    limit = probed_limit( directory ) if probe_wanted?
+    return if length < (limit - WARNING_MARGIN)
+
+    absolute = ProjectPaths.absolute( path.to_s )
+    return unless @path_lock.synchronize { @path_reports.add?( absolute ) }
+
+    log_path_length( path, length, limit, origin )
   end
 
   private
@@ -403,15 +431,63 @@ class FileWrapper
     }
   end
 
+  # #open_with_retry's last attempt failed too
+  def retries_exhausted!(filepath, error)
+    msg = "Failed to open '#{filepath}' after #{TRANSIENT_IO_RETRY_DELAYS.size} retries ⏩️ #{error.message}"
+    @loginator.log(msg, Verbosity::ERRORS)
+    raise CeedlingException, msg
+  end
+
   def owner_writable(path)
     mode = File.stat( path ).mode & 0o7777
     File.chmod( mode | 0o200, path ) if (mode & 0o200).zero?
   end
 
-  def path_length_limit
-    return PATH_LENGTH_LIMITS[:windows] if SystemWrapper.windows?
+  def path_length_limit(directory = false)
+    return windows_path_limit( directory ) if SystemWrapper.windows?
     return PATH_LENGTH_LIMITS[:macos] if SystemWrapper.macos?
     return PATH_LENGTH_LIMITS[:linux]
+  end
+
+  def windows_path_limit(directory)
+    return WinLongPaths::LIMITS[:long_paths] if @long_paths
+    return WinLongPaths::LIMITS[directory ? :classic_directory : :classic]
+  end
+
+  # Only a configured FileWrapper has a prober; the launcher's keeps the classic limits
+  def probe_wanted?
+    return SystemWrapper.windows? && (@win_path_limit != :classic) && @long_paths.nil? && !@prober.nil?
+  end
+
+  # The limit once the prober has answered. Threads that ask together get one answer, since
+  # the prober probes once.
+  def probed_limit(directory)
+    @long_paths = @prober.long_paths?( @win_path_limit )
+    return path_length_limit( directory )
+  end
+
+  def log_path_length(path, length, limit, origin)
+    prefix         = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
+    subject, bound = length_terms( limit )
+
+    return @loginator.log( "#{prefix}#{subject} (#{length}) is approaching #{bound}: #{path}", Verbosity::COMPLAIN ) if length < limit
+
+    message = "#{prefix}#{subject} (#{length}) reaches or exceeds #{bound}: #{path}"
+    message += "\nIf this host has long paths enabled, see :project ↳ :win_path_limit." if pointer_wanted?( limit )
+    @loginator.log( message, Verbosity::ERRORS )
+  end
+
+  # What a length message calls the path, and the limit it nears or passes
+  def length_terms(limit)
+    return ['Path length', "this platform's practical limit (#{limit})"] unless SystemWrapper.windows?
+
+    subject = (limit == WinLongPaths::LIMITS[:classic_directory]) ? 'Directory path length' : 'Path length'
+    return [subject, WinPathLimit.limit_name( limit )]
+  end
+
+  # The setting can help only a project still on the classic limits by its own choice
+  def pointer_wanted?(limit)
+    return SystemWrapper.windows? && (@win_path_limit == :classic) && (limit != WinLongPaths::LIMITS[:long_paths])
   end
 
 end

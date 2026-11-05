@@ -8,6 +8,9 @@
 require 'spec_helper'
 require 'tmpdir'
 require 'ceedling/filesystem/file_wrapper'
+require 'ceedling/filesystem/project_paths'
+require 'ceedling/filesystem/win_long_paths'
+require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
 
@@ -32,15 +35,15 @@ describe FileWrapper do
     allow(SystemWrapper).to receive(:macos?).and_return(false)
   end
 
-  # Absolute paths throughout: check_path_length measures File.expand_path(path).length,
+  # Absolute paths throughout: check_path_length measures the path's absolute spelling,
   # so a relative path would pick up the test-runner's own CWD and throw off the
   # precise threshold arithmetic these examples depend on. The padding is sized off
-  # File.expand_path('/')'s own actual length rather than assumed to be 1, since Windows
-  # expands a bare '/' by prepending a drive letter (e.g. "C:/") -- without probing that
-  # overhead first, expanded lengths on Windows would run a couple characters longer than
-  # intended and throw off the precise threshold boundaries these examples depend on.
+  # the absolute spelling of '/' rather than assumed to be 1, since Windows spells a bare
+  # '/' with a drive letter (e.g. "C:/") -- without probing that overhead first, lengths
+  # on Windows would run a couple characters longer than intended and throw off the
+  # precise threshold boundaries these examples depend on.
   def path_of_length(n)
-    overhead = File.expand_path('/').length - 1
+    overhead = ProjectPaths.absolute('/').length - 1
     '/' + ('a' * (n - 1 - overhead))
   end
 
@@ -124,6 +127,188 @@ describe FileWrapper do
         @file_wrapper.check_path_length(path_of_length(4096), origin: 'Test')
         expect(@loginator).to have_received(:log).with(any_args, Verbosity::ERRORS)
       end
+    end
+
+    # A build file is created, opened, and written through separate FileWrapper calls, and
+    # each checks its path. One report per path keeps a real failure from being buried.
+    context 'one report per path' do
+      it 'reports a long path once, whichever operation checks it' do
+        path = path_of_length(5000)
+        ['FileWrapper#mkdir', 'FileWrapper#open', 'FileWrapper#write'].each do |origin|
+          @file_wrapper.check_path_length(path, origin: origin)
+        end
+
+        expect(@loginator).to have_received(:log).once
+      end
+
+      it 'reports a relative and an absolute spelling of one path once' do
+        relative = 'b' * 5000
+        @file_wrapper.check_path_length(relative, origin: 'Test')
+        @file_wrapper.check_path_length(File.join(ProjectPaths.working_dir, relative), origin: 'Test')
+
+        expect(@loginator).to have_received(:log).once
+      end
+
+      it 'reports each of two long paths' do
+        @file_wrapper.check_path_length(path_of_length(5000), origin: 'Test')
+        @file_wrapper.check_path_length(path_of_length(5001), origin: 'Test')
+
+        expect(@loginator).to have_received(:log).twice
+      end
+
+      it 'remembers nothing, and takes no lock, for a path below the warning band' do
+        expect(@file_wrapper.instance_variable_get(:@path_lock)).not_to receive(:synchronize)
+        expect(ProjectPaths).not_to receive(:absolute)
+
+        @file_wrapper.check_path_length('src/short/path.c', origin: 'Test')
+
+        expect(@file_wrapper.instance_variable_get(:@path_reports)).to be_empty
+      end
+
+      it 'measures a relative path against the remembered working directory, not the process\'s' do
+        expect(File).to receive(:expand_path).with('src/file.c', ProjectPaths.working_dir).and_call_original
+
+        @file_wrapper.check_path_length('src/file.c', origin: 'Test')
+      end
+    end
+
+    # :project ↳ :win_path_limit. The prober is a double; what it decides and logs is
+    # specified in win_path_prober_spec.rb.
+    context 'Windows path limit' do
+      before(:each) do
+        allow(SystemWrapper).to receive(:windows?).and_return(true)
+        @logged = []
+        allow(@loginator).to receive(:log) { |message, verbosity = nil, label = nil| @logged << [message, verbosity, label] }
+        @prober = double('win_path_prober')
+      end
+
+      def configure(mode, long_paths: nil)
+        allow(@prober).to receive(:long_paths?).and_return(long_paths) unless long_paths.nil?
+        @file_wrapper.configure_win_path_limit(mode: mode, prober: @prober)
+      end
+
+      def check(length, directory: false)
+        @file_wrapper.check_path_length(path_of_length(length), origin: 'Test', directory: directory)
+      end
+
+      def verbosities
+        return @logged.map { |_message, verbosity, _label| verbosity }
+      end
+
+      context ':classic' do
+        before(:each) { configure(:classic) }
+
+        it 'never asks the prober' do
+          expect(@prober).not_to receive(:long_paths?)
+          check(300)
+        end
+
+        it 'reports a path at 260 against Windows\' limit, pointing to the setting' do
+          check(300)
+
+          expect(@logged.length).to eq( 1 )
+          message, verbosity = @logged.first
+          expect(verbosity).to eq( Verbosity::ERRORS )
+          expect(message).to match( /Path length \(300\) reaches or exceeds Windows' 260-character limit/ )
+          expect(message).to include( ':project ↳ :win_path_limit' )
+        end
+
+        it 'warns of a file path in the band below 260' do
+          check(240)
+          expect(verbosities).to eq( [Verbosity::COMPLAIN] )
+          expect(@logged.first.first).to match( /is approaching Windows' 260-character limit/ )
+        end
+
+        it 'reports a directory past 248 as an error, though a file of that length only warns' do
+          check(252, directory: true)
+          check(253)
+
+          expect(verbosities).to eq( [Verbosity::ERRORS, Verbosity::COMPLAIN] )
+          expect(@logged.first.first).to match( /Directory path length \(252\) reaches or exceeds Windows' 248-character limit for directories/ )
+        end
+      end
+
+      [:long_paths, :auto].each do |mode|
+        context mode.inspect do
+          it 'asks the prober with this mode once a path nears the classic limit' do
+            configure(mode, long_paths: true)
+            check(300)
+
+            expect(@prober).to have_received(:long_paths?).with( mode )
+          end
+
+          it 'never asks the prober for a path below the warning band' do
+            configure(mode, long_paths: true)
+            check(200)
+
+            expect(@prober).not_to have_received(:long_paths?)
+          end
+
+          it 'asks once, then keeps the answer' do
+            configure(mode, long_paths: false)
+            check(300)
+            check(301)
+
+            expect(@prober).to have_received(:long_paths?).once
+          end
+
+          it 'reports nothing below the long limit once long paths are in effect' do
+            configure(mode, long_paths: true)
+            check(300)
+            check(252, directory: true)
+
+            expect(@logged).to be_empty
+          end
+
+          # Windows' own path functions can't expand a path past 32,767 characters, so the
+          # measured length is given rather than taken from File.expand_path on every OS
+          it 'reports a path past the long limit against it' do
+            configure(mode, long_paths: true)
+            path = path_of_length(300)
+            allow(File).to receive(:expand_path).and_call_original
+            allow(File).to receive(:expand_path).with(path, ProjectPaths.working_dir).and_return('/' + ('a' * 32_799))
+
+            @file_wrapper.check_path_length(path, origin: 'Test')
+
+            expect(@logged.first.first).to match( /reaches or exceeds Windows' 32,767-character long path limit/ )
+          end
+
+          it 'reports against 260, without the pointer, when long paths are not in effect' do
+            configure(mode, long_paths: false)
+            check(300)
+
+            expect(verbosities).to eq( [Verbosity::ERRORS] )
+            expect(@logged.first.first).to match( /260-character limit/ )
+            expect(@logged.first.first).not_to include( ':project ↳ :win_path_limit' )
+          end
+        end
+      end
+
+      it 'ignores the setting and never asks the prober on macOS and Linux' do
+        allow(SystemWrapper).to receive(:windows?).and_return(false)
+        expect(@prober).not_to receive(:long_paths?)
+        @file_wrapper.configure_win_path_limit(mode: :auto, prober: @prober)
+
+        check(5000)
+
+        expect(@logged.first.first).to match( /this platform's practical limit \(4096\)/ )
+      end
+    end
+  end
+
+  describe '#mkdir and #mkdir_tmp' do
+    it 'checks a directory it makes as a directory' do
+      allow(FileUtils).to receive(:mkdir_p)
+      expect(@file_wrapper).to receive(:check_path_length).with('build/dir', origin: 'FileWrapper#mkdir', directory: true)
+
+      @file_wrapper.mkdir('build/dir')
+    end
+
+    it 'checks a temporary directory it makes as a directory' do
+      allow(Dir).to receive(:mktmpdir).and_return('build/tmp123')
+      expect(@file_wrapper).to receive(:check_path_length).with('build/tmp123', origin: 'FileWrapper#mkdir_tmp', directory: true)
+
+      @file_wrapper.mkdir_tmp('tmp', 'build')
     end
   end
 

@@ -493,6 +493,32 @@ describe Configurator do
       expect( tools ).to include( :test_assembler, :test_backtrace_gdb, :release_compiler, :release_linker, :release_assembler )
     end
 
+    # Only the long path probe reads the registry, and only on Windows when a project asks for long paths
+    context "with the Windows registry query" do
+      def tools_with_limit(windows:, limit:)
+        allow( @system_wrapper ).to receive( :windows? ).and_return( windows )
+        return tools_for( limit.nil? ? ":project: {}\n" : ":project:\n  :win_path_limit: #{limit.inspect}\n" )
+      end
+
+      [:auto, :long_paths].each do |limit|
+        it "adds it on Windows when :win_path_limit is #{limit.inspect}" do
+          expect( tools_with_limit( windows: true, limit: limit ) ).to include( :windows_registry_query )
+        end
+      end
+
+      it "leaves it out on Windows when :win_path_limit is :classic" do
+        expect( tools_with_limit( windows: true, limit: :classic ) ).to_not include( :windows_registry_query )
+      end
+
+      it "leaves it out on Windows when :win_path_limit is not set" do
+        expect( tools_with_limit( windows: true, limit: nil ) ).to_not include( :windows_registry_query )
+      end
+
+      it "leaves it out off Windows, whatever :win_path_limit is" do
+        expect( tools_with_limit( windows: false, limit: :auto ) ).to_not include( :windows_registry_query )
+      end
+    end
+
     it "adds copies rather than the default tool definitions themselves" do
       defaults = { tools: {} }
       @configurator.merge_tools_defaults( { project: {} }, defaults )

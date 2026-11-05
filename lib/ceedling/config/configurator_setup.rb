@@ -269,6 +269,12 @@ class ConfiguratorSetup
     return validate_option( config, :use_backtrace, [:none, :simple, :gdb] )
   end
 
+  # Windows has two path limits, so the setting names one or asks for a probe. Validated on
+  # every OS, so a project file shared across hosts is checked everywhere.
+  def validate_win_path_limit(config)
+    return validate_option( config, :win_path_limit, [:classic, :long_paths, :auto] )
+  end
+
   def validate_threads(config)
     return [:compile_threads, :test_threads].map { |key| validate_thread_count( config, key ) }.all?
   end

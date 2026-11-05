@@ -28,7 +28,7 @@ class Configurator
   # Validations of the completed configuration
   FINAL_VALIDATIONS = [
     :validate_build_root, :validate_paths, :validate_tools, :validate_defines, :validate_flags, :validate_line_markers,
-    :validate_test_preprocessor, :validate_backtrace, :validate_threads, :validate_partials, :validate_plugins
+    :validate_test_preprocessor, :validate_backtrace, :validate_win_path_limit, :validate_threads, :validate_partials, :validate_plugins
   ].freeze
 
   # CMock and Unity options that test runner generation also reads
@@ -538,7 +538,8 @@ class Configurator
       [DEFAULT_TOOLS_TEST_ASSEMBLER,     setting( config, :test_build, :use_assembly )],
       [DEFAULT_TOOLS_TEST_GDB_BACKTRACE, setting( config, :project, :use_backtrace ) == :gdb],
       [DEFAULT_TOOLS_RELEASE,            release],
-      [DEFAULT_TOOLS_RELEASE_ASSEMBLER,  release && setting( config, :release_build, :use_assembly )]
+      [DEFAULT_TOOLS_RELEASE_ASSEMBLER,  release && setting( config, :release_build, :use_assembly )],
+      [DEFAULT_TOOLS_WINDOWS_REGISTRY_QUERY, @system_wrapper.windows? && setting( config, :project, :win_path_limit ) != :classic]
     ].select { |_, needed| needed }.map( &:first )
   end
 
