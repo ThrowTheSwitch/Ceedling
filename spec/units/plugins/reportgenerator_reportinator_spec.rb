@@ -383,7 +383,7 @@ describe ReportGeneratorReportinator do
         .and_return(['build/gcov/out/test_foo/test_foo_runner.c.gcno'])
 
       dispatched = nil
-      allow(batchinator).to receive(:exec) { |workload:, things:, &_blk| dispatched = things }
+      allow(batchinator).to receive(:exec) { |things:, **, &_blk| dispatched = things }
 
       reportinator.send(:generate_gcov_files, /test_foo_runner/)
 
@@ -401,7 +401,7 @@ describe ReportGeneratorReportinator do
         allow(file_wrapper).to receive(:directory_listing).with(File.join(GCOV_BUILD_OUTPUT_PATH, '**', "*#{EXTENSION_GCNO}")).and_return([gcno])
         allow(file_wrapper).to receive(:directory_listing).with(File.join(File.dirname(gcno), "*#{EXTENSION_GCNO}")).and_return([gcno])
         dispatched = nil
-        allow(batchinator).to receive(:exec) { |workload:, things:, &_blk| dispatched = things }
+        allow(batchinator).to receive(:exec) { |things:, **, &_blk| dispatched = things }
 
         reportinator.send(:generate_gcov_files, regex)
         return dispatched
