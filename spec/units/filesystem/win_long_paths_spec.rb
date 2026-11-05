@@ -6,11 +6,13 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/exceptions'
 require 'ceedling/filesystem/win_long_paths'
 
 # Touches no filesystem and runs no process. The disk is an in-memory fake that records
 # each call, and the registry query returns canned output. The real disk and `reg query`
-# are exercised in spec/integration/win_long_paths_probe_spec.rb.
+# are exercised in spec/integration/win_long_paths_probe_spec.rb and
+# spec/integration/windows_registry_query_tool_spec.rb.
 module WinLongPathsSpec
   # `reg query` output as a hosted Windows runner prints it, with long paths enabled
   ENABLED_OUTPUT = "\r\nHKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Control\\FileSystem\r\n" \
@@ -80,9 +82,14 @@ describe WinLongPaths do
       expect(described_class.registry_enabled?( query: query_returning( output, success: false ) )).to be false
     end
 
-    it 'reads a missing reg.exe as disabled' do
-      query = -> { raise Errno::ENOENT, 'reg' }
+    # ToolExecutor raises a ShellException when the tool can't run at all
+    it 'reads a query that could not run as disabled' do
+      query = -> { raise ShellException.new( name: 'reg', message: 'reg.exe not found' ) }
       expect(described_class.registry_enabled?( query: query )).to be false
+    end
+
+    it 'has no query of its own' do
+      expect { described_class.registry_enabled? }.to raise_error( ::ArgumentError, /query/ )
     end
   end
 
@@ -121,11 +128,15 @@ describe WinLongPaths do
 
     it 'reports the query failure itself when the registry cannot be read' do
       disk   = WinLongPathsSpec::FakeDisk.new( raises: { mkdir_p: Errno::ENOENT.new } )
-      result = probe( disk, query: -> { raise Errno::ENOENT, 'reg' } )
+      result = probe( disk, query: -> { raise ShellException.new( name: 'reg', message: 'reg.exe not found' ) } )
 
       expect(result[:support]).to eq( :none )
       expect(result[:cause]).to eq( :probe_failed )
-      expect(result[:error]).to match( /reg/ )
+      expect(result[:error]).to match( /reg\.exe not found/ )
+    end
+
+    it 'has no registry query of its own' do
+      expect { described_class.probe( root, disk: WinLongPathsSpec::FakeDisk.new ) }.to raise_error( ::ArgumentError, /query/ )
     end
 
     it 'never queries the registry when the file test passes' do

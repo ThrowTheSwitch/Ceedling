@@ -22,6 +22,8 @@ require 'ceedling/system_utils'
 require 'ceedling/loginator'
 require 'ceedling/verbosinator'
 require 'ceedling/ruby_expandinator'
+require 'ceedling/defaults'
+require 'ceedling/filesystem/win_path_prober'
 
 module ToolExecutorIntegrationHelpers
   # Builds the real collaborator graph. Verbosity stays at the default (NORMAL) so
@@ -47,6 +49,16 @@ module ToolExecutorIntegrationHelpers
   # gcc/POSIX shell builtins behave identically on Linux/Windows/macOS.
   def ruby_tool_config(name: 'ruby_probe', arguments: [])
     { name: name, executable: RbConfig.ruby, arguments: arguments }
+  end
+
+  # A WinPathProber that probes below `build_root` and reads the registry through the real
+  # graph above, with the default Windows registry query tool. Configuration hands Ceedling
+  # an unfrozen copy of each default tool, so this does too.
+  def real_win_path_prober(build_root:, loginator:)
+    configurator = Struct.new( :project_build_root, :tools_windows_registry_query ).new(
+      build_root, Marshal.load( Marshal.dump( DEFAULT_WINDOWS_REGISTRY_QUERY_TOOL ) )
+    )
+    WinPathProber.new( configurator: configurator, tool_executor: real_tool_executor, loginator: loginator )
   end
 end
 

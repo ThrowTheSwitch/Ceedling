@@ -172,43 +172,42 @@ describe FileWrapper do
       end
     end
 
-    # :project ↳ :win_path_limit. The probe is stubbed; it touches the disk only in
-    # spec/integration/win_long_paths_probe_spec.rb.
+    # :project ↳ :win_path_limit. The prober is a double; what it decides and logs is
+    # specified in win_path_prober_spec.rb.
     context 'Windows path limit' do
       before(:each) do
         allow(SystemWrapper).to receive(:windows?).and_return(true)
         @logged = []
         allow(@loginator).to receive(:log) { |message, verbosity = nil, label = nil| @logged << [message, verbosity, label] }
+        @prober = double('win_path_prober')
       end
 
-      def configure(mode, support: nil, cause: nil)
-        result = cause ? { support: support, cause: cause, error: 'reg missing' } : { support: support }
-        allow(WinLongPaths).to receive(:probe).and_return(result) unless support.nil?
-        @file_wrapper.configure_win_path_limit(mode: mode, probe_root: 'build')
+      def configure(mode, long_paths: nil)
+        allow(@prober).to receive(:long_paths?).and_return(long_paths) unless long_paths.nil?
+        @file_wrapper.configure_win_path_limit(mode: mode, prober: @prober)
       end
 
       def check(length, directory: false)
         @file_wrapper.check_path_length(path_of_length(length), origin: 'Test', directory: directory)
       end
 
-      # Messages a user sees at normal verbosity
-      def shown
-        return @logged.reject { |_message, verbosity, _label| verbosity == Verbosity::DEBUG }
+      def verbosities
+        return @logged.map { |_message, verbosity, _label| verbosity }
       end
 
       context ':max_path' do
         before(:each) { configure(:max_path) }
 
-        it 'never probes' do
-          expect(WinLongPaths).not_to receive(:probe)
+        it 'never asks the prober' do
+          expect(@prober).not_to receive(:long_paths?)
           check(300)
         end
 
         it 'reports a path at 260 against Windows\' limit, pointing to the setting' do
           check(300)
 
-          expect(shown.length).to eq( 1 )
-          message, verbosity = shown.first
+          expect(@logged.length).to eq( 1 )
+          message, verbosity = @logged.first
           expect(verbosity).to eq( Verbosity::ERRORS )
           expect(message).to match( /Path length \(300\) reaches or exceeds Windows' 260-character limit/ )
           expect(message).to include( ':project ↳ :win_path_limit' )
@@ -216,122 +215,77 @@ describe FileWrapper do
 
         it 'warns of a file path in the band below 260' do
           check(240)
-          expect(shown.map { |_m, verbosity, _l| verbosity }).to eq( [Verbosity::COMPLAIN] )
-          expect(shown.first.first).to match( /is approaching Windows' 260-character limit/ )
+          expect(verbosities).to eq( [Verbosity::COMPLAIN] )
+          expect(@logged.first.first).to match( /is approaching Windows' 260-character limit/ )
         end
 
         it 'reports a directory past 248 as an error, though a file of that length only warns' do
           check(252, directory: true)
           check(253)
 
-          expect(shown.map { |_m, verbosity, _l| verbosity }).to eq( [Verbosity::ERRORS, Verbosity::COMPLAIN] )
-          expect(shown.first.first).to match( /Directory path length \(252\) reaches or exceeds Windows' 248-character limit for directories/ )
+          expect(verbosities).to eq( [Verbosity::ERRORS, Verbosity::COMPLAIN] )
+          expect(@logged.first.first).to match( /Directory path length \(252\) reaches or exceeds Windows' 248-character limit for directories/ )
         end
       end
 
-      context ':long_paths' do
-        it 'reports nothing for a 300-character path once the probe finds full support' do
-          configure(:long_paths, support: :full)
-          check(300)
-          check(252, directory: true)
+      [:long_paths, :auto].each do |mode|
+        context mode.inspect do
+          it 'asks the prober with this mode once a path nears the classic limit' do
+            configure(mode, long_paths: true)
+            check(300)
 
-          expect(shown).to be_empty
-        end
+            expect(@prober).to have_received(:long_paths?).with( mode )
+          end
 
-        it 'warns once that directory listing fails, then reports nothing below the long limit' do
-          configure(:long_paths, support: :files_only)
-          check(300)
-          check(301)
+          it 'never asks the prober for a path below the warning band' do
+            configure(mode, long_paths: true)
+            check(200)
 
-          expect(shown.length).to eq( 1 )
-          message, verbosity = shown.first
-          expect(verbosity).to eq( Verbosity::COMPLAIN )
-          expect(message).to include( ':project ↳ :win_path_limit is :long_paths' )
-          expect(message).to include( "Ruby #{RUBY_VERSION} cannot list directories past 260 characters" )
-          expect(message).to match( /`clean`, and `clobber`/ )
-        end
+            expect(@prober).not_to have_received(:long_paths?)
+          end
 
-        it 'warns once that long paths are disabled, then reports against 260 without the pointer' do
-          configure(:long_paths, support: :none, cause: :registry_disabled)
-          check(300)
+          it 'asks once, then keeps the answer' do
+            configure(mode, long_paths: false)
+            check(300)
+            check(301)
 
-          expect(shown.map { |_m, verbosity, _l| verbosity }).to eq( [Verbosity::COMPLAIN, Verbosity::ERRORS] )
-          expect(shown.first.first).to include( 'LongPathsEnabled' )
-          expect(shown.last.first).to match( /260-character limit/ )
-          expect(shown.last.first).not_to include( ':project ↳ :win_path_limit' )
-        end
+            expect(@prober).to have_received(:long_paths?).once
+          end
 
-        it 'names this Ruby when it is not long-path-aware' do
-          configure(:long_paths, support: :none, cause: :process_not_aware)
-          check(300)
+          it 'reports nothing below the long limit once long paths are in effect' do
+            configure(mode, long_paths: true)
+            check(300)
+            check(252, directory: true)
 
-          expect(shown.first.first).to include( RbConfig.ruby ).and include( 'not long-path-aware' )
-        end
+            expect(@logged).to be_empty
+          end
 
-        it 'names the registry error when the probe could not read it' do
-          configure(:long_paths, support: :none, cause: :probe_failed)
-          check(300)
+          it 'reports a path past the long limit against it' do
+            configure(mode, long_paths: true)
+            check(32_800)
 
-          expect(shown.first.first).to include( 'reg missing' )
-        end
-      end
+            expect(@logged.first.first).to match( /reaches or exceeds Windows' 32,767-character long path limit/ )
+          end
 
-      context ':auto' do
-        it 'reports nothing for a 300-character path with full support, noting it at DEBUG' do
-          configure(:auto, support: :full)
-          check(300)
+          it 'reports against 260, without the pointer, when long paths are not in effect' do
+            configure(mode, long_paths: false)
+            check(300)
 
-          expect(shown).to be_empty
-          expect(@logged.map(&:first)).to include( match( /Windows long paths: full support \(Ruby #{Regexp.escape(RUBY_VERSION)}\)/ ) )
-        end
-
-        it 'gives one notice and keeps the classic limit when only files work' do
-          configure(:auto, support: :files_only)
-          check(300)
-
-          expect(shown.map { |_m, verbosity, label| [verbosity, label] }).to eq( [[Verbosity::NORMAL, LogLabels::NOTICE], [Verbosity::ERRORS, nil]] )
-          expect(shown.first.first).to include( "Ruby #{RUBY_VERSION} cannot list directories past 260 characters" )
-        end
-
-        it 'gives one notice and keeps the classic limit when long paths are disabled' do
-          configure(:auto, support: :none, cause: :registry_disabled)
-          check(300)
-
-          expect(shown.map { |_m, verbosity, label| [verbosity, label] }).to eq( [[Verbosity::NORMAL, LogLabels::NOTICE], [Verbosity::ERRORS, nil]] )
-          expect(shown.first.first).to include( 'LongPathsEnabled' )
-        end
-
-        it 'probes below the build root' do
-          configure(:auto, support: :full)
-          check(300)
-
-          expect(WinLongPaths).to have_received(:probe).with( 'build' )
-        end
-
-        it 'never probes for a path below the warning band' do
-          configure(:auto, support: :full)
-          check(200)
-
-          expect(WinLongPaths).not_to have_received(:probe)
-        end
-
-        it 'probes once, however many threads cross the band at once' do
-          configure(:auto, support: :full)
-          threads = (0...8).map { |i| Thread.new { check(300 + i) } }
-          threads.each(&:join)
-
-          expect(WinLongPaths).to have_received(:probe).once
+            expect(verbosities).to eq( [Verbosity::ERRORS] )
+            expect(@logged.first.first).to match( /260-character limit/ )
+            expect(@logged.first.first).not_to include( ':project ↳ :win_path_limit' )
+          end
         end
       end
 
-      it 'ignores the setting and never probes on macOS and Linux' do
+      it 'ignores the setting and never asks the prober on macOS and Linux' do
         allow(SystemWrapper).to receive(:windows?).and_return(false)
-        expect(WinLongPaths).not_to receive(:probe)
-        @file_wrapper.configure_win_path_limit(mode: :auto, probe_root: 'build')
+        expect(@prober).not_to receive(:long_paths?)
+        @file_wrapper.configure_win_path_limit(mode: :auto, prober: @prober)
 
         check(5000)
 
-        expect(shown.first.first).to match( /this platform's practical limit \(4096\)/ )
+        expect(@logged.first.first).to match( /this platform's practical limit \(4096\)/ )
       end
     end
   end

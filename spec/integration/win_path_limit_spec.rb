@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# :project ↳ :win_path_limit set to :auto, with the real long path probe below a real
+# :project ↳ :win_path_limit set to :auto, with a real WinPathProber probing below a real
 # directory. Windows only: elsewhere the setting is ignored.
 #
 # Hosted Windows runners ship with long paths enabled. Ruby 3.x there can write files past
@@ -14,6 +14,7 @@
 
 require 'spec_helper'
 require 'tmpdir'
+require 'tool_executor_integration_helper'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
@@ -29,7 +30,7 @@ describe 'Windows path limit (integration)', if: SystemWrapper.windows? do
     allow(@loginator).to receive(:log) { |message, verbosity = nil, label = nil| @logged << [message, verbosity, label] }
 
     @file_wrapper = FileWrapper.new( { loginator: @loginator, verbosinator: double( 'verbosinator', should_output?: false ) } )
-    @file_wrapper.configure_win_path_limit( mode: :auto, probe_root: @root )
+    @file_wrapper.configure_win_path_limit( mode: :auto, prober: real_win_path_prober( build_root: @root, loginator: @loginator ) )
   end
 
   def shown

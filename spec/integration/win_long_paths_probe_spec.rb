@@ -5,7 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# The Windows long path probe against the real disk and the real `reg query`.
+# The Windows long path probe against the real disk, reading the registry through the
+# default Windows registry query tool and the real ToolExecutor.
 #
 # Hosted Windows runners ship with long paths enabled, and every RubyInstaller Ruby is
 # long-path-aware. Ruby 3.x there writes and reads files past 260 characters, but can't
@@ -13,12 +14,18 @@
 
 require 'spec_helper'
 require 'tmpdir'
+require 'tool_executor_integration_helper'
 require 'ceedling/filesystem/win_long_paths'
 require 'ceedling/system_wrapper'
 
 describe 'Windows long path probe (integration)' do
   around(:each) do |example|
     Dir.mktmpdir { |dir| @root = dir; example.run }
+  end
+
+  def probe
+    prober = real_win_path_prober( build_root: @root, loginator: double( 'loginator' ).as_null_object )
+    return WinLongPaths.probe( @root, query: prober.method( :registry_query ) )
   end
 
   def expected_support
@@ -28,16 +35,12 @@ describe 'Windows long path probe (integration)' do
   end
 
   it 'reports what this host and Ruby support past 260 characters' do
-    expect(WinLongPaths.probe( @root )[:support]).to eq( expected_support )
+    expect(probe[:support]).to eq( expected_support )
   end
 
   it 'leaves nothing behind' do
-    WinLongPaths.probe( @root )
+    probe
 
     expect(Dir.children( @root )).to be_empty
-  end
-
-  it 'reads the registry as enabled on a hosted Windows runner', if: SystemWrapper.windows? do
-    expect(WinLongPaths.registry_enabled?).to be true
   end
 end
