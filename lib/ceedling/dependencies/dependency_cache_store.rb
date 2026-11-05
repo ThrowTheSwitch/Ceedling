@@ -57,7 +57,8 @@ class DependencyCacheStore
 
   # Cache keys are build paths, so a change to where a build puts its output changes the
   # schema too. 2: per-test output is placed by the test's path from the project root.
-  CACHE_SCHEMA_VERSION = 2 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
+  # 3: build files below a long configured root are placed below the root's marker.
+  CACHE_SCHEMA_VERSION = 3 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
 
   constructor :file_wrapper, :loginator
 

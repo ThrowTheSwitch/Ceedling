@@ -9,6 +9,7 @@ require 'rubygems'
 require 'rake' # for ext()
 require 'fileutils'
 require 'pathname'
+require 'yaml'
 require 'ceedling/exceptions'
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
@@ -16,6 +17,7 @@ require 'ceedling/filesystem/path_mirror'
 require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/project_paths'
 require 'ceedling/filesystem/build_subpath'
+require 'ceedling/filesystem/build_roots'
 require 'ceedling/filesystem/destination_collision'
 
 # global utility methods (for plugins, project files, etc.)
@@ -209,6 +211,43 @@ class FilePathUtils
   # placed under `_abs_`, so no name reaches outside the build directory.
   def form_test_name(filepath)
     return BuildSubpath.encode( filepath.to_s.ext( '' ) )
+  end
+
+  # The map of shortened roots in the build root, for tracing a marker to its root
+  BUILD_ROOTS_MAP = 'build_roots.yml'.freeze
+
+  # The configured roots that build paths spell by a short marker (see BuildRoots), built
+  # once per configured list. Build threads may build it together harmlessly, since every
+  # table of one list is the same.
+  def build_roots
+    roots  = @configurator.collection_build_roots
+    cached = @build_roots
+    return cached.last if cached&.first.equal?( roots )
+
+    table = BuildRoots.table( roots )
+    @build_roots = [roots, table].freeze
+    return table
+  end
+
+  # Writes each shortened root and its marker to the build root, or removes the map when no
+  # root is shortened, and returns them
+  def publish_build_roots
+    entries = build_roots.entries
+    path    = File.join( @configurator.project_build_root, BUILD_ROOTS_MAP )
+    return entries.tap { @file_wrapper.rm_f( path ) } if entries.empty?
+
+    @file_wrapper.mkdir( @configurator.project_build_root )
+    @file_wrapper.write( path, YAML.dump( entries.to_h { |root, marker| [marker, root] } ) )
+    return entries
+  end
+
+  # A build path as it would be spelled without shortened roots: each marker segment becomes
+  # its root's encoded spelling. For matching patterns written against build paths.
+  def expanded_build_path(path)
+    table = build_roots
+    return path if table.empty?
+
+    return path.split( '/', -1 ).map { |segment| (root = table.root_for( segment )).nil? ? segment : BuildSubpath.encode( root ) }.join( '/' )
   end
 
   def form_test_build_path(name, context: nil)
@@ -603,7 +642,7 @@ class FilePathUtils
     return generated unless generated.nil?
     return '' if ProjectPaths.contains?( @configurator.project_build_root, file )
 
-    return BuildSubpath.of_directory( File.dirname( file ) )
+    return BuildSubpath.of_directory( File.dirname( file ), roots: build_roots )
   end
 
   # Two sources building to one file would leave one of them out of the build

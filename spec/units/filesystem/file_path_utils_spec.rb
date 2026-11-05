@@ -443,6 +443,7 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       allow(@configurator).to receive(:extension_dependencies).and_return( FilenameExtension.new('.d') )
       allow(@configurator).to receive(:extension_list).and_return( FilenameExtension.new('.lst') )
     end
@@ -485,6 +486,7 @@ describe FilePathUtils do
       })
 
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
       allow(@configurator).to receive(:project_use_partials).and_return( true )
       allow(@configurator).to receive(:project_use_mocks).and_return( true )
@@ -553,6 +555,7 @@ describe FilePathUtils do
 
       allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
     end
 
@@ -591,6 +594,7 @@ describe FilePathUtils do
 
       allow(@configurator).to receive(:project_release_dependencies_path).and_return('build/release/dependencies')
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       allow(@configurator).to receive(:extension_dependencies).and_return( FilenameExtension.new('.d') )
     end
 
@@ -640,6 +644,7 @@ describe FilePathUtils do
       allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       allow(@configurator).to receive(:project_use_partials).and_return( true )
       allow(@configurator).to receive(:project_use_mocks).and_return( true )
       allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
@@ -738,7 +743,10 @@ describe FilePathUtils do
 
     before(:each) do
       @configurator = double('configurator')
-      @file_wrapper = double('file_wrapper', check_path_length: nil)
+      @file_wrapper = FileWrapper.new({
+        :loginator    => double('loginator').as_null_object,
+        :verbosinator => double('verbosinator').as_null_object
+      })
       @fpu = described_class.new({ :configurator => @configurator, :file_wrapper => @file_wrapper })
 
       allow(@configurator).to receive(:collection_build_roots).and_return( [external_root, deep_root, 'src'] )
@@ -771,10 +779,11 @@ describe FilePathUtils do
     end
 
     it 'holds one table for the configured roots' do
+      expected = table.entries
       expect(BuildRoots).to receive(:table).once.and_call_original
 
       3.times { @fpu.build_roots }
-      expect( @fpu.build_roots.entries ).to eq( table.entries )
+      expect( @fpu.build_roots.entries ).to eq( expected )
     end
 
     # gcov exclusions match the layout as it would be without shortened roots
@@ -821,6 +830,7 @@ describe FilePathUtils do
 
       allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
     end
 
     it 'places a test, module-under-test or support source by its path from the project root' do
@@ -992,6 +1002,7 @@ describe FilePathUtils do
 
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       allow(@configurator).to receive(:project_use_partials).and_return( false )
       allow(@configurator).to receive(:project_use_mocks).and_return( false )
     end
@@ -1207,6 +1218,7 @@ describe FilePathUtils do
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
       allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       @fpu = described_class.new({
         :configurator => @configurator,
         :file_wrapper => @file_wrapper

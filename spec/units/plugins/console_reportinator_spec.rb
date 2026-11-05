@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filename_extension'
 require 'ceedling/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
@@ -35,7 +36,8 @@ describe ConsoleReportinator do
       paths_source: ['src'], paths_support: ['support'], cmock_mock_prefix: 'mock_',
       project_build_root: 'build', extension_object: FilenameExtension.new('.o'),
       project_use_partials: true, project_use_mocks: true,
-      project_test_partials_path: 'build/test/partials', cmock_mock_path: 'build/test/mocks'
+      project_test_partials_path: 'build/test/partials', cmock_mock_path: 'build/test/mocks',
+      collection_build_roots: []
     )
   end
   # Real, so reversing a generated Partial filename, or placing an object, exercises the

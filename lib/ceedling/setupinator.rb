@@ -28,8 +28,7 @@ class Setupinator
 
   # The application objects setup uses, taken from the object hash rather than a DIY
   # constructor, which validates aspects of setup
-  COLLABORATORS = %i[configurator loginator reportinator plugin_manager plugin_reportinator test_runner_manager file_wrapper
-                     win_path_prober].freeze
+  COLLABORATORS = %i[configurator loginator reportinator plugin_manager plugin_reportinator test_runner_manager file_wrapper win_path_prober file_path_utils].freeze
 
   attr_reader :config_hash
 
@@ -198,10 +197,12 @@ private
 
   # Partially flatten config + build Configurator accessors and globals. FileWrapper
   # reports path lengths from the first file a command touches, before any configuration
-  # exists, so it learns the Windows path limit, and the prober that decides it, here.
+  # exists, so it learns the Windows path limit, and the prober that decides it, here. The
+  # long configured roots build paths shorten are written to the build root and logged.
   def build_configuration(app_cfg)
     @configurator.build( app_cfg[:ceedling_lib_path], app_cfg[:logging_path], config_hash, :environment )
     @file_wrapper.configure_win_path_limit( mode: @configurator.project_win_path_limit, prober: @win_path_prober )
+    @file_path_utils.publish_build_roots.each { |root, marker| @loginator.log( "#{marker} ➡️ #{root}", Verbosity::DEBUG ) }
   end
 
   ##

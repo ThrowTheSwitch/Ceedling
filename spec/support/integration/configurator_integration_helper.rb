@@ -29,6 +29,7 @@ require 'ceedling/yaml_wrapper'
 require 'ceedling/reportinator'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/filesystem/file_path_collection_utils'
+require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/tool_validator'
 require 'ceedling/tool_executor'
 require 'ceedling/tool_executor_helper'
@@ -69,6 +70,8 @@ module ConfiguratorIntegrationHelpers
       o.slice( :configurator_setup, :configurator_builder, :configurator_plugins, :config_walkinator, :yaml_wrapper,
                :system_wrapper, :loginator, :reportinator, :ruby_expandinator )
     )
+    # Setup publishes the shortened build roots once the configuration is built
+    o[:file_path_utils] = FilePathUtils.new( o.slice( :configurator, :file_wrapper ) )
 
     return o
   end
