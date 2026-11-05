@@ -392,7 +392,11 @@ class FileFinder
     basename = File.basename( filepath ).ext('')
     return [basename, false] if subdir.nil? || subdir.empty?
 
-    return [File.join( BuildSubpath.decode( subdir ), basename ), true]
+    # A marker no shortened root holds was placed by another configuration
+    source_dir = BuildSubpath.decode( subdir, roots: @file_path_utils.build_roots )
+    return [basename, false] if source_dir.nil?
+
+    return [File.join( source_dir, basename ), true]
   end
 
   def source_tree_query(filepath)

@@ -14,6 +14,8 @@ require 'ceedling/constants'       # for Verbosity constants class & base file p
 require 'ceedling/filename_extension'
 require 'ceedling/rake_app/rakefile_component_resolver'
 require 'ceedling/config/build_root_policy'
+require 'ceedling/filesystem/build_roots'
+require 'ceedling/exceptions'
 
 class ConfiguratorBuilder
 
@@ -186,6 +188,21 @@ class ConfiguratorBuilder
       :collection_mirror_roots_include => @file_path_collection_utils.collect_mirror_roots( include ),
       :collection_mirror_roots_headers => @file_path_collection_utils.collect_mirror_roots( headers )
     }
+  end
+
+  # The roots whose long locations build paths may spell by a short marker (see
+  # BuildRoots), taken from every :paths section a build's inputs come from
+  def collect_build_roots(in_hash)
+    entries = [:paths_source, :paths_include, :paths_test, :paths_support].flat_map { |key| Array( in_hash[key] ) }
+    roots   = @file_path_collection_utils.collect_mirror_roots( entries )
+
+    collisions = BuildRoots.collisions( roots )
+    unless collisions.empty?
+      pairs = collisions.map { |a, b| "'#{a}' and '#{b}'" }.join( '; ' )
+      raise CeedlingException.new( "Configured paths #{pairs} would share one short name in build paths. Rename or move one of them." )
+    end
+
+    return { :collection_build_roots => roots }
   end
 
   def collect_source_and_include_paths(in_hash)

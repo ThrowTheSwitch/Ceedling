@@ -40,7 +40,7 @@ By default this skips:
   `cmock.gcno` by name, but only within your `:build_root` — the only place
   Ceedling ever generates these.
 
-Given `:test_file_prefix` ⇒ `test_`, CMock's default `:mock_prefix` ⇒
+Given `:test_file_prefix` ⇒ `test_`, CMock’s default `:mock_prefix` ⇒
 `Mock`, and `:build_root` ⇒ `build`, the equivalent patterns are:
 
 Matched anywhere:
@@ -63,7 +63,7 @@ below. Your patterns extend this list, they don't replace it.
 
 ### Report filtering
 
-Separately, once `.gcov` files exist, ReportGenerator's own `-filefilters:`
+Separately, once `.gcov` files exist, ReportGenerator’s own `-filefilters:`
 argument controls which of them actually appear in the generated report(s).
 By default this excludes:
 
@@ -87,8 +87,8 @@ By default this excludes:
     ```
 
 1.  **Partial-generated files** — only when `:use_partials` is enabled, any
-    file whose name starts with Ceedling's Partial filename prefix, wherever
-    it's found (not only under the build root).
+    file whose name starts with Ceedling’s Partial filename prefix, wherever
+    it’s found (not only under the build root).
 
     ```
     -ceedling_partial_*
@@ -110,15 +110,15 @@ place.
 
 For [report filtering](#report-filtering), the natural instinct is to reach
 for [`:custom_args`](#custom_args) to pass a second, conflicting
-`-filefilters:` argument, but this is not an option because of ReportGenerator's
+`-filefilters:` argument, but this is not an option because of ReportGenerator’s
 rules and the order in which the filters are provided by the plugin.
 
-In short, there's no supported way to broaden what this plugin reports
+In short, there’s no supported way to broaden what this plugin reports
 beyond its defaults. If you need to override coverage reporting filtering, 
 use the [Gcovr option for this pluing](gcovr.md) instead. Its
 `:config_file` option hands full control to a `gcovr` configuration file,
-bypassing Ceedling's generated exclusions entirely (see
-[Gcovr's Results filtering](gcovr.md#results-filtering)).
+bypassing Ceedling’s generated exclusions entirely (see
+[Gcovr’s Results filtering](gcovr.md#results-filtering)).
 
 ## Plugin configuration
 
@@ -240,8 +240,13 @@ Ceedling combines your patterns with exclusions it generates automatically
 for test files, mocks, test runners, and vendored Unity/CMock sources (see
 [Coverage generation filtering](#coverage-generation-filtering) above for
 exactly what these cover). Your patterns can only add further exclusions;
-there's no way to override or remove one of the defaults — see
+there’s no way to override or remove one of the defaults — see
 [Overriding the defaults](#overriding-the-defaults) above.
+
+Patterns match each notes file’s path below the build directory as it would read
+with no [shortened root](../../testing-guide/conventions.md#test-names-build-output),
+so a pattern naming a long root’s own directories, such as `Keil_v5/.*`, still
+excludes the files below it.
 
 ```yaml
 :gcov:
@@ -258,10 +263,10 @@ there's no way to override or remove one of the defaults — see
 ### `:num_parallel_threads`
 
 Optionally set the number of threads ReportGenerator uses in parallel. Drives
-both of ReportGenerator's own `numberOfReportsParsedInParallel` and
+both of ReportGenerator’s own `numberOfReportsParsedInParallel` and
 `numberOfReportsMergedInParallel` settings together.
 
-**Default:** unset (ReportGenerator's own default applies)
+**Default:** unset (ReportGenerator’s own default applies)
 
 ---
 
@@ -272,7 +277,7 @@ Generator. Useful for configuring Risk Hotspots and other settings not
 covered by the options above. See the
 [ReportGenerator settings wiki](https://github.com/danielpalme/ReportGenerator/wiki/Settings).
 
-Note: This can be accomplished with Ceedling's tool configuration options
+Note: This can be accomplished with Ceedling’s tool configuration options
 outside of plugin configuration but is supported here to collect
 configuration options in one place.
 

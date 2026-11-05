@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'tmpdir'
 require 'fileutils'
 require 'ceedling/filesystem/build_subpath'
+require 'ceedling/filesystem/build_roots'
 
 # GH #1370 and the path handling audit around it: a build file placed by text could land
 # outside the build directory
@@ -113,10 +114,76 @@ describe BuildSubpath do
     end
   end
 
+  # GH #1387: a long configured root's location gives way to its marker, and everything below
+  # the root keeps its path
+  describe 'with shortened roots' do
+    let(:external_root) { '../vendor/acme/sdk/v3/include' }
+    let(:deep_root)     { 'lib/vendor/acme/hal' }
+    let(:table)         { BuildRoots.table( [external_root, deep_root, 'src'] ) }
+    let(:external)      { table.marker_for( external_root ) }
+    let(:deep)          { table.marker_for( deep_root ) }
+
+    it 'places a root\'s own directory at its marker alone, and reads it back' do
+      expect(BuildSubpath.encode( external_root, roots: table )).to eq( external )
+      expect(BuildSubpath.decode( external, roots: table )).to eq( external_root )
+    end
+
+    it 'keeps the path below a root, after its marker, and reads it back' do
+      expect(BuildSubpath.encode( "#{external_root}/os/v2", roots: table )).to eq( "#{external}/os/v2" )
+      expect(BuildSubpath.decode( "#{external}/os/v2", roots: table )).to eq( "#{external_root}/os/v2" )
+      expect(BuildSubpath.encode( "#{deep_root}/src", roots: table )).to eq( "#{deep}/src" )
+      expect(BuildSubpath.decode( "#{deep}/src", roots: table )).to eq( "#{deep_root}/src" )
+    end
+
+    it 'places a file below a root that is not shortened as it always has' do
+      expect(BuildSubpath.encode( 'src/drv', roots: table )).to eq( 'src/drv' )
+      expect(BuildSubpath.encode( '../shared/src', roots: table )).to eq( '_up_/shared/src' )
+    end
+
+    it 'still places a file of the running Ceedling below `_ceedling_`' do
+      plugins = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins' )
+      file    = File.join( plugins, 'fff/src' )
+
+      expect(BuildSubpath.encode( file, roots: BuildRoots.table( [plugins] ) )).to eq( '_ceedling_/plugins/fff/src' )
+    end
+
+    # A project's own directory may look like a marker, and must never read back as one
+    it 'places a directory shaped like a marker apart from any marker, and reads it back' do
+      ['_x_ABCDEF12/y', 'src/_v_20240101', '__x_abcdef12/z', "#{external_root}/_v_20240101/x"].each do |path|
+        encoded = BuildSubpath.encode( path, roots: table )
+
+        expect(encoded.split( '/' ).first).to_not match( BuildRoots::MARKER ), "#{path} => #{encoded}" unless path.start_with?( external_root )
+        expect(BuildSubpath.decode( encoded, roots: table )).to eq( path ), "#{path} => #{encoded}"
+        expect(BuildSubpath.decode( BuildSubpath.encode( path ) )).to eq( path ), path
+      end
+    end
+
+    it 'reads nothing back from a marker its table does not hold' do
+      expect(BuildSubpath.decode( '_include_ABCDEF12/os', roots: table )).to be_nil
+      expect(BuildSubpath.decode( '_include_ABCDEF12/os' )).to be_nil
+    end
+
+    it 'never places a file outside the build subpath it names' do
+      encoded = BuildSubpath.encode( "#{external_root}/os", roots: table )
+
+      expect(encoded.split( '/' )).to_not include( '..' )
+      expect(encoded).to_not start_with( '/' )
+    end
+  end
+
   describe '.of_directory' do
     it 'is the encoding of a directory, with the working directory as empty' do
       expect(BuildSubpath.of_directory( 'src/drv' )).to eq( 'src/drv' )
       expect(BuildSubpath.of_directory( '.' )).to eq( '' )
+    end
+
+    it 'remembers each table\'s encoding apart' do
+      root  = '../vendor/acme/sdk/v3/include'
+      table = BuildRoots.table( [root] )
+
+      expect(BuildSubpath.of_directory( root, roots: table )).to eq( table.marker_for( root ) )
+      expect(BuildSubpath.of_directory( root )).to eq( '_up_/vendor/acme/sdk/v3/include' )
+      expect(BuildSubpath.of_directory( root, roots: BuildRoots.table( [] ) )).to eq( '_up_/vendor/acme/sdk/v3/include' )
     end
   end
 end

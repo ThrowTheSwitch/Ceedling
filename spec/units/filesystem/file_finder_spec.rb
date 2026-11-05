@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'ceedling/filesystem/build_roots'
 require 'tmpdir'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
@@ -21,6 +22,8 @@ describe FileFinder do
     @yaml_wrapper       = double( "YamlWrapper" )
     @loginator          = double( "Loginator" )
     allow(@loginator).to receive(:log)
+    # No configured root is long enough to shorten unless an example says so
+    allow(@file_path_utils).to receive(:build_roots).and_return( BuildRoots.table( [] ) )
 
     # A real FileFinderHelper (already unit-tested on its own) so these specs exercise the
     # whole query -> FileFinder -> FileFinderHelper -> PathMatcher chain, not a mocked stub of it.
@@ -583,6 +586,25 @@ describe FileFinder do
 
       found = @file_finder.find_build_input_file( filepath: 'build/release/out/_up_/shared/src/crc.o', complain: :error, context: RELEASE_SYM )
       expect(found).to eq('../shared/src/crc.c')
+    end
+
+    # GH #1387: a source below a shortened root builds below the root's marker
+    it 'resolves an object below a shortened root to exactly its own source' do
+      root  = '../vendor/acme/sdk/v3/src'
+      table = BuildRoots.table( [root] )
+      allow(@file_path_utils).to receive(:build_roots).and_return( table )
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['os/crc.c', "#{root}/os/crc.c"] )
+
+      found = @file_finder.find_build_input_file( filepath: "build/release/out/#{table.marker_for( root )}/os/crc.o", complain: :error, context: RELEASE_SYM )
+      expect(found).to eq( "#{root}/os/crc.c" )
+    end
+
+    # Left from a build whose configuration had another root
+    it 'resolves an object below a marker no root holds by its name' do
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['src/crc.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/_src_ABCDEF12/crc.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('src/crc.c')
     end
 
     it 'resolves an object of a file in the running Ceedling installation, placed below `_ceedling_`' do

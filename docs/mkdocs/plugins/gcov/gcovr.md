@@ -368,6 +368,10 @@ expressions. (`gcovr --gcov-exclude`)
 Exclude directories that match this filter while searching for raw coverage
 files. Filters are regular expressions. (`gcovr --exclude-directories`)
 
+These are build directories. A long `:paths` root appears in them by its
+[short name](../../testing-guide/conventions.md#test-names-build-output), so a
+filter must name the short name or a directory below the root, not one above it.
+
 ---
 
 ### `:gcov_executable`
@@ -426,6 +430,10 @@ error. (`gcovr --gcov-ignore-parse-errors`)
 
 Override normal working directory detection for `.gcda`/`.gcno` files.
 (`gcovr --object-directory`)
+
+A directory below a long `:paths` root is spelled by the root's
+[short name](../../testing-guide/conventions.md#test-names-build-output) in the
+build directory.
 
 ---
 

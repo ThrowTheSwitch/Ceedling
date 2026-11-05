@@ -20,8 +20,8 @@ Five rules govern path handling. Each later section expands one of them.
 
 1. **One spelling.** Intake spells each path once. The spelling is relative to the working directory, with `~` expanded and the symlinks of its existing part resolved. A path with no relative form stays absolute. `ProjectPaths.canonical` produces it.
 2. **Containment by directory.** A path lies within a root only when the root is one of its whole ancestor directories. `ProjectPaths.contains?` and `ProjectPaths.subdir_below` answer this. No code asks whether one path's text starts with another's.
-3. **Placement by project path.** A build file sits below its build output root at its source's own directory path from the project root. `BuildSubpath.encode` writes that path so it never climbs or goes absolute. `..` becomes `_up_`, another drive goes under `_abs_` or `_unc_`, and Ceedling's own installed files go under `_ceedling_`.
-4. **Exact inversion.** `BuildSubpath.decode` turns a build subpath back into the source's path. A lookup from a build file therefore finds its source by exact path before it ever falls back to matching by name.
+3. **Placement by project path.** A build file sits below its build output root at its source's own directory path from the project root. `BuildSubpath.encode` writes that path so it never climbs or goes absolute. `..` becomes `_up_`, another drive goes under `_abs_` or `_unc_`, and Ceedling's own installed files go under `_ceedling_`. A file below a long configured root takes the root's short `_<name>_<hash>` marker in place of the root's location, and keeps its path below the root.
+4. **Exact inversion.** `BuildSubpath.decode` turns a build subpath back into the source's path, reading a root marker through the same table of shortened roots. A lookup from a build file therefore finds its source by exact path before it ever falls back to matching by name.
 5. **Collection leaves out the build.** Collection never returns the directories Ceedling creates. A glob based above the build root returns nothing from it. Configuration refuses a build root that holds the project.
 
 ### The project root
@@ -39,6 +39,7 @@ The path modules sit in `lib/ceedling/filesystem/`, whose [README](README.md) li
 | `project_paths.rb` | `ProjectPaths` | Spelling, absolute and relative forms, containment |
 | `working_dir.rb` | `WorkingDir` | The working directory, read once, and the one way to change it |
 | `build_subpath.rb` | `BuildSubpath` | Encoding a directory into a build subpath and back |
+| `build_roots.rb` | `BuildRoots` | Which long configured roots build paths shorten, and each one's marker |
 | `path_spellings.rb` | `PathSpellings` | A place's listed and real spellings, and distances between places |
 | `path_exclusions.rb` | `PathExclusions` | The three kinds of exclusion collection applies |
 | `path_mirror.rb` | `PathMirror` | A file's subdirectory below the most specific containing root |
@@ -57,9 +58,9 @@ Every change to path code must keep these invariants. Specs pin each one.
 
 - A build file lies below the build root. No subpath holds `..` or begins at a filesystem root.
 - Two distinct inputs never share one output. `DestinationCollision` stops the build when they would.
-- `BuildSubpath.decode( BuildSubpath.encode( dir ) )` returns `dir` in intake's spelling.
+- `BuildSubpath.decode( BuildSubpath.encode( dir, roots: t ), roots: t )` returns `dir` in intake's spelling, for any table `t`, including none.
 - A collection holds each place once, however many entries or spellings reach it.
-- `ProjectPaths` and `BuildSubpath` never depend on DIY objects or configuration.
+- `ProjectPaths`, `BuildSubpath`, and `BuildRoots` never depend on DIY objects or configuration. A table of roots is passed in.
 - Comparison folds case on Windows only. Stored spellings never change case.
 
 ## Spelling paths: `ProjectPaths`
@@ -112,26 +113,41 @@ Four marker segments stand for what a relative path cannot hold.
 | `_abs_` | A path with no relative form, on another Windows drive | `D:/sdk/inc` | `_abs_/D/sdk/inc` |
 | `_unc_` | A Windows UNC share | `//server/share/inc` | `_unc_/server/share/inc` |
 | `_ceedling_` | A file Ceedling ships, from the running installation, outside the project | `<installation>/plugins/fff/src` | `_ceedling_/plugins/fff/src` |
+| `_<name>_<hash>` | A long configured root (see [Shortened roots](#shortened-roots)) | `../../../Keil_v5/ARM/CMSIS/Include/os` | `_Include_3F2A91C0/os` |
 
 The project root itself encodes as `''`. Its files sit directly below the output root.
 
+### Shortened roots
+
+A long configured root adds its whole location to every build path below it. A vendor's include directory far outside the project climbs with a chain of `_up_` and then spells its whole path, and a source root nested deep inside the project spells every directory above it. No build step reads that text: nothing compiles or preprocesses a file in an encoded directory, and every tool reads the original source. Only the file's basename must stay literal.
+
+`BuildRoots.table(roots)` decides which roots give way to a marker.
+
+- **The roots** are `collection_build_roots`, the canonical bases of `:paths` ↳ `:source`, `:include`, `:test`, and `:support` with globs stripped, which `ConfiguratorBuilder#collect_build_roots` takes through `collect_mirror_roots`. `TEST_INCLUDE_PATH()` directories and `:files` entries are not roots.
+- **Outermost only.** A root inside another root is dropped, so a whole tree shares one marker and keeps its structure below it.
+- **Shorter only.** A root is shortened only when its marker is shorter than its encoded spelling. A marker is `_`, the root's own directory name with any leading `_` dropped (or `root`), `_`, and 8 upper-case hexadecimal digits of SHA-256 of the root's encoded spelling, case-folded on Windows. That is 10 characters more than the name, so `src` never shortens, and a climbing or deeply nested root always does. The decision depends only on the root's spelling, so it holds from run to run and changes only when the root does.
+- **Collisions.** `BuildRoots.collisions` finds two roots that would share a marker, and `collect_build_roots` stops configuration naming both.
+- **Traceability.** `FilePathUtils#publish_build_roots` writes each marker and its root to `<build_root>/build_roots.yml`, or removes the file when no root is shortened, and `Setupinator` logs each at DEBUG.
+
+`FilePathUtils#build_roots` builds the table once per configured list and passes it to every placement. ReportGenerator's gcov exclusions match each `.gcno` path through `FilePathUtils#expanded_build_path`, which writes each marker back as its root's encoded spelling, so a pattern written against a full build path still matches.
+
 ### Choosing a marker
 
-`encode(path)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies in one of `INSTALLED_DIRS`, the file is Ceedling's own and goes under `_ceedling_`. `INSTALLED_DIRS` are the `assets`, `bin`, `lib`, `plugins`, and `vendor` directories of `INSTALLATION_ROOT`, the directory above `lib/`. If the relative form is still absolute, the path takes `_abs_` or `_unc_`. Otherwise each `..` becomes `_up_`.
+`encode(path, roots:)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies in one of `INSTALLED_DIRS`, the file is Ceedling's own and goes under `_ceedling_`. Next, a path below a shortened root of `roots` takes the root's marker, followed by its path below the root. `INSTALLED_DIRS` are the `assets`, `bin`, `lib`, `plugins`, and `vendor` directories of `INSTALLATION_ROOT`, the directory above `lib/`. Otherwise, if the relative form is still absolute, the path takes `_abs_` or `_unc_`, and failing that each `..` becomes `_up_`. Without a table, no root is shortened.
 
 `_ceedling_` keeps Ceedling's own files short and stable. A gem installation can sit many directories away from a project. Without the marker its plugin sources would encode as a long chain of `_up_` segments that changes with every install location. A Ceedling copy vendored inside the project lies within the working directory, so it encodes by its ordinary path. A project may also sit inside a Ceedling checkout, as the system specs' projects do. Its sibling directories lie outside `INSTALLED_DIRS`, so they encode by `_up_` like any other.
 
 ### Escaping a marker-named directory
 
-A real directory named like a marker gains one leading `_`. `MARKER_NAMED` matches `_up_`, `_abs_`, `_unc_`, and `_ceedling_`, already led by any number of `_`, in any case. So `src/_up_/x` encodes as `src/__up_/x`, and `src/__abs_` as `src/___abs_`. `decode` strips one leading `_` from a marker-named segment that begins with `__`. The match ignores case because macOS and Windows file systems fold case, so `_UP_` and `_up_` can name one directory there.
+A real directory named like a marker gains one leading `_`. `MARKER_NAMED` matches `_up_`, `_abs_`, `_unc_`, and `_ceedling_`, already led by any number of `_`, in any case. `ROOT_MARKER_NAMED` matches anything shaped like a root marker, `_` led and ending in `_` and 8 hexadecimal digits, such as a date-stamped `_v_20240101`. An escaped name always begins with `__`, and a root marker never does. So `src/_up_/x` encodes as `src/__up_/x`, and `src/__abs_` as `src/___abs_`. `decode` strips one leading `_` from a marker-named segment that begins with `__`. The match ignores case because macOS and Windows file systems fold case, so `_UP_` and `_up_` can name one directory there.
 
 ### Decoding
 
-`decode(subpath)` inverts `encode` exactly. A leading `_ceedling_` joins the rest to `INSTALLATION_ROOT` and returns it relative to the working directory. A leading `_unc_` rebuilds `//server/share/…`. A leading `_abs_` rebuilds `D:/…` from its drive segment. Any other subpath maps each `_up_` back to `..` and unescapes the rest.
+`decode(subpath, roots:)` inverts `encode` exactly. A leading segment shaped like a root marker (`ROOT_MARKER`) becomes the root the table holds for it, joined with the rest. A marker the table doesn't hold, left by a build with other roots, decodes to nil. A leading `_ceedling_` joins the rest to `INSTALLATION_ROOT` and returns it relative to the working directory. A leading `_unc_` rebuilds `//server/share/…`. A leading `_abs_` rebuilds `D:/…` from its drive segment. Any other subpath maps each `_up_` back to `..` and unescapes the rest.
 
 ### Memo
 
-`of_directory(dir)` memoizes `encode` per working directory and directory behind a Mutex. A build places many files from each directory, and build threads share the memo.
+`of_directory(dir, roots:)` memoizes `encode` per working directory, table digest, and directory behind a Mutex. A build places many files from each directory, and build threads share the memo.
 
 ## Placement rules: `FilePathUtils`
 
@@ -143,7 +159,7 @@ The rule has three cases, tried in order.
 
 1. A file below one of the caller's `generated_roots` mirrors below that root. These roots are the test's own mock and Partials directories, from `generated_roots(test)`. A mock's object therefore keeps the mock's own subdirectory.
 2. A file elsewhere below the build root lands flat. These are vendored framework sources and runners, which never share a basename within one test.
-3. Any other file lands at `BuildSubpath.of_directory( File.dirname( file ) )`.
+3. Any other file lands at `BuildSubpath.of_directory( File.dirname( file ), roots: build_roots )`.
 
 In test `test/drivers/test_uart`, the source `src/drivers/uart.c` builds to `build/test/out/test/drivers/test_uart/src/drivers/uart.o`. A release builds it to `build/release/out/src/drivers/uart.o`. The source `../shared/crc.c` builds to `…/_up_/shared/crc.o`.
 
@@ -163,7 +179,7 @@ These callers use the rule.
 
 ### Test names
 
-A test's name is its path from the project root without its extension. `form_test_name(filepath)` is `BuildSubpath.encode( filepath.ext( '' ) )`. The name places the test's build output, results, runner, mocks, preprocessing, and logs. `test/unit/test_foo.c` is named `test/unit/test_foo`. A test at `../tests/test_x.c` is named `_up_/tests/test_x`. `TestBuildValidations` stops the build through `DestinationCollision` when two tests share a name.
+A test's name is its path from the project root without its extension. `form_test_name(filepath)` is `BuildSubpath.encode( filepath.ext( '' ) )`, with no roots table, so a test name never shortens. The name places the test's build output, results, runner, mocks, preprocessing, and logs. `test/unit/test_foo.c` is named `test/unit/test_foo`. A test at `../tests/test_x.c` is named `_up_/tests/test_x`. `TestBuildValidations` stops the build through `DestinationCollision` when two tests share a name.
 
 ### The Dependencies plugin
 
@@ -192,7 +208,7 @@ A lookup from a build file inverts placement exactly. It finds the input by path
 
 1. A path outside the build root is a source-tree query from an `#include` or `TEST_SOURCE_FILE()`. `header_root_relative_query` handles it.
 2. Inside the build root, `placement_root` names the release output root or the test's build path.
-3. The subdirectory below that root is decoded by `BuildSubpath.decode` and joined with the basename. The query is marked exact.
+3. The subdirectory below that root is decoded by `BuildSubpath.decode` with `FilePathUtils#build_roots` and joined with the basename. The query is marked exact. A marker no root holds falls back to the bare basename.
 
 `find_compiled_input` tries an exact query first through `exact_file`. `exact_file` builds an index per collection, keyed by `compare_by_identity` and then by absolute path. A tail match by trailing segments follows only when the exact query misses. It also serves a query that is not exact, such as an object below a third-party plugin's build root that placement does not know.
 
@@ -234,7 +250,7 @@ The `minus` rule lets `+:src/legacy/keep` survive beside `-:src/legacy`, because
 
 ### Mirror roots
 
-`collect_mirror_roots(entries)` computes the roots that mocks and header lookups measure against, once, at configuration time. It strips a `/**` or `/*` tail, expands a glob in the middle of an entry into one root per directory, and canonicalizes each. `ConfiguratorBuilder#collect_mirror_roots` stores two lists. `collection_mirror_roots_include` comes from `:paths` ↳ `:include`. `collection_mirror_roots_headers` adds `:test` and `:support`.
+`collect_mirror_roots(entries)` computes the roots that mocks and header lookups measure against, once, at configuration time. It strips a `/**` or `/*` tail, expands a glob in the middle of an entry into one root per directory, and canonicalizes each. `ConfiguratorBuilder#collect_mirror_roots` stores two lists. `collection_mirror_roots_include` comes from `:paths` ↳ `:include`. `collection_mirror_roots_headers` adds `:test` and `:support`. `collect_build_roots` stores a third, `collection_build_roots`, from `:source`, `:include`, `:test`, and `:support`, for [shortened roots](#shortened-roots).
 
 ## The build root: `BuildRootPolicy`
 
@@ -271,7 +287,7 @@ Paths behave differently on Windows, macOS, and other POSIX systems. The code ha
 - **`_abs_`.** Only Windows produces `_abs_`. A path on another drive has no relative form, and `Pathname#relative_path_from` raises `ArgumentError`. `relative` then returns the absolute path, and `encode` places it under `_abs_/<drive>/…`.
 - **UNC shares.** `unc?` is true only on Windows. `unc_absolute` resolves `..` but never climbs above `//server/share`. A share encodes under `_unc_`.
 - **Unclean segments.** `File.expand_path` lengthens a short `~1` name and drops a trailing dot or space. `UNCLEAN` therefore treats `~`, a trailing dot, and a trailing space as unclean, so those paths always pass through `File.expand_path`.
-- **Path length.** Placement by project path lengthens build paths. A source far from the project gains one `_up_` per climbing level, and `_ceedling_` keeps installed files short. `FileWrapper#check_path_length` measures each path it is given against the remembered working directory, with no system call, and reports it once per process: a warning within 25 characters of the limit, an error at or past it. Only a reported path is recorded, keyed by its `absolute` spelling, so a build's many short paths cost one comparison each and are never remembered.
+- **Path length.** Placement by project path lengthens build paths. A source far from the project gains one `_up_` per climbing level, unless a shortened root holds it, and `_ceedling_` keeps installed files short. `FileWrapper#check_path_length` measures each path it is given against the remembered working directory, with no system call, and reports it once per process: a warning within 25 characters of the limit, an error at or past it. Only a reported path is recorded, keyed by its `absolute` spelling, so a build's many short paths cost one comparison each and are never remembered.
   - **The limit.** `:project` ↳ `:win_path_limit` picks it. `:classic`, the default, is Windows' classic limit: 260 characters for a file and 248 for a directory that `mkdir` or `mkdir_tmp` creates. `:long_paths` and `:auto` can lift it to 32,767.
   - **The probe.** Long paths need the host's `LongPathsEnabled` and a long-path-aware program, and Ruby before 4.0 can write long paths but not list them. So `WinLongPaths.probe` writes, reads, and lists a file nested past 260 characters below the build root, then removes exactly what it made. `WinPathProber` runs it once per process, under a lock, when `FileWrapper` first sees a path near 260, and only for `:long_paths` or `:auto`. The registry is read only when files fail, to name the cause, through `:tools` ↳ `:windows_registry_query` and `ToolExecutor`. Configuration adds that optional tool only on Windows with one of those two modes.
   - **The answer.** `WinPathLimit.decision` turns the probe's result and the mode into the limit and one message, which `WinPathProber` logs. `:auto` lifts the limit only when listing works too. `:long_paths` lifts it whenever files work, warning once when listing doesn't. Without long path support, either keeps 260 and says why. `FileWrapper` keeps the answer, and the launcher's `FileWrapper`, which has no prober, keeps the classic limits.
@@ -284,7 +300,7 @@ Paths behave differently on Windows, macOS, and other POSIX systems. The code ha
 
 ### Linux and other POSIX systems
 
-- **Absolute paths.** Every absolute path has a relative form. A header at `/opt/sdk/inc` encodes as a chain of `_up_` segments followed by `opt/sdk/inc`, never as `_abs_`. The chain grows with the project's depth below `/`.
+- **Absolute paths.** Every absolute path has a relative form. A header at `/opt/sdk/inc` encodes as a chain of `_up_` segments followed by `opt/sdk/inc`, never as `_abs_`. The chain grows with the project's depth below `/`, unless `/opt/sdk/inc` is a configured root, which then takes its marker.
 - **Doubled separators.** A leading `//` is the filesystem root, not a share. `absolute` squeezes it to `/`.
 
 ## Changing path code
@@ -295,13 +311,14 @@ A change to path code keeps the invariants by following the patterns above. Thes
 - Spell configured paths with `standardize` at intake and `canonical` where a symlinked spelling matters.
 - Place build files through `form_build_subpath` or `build_filepath`. Never join a source's directory under a build root directly.
 - Run a new list of outputs through `DestinationCollision`.
-- Add a marker by updating `MARKER_NAMED`, `encode`, and `decode` together, with a round-trip spec.
-- Keep `ProjectPaths`, `BuildSubpath`, `PathSpellings`, and `PathExclusions` free of DIY objects and configuration.
+- Add a marker by updating `MARKER_NAMED` (or `ROOT_MARKER_NAMED`), `encode`, and `decode` together, with a round-trip spec.
+- Keep `ProjectPaths`, `BuildSubpath`, `BuildRoots`, `PathSpellings`, and `PathExclusions` free of DIY objects and configuration.
+- Match a pattern written against build paths through `FilePathUtils#expanded_build_path`, so a shortened root never hides text the pattern names.
 
 ## Specs
 
 Each tier pins a different layer of this design.
 
-- **Unit.** `spec/units/filesystem/project_paths_spec.rb`, `build_subpath_spec.rb`, `path_mirror_spec.rb`, `path_matcher_spec.rb`, `destination_collision_spec.rb`, `file_path_utils_spec.rb`, `file_path_collection_utils_spec.rb`, and `file_finder_spec.rb`, with `spec/units/mock_locator_spec.rb`, `spec/units/library_resolver_spec.rb`, and `spec/units/config/build_root_policy_spec.rb`. Windows drive and UNC examples run only on Windows.
+- **Unit.** `spec/units/filesystem/project_paths_spec.rb`, `build_subpath_spec.rb`, `build_roots_spec.rb`, `path_mirror_spec.rb`, `path_matcher_spec.rb`, `destination_collision_spec.rb`, `file_path_utils_spec.rb`, `file_path_collection_utils_spec.rb`, and `file_finder_spec.rb`, with `spec/units/mock_locator_spec.rb`, `spec/units/library_resolver_spec.rb`, and `spec/units/config/build_root_policy_spec.rb`. Windows drive and UNC examples run only on Windows.
 - **Integration.** `spec/integration/path_scenarios_spec.rb` and `path_intake_scenarios_spec.rb` configure real projects in temporary workspaces through `spec/support/integration/path_scenario_harness.rb`. `expect_collections_outside_build` and `expect_one_spelling_each` assert the invariants.
-- **System.** `spec/system/path_handling_probes_spec.rb`, `build_output_mirroring_spec.rb`, `rake_release_task_path_disambiguation_spec.rb`, `bracket_path_handling_spec.rb`, and `special_path_characters_spec.rb` run full builds.
+- **System.** `spec/system/path_handling_probes_spec.rb`, `short_build_paths_spec.rb`, `build_output_mirroring_spec.rb`, `rake_release_task_path_disambiguation_spec.rb`, `bracket_path_handling_spec.rb`, and `special_path_characters_spec.rb` run full builds.

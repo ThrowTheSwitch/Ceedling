@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/setupinator'
+require 'ceedling/constants'
 
 describe Setupinator do
   # FileWrapper is built before any configuration exists, so setup hands it the Windows
@@ -16,13 +17,33 @@ describe Setupinator do
       configurator = double( 'configurator', project_win_path_limit: :auto, build: nil )
       file_wrapper = double( 'file_wrapper' )
       objects      = Setupinator::COLLABORATORS.to_h { |name| [name, double( name.to_s )] }
-      objects      = objects.merge( configurator: configurator, file_wrapper: file_wrapper )
+      objects      = objects.merge( configurator: configurator, file_wrapper: file_wrapper,
+                                    file_path_utils: double( 'file_path_utils', publish_build_roots: [] ) )
 
       setupinator = described_class.new
       setupinator.ceedling = objects
 
       expect(configurator).to receive(:build).ordered
       expect(file_wrapper).to receive(:configure_win_path_limit).with( mode: :auto, prober: objects[:win_path_prober] ).ordered
+
+      setupinator.send( :build_configuration, { ceedling_lib_path: 'lib', logging_path: 'logs' } )
+    end
+  end
+
+  # GH #1387: a build path below a long configured root carries the root's marker instead
+  describe 'shortened roots' do
+    it 'publishes the roots table once the configuration is built, and logs each marker at DEBUG' do
+      configurator    = double( 'configurator', project_win_path_limit: :classic, build: nil )
+      file_path_utils = double( 'file_path_utils' )
+      loginator       = double( 'loginator' )
+      objects         = Setupinator::COLLABORATORS.to_h { |name| [name, double( name.to_s ).as_null_object] }
+
+      setupinator = described_class.new
+      setupinator.ceedling = objects.merge( configurator: configurator, file_path_utils: file_path_utils, loginator: loginator )
+
+      expect(configurator).to receive(:build).ordered
+      expect(file_path_utils).to receive(:publish_build_roots).ordered.and_return( [['../sdk/include', '_include_3F2A91C0']] )
+      expect(loginator).to receive(:log).with( '_include_3F2A91C0 ➡️ ../sdk/include', Verbosity::DEBUG )
 
       setupinator.send( :build_configuration, { ceedling_lib_path: 'lib', logging_path: 'logs' } )
     end

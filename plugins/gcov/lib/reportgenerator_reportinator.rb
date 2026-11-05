@@ -276,7 +276,8 @@ class ReportGeneratorReportinator < GcovReportinator
     # filter_map drops empty dirs so Batchinator never queues no-op work items.
     work_items = gcno_dirs.filter_map do |gcno_dir|
       files = @file_wrapper.directory_listing(File.join(gcno_dir, "*#{EXTENSION_GCNO}"))
-        .reject { |f| gcno_exclude_regex && f =~ gcno_exclude_regex }
+        # Patterns are written against build paths as they would read with no root shortened
+        .reject { |f| gcno_exclude_regex && @ceedling[:file_path_utils].expanded_build_path( f ) =~ gcno_exclude_regex }
         # Sort to process non-partial source files before their partial counterparts.
         # Processing the coverage compiled version of the original source creates .gcov
         # files for more than the partial does (primarily header files),

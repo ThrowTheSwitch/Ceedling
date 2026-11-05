@@ -11,8 +11,32 @@ require 'ceedling/filename_extension'
 require 'ceedling/system_utils' # Object#deep_clone
 require 'ceedling/system_wrapper'
 require 'ceedling/constants'
+require 'ceedling/exceptions'
+require 'ceedling/filesystem/build_roots'
 
 describe ConfiguratorBuilder do
+
+  # GH #1387: the roots a long configured location can be shortened to a marker in build paths
+  describe '#collect_build_roots' do
+    let(:fpcu)    { double('file_path_collection_utils') }
+    let(:builder) { ConfiguratorBuilder.new(file_path_collection_utils: fpcu, loginator: nil, file_wrapper: nil, system_wrapper: nil) }
+    let(:config) do
+      { paths_source: ['src/**'], paths_include: ['../sdk/include'], paths_test: ['test/**'], paths_support: ['test/support'] }
+    end
+
+    it 'takes roots from the source, include, test, and support paths, as mirror roots are taken' do
+      expect(fpcu).to receive(:collect_mirror_roots).with( ['src/**', '../sdk/include', 'test/**', 'test/support'] ).and_return( ['src', '../sdk/include', 'test', 'test/support'] )
+
+      expect( builder.collect_build_roots( config ) ).to eq( { collection_build_roots: ['src', '../sdk/include', 'test', 'test/support'] } )
+    end
+
+    it 'stops configuration when two roots would share a marker, naming both' do
+      allow(fpcu).to receive(:collect_mirror_roots).and_return( ['../a/x/include', '../b/y/include'] )
+      allow(BuildRoots).to receive(:collisions).and_return( [['../a/x/include', '../b/y/include']] )
+
+      expect { builder.collect_build_roots( config ) }.to raise_error( CeedlingException, %r{'\.\./a/x/include' and '\.\./b/y/include'} )
+    end
+  end
 
   describe '#populate_with_defaults' do
     let(:builder) { ConfiguratorBuilder.new(file_path_collection_utils: nil, loginator: nil, file_wrapper: nil, system_wrapper: nil) }

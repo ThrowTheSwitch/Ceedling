@@ -10,6 +10,7 @@ require 'ceedling/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/build_roots'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
@@ -39,9 +40,14 @@ describe ReportGeneratorReportinator do
       project_test_file_prefix: 'test_',
       cmock_mock_prefix:        'Mock',
       project_build_root:       'build',
-      extension_source:         ['.c']
+      extension_source:         ['.c'],
+      collection_build_roots:   build_roots
     )
   end
+  # No configured root is long enough to shorten unless an example says so
+  let(:build_roots)      { [] }
+  # Real, so a shortened root's marker expands exactly as placement wrote it
+  let(:file_path_utils)  { FilePathUtils.new({ configurator: configurator, file_wrapper: file_wrapper }) }
   let(:system_objects) do
     {
       tool_validator: tool_validator,
@@ -51,6 +57,7 @@ describe ReportGeneratorReportinator do
       configurator:   configurator,
       batchinator:    batchinator,
       file_wrapper:   file_wrapper,
+      file_path_utils: file_path_utils,
     }
   end
 
@@ -376,11 +383,48 @@ describe ReportGeneratorReportinator do
         .and_return(['build/gcov/out/test_foo/test_foo_runner.c.gcno'])
 
       dispatched = nil
-      allow(batchinator).to receive(:exec) { |workload:, things:, &_blk| dispatched = things }
+      allow(batchinator).to receive(:exec) { |things:, **, &_blk| dispatched = things }
 
       reportinator.send(:generate_gcov_files, /test_foo_runner/)
 
       expect(dispatched).to eq([])
+    end
+
+    # GH #1387: a long configured root's location gives way to its marker in build paths, and
+    # an exclusion naming that location still applies
+    context 'with a shortened root' do
+      let(:vendor_root) { '../vendor/Keil_v5/ARM/CMSIS/Include' }
+      let(:build_roots) { [vendor_root] }
+      let(:marker)      { BuildRoots.table( [vendor_root] ).marker_for( vendor_root ) }
+
+      def dispatch(gcno, regex)
+        allow(file_wrapper).to receive(:directory_listing).with(File.join(GCOV_BUILD_OUTPUT_PATH, '**', "*#{EXTENSION_GCNO}")).and_return([gcno])
+        allow(file_wrapper).to receive(:directory_listing).with(File.join(File.dirname(gcno), "*#{EXTENSION_GCNO}")).and_return([gcno])
+        dispatched = nil
+        allow(batchinator).to receive(:exec) { |things:, **, &_blk| dispatched = things }
+
+        reportinator.send(:generate_gcov_files, regex)
+        return dispatched
+      end
+
+      it 'excludes a .gcno below the marker by a pattern naming the root\'s own location' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: ['Keil_v5/.*'] })
+
+        expect(dispatch( "build/gcov/out/test_foo/#{marker}/os/cmsis_os2.gcno", regex )).to eq([])
+      end
+
+      it 'still excludes by a basename below the marker' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: ['cmsis_os2'] })
+
+        expect(dispatch( "build/gcov/out/test_foo/#{marker}/os/cmsis_os2.gcno", regex )).to eq([])
+      end
+
+      it 'keeps a .gcno below the marker that no pattern names' do
+        regex = reportinator.send(:build_gcno_exclude_regex, { gcov_exclude: ['legacy_code'] })
+        gcno  = "build/gcov/out/test_foo/#{marker}/os/cmsis_os2.gcno"
+
+        expect(dispatch( gcno, regex ).map { |work| work[:gcno_files] }).to eq([[gcno]])
+      end
     end
   end
 

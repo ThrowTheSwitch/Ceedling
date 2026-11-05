@@ -18,6 +18,7 @@ Each release has its own section, listing only what changed in that release.
 
 - [#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385) Fixed the [Bullseye plugin’s](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) `report:bullseye` task including Unity, generated test runners, and test files in its HTML and XML reports when run on the same command line as a fresh `bullseye:` build, as in `ceedling bullseye:all report:bullseye`. Its reports now leave out the same sources as automatic reports. With no coverage file yet, it reports that and writes nothing, rather than failing with a license hint.
 - Fixed one long build path being reported several times, once for each step that created or wrote it. Ceedling now reports each path once.
+- [#1387](https://github.com/ThrowTheSwitch/Ceedling/issues/1387) Fixed long configured paths lengthening every build path below them ([#1370](https://github.com/ThrowTheSwitch/Ceedling/issues/1370)). A `:paths` root far outside the project, such as a vendor’s include directory, or nested deep inside it, is now spelled in build paths by a short `_<name>_<hash>` name, and everything below it keeps its path. Short roots such as `src/` are unchanged. `build/build_roots.yml` lists each shortened root ([build output](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-names-build-output)). The first build after upgrading rebuilds everything once.
 
 ## 🌟 Added
 

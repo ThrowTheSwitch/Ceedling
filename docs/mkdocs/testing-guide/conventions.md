@@ -277,14 +277,25 @@ objects the same way below `build/release/out/`. Mocks sit below their test’s 
 mock directory, and runners and Unity, CMock, and CException objects sit directly in
 the test’s directory.
 
-A test or source outside your project keeps its whole path. Each `..` becomes
-`_up_`, so `../shared/test/test_io.c` is named `_up_/shared/test/test_io`. A path
+A long `:paths` root gives way to a short name in build paths. A root far outside
+your project, such as a vendor’s include directory, or one nested deep inside it,
+is written as its own directory name and 8 hexadecimal digits, and everything below
+the root keeps its path. With `../../../Keil_v5/ARM/CMSIS/Include` among your
+`:paths`, a preprocessed copy of `Include/cmsis_os2.h` lands at
+`build/test/preprocess/files/<test>/directives_only/raw/_Include_3F2A91C0/cmsis_os2.h`.
+A root is shortened only when its short name is shorter than its own path, so roots
+such as `src/` and `test/` are unchanged. `build/build_roots.yml` lists each shortened
+root and its short name, and `--verbosity=debug` logs them. Test names never change.
+
+A test or source outside your project, and outside every shortened root, keeps its
+whole path. Each `..` becomes `_up_`, so `../shared/test/test_io.c` is named
+`_up_/shared/test/test_io`. A path
 with no relative form, such as one on another Windows drive, sits beneath `_abs_`,
 and a file of the running Ceedling installation outside your project, such as a
 plugin’s source, beneath `_ceedling_`. None of these reaches outside the build
-directory. A directory of your project that is itself named like one of these
-gains a leading `_` (e.g. `__up_/`), so it never shares a name with a path outside
-your project.
+directory. A directory of your project that is itself named like one of these, or like a
+shortened root, gains a leading `_` (e.g. `__up_/`), so it never shares a name with
+a path outside your project.
 
 Two tests share a name only if their paths differ in extension alone (e.g.
 `test_a.c` and `test_a.cpp`). A build that includes either test stops with an

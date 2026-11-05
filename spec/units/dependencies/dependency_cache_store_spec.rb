@@ -124,9 +124,21 @@ describe DependencyCacheStore do
       expect( @store.load('cache.json')['entries'] ).to eq( {} )
     end
 
-    # GH #1364: version 2 places per-test build output by the test's path from the project root
-    it 'marks the 1.2.2 build layout as schema version 2' do
-      expect( DependencyCacheStore::CACHE_SCHEMA_VERSION ).to eq( 2 )
+    # GH #1364: version 2 places per-test build output by the test's path from the project root.
+    # GH #1387: version 3 places build files below a long configured root at the root's marker.
+    it 'marks the 1.2.3 build layout as schema version 3' do
+      expect( DependencyCacheStore::CACHE_SCHEMA_VERSION ).to eq( 3 )
+    end
+
+    it 'rebuilds once from the 1.2.2 build layout too' do
+      payload = JSON.generate(
+        'schema_version' => 2, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => { 'foo.o' => valid_entry }
+      )
+      stub_file( 'build/cache/.test.dep_cache.json', payload )
+
+      expect(@loginator).to receive(:log).with( /comes from an earlier Ceedling build layout/, Verbosity::COMPLAIN )
+
+      expect( @store.load('build/cache/.test.dep_cache.json')['entries'] ).to eq( {} )
     end
 
     it 'rebuilds once from an older build layout, advising clobber for what that layout left' do

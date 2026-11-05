@@ -11,9 +11,9 @@ require 'ceedling/dependencies/dependency_hasher'
 
 # Loads, validates, and persists DependencyTracker's on-disk cache file.
 #
-# The persisted shape is a single JSON object:
+# The persisted shape is a single JSON object (each version is recorded in CACHE_SCHEMA.md):
 #   {
-#     "schema_version": 1,
+#     "schema_version": 3,
 #     "hash_algorithm": "sha256",
 #     "entries": {
 #       "<target path>": {
@@ -56,8 +56,8 @@ require 'ceedling/dependencies/dependency_hasher'
 class DependencyCacheStore
 
   # Cache keys are build paths, so a change to where a build puts its output changes the
-  # schema too. 2: per-test output is placed by the test's path from the project root.
-  CACHE_SCHEMA_VERSION = 2 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
+  # schema too. CACHE_SCHEMA.md records each version and why it was raised.
+  CACHE_SCHEMA_VERSION = 3 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
 
   constructor :file_wrapper, :loginator
 
