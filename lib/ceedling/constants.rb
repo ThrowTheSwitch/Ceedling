@@ -186,6 +186,7 @@ BACKTRACE_GDB_SCRIPT_FILE = 'backtrace.gdb'
 
 INPUT_CONFIGURATION_CACHE_FILE = 'input.yml'   unless defined?(INPUT_CONFIGURATION_CACHE_FILE)     # input configuration file dump
 DEFINES_DEPENDENCY_CACHE_FILE  = 'defines_dependency.yml' unless defined?(DEFINES_DEPENDENCY_CACHE_FILE) # preprocessor definitions for files
+BUILD_ROOTS_MAP_FILE           = "build_roots#{EXTENSION_CORE_YAML}" unless defined?(BUILD_ROOTS_MAP_FILE) # shortened build roots and their markers
 
 TEST_ROOT_NAME    = 'test'                unless defined?(TEST_ROOT_NAME)
 TEST_TASK_ROOT    = TEST_ROOT_NAME + ':'  unless defined?(TEST_TASK_ROOT)

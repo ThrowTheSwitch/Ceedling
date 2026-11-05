@@ -213,9 +213,6 @@ class FilePathUtils
     return BuildSubpath.encode( filepath.to_s.ext( '' ) )
   end
 
-  # The map of shortened roots in the build root, for tracing a marker to its root
-  BUILD_ROOTS_MAP = 'build_roots.yml'.freeze
-
   # The configured roots that build paths spell by a short marker (see BuildRoots), built
   # once per configured list. Build threads may build it together harmlessly, since every
   # table of one list is the same.
@@ -229,11 +226,11 @@ class FilePathUtils
     return table
   end
 
-  # Writes each shortened root and its marker to the build root, or removes the map when no
-  # root is shortened, and returns them
+  # Writes each shortened root and its marker to the build root, for tracing a marker to its
+  # root, or removes the map when no root is shortened, and returns them
   def publish_build_roots
     entries = build_roots.entries
-    path    = File.join( @configurator.project_build_root, BUILD_ROOTS_MAP )
+    path    = File.join( @configurator.project_build_root, BUILD_ROOTS_MAP_FILE )
     return entries.tap { @file_wrapper.rm_f( path ) } if entries.empty?
 
     @file_wrapper.mkdir( @configurator.project_build_root )
