@@ -14,15 +14,25 @@ require 'tmpdir'
 # once and single-threaded, settles the class before any thread first reaches for it,
 # which Digest's lazy autoload does not survive under contention.
 require 'digest/sha2'
+require 'set'
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_tree'
+require 'ceedling/filesystem/project_paths'
 
 
 class FileWrapper
 
   constructor :loginator, :verbosinator
+
+  # The paths already reported by check_path_length. Only a path in the warning band or past
+  # the limit is ever recorded, so the record holds the few long paths a build makes, not
+  # every path it checks.
+  def setup
+    @path_reports = Set.new
+    @path_lock    = Mutex.new
+  end
 
   # Platform practical filepath length ceilings, used only as a diagnostic heuristic --
   # neither Ruby nor the host OS exposes a portable, runtime-queryable API for this.
@@ -373,9 +383,18 @@ class FileWrapper
   # rejects the path. The calling context (`origin:`) is only included at DEBUG
   # verbosity -- otherwise the message stays plain, since the path itself is normally
   # enough and repeated origin labels add noise at everyday verbosity levels.
+  #
+  # A path is reported once per process, however many operations check it. Its absolute
+  # spelling is the key, so two spellings of one place count once. `ProjectPaths.absolute`
+  # is memoized, so a repeated check reads neither the disk nor the working directory, and
+  # a path below the warning band returns before taking any lock.
   def check_path_length(path, origin:)
-    limit  = path_length_limit
-    length = File.expand_path(path).length
+    limit    = path_length_limit
+    absolute = ProjectPaths.absolute( path.to_s )
+    length   = absolute.length
+
+    return if length < (limit - WARNING_MARGIN)
+    return unless @path_lock.synchronize { @path_reports.add?( absolute ) }
 
     prefix = @verbosinator.should_output?(Verbosity::DEBUG) ? "#{origin} ⏩️ " : ''
 
@@ -384,7 +403,7 @@ class FileWrapper
         "#{prefix}Path length (#{length}) reaches or exceeds this platform's practical limit (#{limit}): #{path}",
         Verbosity::ERRORS
       )
-    elsif length >= (limit - WARNING_MARGIN)
+    else
       @loginator.log(
         "#{prefix}Path length (#{length}) is approaching this platform's practical limit (#{limit}): #{path}",
         Verbosity::COMPLAIN
