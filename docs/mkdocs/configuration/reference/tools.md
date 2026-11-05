@@ -188,6 +188,26 @@ Linker for release source code
 
 **Default**: `gcc`
 
+## `:windows_registry_query`
+
+Reads one Windows registry value. It is not a build step. Ceedling adds this
+tool only on Windows, and only when [`:project` ↳ `:win_path_limit`][win-path-limit]
+is `:auto` or `:long_paths`. It runs only if Ceedling’s long path check fails,
+to tell whether long paths are disabled on the host or unavailable to Ruby.
+
+The tool is optional. If its executable is missing, Ceedling’s message says the
+registry could not be read, and the build goes on.
+
+- `${1}`: registry key
+- `${2}`: value name
+
+**Default**: `reg` (as `reg query "${1}" /v ${2}`)
+
+A replacement must print its result as `reg query` does. Ceedling looks for a
+line such as `LongPathsEnabled    REG_DWORD    0x1` in its output.
+
+[win-path-limit]: project.md#win_path_limit
+
 ### Tool definition configurable elements
 
 1. `:executable` - Command line executable (required).

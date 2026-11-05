@@ -17,6 +17,18 @@ within source directories, or tests and source directories
 can be wholly separated at the top of your project’s directory
 tree.
 
+!!! warning "Windows path lengths"
+    Ceedling mirrors your source paths in its build paths. In some cases build 
+    paths can exceed Windows’ classic 260-character limit. Without special 
+    handling, a path that long can cause build failure with mysterious “No 
+    such file or directory” or other errors rather than a clear length error.
+    Ceedling intervenes by reporting each build path that nears or passes the 
+    limit to aid troublehsooting.
+    
+    If your Windows host has long paths enabled or you can enable it, see
+    [`:project` ↳ `:win_path_limit`](../configuration/reference/project.md#win_path_limit)
+    for more options.
+
 ## Distinguishing same-named files
 
 ### Header / source files

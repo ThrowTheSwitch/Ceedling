@@ -432,6 +432,11 @@ Outcomes:
   - The application runtime may not be long-path-aware.
   - The build directory’s drive may not support long paths.
 
+To name the cause, Ceedling reads the host’s registry setting with the
+[`:windows_registry_query`][windows-registry-query] tool.
+
+[windows-registry-query]: tools.md#windows_registry_query
+
 ### `:auto`
 
 Runs the same check as `:long_paths`, but lifts the limit only when Ruby can
