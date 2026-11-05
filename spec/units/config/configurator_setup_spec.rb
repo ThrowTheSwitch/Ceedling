@@ -9,6 +9,8 @@ require 'spec_helper'
 require 'ceedling/config/configurator_setup'
 require 'ceedling/reportinator'
 require 'ceedling/config/configurator_validator'
+require 'ceedling/config/configurator'
+require 'ceedling/defaults'
 require 'config_yaml_helper'
 
 # Unit coverage for ConfiguratorSetup's validations and build steps through doubled
@@ -573,6 +575,31 @@ describe ConfiguratorSetup do
       it "names the backtrace options when rejecting another value" do
         expect(@setup.validate_backtrace( { project: { use_backtrace: true } } )).to be false
         logged(/:project ↳ :use_backtrace is ':true' but must be one of \{:none, :simple, :gdb\}/)
+      end
+    end
+
+    # Windows has two path limits, so the setting names one of them, or asks for a probe.
+    # It is validated on every OS, so a shared project file is checked everywhere.
+    context "#validate_win_path_limit" do
+      it "accepts each Windows path limit option" do
+        [:max_path, :long_paths, :auto].each do |option|
+          expect(@setup.validate_win_path_limit( { project: { win_path_limit: option } } )).to be true
+        end
+      end
+
+      [260, true, :long].each do |value|
+        it "names the options when rejecting #{value.inspect}" do
+          expect(@setup.validate_win_path_limit( { project: { win_path_limit: value } } )).to be false
+          logged(/:project ↳ :win_path_limit is ':#{value}' but must be one of \{:max_path, :long_paths, :auto\}/)
+        end
+      end
+
+      it "runs among the final validations" do
+        expect(Configurator::FINAL_VALIDATIONS).to include( :validate_win_path_limit )
+      end
+
+      it "defaults to the classic limit" do
+        expect(DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:win_path_limit]).to eq( :max_path )
       end
     end
 
