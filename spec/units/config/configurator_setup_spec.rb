@@ -582,7 +582,7 @@ describe ConfiguratorSetup do
     # It is validated on every OS, so a shared project file is checked everywhere.
     context "#validate_win_path_limit" do
       it "accepts each Windows path limit option" do
-        [:max_path, :long_paths, :auto].each do |option|
+        [:classic, :long_paths, :auto].each do |option|
           expect(@setup.validate_win_path_limit( { project: { win_path_limit: option } } )).to be true
         end
       end
@@ -590,7 +590,7 @@ describe ConfiguratorSetup do
       [260, true, :long].each do |value|
         it "names the options when rejecting #{value.inspect}" do
           expect(@setup.validate_win_path_limit( { project: { win_path_limit: value } } )).to be false
-          logged(/:project ↳ :win_path_limit is ':#{value}' but must be one of \{:max_path, :long_paths, :auto\}/)
+          logged(/:project ↳ :win_path_limit is ':#{value}' but must be one of \{:classic, :long_paths, :auto\}/)
         end
       end
 
@@ -599,7 +599,7 @@ describe ConfiguratorSetup do
       end
 
       it "defaults to the classic limit" do
-        expect(DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:win_path_limit]).to eq( :max_path )
+        expect(DEFAULT_CEEDLING_PROJECT_CONFIG[:project][:win_path_limit]).to eq( :classic )
       end
     end
 

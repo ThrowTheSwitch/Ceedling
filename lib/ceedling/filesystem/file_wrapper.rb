@@ -38,7 +38,7 @@ class FileWrapper
   def setup
     @path_reports   = Set.new
     @path_lock      = Mutex.new
-    @win_path_limit = :max_path
+    @win_path_limit = :classic
     @prober         = nil
     @long_paths     = nil
   end
@@ -61,7 +61,7 @@ class FileWrapper
   # headers (a project can opt into longer paths on some platforms, but that's not
   # safely assumable here, so these stay conservative).
   PATH_LENGTH_LIMITS = {
-    windows: WinLongPaths::LIMITS[:max_path],
+    windows: WinLongPaths::LIMITS[:classic],
     macos:   1024,
     linux:   4096,
   }.freeze unless const_defined?(:PATH_LENGTH_LIMITS, false)
@@ -451,12 +451,12 @@ class FileWrapper
 
   def windows_path_limit(directory)
     return WinLongPaths::LIMITS[:long_paths] if @long_paths
-    return WinLongPaths::LIMITS[directory ? :max_directory : :max_path]
+    return WinLongPaths::LIMITS[directory ? :classic_directory : :classic]
   end
 
   # Only a configured FileWrapper has a prober; the launcher's keeps the classic limits
   def probe_wanted?
-    return SystemWrapper.windows? && (@win_path_limit != :max_path) && @long_paths.nil? && !@prober.nil?
+    return SystemWrapper.windows? && (@win_path_limit != :classic) && @long_paths.nil? && !@prober.nil?
   end
 
   # The limit once the prober has answered. Threads that ask together get one answer, since
@@ -481,13 +481,13 @@ class FileWrapper
   def length_terms(limit)
     return ['Path length', "this platform's practical limit (#{limit})"] unless SystemWrapper.windows?
 
-    subject = (limit == WinLongPaths::LIMITS[:max_directory]) ? 'Directory path length' : 'Path length'
+    subject = (limit == WinLongPaths::LIMITS[:classic_directory]) ? 'Directory path length' : 'Path length'
     return [subject, WinPathLimit.limit_name( limit )]
   end
 
   # The setting can help only a project still on the classic limits by its own choice
   def pointer_wanted?(limit)
-    return SystemWrapper.windows? && (@win_path_limit == :max_path) && (limit != WinLongPaths::LIMITS[:long_paths])
+    return SystemWrapper.windows? && (@win_path_limit == :classic) && (limit != WinLongPaths::LIMITS[:long_paths])
   end
 
 end

@@ -168,7 +168,7 @@ describe WinLongPaths do
           deep = directories_made( disk ).first
 
           expect(deep).to start_with( "#{expanded}/" )
-          expect(deep.length).to be > described_class::LIMITS[:max_path]
+          expect(deep.length).to be > described_class::LIMITS[:classic]
           expect(deep.delete_prefix( "#{expanded}/" ).split( '/' ).map(&:length).max).to be < 255
         end
 

@@ -300,7 +300,7 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     :release_build => false,
     :use_backtrace => :simple,
     # Windows' classic 260-character limit, the long path limit, or a probe for which applies
-    :win_path_limit => :max_path
+    :win_path_limit => :classic
     },
 
   :release_build => {

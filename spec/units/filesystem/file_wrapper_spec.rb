@@ -195,8 +195,8 @@ describe FileWrapper do
         return @logged.map { |_message, verbosity, _label| verbosity }
       end
 
-      context ':max_path' do
-        before(:each) { configure(:max_path) }
+      context ':classic' do
+        before(:each) { configure(:classic) }
 
         it 'never asks the prober' do
           expect(@prober).not_to receive(:long_paths?)

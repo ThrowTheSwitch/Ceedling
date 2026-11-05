@@ -32,14 +32,14 @@ module WinPathLimit
 
   # How a Windows path limit reads in a message
   def self.limit_name(limit)
-    return "Windows' #{WinLongPaths::LIMITS[:max_directory]}-character limit for directories" if limit == WinLongPaths::LIMITS[:max_directory]
+    return "Windows' #{WinLongPaths::LIMITS[:classic_directory]}-character limit for directories" if limit == WinLongPaths::LIMITS[:classic_directory]
     return "Windows' #{limit.to_s.reverse.scan( /\d{1,3}/ ).join( ',' ).reverse}-character long path limit" if limit == WinLongPaths::LIMITS[:long_paths]
 
     return "Windows' #{limit}-character limit"
   end
 
   def self.files_only_decision(mode)
-    listing = "Ruby #{RUBY_VERSION} cannot list directories past #{WinLongPaths::LIMITS[:max_path]} characters"
+    listing = "Ruby #{RUBY_VERSION} cannot list directories past #{WinLongPaths::LIMITS[:classic]} characters"
 
     if mode == :long_paths
       message = ":project ↳ :win_path_limit is :long_paths, but #{listing}. Builds can write long paths, but Ceedling's " \
@@ -48,13 +48,13 @@ module WinPathLimit
     end
 
     message = "Windows long paths are enabled, but #{listing}. Ceedling keeps reporting paths against the " \
-              "#{WinLongPaths::LIMITS[:max_path]}-character limit. Ruby 4.0 or later lists them."
+              "#{WinLongPaths::LIMITS[:classic]}-character limit. Ruby 4.0 or later lists them."
     return { long_paths: false, log: [message, Verbosity::NORMAL, LogLabels::NOTICE] }
   end
 
   def self.no_support_decision(result, mode)
     cause, remedy = cause_text( result )
-    limit         = "the #{WinLongPaths::LIMITS[:max_path]}-character limit"
+    limit         = "the #{WinLongPaths::LIMITS[:classic]}-character limit"
 
     if mode == :long_paths
       message = ":project ↳ :win_path_limit is :long_paths, but #{cause}. Ceedling reports paths against #{limit}.#{remedy}"

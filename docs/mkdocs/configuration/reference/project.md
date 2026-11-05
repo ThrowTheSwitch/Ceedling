@@ -408,7 +408,7 @@ characters.
 
 [long-paths-registry]: https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry#registry-setting-to-enable-long-paths
 
-### `:max_path`
+### `:classic`
 
 Reports paths against the classic limits: 260 characters for a file and 248
 for a directory. An error past the limit points you to this setting.
@@ -464,6 +464,6 @@ Ceedling doesn‘t test them. To check a tool, create a directory more than 260
 characters deep, then compile and link a trivial C file there with your
 project’s own tools.
 
-**Default**: `:max_path`
+**Default**: `:classic`
 
 <br/><br/>

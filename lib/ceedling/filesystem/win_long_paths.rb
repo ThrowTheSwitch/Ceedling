@@ -28,9 +28,9 @@ require 'ceedling/exceptions'
 module WinLongPaths
 
   LIMITS = {
-    max_path:      260,    # MAX_PATH, the terminating NUL included
-    max_directory: 248,    # CreateDirectory leaves room for an 8.3 file name
-    long_paths:    32_767  # The longest path a UNICODE_STRING holds
+    classic:           260,    # MAX_PATH, the terminating NUL included
+    classic_directory: 248,    # CreateDirectory leaves room for an 8.3 file name
+    long_paths:        32_767  # The longest path a UNICODE_STRING holds
   }.freeze
 
   REGISTRY_KEY   = 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\FileSystem'.freeze
@@ -86,7 +86,7 @@ module WinLongPaths
   def self.probe_directories(root)
     directories = [File.join( root, "long_path_probe_#{Process.pid}_#{SecureRandom.hex( 4 )}" )]
 
-    while directories.last.length <= (LIMITS[:max_path] + SEGMENT)
+    while directories.last.length <= (LIMITS[:classic] + SEGMENT)
       name = format( '%02d', directories.length ).ljust( SEGMENT, 'x' )
       directories << File.join( directories.last, name )
     end

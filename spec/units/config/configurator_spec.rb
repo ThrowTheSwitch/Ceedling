@@ -506,8 +506,8 @@ describe Configurator do
         end
       end
 
-      it "leaves it out on Windows when :win_path_limit is :max_path" do
-        expect( tools_with_limit( windows: true, limit: :max_path ) ).to_not include( :windows_registry_query )
+      it "leaves it out on Windows when :win_path_limit is :classic" do
+        expect( tools_with_limit( windows: true, limit: :classic ) ).to_not include( :windows_registry_query )
       end
 
       it "leaves it out on Windows when :win_path_limit is not set" do
