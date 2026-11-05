@@ -34,20 +34,20 @@ class FileWrapper
   #
   # The Windows path limit starts as the classic one. Setup configures it once the
   # project's configuration exists (see #configure_win_path_limit). Whether long paths are
-  # in effect stays unknown until a path first nears the classic limit and the probe runs.
+  # in effect stays unknown until a path first nears the classic limit and the prober answers.
   def setup
     @path_reports   = Set.new
     @path_lock      = Mutex.new
     @win_path_limit = :max_path
-    @probe_root     = nil
+    @prober         = nil
     @long_paths     = nil
-    @probe_lock     = Mutex.new
   end
 
-  # :project ↳ :win_path_limit, and the directory the long path probe may work below
-  def configure_win_path_limit(mode:, probe_root:)
+  # :project ↳ :win_path_limit, and the WinPathProber that decides whether long paths are in
+  # effect for it
+  def configure_win_path_limit(mode:, prober:)
     @win_path_limit = mode
-    @probe_root     = probe_root
+    @prober         = prober
   end
 
   # Platform practical filepath length ceilings, used only as a diagnostic heuristic --
@@ -407,8 +407,8 @@ class FileWrapper
   # spellings of one place count once. Only those reported paths are remembered.
   #
   # On Windows, a directory (`directory: true`) stops at 248 characters under the classic
-  # limits. The first path to near the classic limit runs the long path probe, if the
-  # project asked for long paths, and the limit is read again from its answer.
+  # limits. The first path to near the classic limit asks the prober whether long paths are
+  # in effect, if the project asked for them, and the limit is read again from its answer.
   def check_path_length(path, origin:, directory: false)
     length = File.expand_path( path.to_s, ProjectPaths.working_dir ).length
     limit  = path_length_limit( directory )
@@ -451,25 +451,16 @@ class FileWrapper
     return WinLongPaths::LIMITS[directory ? :max_directory : :max_path]
   end
 
+  # Only a configured FileWrapper has a prober; the launcher's keeps the classic limits
   def probe_wanted?
-    return SystemWrapper.windows? && (@win_path_limit != :max_path) && @long_paths.nil?
+    return SystemWrapper.windows? && (@win_path_limit != :max_path) && @long_paths.nil? && !@prober.nil?
   end
 
-  # The limit once the probe has answered
+  # The limit once the prober has answered. Threads that ask together get one answer, since
+  # the prober probes once.
   def probed_limit(directory)
-    probe_long_paths()
+    @long_paths = @prober.long_paths?( @win_path_limit )
     return path_length_limit( directory )
-  end
-
-  # Runs once per process. A thread that waited here finds the answer already set.
-  def probe_long_paths
-    @probe_lock.synchronize do
-      next unless @long_paths.nil?
-
-      decision    = WinPathLimit.decision( WinLongPaths.probe( @probe_root || '.' ), @win_path_limit )
-      @long_paths = decision[:long_paths]
-      @loginator.log( *decision[:log] )
-    end
   end
 
   def log_path_length(path, length, limit, origin)

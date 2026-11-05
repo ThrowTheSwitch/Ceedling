@@ -6,8 +6,8 @@
 # =========================================================================
 
 require 'fileutils'
-require 'open3'
 require 'securerandom'
+require 'ceedling/exceptions'
 
 # Windows' path length limits, and a probe of how far past the classic 260 characters
 # this Ruby process can actually work.
@@ -19,8 +19,9 @@ require 'securerandom'
 # removals fail there, or silently leave entries out, while single files work. The probe
 # tests that behavior directly instead of reading version numbers.
 #
-# The registry is read with `reg query`, which ships with Windows. `win32/registry` needs
-# Fiddle, which stops being a default gem after Ruby 3.4.
+# The registry is read only to explain a failure, through `query:`: a callable returning
+# `reg query` output and whether the query succeeded. WinPathProber runs it as a Ceedling
+# tool. `win32/registry` needs Fiddle, which stops being a default gem after Ruby 3.4.
 #
 # Every filesystem touch goes through `disk:` and every registry read through `query:`,
 # so the logic can be specified with no disk at all.
@@ -53,15 +54,9 @@ module WinLongPaths
     def self.glob(pattern)     = Dir.glob( pattern )
   end
 
-  # `reg query` output and whether it succeeded
-  QUERY = lambda do
-    output, status = Open3.capture2e( 'reg', 'query', REGISTRY_KEY, '/v', REGISTRY_VALUE )
-    [output, status.success?]
-  end
-
-  # Whether the host has long paths enabled. A missing value, a failed query, or no
-  # `reg.exe` at all reads as disabled.
-  def self.registry_enabled?(query: QUERY)
+  # Whether the host has long paths enabled. A missing value, a failed query, or a query
+  # that could not run at all reads as disabled.
+  def self.registry_enabled?(query:)
     return registry_state( query )[:state] == :enabled
   end
 
@@ -73,7 +68,7 @@ module WinLongPaths
   #    Windows reports only "No such file or directory" whatever the reason:
   #    `:registry_disabled`, `:process_not_aware`, or `:probe_failed` (with `error:`) when
   #    the registry can't be read.
-  def self.probe(root, disk: Disk, query: QUERY)
+  def self.probe(root, query:, disk: Disk)
     directories = probe_directories( File.expand_path( root ) )
     deep        = directories.last
     file        = File.join( deep, PROBE_FILE )
@@ -127,11 +122,13 @@ module WinLongPaths
     end
   end
 
+  # A query that could not run raises a CeedlingException, such as ToolExecutor's
+  # ShellException for a missing executable. Its message, on one line, names the reason.
   def self.registry_state(query)
     output, success = query.call
     return { state: (success && output.match?( ENABLED )) ? :enabled : :disabled }
-  rescue SystemCallError => e
-    return { state: :unknown, error: e.message }
+  rescue CeedlingException => e
+    return { state: :unknown, error: e.message.split.join( ' ' ) }
   end
 
   # Ruby before 4.0 can't remove a tree this deep recursively, and it can't list one
