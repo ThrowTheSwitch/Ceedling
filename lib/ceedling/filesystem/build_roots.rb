@@ -27,7 +27,7 @@ module BuildRoots
   HASH_LENGTH = 8
 
   # A build subpath's first segment shaped like a marker. Only a table says whether it is one.
-  MARKER = /\A_[^_\/][^\/]*_[0-9A-F]{#{HASH_LENGTH}}\z/
+  MARKER = BuildSubpath::ROOT_MARKER
 
   # The roots shortened, and their markers
   class Table
