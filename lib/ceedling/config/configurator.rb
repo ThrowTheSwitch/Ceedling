@@ -538,7 +538,8 @@ class Configurator
       [DEFAULT_TOOLS_TEST_ASSEMBLER,     setting( config, :test_build, :use_assembly )],
       [DEFAULT_TOOLS_TEST_GDB_BACKTRACE, setting( config, :project, :use_backtrace ) == :gdb],
       [DEFAULT_TOOLS_RELEASE,            release],
-      [DEFAULT_TOOLS_RELEASE_ASSEMBLER,  release && setting( config, :release_build, :use_assembly )]
+      [DEFAULT_TOOLS_RELEASE_ASSEMBLER,  release && setting( config, :release_build, :use_assembly )],
+      [DEFAULT_TOOLS_WINDOWS_REGISTRY_QUERY, @system_wrapper.windows? && setting( config, :project, :win_path_limit ) != :max_path]
     ].select { |_, needed| needed }.map( &:first )
   end
 

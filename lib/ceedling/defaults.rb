@@ -212,6 +212,20 @@ DEFAULT_TEST_BACKTRACE_GDB_TOOL = {
     ].freeze
   }
 
+# Reads one registry value, for the Windows long path probe (see WinPathProber). Optional:
+# the probe reads the registry only to explain a failure, so a missing reg.exe must not
+# stop a build.
+DEFAULT_WINDOWS_REGISTRY_QUERY_TOOL = {
+  :executable => FilePathUtils.os_executable_ext('reg').freeze,
+  :name => 'default_windows_registry_query'.freeze,
+  :optional => true.freeze,
+  :arguments => [
+    'query'.freeze,
+    '"${1}"'.freeze, # Registry key, quoted
+    '/v ${2}'.freeze # Value name
+    ].freeze
+  }
+
 DEFAULT_TOOLS_TEST = {
   :tools => {
     :test_compiler => DEFAULT_TEST_COMPILER_TOOL,
@@ -260,6 +274,12 @@ DEFAULT_TOOLS_RELEASE_ASSEMBLER = {
 DEFAULT_TOOLS_RELEASE_DEPENDENCIES = {
   :tools => {
     :release_dependencies_generator => DEFAULT_RELEASE_DEPENDENCIES_GENERATOR_TOOL,
+    }
+  }
+
+DEFAULT_TOOLS_WINDOWS_REGISTRY_QUERY = {
+  :tools => {
+    :windows_registry_query => DEFAULT_WINDOWS_REGISTRY_QUERY_TOOL,
     }
   }
 

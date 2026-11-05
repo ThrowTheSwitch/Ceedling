@@ -496,7 +496,7 @@ describe Configurator do
     # Only the long path probe reads the registry, and only on Windows when a project asks for long paths
     context "with the Windows registry query" do
       def tools_with_limit(windows:, limit:)
-        allow( SystemWrapper ).to receive( :windows? ).and_return( windows )
+        allow( @system_wrapper ).to receive( :windows? ).and_return( windows )
         return tools_for( limit.nil? ? ":project: {}\n" : ":project:\n  :win_path_limit: #{limit.inspect}\n" )
       end
 
