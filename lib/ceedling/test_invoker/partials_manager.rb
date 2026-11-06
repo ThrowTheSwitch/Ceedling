@@ -94,38 +94,6 @@ class PartialsManager
 
       @partializer.sanitize( module_contents )
 
-      # Antecedents mirror stages 6/7's own targets for this same module's header/source --
-      # Partial generation's actual inputs (the preprocessed content those stages produce or
-      # recall) are already fully covered by the same file+flags/defines/search_paths.
-      # A declaration-only Partial (a prototype with no matching definition) has no source
-      # file to find, leaving config.source.filepath legitimately nil -- compact it out
-      # before it reaches path normalization, which expects real paths only.
-      antecedent_files = [config.header.filepath, config.source.filepath].compact
-
-      # The real header's guard is spoofed deliberately in every generated file, and the types
-      # header carries the dependencies its extracted types name. Both are inputs to generation,
-      # so both ride in the staleness meta below -- a changed guard or a changed include list
-      # has to invalidate what was generated from the previous ones.
-      module_include_guard = @partializer.extract_module_include_guard( config.header.filepath )
-      types_header_includes = @partializer.remap_types_header_includes(
-        name:     config.module,
-        includes: (config.source.includes + config.header.includes),
-        partials: testable.partials.configs,
-        test:     name
-      )
-
-      antecedent_meta  = {
-        flags:        testable.preprocess_flags,
-        defines:      testable.preprocess_defines,
-        search_paths: testable.search_paths,
-        # No shell tool runs in this stage -- Partial generation is pure Ruby (below) --
-        # so there's nothing to add here beyond the whole :partials config.
-        tools:        [],
-        partials:     @configurator.get_partials_config,
-        include_guard: module_include_guard,
-        types_includes: types_header_includes.map( &:to_s )
-      }
-
       # Generated once and shared by the implementation and interface headers below (via
       # their own includes lists), so a module tested and mocked in the same test file gets
       # exactly one C definition of each of its typedefs and aggregate types. Nothing to
@@ -136,7 +104,39 @@ class PartialsManager
       types_header = nil
       if !module_contents.type_definitions.empty? || !module_contents.aggregate_definitions.empty?
         types_header = @file_path_utils.form_partial_types_header_filename( config.module )
-        target       = File.join( testable.paths[:partials], types_header )
+      end
+
+      # Every input generation reads rides in the staleness record below, so a change to any of
+      # them regenerates what the previous ones produced:
+      #  - The preprocessed copies stages 6/7 wrote, beside the originals. Extraction parses the
+      #    copies, so whatever rewrites them without touching the originals -- forced fallback
+      #    toggled, a different preprocessor -- reaches this stage through them.
+      #  - The test's selection, which decides what each generated file holds.
+      #  - The real header's guard, spoofed deliberately in every generated file.
+      #  - Each generated file's includes, which depend on the test's other Partial modules
+      #    and how each is selected.
+      antecedent_files     = partial_antecedent_files( config )
+      module_include_guard = @partializer.extract_module_include_guard( config.header.filepath )
+      includes             = remap_partial_includes( config, testable.partials.configs, types_header, name )
+
+      antecedent_meta  = {
+        flags:        testable.preprocess_flags,
+        defines:      testable.preprocess_defines,
+        search_paths: testable.search_paths,
+        # No shell tool runs in this stage -- Partial generation is pure Ruby (below) --
+        # so there's nothing to add here beyond the whole :partials config.
+        tools:        [],
+        partials:     @configurator.get_partials_config,
+        selection:    { tests: config.tests.to_h, mocks: config.mocks.to_h },
+        include_guard: module_include_guard,
+        types_includes:       includes[:types].map( &:to_s ),
+        impl_header_includes: includes[:impl_header].map( &:to_s ),
+        impl_source_includes: includes[:impl_source].map( &:to_s ),
+        interface_includes:   includes[:interface].map( &:to_s )
+      }
+
+      if types_header
+        target = File.join( testable.paths[:partials], types_header )
 
         @dependinator.register( target, files: antecedent_files, meta: antecedent_meta )
 
@@ -146,7 +146,7 @@ class PartialsManager
             partial:       config.module,
             c_module:      module_contents,
             output_path:   testable.paths[:partials],
-            includes:      types_header_includes,
+            includes:      includes[:types],
             include_guard: module_include_guard
           )
           @dependinator.mark_fresh( target )
@@ -188,19 +188,8 @@ class PartialsManager
         partial:              config.module,
         function_definitions: implementation,
         c_module:             module_contents,
-        header_includes:      @partializer.remap_implementation_header_includes(
-                                name:         config.module,
-                                includes:     (config.source.includes + config.header.includes),
-                                partials:     testable.partials.configs,
-                                types_header: types_header,
-                                test:         name
-                              ),
-        source_includes:      @partializer.remap_implementation_source_includes(
-                                name:     config.module,
-                                includes: (config.source.includes + config.header.includes),
-                                partials: testable.partials.configs,
-                                test:     name
-                              ),
+        header_includes:      includes[:impl_header],
+        source_includes:      includes[:impl_source],
         input_filepath:       config.source.filepath,
         output_path:          testable.paths[:partials],
         include_guard:        module_include_guard
@@ -234,13 +223,7 @@ class PartialsManager
         test:                  name,
         partial:               config.module,
         function_declarations: interface,
-        includes:              @partializer.remap_interface_header_includes(
-                                 name:         config.module,
-                                 includes:     (config.source.includes + config.header.includes),
-                                 partials:     testable.partials.configs,
-                                 types_header: types_header,
-                                 test:         name
-                               ),
+        includes:              includes[:interface],
         c_module:              module_contents,
         input_filepath:        config.header.filepath,
         output_path:           testable.paths[:partials],
@@ -277,6 +260,29 @@ class PartialsManager
   end
 
   private
+
+  # A Partial's original header and source, and the preprocessed copies of each that extraction
+  # parses. A declaration-only Partial (a prototype with no matching definition) has no source
+  # file to find, leaving all three of its source paths legitimately nil -- compacted out before
+  # they reach path normalization, which expects real paths only.
+  def partial_antecedent_files(config)
+    return [config.header, config.source].flat_map do |file|
+      [file.filepath, file.directives_only_filepath, file.full_expansion_filepath]
+    end.compact.uniq
+  end
+
+  # The includes of each file this module's Partial can generate, keyed by file. The impl and
+  # interface headers carry the shared types header when the module has one.
+  def remap_partial_includes(config, partials, types_header, test)
+    common = { name: config.module, includes: config.source.includes + config.header.includes, partials: partials, test: test }
+
+    return {
+      types:       @partializer.remap_types_header_includes( **common ),
+      impl_header: @partializer.remap_implementation_header_includes( **common, types_header: types_header ),
+      impl_source: @partializer.remap_implementation_source_includes( **common ),
+      interface:   @partializer.remap_interface_header_includes( **common, types_header: types_header )
+    }
+  end
 
   # Shared body for stages 6 and 7 -- a partial's header and source files go through
   # identical preprocessing, differing only in which of `state.partials_headers`/
