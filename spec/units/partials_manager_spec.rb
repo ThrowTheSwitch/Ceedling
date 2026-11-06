@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/test_invoker/partials_manager'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
+require 'ceedling/partials/partializer_config'
 require 'ceedling/includes/includes'
 
 describe PartialsManager do
@@ -335,7 +336,7 @@ describe PartialsManager do
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@dependinator).to receive(:mark_fresh)
 
-      @config = Partials::Config.new(
+      @config = PartializerConfig::Config.new(
         module: 'Foo',
         header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h', includes: [] ),
         source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c', includes: [] )
@@ -372,7 +373,7 @@ describe PartialsManager do
         things.reverse_each { |thing| block.call( thing ) }
       end
       @testable.partials.configs = %w[Alpha Beta Gamma].to_h do |name|
-        [name, Partials::Config.new( module: name, header: @config.header, source: @config.source )]
+        [name, PartializerConfig::Config.new( module: name, header: @config.header, source: @config.source )]
       end
 
       @manager.stage_generate_partials( @state )
