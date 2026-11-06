@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/test_invoker/partials_manager'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
+require 'ceedling/partials/partializer_config'
 require 'ceedling/includes/includes'
 
 describe PartialsManager do
@@ -335,7 +336,7 @@ describe PartialsManager do
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@dependinator).to receive(:mark_fresh)
 
-      @config = Partials::Config.new(
+      @config = PartializerConfig::Config.new(
         module: 'Foo',
         header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h', includes: [] ),
         source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c', includes: [] )
@@ -372,7 +373,7 @@ describe PartialsManager do
         things.reverse_each { |thing| block.call( thing ) }
       end
       @testable.partials.configs = %w[Alpha Beta Gamma].to_h do |name|
-        [name, Partials::Config.new( module: name, header: @config.header, source: @config.source )]
+        [name, PartializerConfig::Config.new( module: name, header: @config.header, source: @config.source )]
       end
 
       @manager.stage_generate_partials( @state )
@@ -458,6 +459,106 @@ describe PartialsManager do
       expect(@dependinator).to receive(:register).at_least(:once) do |_target, meta: {}, **|
         expect( meta[:include_guard] ).to eq( 'FOO_H' )
         expect( meta[:types_includes] ).to eq( ['#include "foundation.h"'] )
+      end
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # What a test selects decides what is generated, so switching TEST_PARTIAL_PUBLIC_MODULE to
+    # TEST_PARTIAL_ALL_MODULE, or adding a function, has to regenerate the Partial.
+    it "registers the module's selection, both sides, as meta" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      @config.tests = PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC, additions: ['bar'] )
+      @config.mocks = PartializerConfig::PartialFunctions.new( type: Partials::PRIVATE, subtractions: ['baz'] )
+
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, meta: {}, **|
+        expect( meta[:selection] ).to eq(
+          tests: { type: Partials::PUBLIC, additions: ['bar'], subtractions: [] },
+          mocks: { type: Partials::PRIVATE, additions: [], subtractions: ['baz'] }
+        )
+      end
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "registers different meta for selections that differ only in mode or additions" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+
+      metas = []
+      allow(@dependinator).to receive(:register) { |_target, meta: {}, **| metas << meta }
+
+      [
+        PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC ),
+        PartializerConfig::PartialFunctions.new( type: Partials::DEDUCT ),
+        PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC, additions: ['helper'] )
+      ].each do |tests|
+        @config.tests = tests
+        @manager.stage_generate_partials( @state )
+      end
+
+      expect( metas.uniq.length ).to eq( 3 )
+    end
+
+    # Each generated file's includes depend on the test's other Partial modules and how each is
+    # selected, so a change to any of those lists has to regenerate.
+    it "registers every generated file's include list as meta" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@partializer).to receive(:remap_types_header_includes).and_return( [UserInclude.new('types_dep.h')] )
+      allow(@partializer).to receive(:remap_implementation_header_includes).and_return( [UserInclude.new('impl_h_dep.h')] )
+      allow(@partializer).to receive(:remap_implementation_source_includes).and_return( [UserInclude.new('impl_c_dep.h')] )
+      allow(@partializer).to receive(:remap_interface_header_includes).and_return( [UserInclude.new('interface_dep.h')] )
+
+      expect(@dependinator).to receive(:register).at_least(:once) do |_target, meta: {}, **|
+        expect( meta[:types_includes] ).to eq( ['#include "types_dep.h"'] )
+        expect( meta[:impl_header_includes] ).to eq( ['#include "impl_h_dep.h"'] )
+        expect( meta[:impl_source_includes] ).to eq( ['#include "impl_c_dep.h"'] )
+        expect( meta[:interface_includes] ).to eq( ['#include "interface_dep.h"'] )
+      end
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "computes each include list once and hands that same list to generation" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      impl_h    = [UserInclude.new('impl_h_dep.h')]
+      impl_c    = [UserInclude.new('impl_c_dep.h')]
+      interface = [UserInclude.new('interface_dep.h')]
+      expect(@partializer).to receive(:remap_implementation_header_includes).once.and_return( impl_h )
+      expect(@partializer).to receive(:remap_implementation_source_includes).once.and_return( impl_c )
+      expect(@partializer).to receive(:remap_interface_header_includes).once.and_return( interface )
+
+      expect(@generator).to receive(:generate_partial_implementation).with(
+        hash_including( header_includes: impl_h, source_includes: impl_c )
+      )
+      expect(@generator).to receive(:generate_partial_interface).with( hash_including( includes: interface ) )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Generation reads the preprocessed copies, not the originals. A change that rewrites the
+    # copies without touching the originals -- forced fallback toggled, a different
+    # preprocessor -- has to regenerate.
+    it "registers the preprocessed copies extraction reads as antecedent files" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      @config.header.directives_only_filepath = 'build/pp/directives_only/src/Foo.h'
+      @config.header.full_expansion_filepath  = 'build/pp/full_expansion/src/Foo.h'
+      @config.source.directives_only_filepath = 'build/pp/directives_only/src/Foo.c'
+      @config.source.full_expansion_filepath  = 'build/pp/full_expansion/src/Foo.c'
+
+      expect(@dependinator).to receive(:register).exactly(3).times do |_target, files: [], **|
+        expect( files ).to contain_exactly(
+          'src/Foo.h', 'src/Foo.c',
+          'build/pp/directives_only/src/Foo.h', 'build/pp/full_expansion/src/Foo.h',
+          'build/pp/directives_only/src/Foo.c', 'build/pp/full_expansion/src/Foo.c'
+        )
       end
 
       @manager.stage_generate_partials( @state )
