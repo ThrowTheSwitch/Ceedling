@@ -19,10 +19,6 @@ require 'ceedling/encodinator'
 
 class Partializer
 
-  # Enough of a header to reach its include guard. The guard pair sits at the top of a header by
-  # construction, so a bounded read beats loading a large file to find it.
-  GUARD_SCAN_BYTES = 2048
-
   include Partials
 
   constructor :configurator, :partializer_helper, :file_finder, :c_extractor, :file_path_utils,
@@ -243,7 +239,7 @@ class Partializer
   def extract_module_include_guard(filepath)
     return nil if filepath.nil?
 
-    text = @file_wrapper.read( filepath, GUARD_SCAN_BYTES ).clean_encoding
+    text = @file_wrapper.read( filepath ).clean_encoding
     @preprocessinator_reconstructor.extract_include_guard( text )
   end
 

@@ -61,7 +61,7 @@ class PreprocessinatorFileAssembler
     # Bail out if no extras are required
     return contents, [], nil if !extras
 
-    # Try to find an #include guard in the first 2k of the file text. This name is used two ways:
+    # Try to find an #include guard near the top of the file's code. This name is used two ways:
     #   1. To exclude the guard's own #define from the macro definitions preserved as "extras" below
     #      (it would be redundant -- assemble_preprocessed_header_file writes its own guard).
     #   2. Returned to the caller so the reconstructed header can reuse this exact guard name (see
@@ -73,12 +73,7 @@ class PreprocessinatorFileAssembler
     # If no guard is found (e.g. the header uses `#pragma once` or has none), `nil` flows through and
     # assemble_preprocessed_header_file falls back to a synthetic guard, matching prior behavior.
     include_guard =
-      @preprocessinator_reconstructor.extract_include_guard(
-        @file_wrapper.read(
-          filepath,
-          2048
-        ).clean_encoding
-      )
+      @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath ).clean_encoding )
 
     if fallback
       msg = @reportinator.generate_module_progress(
@@ -124,7 +119,7 @@ class PreprocessinatorFileAssembler
   # Mirrors the fallback branch of collect_mockable_header_file_contents.
   def collect_macros_and_pragmas_fallback(source_filepath:, defines: [])
     include_guard = @preprocessinator_reconstructor.extract_include_guard(
-      @file_wrapper.read( source_filepath, 2048 ).clean_encoding
+      @file_wrapper.read( source_filepath ).clean_encoding
     )
 
     _contents = _active_content_for( fallback: true, filepath: source_filepath, defines: defines )

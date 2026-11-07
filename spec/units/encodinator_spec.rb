@@ -21,10 +21,9 @@ describe 'String#clean_encoding' do
 
   # A "half" Unicode character: a multi-byte lead byte with missing or
   # insufficient continuation bytes, as if a real multi-byte character had
-  # been clipped by a fixed-size chunk read (see
-  # PreprocessinatorFileAssembler's 2048-byte guard-detection reads) or a
-  # truncated copy/paste. clean_encoding's job is to never raise on this --
-  # only ever to produce clean, valid ASCII/UTF-8 output.
+  # been clipped by a fixed-size chunk read or a truncated copy/paste.
+  # clean_encoding's job is to never raise on this -- only ever to produce
+  # clean, valid ASCII/UTF-8 output.
   describe 'incomplete multi-byte sequences ("half" Unicode characters)' do
     it 'replaces a lead byte missing its only continuation byte (1 of 2 bytes present)' do
       # 'Ü' (U+00DC) is 2 bytes in UTF-8: C3 9C. Only the lead byte survives.

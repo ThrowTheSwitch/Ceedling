@@ -12,6 +12,11 @@ require 'ceedling/exceptions'
 
 class PreprocessinatorReconstructor
 
+  # How much of a header's code, comments and blank lines left out, is searched for its include
+  # guard. The guard pair opens a header by construction. A limit keeps a `#ifndef X` / `#define X`
+  # default deep in a `#pragma once` header from passing for one.
+  INCLUDE_GUARD_SCAN_BYTES = 2048
+
   constructor :parsing_parcels, :file_wrapper
 
   ##
@@ -227,11 +232,19 @@ class PreprocessinatorReconstructor
   end
 
 
-  # Find include guard in file contents as string
+  # Find include guard in a whole file's contents as string. Only code counts toward the scan
+  # window, so a long license comment ahead of the guard doesn't hide it.
   def extract_include_guard(file_contents)
+    code = +''
+    @parsing_parcels.code_lines( file_contents ) do |line|
+      next if line.strip.empty?
+      code << line.rstrip << "\n"
+      break if code.bytesize >= INCLUDE_GUARD_SCAN_BYTES
+    end
+
     # Look for first occurrence of #ifndef <sring> followed by #define <string>
     regex = /#\s*ifndef\s+(\w+)(?:\s*\n)+\s*#\s*define\s+(\w+)/
-    matches = file_contents.match( regex )
+    matches = code.byteslice( 0, INCLUDE_GUARD_SCAN_BYTES ).scrub.match( regex )
 
     # Return if no match results
     return nil if matches.nil?
