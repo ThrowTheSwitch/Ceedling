@@ -19,6 +19,21 @@ require 'ceedling/encodinator'
 
 class Partializer
 
+  # Explains helpers a Partial leaves behind because the module header has no include guard
+  UNGUARDED_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_HELPERS_NOTICE, false)
+    Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
+    Selected functions call %<these>s, but %<header>s has no include guard. Without a guard
+    a Partial cannot stand in for the header everywhere it is included, and a carried copy could
+    collide with the real one.
+
+    OPTIONS:
+      1. Give %<header>s an include guard so the Partial can stand in for it.
+      2. Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other
+         header this module includes pulls in %<header>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
   # Enough of a header to reach its include guard. The guard pair sits at the top of a header by
   # construction, so a bounded read beats loading a large file to find it.
   GUARD_SCAN_BYTES = 2048
@@ -461,54 +476,58 @@ class Partializer
 
     _log_module_contents(name, config.module, file_type, c_module)
 
-    # Update function signatures from fully preprocessed output when available.
-    # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
-    # macros wrapping `static` and `inline` are resolved before visibility filtering.
-    # Declarations get the same treatment for decorators while keeping their written text.
-    if c_file.full_expansion_filepath
-      @helper.update_signatures_from_full_expansion(
-        funcs:                   c_module.function_definitions,
-        decls:                   c_module.function_declarations,
-        full_expansion_filepath: c_file.full_expansion_filepath,
-        name:                    name,
-        module_name:             config.module,
-        file_type:               file_type
-      )
-    end
+    _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.full_expansion_filepath
+    _locate_contents( name, c_file, fallback, c_module )
+    _promote_function_scope_statics( name, config, file_type, c_module )
 
+    # After promotion, so promoted statics take the role of the file their body came from
+    return c_module.stamp_origin!( file_type.to_sym )
+  end
+
+  # Update function signatures from fully preprocessed output when available.
+  # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
+  # macros wrapping `static` and `inline` are resolved before visibility filtering.
+  # Declarations get the same treatment for decorators while keeping their written text.
+  def _reconcile_with_full_expansion(name, config, c_file, file_type, c_module)
+    @helper.update_signatures_from_full_expansion(
+      funcs:                   c_module.function_definitions,
+      decls:                   c_module.function_declarations,
+      full_expansion_filepath: c_file.full_expansion_filepath,
+      name:                    name,
+      module_name:             config.module,
+      file_type:               file_type
+    )
+  end
+
+  def _locate_contents(name, c_file, fallback, c_module)
     # Align extracted function definitions with line markers in preprocessor output.
     # This perfectly remaps functions found in expanded preprocessor output with 
     # original source location.
     # This routine depends on original, unaltered function definitions.
     @helper.associate_function_line_numbers(
-      name: name,
-      funcs: c_module.function_definitions,
-      filepath: c_file.filepath,
-      fallback: fallback
+      name: name, funcs: c_module.function_definitions, filepath: c_file.filepath, fallback: fallback
     )
+
+    return if c_module.function_declarations.empty?
 
     # Declarations are found in the original file's own text, where no included header's
     # lines can be mistaken for them. A carried prototype's #line comes from here.
     @helper.associate_declaration_line_numbers(
-      decls:    c_module.function_declarations,
-      filepath: c_file.filepath,
-      text:     @file_wrapper.read( c_file.filepath ).clean_encoding
-    ) unless c_module.function_declarations.empty?
+      decls: c_module.function_declarations, filepath: c_file.filepath,
+      text:  @file_wrapper.read( c_file.filepath ).clean_encoding
+    )
+  end
 
-    # 1. Find any function-scope static variable declarations.
-    # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
-    # 3. Promote the function-scoped variables to be module-level variables.
+  # 1. Find any function-scope static variable declarations.
+  # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
+  # 3. Promote the function-scoped variables to be module-level variables.
+  def _promote_function_scope_statics(name, config, file_type, c_module)
     promoted = @helper.extract_function_scope_static_vars(
       c_module.function_definitions,
       name: name, module_name: config.module, file_type: file_type
     )
     c_module.variable_declarations.concat(promoted)
     c_module.element_sequence.concat(promoted) unless promoted.empty?
-
-    # After promotion, so promoted statics take the role of the file their body came from
-    c_module.stamp_origin!( file_type.to_sym )
-
-    return c_module
   end
 
   def _inline_declaration?(decl)
@@ -526,37 +545,32 @@ class Partializer
 
   # A skipped name is one a selected function may need, so each gets a notice saying why
   def _log_not_carried(test, partial, skipped)
-    name = skipped.item
-    msg =
-      case skipped.kind
-      when :helper_conflict
-        "Not carrying helper `#{name}()`: fallback preprocessing found more than one definition. " \
-        "Add `+#{name}` if a selected function needs it"
-      when :prototype_conflict
-        "Not carrying `#{name}()`: fallback preprocessing found conflicting declarations"
-      end
-    return if msg.nil?
+    msg = _not_carried_message( skipped.kind, skipped.item )
+    @loginator.log( "Partial #{test}::#{partial} ⏩️ #{msg}", Verbosity::COMPLAIN, LogLabels::NOTICE ) if msg
+  end
 
-    @loginator.log( "Partial #{test}::#{partial} ⏩️ #{msg}", Verbosity::COMPLAIN, LogLabels::NOTICE )
+  def _not_carried_message(kind, name)
+    case kind
+    when :helper_conflict
+      return "Not carrying helper `#{name}()`: fallback preprocessing found more than one definition. " \
+             "Add `+#{name}` if a selected function needs it"
+    when :prototype_conflict
+      return "Not carrying `#{name}()`: fallback preprocessing found conflicting declarations"
+    end
+
+    return nil
   end
 
   # A header without an include guard can't be stood in for, so its helpers stay behind. The
   # notice follows the linker failure guidance: what happened, why, then numbered options.
   def _log_unguarded_helpers(test, partial, names, header)
-    many    = names.size > 1
-    helpers = names.map { |n| "`#{n}()`" }.join( ', ' )
-
-    notice  = "Partial #{test}::#{partial} ⏩️ Not carrying #{many ? 'helpers' : 'helper'} #{helpers} from #{header}.\n"
-    notice += "Selected functions call #{many ? 'these helpers' : 'this helper'}, but #{header} has no include guard. Without a guard\n"
-    notice += "a Partial cannot stand in for the header everywhere it is included, and a carried copy could\n"
-    notice += "collide with the real one.\n"
-    notice += "\n"
-    notice += "OPTIONS:\n"
-    notice += "  1. Give #{header} an include guard so the Partial can stand in for it.\n"
-    notice += "  2. Select the #{many ? 'helpers' : 'helper'} with `+name` (for example `+#{names.first}`). This works only when no other\n"
-    notice += "     header this module includes pulls in #{header}.\n"
-    notice += "\n"
-    notice += "See the docs on Partials conventions.\n"
+    many   = names.size > 1
+    notice = format(
+      UNGUARDED_HELPERS_NOTICE,
+      partial: "#{test}::#{partial}", header: header, first: names.first,
+      helpers: names.map { |n| "`#{n}()`" }.join( ', ' ),
+      noun: many ? 'helpers' : 'helper', these: many ? 'these helpers' : 'this helper'
+    )
 
     @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
