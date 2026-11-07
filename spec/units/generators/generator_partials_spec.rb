@@ -753,6 +753,18 @@ describe GeneratorPartials do
       expect(buf.string.scan('extern int mode;').size).to eq(1)
     end
 
+    # The definition knows the array's size, so a test's sizeof still works
+    it "should write that one extern declaration from the variable's definition" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: 'lut', type: 'int', array_suffix: '[]', text: 'int lut[];', decorators: ['extern', 'const']),
+        CExtractorTypes::CVariableDeclaration.new(name: 'lut', type: 'int', array_suffix: '[4]', text: 'int lut[4] = {1, 2, 3, 4};', decorators: ['const'])
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern const int lut[4];')
+      expect(buf.string).not_to include('lut[];')
+    end
+
     it "should not reapply a qualifier already embedded in a pointer-level declarator" do
       c_module = make_module(
         make_var(name: 'lookup_table', type: 'uint8_t* const', text: 'uint8_t* const lookup_table;', decorators: ['static', 'const'])

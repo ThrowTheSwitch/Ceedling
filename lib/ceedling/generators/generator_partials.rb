@@ -220,6 +220,8 @@ class GeneratorPartials
     func_by_name = function_list.to_h { |f| [f.name, f] }
     emitted_funcs = {}
     emitted_vars = {}
+    # A variable's definition knows its full type, such as an array's size, so its extern comes from there
+    defining_vars = c_module.variable_declarations.reject { |v| v.decorators.include?( 'extern' ) }.group_by( &:name ).transform_values( &:first )
     last_was_func = false
     anything_emitted = false
 
@@ -262,12 +264,13 @@ class GeneratorPartials
         # A header's extern and the source's definition name one variable, so it gets one line
         next if emitted_vars[item.name]
         emitted_vars[item.name] = true
+        var = defining_vars[item.name] || item
         # If there is no array involved, array_suffix collapses to an empty string.
         # A leading const/volatile/restrict on the original declaration (see
         # qualifier_prefix) is part of the variable's type and belongs here too,
         # so this extern agrees with the definition and any other declaration of
         # the same variable elsewhere in the translation unit.
-        io << "extern #{qualifier_prefix(item)}#{item.type} #{item.name}#{item.array_suffix};\n"
+        io << "extern #{qualifier_prefix(var)}#{var.type} #{var.name}#{var.array_suffix};\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration
