@@ -784,6 +784,80 @@ describe 'Partial header composition' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'function return types' do
+  # ---------------------------------------------------------------------------
+
+    # A Partial strips each selected function's storage class so a test can call it. Only the
+    # storage class goes. Every word of the return type stays, and a qualifier is part of it.
+    RETURN_TYPES_H = <<~C
+      #ifndef SHAPES_H
+      #define SHAPES_H
+      struct point { int x; };
+      typedef unsigned char octet_t;
+      struct point *shapes_origin(void);
+      unsigned long shapes_big(void);
+      const char *shapes_name(void);
+      octet_t *shapes_buffer(void);
+      #endif
+    C
+
+    RETURN_TYPES_C = <<~C
+      #include "shapes.h"
+      static struct point origin;
+      static const int table[2] = { 1, 2 };
+      static octet_t buffer[4];
+      struct point *shapes_origin(void) { return &origin; }
+      unsigned long shapes_big(void) { return 4000000000UL; }
+      const char *shapes_name(void) { return "shapes"; }
+      octet_t *shapes_buffer(void) { return buffer; }
+      static const int *shapes_table(void) { return table; }
+    C
+
+    def generate_shapes
+      generate_partial(
+        module_name: 'shapes', header: RETURN_TYPES_H, source: RETURN_TYPES_C,
+        source_includes: ['shapes.h']
+      )
+    end
+
+    it 'keeps every return type whole in the implementation header' do
+      @result = generate_shapes
+
+      expect( @result.impl_h ).to include( 'struct point *shapes_origin(void);' )
+      expect( @result.impl_h ).to include( 'unsigned long shapes_big(void);' )
+      expect( @result.impl_h ).to include( 'const char *shapes_name(void);' )
+      expect( @result.impl_h ).to include( 'octet_t *shapes_buffer(void);' )
+      expect( @result.impl_h ).to include( 'const int *shapes_table(void);' )
+    end
+
+    it 'keeps every return type whole in the implementation source' do
+      @result = generate_shapes
+
+      expect( @result.impl_c ).to include( 'struct point *shapes_origin(void) {' )
+      expect( @result.impl_c ).to include( 'unsigned long shapes_big(void) {' )
+      expect( @result.impl_c ).to include( 'const char *shapes_name(void) {' )
+      expect( @result.impl_c ).to include( 'const int *shapes_table(void) {' )
+      expect( @result.impl_c ).not_to match( /^static const int \*shapes_table/ )
+    end
+
+    it 'keeps every return type whole in the mockable interface' do
+      @result = generate_shapes
+
+      expect( @result.interface_h ).to include( 'struct point *shapes_origin(void);' )
+      expect( @result.interface_h ).to include( 'const char *shapes_name(void);' )
+    end
+
+    # A dropped qualifier or type word still compiles in some shapes, so warnings count too
+    it 'compiles the implementation source without a diagnostic' do
+      @result = generate_shapes
+
+      compile = compile_objects( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+      expect( compile.stderr ).to be_empty
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   context 'C shapes the extraction model does not yet carry' do
   # ---------------------------------------------------------------------------
 

@@ -38,7 +38,7 @@ class PartializerUtils
     when :impl
       # Strip decorators from the front of code_block and count how many newlines were removed.
       # Adjust line_num upward so that emitted #line directives remain accurate.
-      new_code_block, stripped_newlines = extract_code_block(func.code_block, func.decorators)
+      new_code_block, stripped_newlines = extract_code_block(func.code_block, func.decorators, func.name)
       Partials.manufacture_function_definition(
         name:            func.name,
         signature:       signature,
@@ -196,19 +196,24 @@ class PartializerUtils
 
   # Strip decorator keywords from the front of code_block and count leading newlines removed.
   #
-  # Removes the first occurrence of each decorator string, then strips any leading whitespace
-  # (including newlines). Returns the trimmed code block and a count of the newlines removed
-  # from the leading portion — used by the caller to adjust line_num so that emitted #line
-  # directives in generated source remain accurate.
+  # Decorators live only in the text before the function's name. Each is removed there as a
+  # whole word, so the same word inside the name, a qualifier or the body stays. Leading
+  # whitespace is then trimmed. Returns the trimmed code block and a count of the newlines
+  # removed from the leading portion. The caller adjusts line_num with that count so that
+  # emitted #line directives in generated source remain accurate.
   #
   # @param code_block  [String]        Raw function source text (decorators + signature + body)
   # @param decorators  [Array<String>] Decorator keywords from CFunctionDefinition#decorators
+  # @param name        [String]        Function name, which ends the decorator region
   # @return [Array(String, Integer)]   [trimmed_code_block, leading_newline_count]
-  def extract_code_block(code_block, decorators)
-    stripped = code_block.dup
-    decorators.each { |d| stripped.sub!(d, '') }
-    leading = stripped[/\A\s*/]
-    stripped.lstrip!
+  def extract_code_block(code_block, decorators, name)
+    match  = code_block.match( /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ )
+    cut    = match ? match.begin(0) : 0
+    prefix = code_block[0...cut]
+    decorators.each { |d| prefix = prefix.sub( /(?<!\w)#{Regexp.escape( d )}(?!\w)[ \t]*/, '' ) }
+    stripped = prefix + code_block[cut..]
+    leading  = stripped[/\A\s*/]
+    stripped = stripped.lstrip
     return stripped, leading.count("\n")
   end
 

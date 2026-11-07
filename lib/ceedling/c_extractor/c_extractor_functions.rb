@@ -291,64 +291,35 @@ class CExtractorFunctions
     return _declaration
   end
 
-  # Extracts decorator keywords from a C function signature and returns the shortened signature
-  # Migrated from PartializerParser#parse_signature_decorators
+  # Splits a function signature into its decorators and the signature without them.
+  # Decorators are the storage-class and function-specifier keywords of FUNCTION_DECORATOR_KEYWORDS.
+  # Every other word before the name belongs to the return type and keeps its place and order.
+  # That includes qualifiers, type keywords, typedef names and unexpanded macros. Reconciling
+  # with the fully expanded copy resolves a macro that hides a storage class.
   #
   # Parameters:
   #   signature: Complete function signature string
   #   name:      Function name string (used to split the signature)
   #
   # Returns: [decorators_array, shortened_signature_string]
-  # Example: "static inline int foo(void)" with name "foo"
-  #   => [["static", "inline"], "int foo(void)"]
+  # Example: "static const char *foo(void)" with name "foo"
+  #   => [["static"], "const char *foo(void)"]
   def parse_decorators_and_strip(signature, name)
     return [[], signature] if name.nil?
 
-    # Find the function name in the signature
-    name_index = signature.index(name)
-    return [[], signature] if name_index.nil?
+    # The name as a whole word followed by its parameter list, so `f` is never found inside `float`
+    match = signature.match( /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ )
+    return [[], signature] if match.nil?
 
-    # Extract everything before the function name
-    prefix = signature[0...name_index]
+    prefix    = signature[0...match.begin(0)]
+    remainder = signature[match.begin(0)..]
 
-    # Extract everything from the function name onwards
-    remainder = signature[name_index..-1]
-
-    # Split prefix by whitespace to get tokens
-    tokens = prefix.split(/\s+/).reject(&:empty?)
-
-    return [[], signature] if tokens.empty?
-
-    # Find where decorators end and return type begins
-    decorator_end_index = 0
-    tokens.each_with_index do |token, idx|
-      if TYPE_KEYWORDS.include?(token) ||
-        !PRIVATE_KEYWORDS.any? { |kw| token == kw.downcase } &&
-        !MODIFIER_KEYWORDS.include?(token)
-        decorator_end_index = idx
-        break
-      end
-    end
-
-    # If all tokens are decorators (shouldn't happen in valid C), treat last as return type
-    decorator_end_index = tokens.length - 1 if decorator_end_index == 0 && tokens.length > 1
-
-    decorators = tokens[0...decorator_end_index]
-    return_type_tokens = tokens[decorator_end_index..-1]
-
+    decorators = prefix.split( /\s+/ ).select { |token| FUNCTION_DECORATOR_KEYWORDS.include?( token ) }
     return [[], signature] if decorators.empty?
 
-    # Find where the first return type token appears in the prefix
-    first_return_type_token = return_type_tokens.first
-    return_type_start_index = prefix.index(first_return_type_token)
+    return_type = prefix.gsub( FUNCTION_DECORATOR_PATTERN, '' ).lstrip
 
-    # Everything from first return type token onwards is the return type portion
-    return_type_portion = prefix[return_type_start_index..-1]
-
-    # Build shortened signature: return_type_portion + remainder
-    shortened_signature = "#{return_type_portion}#{remainder}"
-
-    return decorators, shortened_signature
+    return decorators, "#{return_type}#{remainder}"
   end
 
   def extract_function_name(signature)

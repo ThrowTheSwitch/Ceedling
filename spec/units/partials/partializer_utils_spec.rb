@@ -194,7 +194,7 @@ describe PartializerUtils do
   context "#extract_code_block" do
     it "strips a single inline decorator and returns 0 leading newlines" do
       code_block = "static void foo(void) {\n  return;\n}"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
       expect(result).to eq("void foo(void) {\n  return;\n}")
       expect(newlines).to eq(0)
@@ -202,7 +202,7 @@ describe PartializerUtils do
 
     it "strips multiple inline decorators and returns 0 leading newlines" do
       code_block = "__pragma__ static void foo(void) { return; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['__pragma__', 'static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['__pragma__', 'static'], 'foo')
 
       expect(result).to eq("void foo(void) { return; }")
       expect(newlines).to eq(0)
@@ -210,7 +210,7 @@ describe PartializerUtils do
 
     it "handles empty decorators array — no stripping, 0 leading newlines" do
       code_block = "void foo(void) { return; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, [])
+      result, newlines = @utils.send(:extract_code_block, code_block, [], 'foo')
 
       expect(result).to eq(code_block)
       expect(newlines).to eq(0)
@@ -218,7 +218,7 @@ describe PartializerUtils do
 
     it "counts 1 leading newline when decorator occupies its own line" do
       code_block = "static\nint foo(void) { return 0; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
       expect(result).to eq("int foo(void) { return 0; }")
       expect(newlines).to eq(1)
@@ -226,7 +226,7 @@ describe PartializerUtils do
 
     it "counts 2 leading newlines when two decorators each occupy their own line" do
       code_block = "static\ninline\nint foo(void) { return 0; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static', 'inline'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static', 'inline'], 'foo')
 
       expect(result).to eq("int foo(void) { return 0; }")
       expect(newlines).to eq(2)
@@ -234,7 +234,7 @@ describe PartializerUtils do
 
     it "preserves body indentation and internal newlines" do
       code_block = "static void indented(void) {\n    int x = 1;\n    return x;\n}"
-      result, _ = @utils.send(:extract_code_block, code_block, ['static'])
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'indented')
 
       expect(result).to include("    int x = 1;")
       expect(result.count("\n")).to eq(3)
@@ -242,7 +242,7 @@ describe PartializerUtils do
 
     it "handles multi-line parameter list without relying on signature substring match" do
       code_block = "static int multiline(\n    int a,\n    int b) {\n  return a + b;\n}"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'multiline')
 
       expect(result).to eq("int multiline(\n    int a,\n    int b) {\n  return a + b;\n}")
       expect(result).not_to include("static")
@@ -251,7 +251,7 @@ describe PartializerUtils do
 
     it "is a no-op when decorator is not present in code_block" do
       code_block = "void foo(void) { }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['extern'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['extern'], 'foo')
 
       expect(result).to eq(code_block)
       expect(newlines).to eq(0)
@@ -260,7 +260,7 @@ describe PartializerUtils do
     it "removes only the first occurrence of a decorator that appears in the body too" do
       # 'static' in the body (e.g., a local static var) must not be touched
       code_block = "static int foo(void) {\n  static int x = 0;\n  return x;\n}"
-      result, _ = @utils.send(:extract_code_block, code_block, ['static'])
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
       expect(result).to start_with("int foo(void)")
       expect(result).to include("static int x = 0;")
@@ -268,10 +268,42 @@ describe PartializerUtils do
 
     it "strips multiple decorators and counts newlines for inline+multiline mix" do
       code_block = "extern\nstatic int bar(int x) { return x; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['extern', 'static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['extern', 'static'], 'bar')
 
       expect(result).to eq("int bar(int x) { return x; }")
       expect(newlines).to eq(1)
+    end
+
+    # Only storage-class and inline keywords are stripped. A qualifier belongs to the return type.
+    it "keeps a const return type when stripping static" do
+      code_block = "static const char *name(void) { return \"n\"; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'name')
+
+      expect(result).to eq("const char *name(void) { return \"n\"; }")
+      expect(newlines).to eq(0)
+    end
+
+    it "strips a storage class written after a qualifier" do
+      code_block = "const static int *table(void) { return 0; }"
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'table')
+
+      expect(result).to eq("const int *table(void) { return 0; }")
+    end
+
+    # A decorator word inside the name or body is not a decorator
+    it "leaves a decorator word that appears inside the function name" do
+      code_block = "static int is_static(void) { return 1; }"
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'is_static')
+
+      expect(result).to eq("int is_static(void) { return 1; }")
+    end
+
+    it "leaves the text alone when a decorator from the expanded copy is absent" do
+      code_block = "PRIVATE int hidden(void) { return 0; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'hidden')
+
+      expect(result).to eq(code_block)
+      expect(newlines).to eq(0)
     end
   end
 

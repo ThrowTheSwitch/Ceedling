@@ -27,9 +27,15 @@ module CExtractorConstants
   # C type qualifiers
   TYPE_QUALIFIER_KEYWORDS = ['const', 'volatile', 'restrict'].freeze unless const_defined?(:TYPE_QUALIFIER_KEYWORDS, false)
 
-  # C function modifier keywords
-  MODIFIER_KEYWORDS = (['extern'] + TYPE_QUALIFIER_KEYWORDS).freeze unless const_defined?(:MODIFIER_KEYWORDS, false)
+  # Keywords that decorate a function rather than its return type. A storage class or function
+  # specifier says how the function links or inlines. A type qualifier belongs to the return type.
+  FUNCTION_DECORATOR_KEYWORDS = (PRIVATE_KEYWORDS + ['extern', '_Noreturn']).freeze unless const_defined?(:FUNCTION_DECORATOR_KEYWORDS, false)
 
-  # Keywords stripped when producing clean `declaration` / `signature_stripped` fields
+  # One whole function decorator keyword and the spaces after it. Newlines stay so a caller
+  # can count the lines a removed decorator occupied.
+  FUNCTION_DECORATOR_PATTERN =
+    /(?<!\w)(?:#{FUNCTION_DECORATOR_KEYWORDS.map { |kw| Regexp.escape( kw ) }.join( '|' )})(?!\w)[ \t]*/.freeze unless const_defined?(:FUNCTION_DECORATOR_PATTERN, false)
+
+  # Keywords stripped when producing a variable's clean `declaration` text
   DECORATOR_KEYWORDS = (PRIVATE_KEYWORDS + TYPE_QUALIFIER_KEYWORDS + ['extern']).freeze unless const_defined?(:DECORATOR_KEYWORDS, false)
 end
