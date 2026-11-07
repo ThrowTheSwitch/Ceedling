@@ -86,6 +86,27 @@ describe 'What a Partial carries' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'prototypes a later macro renames' do
+  # ---------------------------------------------------------------------------
+
+    # A header included after the prototype turns calls into calls of another function. Nothing
+    # kept calls the original name, so its prototype stays behind where the macro can't mangle it.
+    it 'compiles when a function-like macro defined later shares a prototype\'s name' do
+      @result = generate_partial(
+        module_name: 'pooled',
+        header: "#ifndef POOLED_H\n#define POOLED_H\nvoid *pool_alloc(unsigned n);\nvoid *pooled_buf(void);\n#endif\n",
+        source: "#include \"pooled.h\"\n#include \"pool_dbg.h\"\nvoid *pooled_buf(void) { return pool_alloc(4); }\n",
+        source_includes: ['pooled.h', 'pool_dbg.h'],
+        extra: { 'pool_dbg.h' => "#ifndef POOL_DBG_H\n#define POOL_DBG_H\nvoid *pool_alloc_dbg(unsigned n, int line);\n#define pool_alloc(n) pool_alloc_dbg((n), __LINE__)\n#endif\n" },
+        tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil
+      )
+
+      compile = compile_objects( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   context 'functions the test left out' do
   # ---------------------------------------------------------------------------
 
@@ -185,6 +206,23 @@ describe 'What a Partial carries' do
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
 
+    # A member that shares a helper's name is not a call. Carrying the helper anyway leaves an
+    # unused static function, which -Wall -Werror rejects.
+    it 'carries no helper that only a member access names' do
+      @result = generate_partial(
+        module_name: 'buffers',
+        header: "#ifndef BUFFERS_H\n#define BUFFERS_H\ntypedef struct { int len; int size; } buf_t;\nstatic inline int size(const buf_t *b) { return b->len; }\nint buffers_get(const buf_t *b);\n#endif\n",
+        source: "#include \"buffers.h\"\nint buffers_get(const buf_t *b) { return b->size; }\n",
+        source_includes: ['buffers.h'],
+        tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil
+      )
+
+      expect( @result.impl_c ).not_to include( 'static inline int size' )
+
+      compile = compile_objects( @result, flags: '-Wall -Werror' )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
     # A plain inline helper gets its external definition from the source's extern inline prototype
     it 'links a plain inline helper through its extern inline prototype' do
       @result = generate_partial(
@@ -256,6 +294,26 @@ describe 'What a Partial carries' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'a selected function that never returns' do
+  # ---------------------------------------------------------------------------
+
+    # A caller ending in a call to it needs to know it never returns, or -Wreturn-type objects
+    it 'keeps _Noreturn, so its callers compile under -Wall -Werror' do
+      @result = generate_partial(
+        module_name: 'parser',
+        header: "#ifndef PARSER_H\n#define PARSER_H\nint parser_parse(int x);\n#endif\n",
+        source: "#include \"parser.h\"\nstatic _Noreturn void fatal(void) { for (;;) {} }\nint parser_parse(int x) { if (x >= 0) return x; fatal(); }\n",
+        source_includes: ['parser.h'], mocks_expose: nil
+      )
+
+      expect( @result.impl_c ).to include( '_Noreturn void fatal(void)' )
+
+      compile = compile_objects( @result, flags: '-Wall -Werror' )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   context 'variables' do
   # ---------------------------------------------------------------------------
 
@@ -269,6 +327,44 @@ describe 'What a Partial carries' do
       )
 
       link = link_partial( @result, references: ['tally_get'], stubs: 'int board_count = 41;', flags: '-fno-common' )
+      expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
+    end
+
+    TALLY_H = "#ifndef TALLY_H\n#define TALLY_H\nextern int board_count;\nint tally_get(void);\n#endif\n"
+    TALLY_C = "#include \"tally.h\"\nint tally_get(void) { return board_count + 1; }\n"
+
+    # The weak definition stands in when the defining module isn't part of the test
+    it 'links an extern variable nothing else defines' do
+      @result = generate_partial(
+        module_name: 'tally', header: TALLY_H, source: TALLY_C, source_includes: ['tally.h'], mocks_expose: nil
+      )
+
+      link = link_partial( @result, references: ['tally_get'], flags: '-fno-common' )
+      expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
+    end
+
+    it 'leaves the definition to the test when told to' do
+      @result = generate_partial(
+        module_name: 'tally', header: TALLY_H, source: TALLY_C, source_includes: ['tally.h'],
+        mocks_expose: nil, extern_variables: :test
+      )
+
+      expect( @result.impl_c ).not_to include( 'int board_count' )
+
+      link = link_partial( @result, references: ['tally_get'], stubs: 'int board_count = 41;', flags: '-fno-common' )
+      expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
+    end
+
+    # The implementation header declares the variable from its definition, size included
+    it 'keeps an array\'s size for a test\'s sizeof' do
+      @result = generate_partial(
+        module_name: 'table',
+        header: "#ifndef TABLE_H\n#define TABLE_H\nextern const int lut[];\nint table_get(int i);\n#endif\n",
+        source: "#include \"table.h\"\nconst int lut[4] = { 1, 2, 3, 4 };\nint table_get(int i) { return lut[i]; }\n",
+        source_includes: ['table.h'], mocks_expose: nil
+      )
+
+      link = link_partial( @result, references: ['table_get'], stubs: 'unsigned lut_size(void) { return sizeof(lut); }' )
       expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
     end
   end

@@ -228,6 +228,7 @@ module PartialsGenerationHelpers
       tests_subtract: [],
       mocks_add: [],
       suppress_redundant_decls: true,
+      extern_variables: :weak,
       dir: nil
     )
     # A caller supplies `dir` to generate two modules into one working directory, which is
@@ -253,11 +254,10 @@ module PartialsGenerationHelpers
     source_module = extract_c( pp_source ).stamp_origin!( :source )
 
     # Production reconciles each file with its fully expanded copy, which resolves macros that
-    # hide a storage class and shows calls a macro hides. Fallback has no expanded copy.
-    if mode == :accurate
-      reconcile_with_full_expansion( header_module, dir: dir, filename: "#{module_name}.h", defines: defines, file_type: 'header' )
-      reconcile_with_full_expansion( source_module, dir: dir, filename: "#{module_name}.c", defines: defines, file_type: 'source' )
-    end
+    # hide a storage class and shows calls a macro hides. Full expansion needs no directives-only
+    # support, so fallback reconciles too.
+    reconcile_with_full_expansion( header_module, dir: dir, filename: "#{module_name}.h", defines: defines, file_type: 'header' )
+    reconcile_with_full_expansion( source_module, dir: dir, filename: "#{module_name}.c", defines: defines, file_type: 'source' )
 
     c_module = header_module + source_module
 
@@ -371,7 +371,8 @@ module PartialsGenerationHelpers
       output_path: dir,
       include_guard: include_guard,
       carry: carry || Partials::CarryPlan.new,
-      suppress_redundant_decls: suppress_redundant_decls
+      suppress_redundant_decls: suppress_redundant_decls,
+      extern_variables: extern_variables
     )
 
     # The mockable interface header is what CMock mocks in place of the real module header,
