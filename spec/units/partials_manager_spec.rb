@@ -325,6 +325,7 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
       allow(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
       allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( true )
+      allow(@configurator).to receive(:partials_extern_variables).and_return( :weak )
       allow(@generator).to receive(:generate_partial_types)
       allow(@generator).to receive(:generate_partial_implementation)
       allow(@generator).to receive(:generate_partial_interface)
@@ -415,9 +416,10 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
       allow(@partializer).to receive(:plan_carry).and_return( plan )
       allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( false )
+      allow(@configurator).to receive(:partials_extern_variables).and_return( :test )
 
       expect(@generator).to receive(:generate_partial_implementation).with(
-        hash_including( carry: plan, suppress_redundant_decls: false )
+        hash_including( carry: plan, suppress_redundant_decls: false, extern_variables: :test )
       )
 
       @manager.stage_generate_partials( @state )

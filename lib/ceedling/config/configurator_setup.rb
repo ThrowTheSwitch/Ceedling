@@ -285,7 +285,8 @@ class ConfiguratorSetup
   # signature, and catches `1000` written to mean 1000 characters.
   #
   # `:suppress_redundant_decls` decides whether generated code carries GCC pragmas, so a
-  # misspelled value is caught here rather than read as truthy.
+  # misspelled value is caught here rather than read as truthy. `:extern_variables` names one
+  # of two behaviors, checked the same way.
   def validate_partials(config)
     max_extraction_length = config[:partials][:max_extraction_length]
     walk = @reportinator.generate_config_walk( [:partials, :max_extraction_length] )
@@ -299,7 +300,17 @@ class ConfiguratorSetup
       return log_invalid( "#{walk} is '#{suppress}' but must be TRUE or FALSE" )
     end
 
-    return true
+    return validate_partials_extern_variables( config )
+  end
+
+  # Decides what a Partial writes for a variable its module only declares `extern`
+  def validate_partials_extern_variables(config)
+    value   = config[:partials][:extern_variables]
+    options = [:weak, :test]
+    return true if options.include?( value )
+
+    walk = @reportinator.generate_config_walk( [:partials, :extern_variables] )
+    return log_invalid( "#{walk} is ':#{value}' but must be one of {#{options.map { |option| ":#{option}" }.join( ', ' )}}" )
   end
 
   # Discovery records a path beneath :plugins for each enabled plugin it found, whatever

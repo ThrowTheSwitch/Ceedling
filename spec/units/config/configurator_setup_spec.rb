@@ -85,20 +85,34 @@ describe ConfiguratorSetup do
 
   context "#validate_partials" do
     it "accepts an integer at the minimum" do
-      config = { partials: { max_extraction_length: 10, suppress_redundant_decls: true } }
+      config = { partials: { max_extraction_length: 10, suppress_redundant_decls: true, extern_variables: :weak } }
       expect(@setup.validate_partials(config)).to be true
     end
 
     it "accepts an integer above the minimum" do
-      config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: true } }
+      config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: true, extern_variables: :weak } }
       expect(@setup.validate_partials(config)).to be true
     end
 
     it "accepts either boolean for :suppress_redundant_decls" do
       [true, false].each do |value|
-        config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: value } }
+        config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: value, extern_variables: :weak } }
         expect(@setup.validate_partials(config)).to be true
       end
+    end
+
+    it "accepts either value for :extern_variables" do
+      [:weak, :test].each do |value|
+        config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: true, extern_variables: value } }
+        expect(@setup.validate_partials(config)).to be true
+      end
+    end
+
+    it "rejects any other :extern_variables" do
+      config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: true, extern_variables: :strong } }
+      expect(@loginator).to receive(:log)
+        .with(/:partials ↳ :extern_variables is ':strong' but must be one of \{:weak, :test\}/, Verbosity::ERRORS)
+      expect(@setup.validate_partials(config)).to be false
     end
 
     it "rejects a non-boolean :suppress_redundant_decls" do

@@ -98,7 +98,8 @@ class Generator
       output_path:,
       include_guard: nil,
       carry: Partials::CarryPlan.new,
-      suppress_redundant_decls: true
+      suppress_redundant_decls: true,
+      extern_variables: :weak
     )
 
     msg = @reportinator.generate_module_progress(
@@ -118,7 +119,8 @@ class Generator
       :output_path => output_path,
       :include_guard => include_guard,
       :carry => carry,
-      :suppress_redundant_decls => suppress_redundant_decls
+      :suppress_redundant_decls => suppress_redundant_decls,
+      :extern_variables => extern_variables
     }
 
     return @generator_partials.generate_implementation( **arg_hash )

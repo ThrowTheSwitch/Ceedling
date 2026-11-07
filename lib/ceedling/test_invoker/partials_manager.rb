@@ -211,7 +211,8 @@ class PartialsManager
         output_path:              testable.paths[:partials],
         include_guard:            module_include_guard,
         carry:                    carry,
-        suppress_redundant_decls: @configurator.partials_suppress_redundant_decls
+        suppress_redundant_decls: @configurator.partials_suppress_redundant_decls,
+        extern_variables:         @configurator.partials_extern_variables
       }
 
       unless implementation.nil?

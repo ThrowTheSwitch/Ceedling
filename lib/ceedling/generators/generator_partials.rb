@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_types'
@@ -53,7 +54,8 @@ class GeneratorPartials
       output_path:,
       include_guard: nil,
       carry: Partials::CarryPlan.new,
-      suppress_redundant_decls: true
+      suppress_redundant_decls: true,
+      extern_variables: :weak
     )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
@@ -72,7 +74,8 @@ class GeneratorPartials
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
       generate_source(file, source_includes, function_definitions, c_module,
-                      carry: carry, suppress_redundant_decls: suppress_redundant_decls, filepath: source_filepath)
+                      carry: carry, suppress_redundant_decls: suppress_redundant_decls,
+                      extern_variables: extern_variables, filepath: source_filepath)
     end
 
     return source_filepath
@@ -208,6 +211,14 @@ class GeneratorPartials
   #
   # @param decl [CExtractorTypes::CVariableDeclaration]
   # @return [String] e.g. "volatile " / "const volatile " / "" (trailing space when non-empty)
+  # A definition for a variable the module only declares `extern`. Weak, it satisfies the link
+  # when nothing else defines the variable and yields to a real definition without a duplicate
+  # symbol. A compiler without GCC's weak attribute gets a plain definition.
+  def weak_definition(decl)
+    text = "#{qualifier_prefix(decl)}#{decl.text}"
+    return "#if defined(__GNUC__)\n__attribute__((weak)) #{text}\n#else\n#{text}\n#endif\n"
+  end
+
   def qualifier_prefix(decl)
     quals = decl.decorators.select { |kw| CExtractorConstants::TYPE_QUALIFIER_KEYWORDS.include?(kw) }
     quals.empty? ? '' : "#{quals.join(' ')} "
@@ -319,7 +330,8 @@ class GeneratorPartials
   # @param includes             [Array]  Include directives
   # @param function_definitions [Array]  Pre-filtered Partials::FunctionDefinition objects
   # @param c_module             [CExtractorTypes::CModule] Merged module with element_sequence
-  def generate_source(io, includes, function_definitions, c_module, carry: Partials::CarryPlan.new, suppress_redundant_decls: true, filepath: nil)
+  def generate_source(io, includes, function_definitions, c_module, carry: Partials::CarryPlan.new,
+                      suppress_redundant_decls: true, extern_variables: :weak, filepath: nil)
     io = LineCountingIO.new( io )
     io << "// Ceedling generated file\n"
     includes.each do |include|
@@ -332,6 +344,7 @@ class GeneratorPartials
     emitted_funcs = {}
     last_was_func = false
     anything_emitted = false
+    module_defined_vars = Set.new( c_module.variable_declarations.reject { |v| v.decorators.include?( 'extern' ) }.map( &:name ) )
 
     # A run of carried prototypes sits inside one pair of GCC diagnostic pragmas. Anything
     # else written closes the run, and the end of the file closes the last one. Content after a
@@ -358,6 +371,27 @@ class GeneratorPartials
         anchored = true
       end
       io << decl.signature.strip << "\n"
+      last_was_func = false
+      anything_emitted = true
+    end
+
+    emit_variable = lambda do |var|
+      # An `extern` variable lives elsewhere. Its definition, if the module has one, is written
+      # where it occurs, and otherwise the setting decides.
+      if var.decorators.include?( 'extern' )
+        next if extern_variables != :weak or module_defined_vars.include?( var.name )
+
+        text = weak_definition( var )
+      else
+        # `var.text` is the declaration with its leading decorator run removed (see
+        # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict
+        # qualifier on the base type is reapplied here via qualifier_prefix -- this
+        # definition's type must match the extern declaration emitted for the same
+        # variable in generate_header.
+        text = "#{qualifier_prefix(var)}#{var.text}\n"
+      end
+      close_wrap.call
+      io << text
       last_was_func = false
       anything_emitted = true
     end
@@ -397,18 +431,7 @@ class GeneratorPartials
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
-        # An `extern` variable lives elsewhere, and the implementation header already declares
-        # it. Writing it here would define a second copy the linker rejects.
-        next if item.decorators.include?( 'extern' )
-        close_wrap.call
-        # `item.text` is the declaration with its leading decorator run removed (see
-        # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict
-        # qualifier on the base type is reapplied here via qualifier_prefix -- this
-        # definition's type must match the extern declaration emitted for the same
-        # variable in generate_header.
-        io << "#{qualifier_prefix(item)}#{item.text}\n"
-        last_was_func = false
-        anything_emitted = true
+        emit_variable.call(item)
       when CExtractorTypes::CFunctionDefinition
         # A selected function, or a header helper the module's kept code calls
         func = func_by_name[item.name] || carry.helper( item.name )

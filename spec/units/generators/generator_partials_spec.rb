@@ -92,14 +92,15 @@ describe GeneratorPartials do
       plan = Partials::CarryPlan.new
 
       expect(@generator).to receive(:generate_source).with(
-        anything, [], [], empty_module, carry: plan, suppress_redundant_decls: false, filepath: '/path/to/output/m_impl.c'
+        anything, [], [], empty_module, carry: plan, suppress_redundant_decls: false,
+        extern_variables: :test, filepath: '/path/to/output/m_impl.c'
       )
 
       @generator.generate_implementation(
         test: 'test_m', name: 'm', function_definitions: [],
         source_includes: [], header_includes: [],
         c_module: empty_module, output_path: '/path/to/output',
-        carry: plan, suppress_redundant_decls: false
+        carry: plan, suppress_redundant_decls: false, extern_variables: :test
       )
     end
 
@@ -248,7 +249,8 @@ describe GeneratorPartials do
         source_includes,
         defns,
         c_module,
-        { carry: an_instance_of( Partials::CarryPlan ), suppress_redundant_decls: true, filepath: expected_source_filepath }
+        { carry: an_instance_of( Partials::CarryPlan ), suppress_redundant_decls: true,
+          extern_variables: :weak, filepath: expected_source_filepath }
       )
 
       # Verify file path utilities were called
@@ -1459,17 +1461,51 @@ describe GeneratorPartials do
       expect(buf.string).to include('int counter __attribute__((aligned(16)));')
     end
 
-    # A variable declared `extern` lives elsewhere. The implementation header already declares
-    # it, so writing it here would only define a second copy.
-    it "writes no extern variable and keeps a definition from the source" do
+    # A variable declared `extern` lives elsewhere. A weak definition satisfies the link when
+    # nothing else defines it, and yields to a real definition without a duplicate symbol.
+    it "writes a weak definition of an extern variable by default" do
       c_module = make_module(
-        make_var(name: 'board_count', type: 'int', text: 'int board_count;', decorators: ['extern']),
+        make_var(name: 'board_count', type: 'int', text: 'int board_count;', decorators: ['extern'])
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).to include(
+        "#if defined(__GNUC__)\n__attribute__((weak)) int board_count;\n#else\nint board_count;\n#endif\n"
+      )
+    end
+
+    it "keeps a const qualifier on the weak definition" do
+      c_module = make_module(
+        make_var(name: 'limit', type: 'int', text: 'int limit;', decorators: ['extern', 'const'])
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).to include("__attribute__((weak)) const int limit;\n")
+    end
+
+    it "writes no definition of an extern variable when the test defines it" do
+      c_module = make_module(
+        make_var(name: 'board_count', type: 'int', text: 'int board_count;', decorators: ['extern'])
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module, extern_variables: :test)
+
+      expect(buf.string).not_to include('board_count')
+    end
+
+    # The module's own definition is the variable, so its extern needs nothing more
+    it "writes only the module's definition of a variable the header declares extern" do
+      c_module = make_module(
+        make_var(name: 'mode', type: 'int', text: 'int mode;', decorators: ['extern']),
         make_var(name: 'mode', type: 'int', text: 'int mode = 3;')
       )
 
       @generator.send(:generate_source, buf, [], [], c_module)
 
-      expect(buf.string).not_to include('board_count')
+      expect(buf.string).not_to include('weak')
+      expect(buf.string.scan('mode').size).to eq(1)
       expect(buf.string).to include('int mode = 3;')
     end
   end
