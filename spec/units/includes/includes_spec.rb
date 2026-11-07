@@ -1435,10 +1435,11 @@ describe "Includes reconciliation" do
       expect("#{result[0]}").to eq('#include "mocks/subdir/mock_module.h"')
     end
 
-    it "does not hard-error over two same-named system headers, a normal toolchain wrapper-chain pattern rather than a project-file conflict" do
+    it "keeps one of two same-named system headers, a normal toolchain wrapper-chain pattern rather than a project-file conflict" do
       # e.g. a compiler-provided stdint.h #include_next-ing its libc counterpart --
       # both real, both legitimately entered, both sharing a basename, neither a
-      # project file whose identity is actually in question.
+      # project file whose identity is actually in question. Both would be written
+      # as the same #include line, so only the first, the one the file named, is kept.
       bare = [Include.new("stdint.h")]
 
       user = []
@@ -1452,10 +1453,22 @@ describe "Includes reconciliation" do
         result = Includes.reconcile(bare: bare, user: user, system: system)
       }.not_to raise_error
 
-      expect(result.length).to eq(2)
-      expect(result.map(&:filepath)).to include(
-        "/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h", "/usr/include/stdint.h"
-      )
+      expect(result.map(&:filepath)).to eq(["/usr/lib/gcc/x86_64-linux-gnu/14/include/stdint.h"])
+      expect(result.map(&:to_s)).to eq(["#include <stdint.h>"])
+    end
+
+    it "keeps same-named system headers that are written as different #include lines" do
+      bare = [Include.new("stat.h"), Include.new("sys/stat.h")]
+
+      user = []
+      system = [
+        SystemInclude.new("/usr/include/sys/stat.h"),
+        SystemInclude.new("/opt/compat/include/stat.h")
+      ]
+
+      result = Includes.reconcile(bare: bare, user: user, system: system)
+
+      expect(result.map(&:to_s)).to contain_exactly("#include <sys/stat.h>", "#include <stat.h>")
     end
 
     it "resolves a .. in a bare entry's literal text against test_filepath's own directory to match a clean candidate" do
