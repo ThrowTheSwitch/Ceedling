@@ -392,7 +392,7 @@ describe PartialsManager do
 
       expect(@partializer).to receive(:plan_carry).with(
         test: 'a_test', partial: 'Foo', c_module: @module_contents, impl: impl, interface: iface,
-        fallback: true, header_guarded: true, header_filepath: 'src/Foo.h'
+        fallback: true, header_guarded: true, header_filepath: 'src/Foo.h', source_filepath: 'src/Foo.c'
       ).and_return( Partials::CarryPlan.new )
 
       @manager.stage_generate_partials( @state )

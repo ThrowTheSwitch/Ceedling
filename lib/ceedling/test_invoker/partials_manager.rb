@@ -195,7 +195,8 @@ class PartialsManager
           interface:       interface,
           fallback:        !directives_only,
           header_guarded:  !module_include_guard.nil?,
-          header_filepath: config.header.filepath
+          header_filepath: config.header.filepath,
+          source_filepath: config.source.filepath
         )
       end
 

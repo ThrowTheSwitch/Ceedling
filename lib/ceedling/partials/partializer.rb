@@ -87,11 +87,14 @@ class Partializer
   # @param fallback       [Boolean] Whether fallback preprocessing produced the module's copies
   # @param header_guarded  [Boolean] Whether the module header has an include guard
   # @param header_filepath [String, nil] The module header, named in notices
+  # @param source_filepath [String, nil] The module source
   # @return [Partials::CarryPlan]
-  def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:, header_filepath: nil)
+  def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:, header_filepath: nil, source_filepath: nil)
     plan = @helper.plan_carry(
       c_module: c_module, impl: impl, interface: interface, fallback: fallback, header_guarded: header_guarded
     )
+
+    _locate_carried( plan, { header: header_filepath, source: source_filepath } )
 
     _log_carried( test, partial, plan )
     plan.skipped.each { |skipped| _log_not_carried( test, partial, skipped ) }
@@ -507,15 +510,6 @@ class Partializer
     @helper.associate_function_line_numbers(
       name: name, funcs: c_module.function_definitions, filepath: c_file.filepath, fallback: fallback
     )
-
-    return if c_module.function_declarations.empty?
-
-    # Declarations are found in the original file's own text, where no included header's
-    # lines can be mistaken for them. A carried prototype's #line comes from here.
-    @helper.associate_declaration_line_numbers(
-      decls: c_module.function_declarations, filepath: c_file.filepath,
-      text:  @file_wrapper.read( c_file.filepath ).clean_encoding
-    )
   end
 
   # 1. Find any function-scope static variable declarations.
@@ -528,6 +522,20 @@ class Partializer
     )
     c_module.variable_declarations.concat(promoted)
     c_module.element_sequence.concat(promoted) unless promoted.empty?
+  end
+
+  # A carried prototype is written behind a #line naming its own file and line. Each is found in
+  # its original file's own text, where no included header's lines can be mistaken for it. Only
+  # carried prototypes are located, since each costs a search of the file.
+  def _locate_carried(plan, filepaths)
+    plan.prototypes.map( &:item ).group_by( &:origin ).each do |origin, decls|
+      filepath = filepaths[origin]
+      next if filepath.nil?
+
+      @helper.associate_declaration_line_numbers(
+        decls: decls, filepath: filepath, text: @file_wrapper.read( filepath ).clean_encoding
+      )
+    end
   end
 
   def _inline_declaration?(decl)

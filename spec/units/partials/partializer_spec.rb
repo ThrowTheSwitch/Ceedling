@@ -510,7 +510,7 @@ describe Partializer do
 
       result = @partializer.plan_carry(
         test: 'test_foo', partial: 'Foo', c_module: c_module, impl: impl, interface: nil,
-        fallback: false, header_guarded: true, header_filepath: 'src/Foo.h'
+        fallback: false, header_guarded: true, header_filepath: 'src/Foo.h', source_filepath: 'src/Foo.c'
       )
 
       expect( result ).to equal( plan )
@@ -529,9 +529,36 @@ describe Partializer do
     def carry_with(plan)
       allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
       @partializer.plan_carry(
-        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new,
-        impl: [], interface: nil, fallback: false, header_guarded: true, header_filepath: 'src/engine.h'
+        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil,
+        fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
       )
+    end
+
+    # The original file holds only its own lines, so a located prototype is always in it
+    it "locates each carried prototype in the text of the file it came from" do
+      header_proto = CExtractorTypes::CFunctionDeclaration.new( name: 'tick', signature: 'int tick(void);', origin: :header )
+      source_proto = CExtractorTypes::CFunctionDeclaration.new( name: 'twice', signature: 'extern inline int twice(void);', origin: :source )
+      plan = Partials::CarryPlan.new
+      plan.add_prototype( header_proto, 'external: no body in module' )
+      plan.add_prototype( source_proto, 'external: no body in module' )
+      allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+      allow(@file_wrapper).to receive(:read).with('src/engine.h').and_return('header text')
+      allow(@file_wrapper).to receive(:read).with('src/engine.c').and_return('source text')
+
+      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
+        decls: [header_proto], filepath: 'src/engine.h', text: 'header text'
+      )
+      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
+        decls: [source_proto], filepath: 'src/engine.c', text: 'source text'
+      )
+
+      carry_with( plan )
+    end
+
+    it "reads no file when nothing is carried" do
+      expect(@file_wrapper).not_to receive(:read)
+
+      carry_with( Partials::CarryPlan.new )
     end
 
     it "lists everything carried, with reasons, at debug verbosity" do
@@ -2055,27 +2082,17 @@ describe Partializer do
     end
 
     # The original file holds only its own lines, so a located declaration is always in it
-    it "locates each file's declarations in that file's own text" do
-      header_decls = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
-      source_decls = [CExtractorTypes::CFunctionDeclaration.new(name: 'twice', signature: 'extern inline int twice(void);')]
-
+    # Locating declarations costs a search of the file's text each, so only carried ones are located
+    it "leaves declarations unlocated during extraction" do
       config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', directives_only_filepath: '/build/preproc/module1.h'),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.c')
+        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
       )
+      decls = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: decls))
 
-      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.h').and_return(CExtractorTypes::CModule.new(function_declarations: header_decls))
-      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.c').and_return(CExtractorTypes::CModule.new(function_declarations: source_decls))
-      allow(@file_wrapper).to receive(:read).with('/src/module1.h').and_return('header text')
-      allow(@file_wrapper).to receive(:read).with('/src/module1.c').and_return('source text')
-
-      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
-        decls: header_decls, filepath: '/src/module1.h', text: 'header text'
-      )
-      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
-        decls: source_decls, filepath: '/src/module1.c', text: 'source text'
-      )
+      expect(@partializer_helper).not_to receive(:associate_declaration_line_numbers)
 
       @partializer.extract_module_contents(@name, config, fallback: false)
     end

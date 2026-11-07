@@ -55,6 +55,7 @@ require 'ceedling/preprocess/preprocessinator_reconstructor'
 require 'ceedling/preprocess/preprocessinator_comment_stripper'
 require 'ceedling/preprocess/c_comment_scanner'
 require 'ceedling/preprocess/preprocessinator_file_assembler'
+require 'ceedling/preprocess/preprocessinator_code_finder'
 require 'ceedling/parsing_parcels'
 require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/filesystem/file_wrapper'
@@ -355,7 +356,8 @@ module PartialsGenerationHelpers
       carry = partializer.plan_carry(
         test: 'PartialsGenerationTest', partial: module_name, c_module: c_module,
         impl: implementation, interface: interface, fallback: mode == :fallback,
-        header_guarded: !include_guard.nil?, header_filepath: config.header.filepath
+        header_guarded: !include_guard.nil?, header_filepath: config.header.filepath,
+        source_filepath: config.source.filepath
       )
     end
 
@@ -711,9 +713,10 @@ module PartialsGenerationHelpers
   def partials_helper
     @partials_helper ||= PartializerHelper.new(
       {
+        # A real finder, so a carried prototype's #line names its true line and reaches the compiler
         partializer_utils:        PartializerUtils.new(
                                     {
-                                      preprocessinator_code_finder: RSpec::Mocks::Double.new( 'CodeFinder' ).as_null_object,
+                                      preprocessinator_code_finder: PreprocessinatorCodeFinder.new( { file_wrapper: partials_file_wrapper } ),
                                       loginator: partials_null_loginator
                                     }
                                   ),
