@@ -325,6 +325,80 @@ describe PreprocessinatorReconstructor do
       expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
     end
 
+    # A marker naming a line the scanner has already counted puts the next line at the same
+    # count as the line before the marker, which is how a wrapped expansion reads
+    [true, false].each do |rejoin|
+      it "never joins a declaration onto a #define behind a marker for a line already counted (rejoin: #{rejoin})" do
+        filepath = "stub/cmsis_gcc.h"
+
+        file_contents = [
+          '# 1 "stub/cmsis_gcc.h"',
+          '',
+          '',
+          '    #define CMSIS_DEPRECATED',
+          '# 2 "stub/cmsis_gcc.h"',
+          '',
+          'void __enable_irq(void);',
+          'void __disable_irq(void);',
+        ]
+
+        expected = [
+          '    #define CMSIS_DEPRECATED',
+          '',
+          'void __enable_irq(void);',
+          'void __disable_irq(void);',
+        ]
+
+        input = StringIO.new( file_contents.join( "\n" ) )
+
+        expect( @extractor.extract_file_as_array_from_expansion( input, filepath, rejoin: rejoin ) ).to eq expected
+      end
+    end
+
+    # GCC and clang both give a mid-line _Pragma() a line of its own between two markers
+    # for the source line it sat on
+    it "keeps a #pragma on its own line between markers for the same source line" do
+      filepath = "path/f.c"
+
+      file_contents = [
+        '# 1 "path/f.c"',
+        'int a;',
+        '# 1 "path/f.c"',
+        '#pragma pack(1)',
+        '# 1 "path/f.c"',
+        ' int b;',
+        'int c;',
+      ]
+
+      expected = [
+        'int a;',
+        '#pragma pack(1)',
+        ' int b;',
+        'int c;',
+      ]
+
+      input = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( input, filepath ) ).to eq expected
+    end
+
+    it "joins code lines a marker puts at the same count only when rejoining" do
+      filepath = "path/f.c"
+
+      file_contents = [
+        '# 1 "path/f.c"',
+        'int a = WRAPPED(1,',
+        '# 1 "path/f.c"',
+        '2);',
+      ]
+
+      rejoined = StringIO.new( file_contents.join( "\n" ) )
+      apart    = StringIO.new( file_contents.join( "\n" ) )
+
+      expect( @extractor.extract_file_as_array_from_expansion( rejoined, filepath ) ).to eq ['int a = WRAPPED(1, 2);']
+      expect( @extractor.extract_file_as_array_from_expansion( apart, filepath, rejoin: false ) ).to eq ['int a = WRAPPED(1,', '2);']
+    end
+
     it "should extract text of original file from staggered system include expansions" do
       filepath = "path/system_header_expansion.c"
       
@@ -527,6 +601,22 @@ describe PreprocessinatorReconstructor do
       # compact_from_expansion uses `puts` which appends "\n" to each line;
       # extract_file_as_string_from_expansion uses join("\n") with no trailing newline
       expect( output.string ).to eq( string_result + "\n" )
+    end
+
+    it "keeps code lines a marker puts at the same count apart when not rejoining" do
+      file_contents = [
+        '# 1 "path/f.c"',
+        'first();',
+        '# 1 "path/f.c"',
+        'second();',
+      ]
+
+      output = StringIO.new
+      @extractor.compact_from_expansion(
+        input: StringIO.new( file_contents.join( "\n" ) ), filepath: 'path/f.c', output: output, rejoin: false
+      )
+
+      expect( output.string ).to eq( "first();\nsecond();\n" )
     end
   end
 
@@ -972,6 +1062,20 @@ describe PreprocessinatorReconstructor do
       )
 
       expect( crlf_output.string ).to eq( lf_output.string )
+    end
+
+    it "keeps code lines a marker puts at the same count apart when not rejoining" do
+      input_handle  = StringIO.new( [ '# 1 "WANT.c"', 'first();', '# 1 "WANT.c"', 'second();' ].join( "\n" ) )
+      output_handle = StringIO.new
+
+      allow(@file_wrapper).to receive(:open_with_retry).with( 'input.c', 'rb' ).and_yield( input_handle )
+      allow(@file_wrapper).to receive(:open).with( 'output.c', 'wb' ).and_yield( output_handle )
+
+      @extractor.compact_file_from_expansion(
+        input_filepath: 'input.c', source_filepath: 'WANT.c', output_filepath: 'output.c', rejoin: false
+      )
+
+      expect( output_handle.string ).to eq( "first();\nsecond();\n" )
     end
   end
 
