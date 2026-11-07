@@ -69,10 +69,12 @@ module PartialsGeneration
   # GeneratorPartials#generate_types returning nil for that case. `pp_header` and `pp_source`
   # are the reconstituted files the extractor actually parsed, which is where to look when a
   # generated file is missing something the original module had.
+  # `carry` is the plan the implementation source was written from, or nil when nothing
+  # was selected to test.
   Result = Struct.new(
     :dir, :module_name, :mode,
     :types_h, :impl_h, :impl_c, :interface_h,
-    :pp_header, :pp_source,
+    :pp_header, :pp_source, :carry,
     keyword_init: true
   ) do
     # Generated file contents by role, so the accessors below read one way for any of them.
@@ -222,6 +224,9 @@ module PartialsGenerationHelpers
       mode: :accurate,
       tests_expose: PartializerConfig::DEDUCT,
       mocks_expose: PartializerConfig::DEDUCT,
+      tests_subtract: [],
+      mocks_add: [],
+      suppress_redundant_decls: true,
       dir: nil
     )
     # A caller supplies `dir` to generate two modules into one working directory, which is
@@ -243,7 +248,17 @@ module PartialsGenerationHelpers
 
     # Each file's items carry the role of the file they came from, as
     # Partializer#extract_module_contents stamps them, so carrying sees the same origins.
-    c_module = extract_c( pp_header ).stamp_origin!( :header ) + extract_c( pp_source ).stamp_origin!( :source )
+    header_module = extract_c( pp_header ).stamp_origin!( :header )
+    source_module = extract_c( pp_source ).stamp_origin!( :source )
+
+    # Production reconciles each file with its fully expanded copy, which resolves macros that
+    # hide a storage class and shows calls a macro hides. Fallback has no expanded copy.
+    if mode == :accurate
+      reconcile_with_full_expansion( header_module, dir: dir, filename: "#{module_name}.h", defines: defines, file_type: 'header' )
+      reconcile_with_full_expansion( source_module, dir: dir, filename: "#{module_name}.c", defines: defines, file_type: 'source' )
+    end
+
+    c_module = header_module + source_module
 
     generator   = build_partials_generator
     partializer = build_partializer
@@ -277,8 +292,8 @@ module PartialsGenerationHelpers
     # than re-proving the filter.
     config = PartializerConfig::Config.new(
       module: module_name,
-      tests: PartializerConfig::PartialFunctions.new( type: tests_expose ),
-      mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose ),
+      tests: PartializerConfig::PartialFunctions.new( type: tests_expose, subtractions: tests_subtract ),
+      mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose, additions: mocks_add ),
       header: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.h" ) ),
       source: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.c" ) )
     )
@@ -334,6 +349,16 @@ module PartialsGenerationHelpers
       types_header: types_h_name
     )
 
+    # What the implementation carries beyond the selection, planned as PartialsManager plans it
+    carry = nil
+    unless implementation.nil?
+      carry = partializer.plan_carry(
+        test: 'PartialsGenerationTest', partial: module_name, c_module: c_module,
+        impl: implementation, interface: interface, fallback: mode == :fallback,
+        header_guarded: !include_guard.nil?, header_filepath: config.header.filepath
+      )
+    end
+
     generator.generate_implementation(
       test: 'PartialsGenerationTest',
       name: module_name,
@@ -342,7 +367,9 @@ module PartialsGenerationHelpers
       header_includes: header_list,
       c_module: c_module,
       output_path: dir,
-      include_guard: include_guard
+      include_guard: include_guard,
+      carry: carry || Partials::CarryPlan.new,
+      suppress_redundant_decls: suppress_redundant_decls
     )
 
     # The mockable interface header is what CMock mocks in place of the real module header,
@@ -367,7 +394,40 @@ module PartialsGenerationHelpers
       impl_c: read_generated( dir, "ceedling_partial_#{module_name}_impl.c" ),
       interface_h: read_generated( dir, "ceedling_partial_#{module_name}_interface.h" ),
       pp_header: pp_header,
-      pp_source: pp_source
+      pp_source: pp_source,
+      carry: carry
+    )
+  end
+
+  # Fully expands one module file with real GCC, keeps that file's own lines, and reconciles
+  # the file's extracted module with them through the production helper. That is what
+  # Partializer#extract_module_contents does with the copy stage 7 writes.
+  def reconcile_with_full_expansion(file_module, dir:, filename:, defines:, file_type:)
+    path  = File.join( dir, filename )
+    raw   = "#{path}.full_expansion"
+    flags = defines.map { |name| "-D#{name}" }.join( ' ' )
+
+    command = "#{partials_compiler} -E #{flags} -I#{dir} -x c #{path} -o #{raw}".squeeze( ' ' )
+    _out, stderr, status = Open3.capture3( command )
+    raise PartialsGeneration::PreprocessFailure, "#{command}\n#{stderr}" unless status.success?
+
+    expanded = File.open( raw, 'rb' ) { |file| partials_reconstructor.extract_file_as_string_from_expansion( file, path ) }
+    expanded_module = extract_c( expanded )
+
+    # The production helper reads the expanded copy through its extractor, so this one hands
+    # back the module just extracted
+    extractor = Object.new
+    extractor.define_singleton_method( :from_file ) { |_path| expanded_module }
+    reconciler = PartializerHelper.new(
+      {
+        partializer_utils: nil, c_extractor: extractor, c_extractor_declarations: nil,
+        file_path_utils: nil, parsing_parcels: nil, loginator: partials_null_loginator
+      }
+    )
+    reconciler.update_signatures_from_full_expansion(
+      funcs: file_module.function_definitions, decls: file_module.function_declarations,
+      full_expansion_filepath: raw, name: 'PartialsGenerationTest',
+      module_name: File.basename( filename, '.*' ), file_type: file_type
     )
   end
 
@@ -495,12 +555,13 @@ module PartialsGenerationHelpers
   # of`, so stripping `static` from a file-scope variable -- which turns a module-private
   # name into one that participates in link-time resolution -- is testable only here.
 
-  # Compiles one result's generated implementation source to a real object file.
-  def compile_objects(result)
+  # Compiles one result's generated implementation source to a real object file. `flags`
+  # reach the compiler as given, so a case can hold the source to a warning set.
+  def compile_objects(result, flags: '')
     object = File.join( result.dir, "ceedling_partial_#{result.module_name}_impl.o" )
     source = File.join( result.dir, "ceedling_partial_#{result.module_name}_impl.c" )
 
-    command = "#{partials_compiler} -c -I#{result.dir} #{source} -o #{object}"
+    command = "#{partials_compiler} #{flags} -c -I#{result.dir} #{source} -o #{object}".squeeze( ' ' )
     _out, stderr, status = Open3.capture3( command )
 
     PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
@@ -509,7 +570,10 @@ module PartialsGenerationHelpers
   # Links one or more results' generated implementations against a stand-in test translation
   # unit. The stand-in takes the address of each named symbol so the linker has to resolve
   # it; a symbol that merely compiles is not proof the definition survived.
-  def link_partials(results, references: [])
+  #
+  # `stubs` is C the stand-in test file defines, the way a real test defines a stub for a
+  # function it subtracted. `flags` reach the compiler as given.
+  def link_partials(results, references: [], stubs: '', flags: '')
     results = Array( results )
     dir     = results.first.dir
 
@@ -523,20 +587,20 @@ module PartialsGenerationHelpers
       end
 
     probe = File.join( dir, "probe_link_#{results.map( &:module_name ).join( '_' )}.c" )
-    File.write( probe, "#{headers.join( "\n" )}\nint main(void) {\n#{body}\n}\n" )
+    File.write( probe, "#{headers.join( "\n" )}\n#{stubs}\nint main(void) {\n#{body}\n}\n" )
 
     sources = results.map { |r| File.join( r.dir, "ceedling_partial_#{r.module_name}_impl.c" ) }
     includes = results.map( &:dir ).uniq.map { |d| "-I#{d}" }.join( ' ' )
     output = File.join( dir, "probe_link_#{results.map( &:module_name ).join( '_' )}" )
 
-    command = "#{partials_compiler} #{includes} #{probe} #{sources.join( ' ' )} -o #{output}"
+    command = "#{partials_compiler} #{flags} #{includes} #{probe} #{sources.join( ' ' )} -o #{output}".squeeze( ' ' )
     _out, stderr, status = Open3.capture3( command )
 
     PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
   end
 
-  def link_partial(result, references: [])
-    link_partials( [result], references: references )
+  def link_partial(result, references: [], stubs: '', flags: '')
+    link_partials( [result], references: references, stubs: stubs, flags: flags )
   end
 
   # A `partials:` entry for some *other* partialized module in the same test file. The remap
