@@ -1,6 +1,6 @@
 # Partials
 
-Partials allow a test to exercise a C module’s features in ways otherwise impossible. Partials copies selected functions and variables, whole and unmodified, out of their home source file and into a file generated just for one test. These functions and variables are stripped of decorators `static` and `inline` allowing a test to access the variables, call the functions, and CMock to mock the functions like any other. This not only allows access to functions that previously required source rewrites, but it also allows mocking of individual functions inside a module instead of mocking all functions in a header file.
+Partials allow a test to exercise a C module’s features in ways otherwise impossible. Partials copies selected functions and variables, whole and unmodified, out of their home source file and into a file generated just for one test. These functions and variables are stripped of decorators `static` and `inline` allowing a test to access the variables, call the functions, and CMock to mock the functions like any other. This not only allows access to functions that previously required source rewrites, but it also allows mocking of individual functions inside a module instead of mocking all functions in a header file. The generated file also carries what the selected functions rely on, such as prototypes of functions defined elsewhere and helpers the module header defines, so the selection compiles and links on its own.
 
 See the detailed documentation for using Partials in `docs/mkdocs/testing-guide/partials/`. This documentation discusses Partials' implementation.
 
@@ -20,7 +20,7 @@ A single test file can select both a test side and a mock side for the same modu
 
 ## Reading a Test’s Configuration
 
-Before any real C file is touched, a class called `PartializerConfig` scans a test file’s own source text for the macro calls discussed in the previous section. It works in three passes. The first pass reads every `MODULE` macro and starts a `Config` record for each module it names. The second pass reads every `CONFIG` macro and fills in that module’s additions and subtractions. The third pass checks everything the first two passes built. Each `Config` record describes, for one module, what its Partialized test side and mock side should contain. `Config` and its companion records live together in a shared module called `Partials`, alongside the rest of this subsystem’s common vocabulary.
+Before any real C file is touched, a class called `PartializerConfig` scans a test file’s own source text for the macro calls discussed in the previous section. It works in three passes. The first pass reads every `MODULE` macro and starts a `PartializerConfig::Config` record for each module it names. The second pass reads every `CONFIG` macro and fills in that module’s additions and subtractions. The third pass checks everything the first two passes built. Each `Config` record describes, for one module, what its Partialized test side and mock side should contain. The records describing a module’s files and functions live in a shared module called `Partials`, alongside the rest of this subsystem’s common vocabulary.
 
 This scan enforces a few rules of its own. A `CONFIG` macro must refer to a module already named by an earlier `MODULE` macro, since a configuration with nothing to configure is meaningless. A module’s test side or mock side may only be declared once, since declaring it twice would leave two contradictory instructions in place at once. An accumulate mode with no additions at all is also rejected, since it would describe a Partial with nothing in it.
 
@@ -30,9 +30,13 @@ A further round of checks happens later, once the module’s real functions are 
 
 Once a module’s configuration is known, a class called `Partializer` locates its real header and source files and hands them off for preprocessing. The preprocessed result is then handed to the c_extractor subsystem, which returns a structured picture of every function, variable, and type the module contains. The header’s picture and the source’s picture are merged into one combined view of the whole module.
 
-A second class, `PartializerHelper`, finishes preparing that combined view. It traces every function back to its original line number, following it through preprocessing to the real file it came from. This traceability matters later, when a generated file needs to point a coverage tool or a debugger back at the function’s true home, rather than at the generated Partial standing in for it. `PartializerHelper` leans on a lower layer of its own, `PartializerUtils`, for the actual text work this requires.
+Each file is extracted on its own before the merge, so every function and variable can record where it came from. `CModule#stamp_origin!` marks each one `:header` or `:source`. The extractor reads text alone and cannot know a file’s role, so `Partializer` stamps it. Deciding what a Partial carries depends on that origin.
 
-`PartializerHelper` also reconciles each function’s visibility against a fully macro-expanded version of the same file. This second pass exists because a project can hide `static` behind a macro of its own, such as `#define PRIVATE static`. A file preprocessed only far enough to preserve macros cannot see through that indirection. A fully expanded file can.
+A second class, `PartializerHelper`, finishes preparing that combined view. It traces every function back to its original line number, following it through preprocessing to the real file it came from. It locates every declaration too, searching the original file’s own text so that no included header’s lines are mistaken for it. This traceability matters later, when a generated file needs to point a coverage tool, a debugger, or a compiler message back at the true home of what it holds, rather than at the generated Partial standing in for it. `PartializerHelper` leans on a lower layer of its own, `PartializerUtils`, for the actual text work this requires.
+
+`PartializerHelper` also reconciles each function’s visibility against a fully macro-expanded version of the same file. This second pass exists because a project can hide `static` behind a macro of its own, such as `#define PRIVATE static`. A file preprocessed only far enough to preserve macros cannot see through that indirection. A fully expanded file can. Declarations take their decorators and stripped signature from the expanded file, while keeping the signature as written. Definitions keep their expanded body alongside the original, where a call hidden inside a macro becomes visible.
+
+Splitting a signature into its decorators and the rest removes only storage-class and function-specifier keywords, such as `static`, `inline`, `extern`, and `_Noreturn`. Every other word before the function name belongs to the return type and keeps its place, qualifiers and type keywords included.
 
 ## Promoting Function-Scoped Statics
 
@@ -42,15 +46,38 @@ C allows a `static` variable to live inside a single function, retaining its val
 
 ## Deciding What’s Tested and What’s Mocked
 
-With the module’s content extracted, and its configuration validated, `Partializer` splits the functions into two lists. One list holds `FunctionDefinition` records for the functions destined to be tested directly, each complete with its body. The other holds `FunctionDeclaration` records for the functions destined to be mocked, each needing only its signature. Both record shapes, like `Config`, live in the shared `Partials` module.
+With the module’s content extracted, and its configuration validated, `Partializer` splits the functions into two lists. One list holds `FunctionDefinition` records for the functions destined to be tested directly, each complete with its body. The other holds `FunctionDeclaration` records for the functions destined to be mocked, each needing only its signature. Both record shapes live in the shared `Partials` module.
+
+A function the module only declares can be mocked, since a mock needs only a signature. An `inline` function the module only declares is the exception. Its body lives in a header the module includes, which a mock cannot replace, so it never becomes a mock candidate.
 
 A module often has `typedef`s and struct definitions that both lists would otherwise need to repeat. Rather than duplicate that content, and risk defining the same type twice in one test file, it is written once to a shared types file. Both the testable file and the mockable file then include that shared file relying on its internal `#include` guards instead of restating its contents.
 
 A function can never appear in both lists at once. Being directly tested means its real body is compiled into the test. Being mocked means the linker is provided a mock in its place instead. These two things cannot both be true of the same function in the same test, so this case is rejected outright.
 
+## Carrying What the Selected Functions Rely On
+
+A Partial’s implementation source carries more than the selected functions. The module’s code relied on prototypes of functions defined elsewhere, and on small `static` or `inline` helpers its header defines. Without them, selected code fails to compile, or an `extern inline` function never gets its external definition. `PartializerHelper#plan_carry` decides what comes along, and `Partializer#plan_carry` logs that decision.
+
+The decision is made per function name, from facts extraction already recorded. Those facts are whether the module defines a body for the name, whether the test selected it, which file each item came from, and its reconciled storage class. Each name falls into one category.
+
+- **Selected to test or to mock.** Nothing more is carried. The selection is written as before.
+- **External.** The module declares the function but never defines it. A prototype that is not `static` is carried when kept code uses the name. An `inline` prototype is carried regardless, since its job is to make this file hold the function’s external definition.
+- **Header helper.** Every body for the name sits in the module header and is `static` or `inline`. The body and its prototypes are carried when kept code uses it.
+- **Left out.** Any other unselected body. Prototypes that are neither `static` nor `inline` are carried when kept code uses the name, so a test stub for a subtracted function links.
+
+Kept code is the selected bodies, the variables and macro invocations the implementation source writes, and each helper already carried. Each is scanned once for the names it uses. A body uses a name it calls or takes the address of, read from the expanded body, where a macro’s call is visible. A variable initializer or macro invocation uses any name it holds, as a table of handlers does. String and character literals are blanked first, and member accesses are dropped, so a field sharing a function’s name never counts. Under fallback preprocessing, macro definitions count as kept code too, since expansion is unreliable there. Helpers are followed transitively, and the prototypes are decided once the helpers are known. Nothing is carried unless something uses it, so carrying never forces unneeded code to compile, nor puts a prototype where a later header’s macro could mangle it.
+
+Two rules hold helpers back. A module header without an include guard cannot be stood in for, so the real header may still arrive through another include, helpers and all. Its referenced helpers are skipped and named in a notice. Fallback preprocessing can also leave two different copies of one name. Carrying both would fail to compile, so neither is carried and a notice names the function.
+
+The result is a `Partials::CarryPlan`. It holds the carried prototypes, the carried helpers by name, and the skipped names, each with a one-line reason. Prototypes are indexed by object identity, since the generator later walks the very declarations the plan chose. `Partializer#plan_carry` then locates each carried prototype in its original file’s own text, reading each file once, so its `#line` can name the right file and line.
+
 ## Writing the Generated Files
 
 Once both lists are settled, a separate class named `GeneratorPartials` writes the actual files to disk. It lives outside this directory, alongside Ceedling’s other file-writing classes, deliberately kept apart from the classes that decide what belongs in a Partial. A tested module gets an implementation header and source. A mocked module gets an interface header, in the same shape CMock expects for any other header it mocks. Each promoted function is written with a line marker (`#line`) immediately ahead of it, pointing a coverage tool or a debugger back at the function’s real, original location rather than at the generated file holding it.
+
+The implementation source also writes the carry plan. It walks the module’s items in their original order after every include, so a carried item sees each header the module’s code saw, the module’s own mock interface included. A carried prototype is written as the user spelled it, behind a `#line` naming its original file and line. A run of carried prototypes sits inside GCC diagnostic pragmas that quiet `-Wredundant-decls`, unless `:partials` ↳ `:suppress_redundant_decls` is off. After a run of located prototypes, a `#line` hands attribution back to the generated file, unless what follows carries its own. A carried helper is written as its header wrote it, anchored with `#line` like a selected body. Nothing carried is written to a header, so the test file and runner compile exactly what the selection gives them.
+
+Variables follow two rules of their own. The implementation header writes one `extern` declaration per variable name, taken from the variable’s definition when the module has one, so an array keeps its size. A variable the module only declares `extern` lives elsewhere. Under `:partials` ↳ `:extern_variables`, the implementation source gives it a weak definition that a real one overrides (`:weak`, the default), or none at all (`:test`).
 
 ## Regenerating Partials
 

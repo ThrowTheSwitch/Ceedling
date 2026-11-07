@@ -18,6 +18,14 @@ that `extern` declaration into scope, causing the variable to accessible in
 test code directly by its **original name** — no renaming or helper macro is 
 required.
 
+A variable your module declares `extern` is defined somewhere else. The
+generated `_impl.h` header declares it `extern`. By default, the generated
+`_impl.c` file gives it a weak definition. A real definition, from a module
+your test links or from the test file itself, takes precedence over the weak
+one. When nothing else defines the variable, the weak definition stands in.
+The [`:partials` ↳ `:extern_variables`](../../configuration/reference/partials.md#extern_variables)
+setting can leave the definition to your test instead.
+
 ### Partial file-scoped static variable example
 
 Extending the sensor module with a file-scoped error counter:

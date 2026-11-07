@@ -51,9 +51,12 @@ When creating a Partial, Ceedling:
     1. Reorganized and slightly altered so the C elements can be accessed by 
        assertions and mocks in your test cases. Functions are stripped of 
        `static` and `inline`. Variables are stripped of `static` and `extern`ed.
+    1. Accompanied by what the selected functions rely on including prototypes of
+       functions defined elsewhere and the header helpers they call, copied
+       unchanged ([details](conventions.md#what-a-partial-carries-from-your-module)).
 1. Structures the test build to omit the original source file from the 
-   resulting test executable. Generated Partials are self-sufficient stand-ins 
-   for the original C code from which the Partials are derived.
+   resulting test executable. Generated Partials stand in for the original C
+   code from which the Partials are derived.
 1. Maps the reorganized functions in generated Partials back to the 
    original source module's filepath and line numbers (using GCC's `#line` 
    directive) for correct test coverage reporting.
