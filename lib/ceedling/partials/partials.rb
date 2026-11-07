@@ -54,6 +54,61 @@ module Partials
     end
   end unless const_defined?(:FunctionDefinition, false)
 
+  # A function a Partial carries forward, or skips, and the reason why.
+  # The reason feeds debug logging so a user can trace what a Partial contains.
+  CarriedItem = Struct.new(
+    :item,   # CFunctionDeclaration or Partials::FunctionDefinition, or a bare name when skipped
+    :reason, # Short explanation such as "external: no body in module"
+    :kind,   # For a skipped name, why it was skipped (:unguarded_helper, :helper_conflict, :prototype_conflict)
+    keyword_init: true
+  ) unless const_defined?(:CarriedItem, false)
+
+  # Everything a Partial's implementation source holds beyond its selected functions.
+  # PartializerHelper#plan_carry decides it. GeneratorPartials#generate_source writes it.
+  # Prototypes are matched by object identity. The generator walks element_sequence,
+  # which holds the very declarations the plan chose.
+  CarryPlan = Struct.new(
+    :prototypes, # Array of CarriedItem wrapping a CFunctionDeclaration written word for word
+    :helpers,    # Hash of function name => CarriedItem wrapping a Partials::FunctionDefinition
+    :skipped,    # Array of CarriedItem naming functions left out that a selected function needs
+    keyword_init: true
+  ) do
+    def initialize(prototypes: [], helpers: {}, skipped: [])
+      super
+    end
+
+    def add_prototype(decl, reason)
+      prototypes << CarriedItem.new( item: decl, reason: reason ) unless prototype?( decl )
+    end
+
+    def prototype?(decl)
+      return prototypes.any? { |carried| carried.item.equal?( decl ) }
+    end
+
+    def add_helper(func, reason)
+      helpers[func.name] ||= CarriedItem.new( item: func, reason: reason )
+    end
+
+    def helper?(name)
+      return helpers.key?( name )
+    end
+
+    # The helper's definition ready to write, or nil when the name is not carried
+    def helper(name)
+      return helpers[name]&.item
+    end
+
+    def skip(name, reason, kind)
+      return if skipped.any? { |s| s.item == name and s.kind == kind }
+
+      skipped << CarriedItem.new( item: name, reason: reason, kind: kind )
+    end
+
+    def empty?
+      return prototypes.empty? && helpers.empty? && skipped.empty?
+    end
+  end unless const_defined?(:CarryPlan, false)
+
   def self.manufacture_function_declaration(line_num: nil, source_filepath: nil, name:, signature:)
     return FunctionDeclaration.new(
       name: name,

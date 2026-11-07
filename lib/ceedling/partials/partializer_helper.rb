@@ -36,6 +36,12 @@ class PartializerHelper
   # the same reason, against its own copy of this pattern.
   ANY_INCLUDE_DIRECTIVE = /^\s*#\s*include\s+\S/ unless const_defined?(:ANY_INCLUDE_DIRECTIVE, false)
 
+  # A string or character literal, which can't reference a function however it reads
+  C_LITERAL = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/ unless const_defined?(:C_LITERAL, false)
+
+  # What the helper scan shares while it walks: the plan it fills and the facts that gate it
+  CarryScan = Struct.new( :plan, :declared, :fallback, :header_guarded, keyword_init: true ) unless const_defined?(:CarryScan, false)
+
 
   include Partials
 
@@ -399,6 +405,158 @@ class PartializerHelper
     end
 
     return changed
+  end
+
+  # Decide what a Partial's implementation source carries beyond its selected functions.
+  #
+  # A module's code relied on more than the functions a test selects. It called functions
+  # defined elsewhere through prototypes, and it called small static or inline helpers its
+  # header defines. Each function name falls into one category:
+  #   - selected to test or to mock: handled as before, nothing carried;
+  #   - external, declared but defined nowhere in the module: every non-static prototype;
+  #   - a header helper, a static or inline body in the header: the body and its prototypes,
+  #     but only when kept code references it;
+  #   - left out, any other unselected body: prototypes that are neither static nor inline.
+  #
+  # The result is pure data. The generator writes it into the implementation source after
+  # every include, where each carried item can see everything the module's code saw.
+  #
+  # @param c_module       [CExtractorTypes::CModule] Merged module with origins and reconciled decorators
+  # @param impl           [Array<Partials::FunctionDefinition>] Functions selected to test
+  # @param interface      [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
+  # @param fallback       [Boolean] Whether fallback preprocessing produced the module's copies
+  # @param header_guarded [Boolean] Whether the module header has an include guard to stand in for
+  # @return [Partials::CarryPlan]
+  def plan_carry(c_module:, impl:, interface:, fallback:, header_guarded:)
+    plan     = Partials::CarryPlan.new
+    selected = Set.new( Array( impl ).map( &:name ) + Array( interface ).map( &:name ) )
+    defined  = c_module.function_definitions.group_by( &:name )
+    declared = c_module.function_declarations.group_by( &:name )
+
+    declared.each do |name, decls|
+      next if selected.include?( name )
+      # A helper's prototypes travel with its body, so the helper scan decides them
+      next if defined.key?( name ) and _helper?( defined[name] )
+
+      _plan_prototypes( plan, name, decls, has_body: defined.key?( name ), fallback: fallback )
+    end
+
+    helpers = defined.select { |name, defs| !selected.include?( name ) and _helper?( defs ) }
+    unless helpers.empty?
+      scan = CarryScan.new( plan: plan, declared: declared, fallback: fallback, header_guarded: header_guarded )
+      _plan_helpers( scan, c_module, impl, helpers )
+    end
+
+    return plan
+  end
+
+  def _plan_prototypes(plan, name, decls, has_body:, fallback:)
+    keep = decls.reject { |d| _static?( d.decorators ) }
+    # An inline prototype promises an inline body, and a left-out body isn't there
+    keep = keep.reject { |d| _inline?( d.decorators ) } if has_body
+    keep = keep.uniq { |d| _normalized( d.signature ) }
+    return if keep.empty?
+
+    # Fallback may keep both sides of a conditional, and two different types for one name won't compile
+    if fallback and keep.map { |d| _normalized( d.signature_stripped ) }.uniq.size > 1
+      plan.skip( name, 'conflicting declarations under fallback preprocessing', :prototype_conflict )
+      return
+    end
+
+    reason = has_body ? 'left out: body not selected' : 'external: no body in module'
+    keep.each { |d| plan.add_prototype( d, reason ) }
+  end
+
+  # Scans kept code for helper names, then each carried helper in turn, until nothing new is found.
+  # Only a referenced helper is carried, so carrying never forces unused code to compile.
+  def _plan_helpers(scan, c_module, impl, helpers)
+    pending = _kept_code( c_module, impl, scan.fallback )
+    handled = Set.new
+
+    until pending.empty?
+      referrer, text = pending.shift
+      helpers.each do |name, defs|
+        next if handled.include?( name ) or !text.match?( /(?<!\w)#{Regexp.escape( name )}(?!\w)/ )
+
+        handled << name
+        carried = _carry_helper( scan, name, defs, referrer )
+        pending << [name, _scan_text( carried )] if carried
+      end
+    end
+  end
+
+  # Carries one referenced helper, or records why it can't be. Returns the carried definition.
+  def _carry_helper(scan, name, defs, referrer)
+    plan = scan.plan
+
+    # Without a guard the real header may arrive through another include, and its copy would collide
+    unless scan.header_guarded
+      plan.skip( name, 'module header has no include guard', :unguarded_helper )
+      return nil
+    end
+
+    if scan.fallback and defs.map { |d| _normalized( d.code_block ) }.uniq.size > 1
+      plan.skip( name, 'more than one definition under fallback preprocessing', :helper_conflict )
+      return nil
+    end
+
+    helper = defs.first
+    # Built from the original text. Transforming it would strip `static inline` and give the
+    # helper external linkage it never had.
+    plan.add_helper(
+      Partials.manufacture_function_definition(
+        name: helper.name, signature: helper.signature, code_block: helper.code_block,
+        source_filepath: helper.source_filepath, line_num: helper.line_num
+      ),
+      "helper: referenced by `#{referrer}`"
+    )
+    scan.declared.fetch( name, [] ).uniq { |d| _normalized( d.signature ) }.each do |d|
+      plan.add_prototype( d, "prototype of helper `#{name}`" )
+    end
+
+    return helper
+  end
+
+  # Everything the implementation source compiles that could call a helper, as [referrer, text] pairs.
+  # Fallback can't expand macros reliably, so there a macro definition's text counts too.
+  def _kept_code(c_module, impl, fallback)
+    defined = c_module.function_definitions.to_h { |f| [f.name, f] }
+    kept    = Array( impl ).map { |f| [f.name, defined[f.name] ? _scan_text( defined[f.name] ) : _blank_literals( f.code_block.to_s )] }
+
+    c_module.variable_declarations.each do |v|
+      kept << [v.name, _blank_literals( v.text.to_s )] unless v.decorators.include?( 'extern' )
+    end
+    c_module.macro_invocations.each { |m| kept << [m.text.strip, _blank_literals( m.text )] }
+    c_module.macro_definitions.each { |m| kept << [m.text.strip, _blank_literals( m.text )] } if fallback
+
+    return kept
+  end
+
+  # A body as the compiler sees it when the expanded copy has one, with literals blanked
+  def _scan_text(definition)
+    return _blank_literals( (definition.expanded_body || definition.body || definition.code_block).to_s )
+  end
+
+  def _blank_literals(text)
+    return text.gsub( C_LITERAL ) { |literal| ' ' * literal.length }
+  end
+
+  def _helper?(definitions)
+    return definitions.all? do |f|
+      f.origin == :header and (_static?( f.decorators ) or _inline?( f.decorators ))
+    end
+  end
+
+  def _static?(decorators)
+    return decorators.include?( 'static' )
+  end
+
+  def _inline?(decorators)
+    return decorators.any? { |d| d != 'static' and CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
+  end
+
+  def _normalized(text)
+    return text.to_s.gsub( /\s+/, ' ' ).strip
   end
 
   # Validate that every function name in additions and subtractions exists in c_module.
