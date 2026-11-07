@@ -91,7 +91,9 @@ describe GeneratorPartials do
       allow(@generator).to receive(:generate_header)
       plan = Partials::CarryPlan.new
 
-      expect(@generator).to receive(:generate_source).with( anything, [], [], empty_module, carry: plan, suppress_redundant_decls: false )
+      expect(@generator).to receive(:generate_source).with(
+        anything, [], [], empty_module, carry: plan, suppress_redundant_decls: false, filepath: '/path/to/output/m_impl.c'
+      )
 
       @generator.generate_implementation(
         test: 'test_m', name: 'm', function_definitions: [],
@@ -246,7 +248,7 @@ describe GeneratorPartials do
         source_includes,
         defns,
         c_module,
-        { carry: an_instance_of( Partials::CarryPlan ), suppress_redundant_decls: true }
+        { carry: an_instance_of( Partials::CarryPlan ), suppress_redundant_decls: true, filepath: expected_source_filepath }
       )
 
       # Verify file path utilities were called
@@ -1605,6 +1607,42 @@ describe GeneratorPartials do
       @generator.send(:generate_source, buf, [], [selected], make_module( get_def ), carry: Partials::CarryPlan.new)
 
       expect( buf.string ).to include( 'int get(void) { return 1; }' )
+    end
+
+    # Items after a located prototype would otherwise be attributed to the prototype's header
+    it "points the line marker back at the generated file after located prototypes" do
+      tick = make_decl( 'int board_tick(void);', line_num: 5, source_filepath: 'src/engine.h' )
+      mode = make_var( name: 'mode', type: 'int', text: 'int mode = 3;' )
+
+      @generator.send(:generate_source, buf, [UserInclude.new('a.h')], [], make_module( tick, mode ),
+                      carry: plan_with( prototypes: [tick] ), filepath: 'build/partials/engine_impl.c')
+
+      lines = buf.string.lines
+      reset = lines.index { |l| l.include?( '"build/partials/engine_impl.c"' ) }
+      expect( lines[reset] ).to eq( "#line #{reset + 2} \"build/partials/engine_impl.c\"\n" )
+      expect( lines[reset + 1] ).to eq( "int mode = 3;\n" )
+    end
+
+    it "leaves the line marker alone when a located function follows" do
+      tick    = make_decl( 'int board_tick(void);', line_num: 5, source_filepath: 'src/engine.h' )
+      get_def = make_defn( 'int get(void) { return 1; }' )
+      get     = Partials.manufacture_function_definition(
+        name: 'get', signature: 'int get(void)', code_block: 'int get(void) { return 1; }', source_filepath: 'src/engine.c', line_num: 9
+      )
+
+      @generator.send(:generate_source, buf, [], [get], make_module( tick, get_def ),
+                      carry: plan_with( prototypes: [tick] ), filepath: 'build/partials/engine_impl.c')
+
+      expect( buf.string ).not_to include( 'engine_impl.c' )
+    end
+
+    it "leaves the line marker alone at the end of the file" do
+      tick = make_decl( 'int board_tick(void);', line_num: 5, source_filepath: 'src/engine.h' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick ),
+                      carry: plan_with( prototypes: [tick] ), filepath: 'build/partials/engine_impl.c')
+
+      expect( buf.string ).not_to include( 'engine_impl.c' )
     end
 
     it "closes an open wrapper at the end of the file" do

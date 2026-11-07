@@ -19,6 +19,23 @@ class GeneratorPartials
 
   constructor :file_wrapper, :file_path_utils, :loginator
 
+  # Passes writes through and counts the lines written, so a #line can name this file's own next line
+  class LineCountingIO
+    attr_reader :lines
+
+    def initialize(io)
+      @io    = io
+      @lines = 0
+    end
+
+    def <<(text)
+      text = text.to_s
+      @io << text
+      @lines += text.count( "\n" )
+      return self
+    end
+  end
+
   # A module named by directory produces a nested filename, and nothing upstream creates
   # that directory. The file write itself does not create one either.
   def _prepare(filepath)
@@ -55,7 +72,7 @@ class GeneratorPartials
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
       generate_source(file, source_includes, function_definitions, c_module,
-                      carry: carry, suppress_redundant_decls: suppress_redundant_decls)
+                      carry: carry, suppress_redundant_decls: suppress_redundant_decls, filepath: source_filepath)
     end
 
     return source_filepath
@@ -302,7 +319,8 @@ class GeneratorPartials
   # @param includes             [Array]  Include directives
   # @param function_definitions [Array]  Pre-filtered Partials::FunctionDefinition objects
   # @param c_module             [CExtractorTypes::CModule] Merged module with element_sequence
-  def generate_source(io, includes, function_definitions, c_module, carry: Partials::CarryPlan.new, suppress_redundant_decls: true)
+  def generate_source(io, includes, function_definitions, c_module, carry: Partials::CarryPlan.new, suppress_redundant_decls: true, filepath: nil)
+    io = LineCountingIO.new( io )
     io << "// Ceedling generated file\n"
     includes.each do |include|
       io << "#{include}\n"
@@ -316,11 +334,16 @@ class GeneratorPartials
     anything_emitted = false
 
     # A run of carried prototypes sits inside one pair of GCC diagnostic pragmas. Anything
-    # else written closes the run, and the end of the file closes the last one.
-    wrapped = false
-    close_wrap = lambda do
+    # else written closes the run, and the end of the file closes the last one. Content after a
+    # run of located prototypes belongs to this file, so a #line hands attribution back to it
+    # unless what follows carries its own #line.
+    wrapped  = false
+    anchored = false
+    close_wrap = lambda do |resume = true|
       io << REDUNDANT_DECLS_POP if wrapped
-      wrapped = false
+      io << "#line #{io.lines + 2} \"#{filepath.tr( '\\', '/' )}\"\n" if anchored and resume and filepath
+      wrapped  = false
+      anchored = false
     end
 
     # Each carried prototype is written as the user spelled it, so `extern inline` keeps
@@ -330,14 +353,17 @@ class GeneratorPartials
         io << REDUNDANT_DECLS_PUSH
         wrapped = true
       end
-      io << "#line #{decl.line_num} \"#{decl.source_filepath}\"\n" if decl.line_num and decl.source_filepath
+      if decl.line_num and decl.source_filepath
+        io << "#line #{decl.line_num} \"#{decl.source_filepath}\"\n"
+        anchored = true
+      end
       io << decl.signature.strip << "\n"
       last_was_func = false
       anything_emitted = true
     end
 
     emit_func = lambda do |func|
-      close_wrap.call
+      close_wrap.call( !(func.line_num and func.source_filepath) )
       # Blank line before a function when preceded by a non-function item
       io << "\n" if anything_emitted && !last_was_func
       if func.line_num and func.source_filepath
@@ -395,7 +421,7 @@ class GeneratorPartials
       # Every other CStatement is a header's
     end
 
-    close_wrap.call
+    close_wrap.call( false )
   end
 
 
