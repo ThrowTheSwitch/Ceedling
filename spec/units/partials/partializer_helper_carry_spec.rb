@@ -119,6 +119,29 @@ describe PartializerHelper do
       expect( carried_prototypes( result ) ).to eq( ['extern inline int engine_get_twice(void);'] )
     end
 
+    it 'carries no prototype that nothing kept calls' do
+      get    = defn( 'int engine_get(void) { return 1; }' )
+      unused = decl( 'int board_reset(void);', origin: :header )
+
+      expect( carried_prototypes( plan( c_module( unused, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    # The expanded body shows what the compiler calls. A macro that renames the call leaves no
+    # reference, and a carried prototype would only meet that macro again and break.
+    it 'carries no prototype whose call a macro replaced' do
+      get   = defn( 'void *engine_buf(void) { return pool_alloc(4); }', expanded_body: '{ return pool_alloc_dbg((4),12); }' )
+      alloc = decl( 'void *pool_alloc(unsigned n);', origin: :header )
+
+      expect( carried_prototypes( plan( c_module( alloc, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'counts a function whose address a body takes' do
+      get  = defn( 'int engine_get(void) { return register_cb(&board_tick); }' )
+      tick = decl( 'int board_tick(void);', origin: :header )
+
+      expect( carried_prototypes( plan( c_module( tick, get ), impl: selected( get ) ) ) ).to eq( ['int board_tick(void);'] )
+    end
+
     it 'never carries a static prototype without a body' do
       get    = defn( 'int engine_get(void) { return 1; }' )
       orphan = decl( 'static int orphan(void);' )
@@ -190,6 +213,14 @@ describe PartializerHelper do
 
       expect( carried_prototypes( result ) ).to eq( ['int engine_poll(void);'] )
       expect( result.prototypes.first.reason ).to eq( 'left out: body not selected' )
+    end
+
+    it 'carries no prototype of a left-out function nothing kept calls' do
+      poll  = defn( 'int engine_poll(void) { return 1; }' )
+      get   = defn( 'int engine_get(void) { return 1; }' )
+      proto = decl( 'int engine_poll(void);', origin: :header )
+
+      expect( carried_prototypes( plan( c_module( proto, poll, get ), impl: selected( get ) ) ) ).to be_empty
     end
 
     it 'carries no static prototype of an unselected source function' do
@@ -289,6 +320,32 @@ describe PartializerHelper do
       get = defn( "int engine_mark(void) { return 'c' + 'l'; }" )
 
       expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    # A member or a local that shares a helper's name is not a use of the helper
+    it 'ignores a member access with a helper\'s name' do
+      size = defn( 'static inline int size(const buf_t *b) { return b->len; }', origin: :header )
+      get  = defn( 'int engine_len(const buf_t *b) { return b->size + b . size; }' )
+
+      expect( carried_helpers( plan( c_module( size, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'ignores a local variable that shares a helper\'s name' do
+      get = defn( 'int engine_get(void) { int clamp = 3; return clamp; }' )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'does not read a logical and as taking an address' do
+      get = defn( 'int engine_get(int clamp) { return 1 && clamp; }' )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'counts a helper whose address a body takes' do
+      get = defn( 'int engine_get(void) { return apply(&clamp, 12); }' )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to eq( ['clamp'] )
     end
 
     it 'matches a helper name only as a whole word' do
@@ -445,7 +502,7 @@ describe PartializerHelper do
     result = plan( mod, impl: selected( get ) )
 
     expect( carried_prototypes( result ) ).to contain_exactly(
-      'int board_tick(void);', 'int engine_poll(void);', 'extern inline int engine_get_twice(void);'
+      'int board_tick(void);', 'extern inline int engine_get_twice(void);'
     )
     expect( carried_helpers( result ) ).to eq( ['clamp'] )
     expect( result.skipped ).to be_empty
@@ -462,6 +519,15 @@ describe Partials::CarryPlan do
 
     expect( plan.prototype?( proto ) ).to be( true )
     expect( plan.prototype?( proto.dup ) ).to be( false )
+  end
+
+  it 'finds a prototype among many without comparing content' do
+    plan   = described_class.new
+    protos = Array.new( 500 ) { |i| CExtractorTypes::CFunctionDeclaration.new( name: "f#{i}", signature: "int f#{i}(void);" ) }
+    protos.each { |d| plan.add_prototype( d, 'external: no body in module' ) }
+
+    expect( protos.all? { |d| plan.prototype?( d ) } ).to be( true )
+    expect( plan.prototype?( protos.first.dup ) ).to be( false )
   end
 
   it 'records a prototype once' do

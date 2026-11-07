@@ -39,6 +39,15 @@ class PartializerHelper
   # A string or character literal, which can't reference a function however it reads
   C_LITERAL = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/ unless const_defined?(:C_LITERAL, false)
 
+  # The ways code names a function. A call, an address taken, and any identifier at all, which
+  # a variable initializer or macro invocation may use to name a function it doesn't call.
+  C_CALL       = /(?<!\w)([A-Za-z_]\w*)\s*\(/ unless const_defined?(:C_CALL, false)
+  C_ADDRESS_OF = /(?<!&)&(?!&)\s*([A-Za-z_]\w*)/ unless const_defined?(:C_ADDRESS_OF, false)
+  C_IDENTIFIER = /(?<!\w)[A-Za-z_]\w*/ unless const_defined?(:C_IDENTIFIER, false)
+
+  # A struct or union member, which only shares a name with any function
+  C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_]\w*/ unless const_defined?(:C_MEMBER_ACCESS, false)
+
   # The names a carry plan decides by, grouped once per module
   CarryFacts = Struct.new( :selected, :defined, :declared, keyword_init: true ) unless const_defined?(:CarryFacts, false)
 
@@ -435,20 +444,22 @@ class PartializerHelper
     facts = _carry_facts( c_module, impl, interface )
     plan  = Partials::CarryPlan.new
 
-    _plan_all_prototypes( plan, facts, fallback )
+    helpers    = facts.defined.select { |name, defs| !facts.selected.include?( name ) and _helper?( defs ) }
+    scan       = CarryScan.new( plan: plan, declared: facts.declared, fallback: fallback, header_guarded: header_guarded )
+    references = _plan_helpers( scan, c_module, impl, helpers )
 
-    helpers = facts.defined.select { |name, defs| !facts.selected.include?( name ) and _helper?( defs ) }
-    scan    = CarryScan.new( plan: plan, declared: facts.declared, fallback: fallback, header_guarded: header_guarded )
-    _plan_helpers( scan, c_module, impl, helpers ) unless helpers.empty?
+    _plan_all_prototypes( plan, facts, fallback, references )
 
     return plan
   end
 
-  def _plan_all_prototypes(plan, facts, fallback)
+  def _plan_all_prototypes(plan, facts, fallback, references)
     facts.declared.each do |name, decls|
       next unless _prototype_candidate?( facts, name )
 
-      _plan_prototypes( plan, name, decls, has_body: facts.defined.key?( name ), fallback: fallback )
+      _plan_prototypes(
+        plan, name, decls, has_body: facts.defined.key?( name ), fallback: fallback, referenced: references.include?( name )
+      )
     end
   end
 
@@ -468,8 +479,8 @@ class PartializerHelper
     return !(facts.defined.key?( name ) and _helper?( facts.defined[name] ))
   end
 
-  def _plan_prototypes(plan, name, decls, has_body:, fallback:)
-    keep = _carryable_prototypes( decls, has_body )
+  def _plan_prototypes(plan, name, decls, has_body:, fallback:, referenced:)
+    keep = _carryable_prototypes( decls, has_body, referenced )
     return if keep.empty?
 
     # Fallback may keep both sides of a conditional, and two different types for one name won't compile
@@ -482,31 +493,41 @@ class PartializerHelper
     keep.each { |d| plan.add_prototype( d, reason ) }
   end
 
-  # Never a static prototype. An inline prototype promises an inline body, and a left-out body isn't there.
-  def _carryable_prototypes(decls, has_body)
+  # Never a static prototype. An inline prototype promises an inline body, and a left-out body
+  # isn't there. A prototype comes along when kept code uses the name, except an inline one for a
+  # body elsewhere: that prototype is what makes this file hold the external definition, used or not.
+  def _carryable_prototypes(decls, has_body, referenced)
     keep = decls.reject { |d| _static?( d.decorators ) or (has_body and _inline?( d.decorators )) }
+    keep = keep.select { |d| _inline?( d.decorators ) } unless referenced
     return keep.uniq { |d| _normalized( d.signature ) }
   end
 
   # Scans kept code for helper names, then each carried helper in turn, until nothing new is found.
   # Only a referenced helper is carried, so carrying never forces unused code to compile.
+  # Returns every name the carried code references, which decides the prototypes it needs.
   def _plan_helpers(scan, c_module, impl, helpers)
-    pending = _kept_code( c_module, impl, scan.fallback )
-    handled = Set.new
+    references = Set.new
+    pending    = _kept_code( c_module, impl, scan.fallback )
+    handled    = Set.new
 
     until pending.empty?
-      referrer, text = pending.shift
-      _referenced( helpers, handled, text ).each do |name, defs|
-        handled << name
-        carried = _carry_helper( scan, name, defs, referrer )
-        pending << [name, _scan_text( carried )] if carried
-      end
+      referrer, names = pending.shift
+      references.merge( names )
+      pending.concat( _follow( scan, helpers, handled, referrer, names ) )
     end
+
+    return references
   end
 
-  # The helpers not yet handled whose names the text uses as whole words
-  def _referenced(helpers, handled, text)
-    return helpers.reject { |name, _| handled.include?( name ) or !text.match?( /(?<!\w)#{Regexp.escape( name )}(?!\w)/ ) }
+  # Carries each helper the names reach for the first time. Returns their bodies' references to scan next.
+  def _follow(scan, helpers, handled, referrer, names)
+    reached = helpers.select { |name, _| names.include?( name ) and !handled.include?( name ) }
+
+    return reached.filter_map do |name, defs|
+      handled << name
+      carried = _carry_helper( scan, name, defs, referrer )
+      [name, _body_references( _scan_text( carried ) )] if carried
+    end
   end
 
   # Carries one referenced helper, or records why it can't be. Returns the carried definition.
@@ -544,15 +565,16 @@ class PartializerHelper
     )
   end
 
-  # Everything the implementation source compiles that could call a helper, as [referrer, text] pairs
+  # Everything the implementation source compiles that could use a function, as
+  # [referrer, Set of referenced names] pairs
   def _kept_code(c_module, impl, fallback)
-    statements = _kept_statements( c_module, fallback ).map { |referrer, text| [referrer, _blank_literals( text.to_s )] }
+    statements = _kept_statements( c_module, fallback ).map { |referrer, text| [referrer, _statement_references( text.to_s )] }
     return _kept_bodies( c_module, impl ) + statements
   end
 
   def _kept_bodies(c_module, impl)
     defined = c_module.function_definitions.to_h { |f| [f.name, f] }
-    return Array( impl ).map { |f| [f.name, defined[f.name] ? _scan_text( defined[f.name] ) : _blank_literals( f.code_block.to_s )] }
+    return Array( impl ).map { |f| [f.name, _body_references( defined[f.name] ? _scan_text( defined[f.name] ) : f.code_block.to_s )] }
   end
 
   # Variables and macro invocations the implementation source writes. Fallback can't expand
@@ -564,13 +586,30 @@ class PartializerHelper
     return variables.map { |v| [v.name, v.text] } + macros.map { |m| [m.text.strip, m.text] }
   end
 
+  # The functions a body uses: every name it calls or takes the address of. A member access or a
+  # local variable that merely shares a function's name doesn't count.
+  def _body_references(text)
+    code = _without_members( _blank_literals( text ) )
+    return Set.new( code.scan( C_CALL ).flatten + code.scan( C_ADDRESS_OF ).flatten )
+  end
+
+  # A variable initializer or macro invocation names a function without calling it, as in a table
+  # of handlers, so any identifier there counts
+  def _statement_references(text)
+    return Set.new( _without_members( _blank_literals( text ) ).scan( C_IDENTIFIER ) )
+  end
+
+  def _without_members(code)
+    return code.gsub( C_MEMBER_ACCESS, ' ' )
+  end
+
   def _conflicting?(texts)
     return texts.map { |t| _normalized( t ) }.uniq.size > 1
   end
 
-  # A body as the compiler sees it when the expanded copy has one, with literals blanked
+  # A body as the compiler sees it when the expanded copy has one
   def _scan_text(definition)
-    return _blank_literals( (definition.expanded_body || definition.body || definition.code_block).to_s )
+    return (definition.expanded_body || definition.body || definition.code_block).to_s
   end
 
   def _blank_literals(text)

@@ -78,11 +78,19 @@ module Partials
     end
 
     def add_prototype(decl, reason)
-      prototypes << CarriedItem.new( item: decl, reason: reason ) unless prototype?( decl )
+      return if prototype?( decl )
+
+      prototypes << CarriedItem.new( item: decl, reason: reason )
+      _identities[decl] = true
     end
 
+    # The generator asks once per declaration, so lookup is by identity in a hash, not a scan
     def prototype?(decl)
-      return prototypes.any? { |carried| carried.item.equal?( decl ) }
+      return _identities.key?( decl )
+    end
+
+    def _identities
+      @identities ||= prototypes.each_with_object( {}.compare_by_identity ) { |carried, index| index[carried.item] = true }
     end
 
     def add_helper(func, reason)
