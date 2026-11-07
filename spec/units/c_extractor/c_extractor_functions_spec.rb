@@ -2760,10 +2760,32 @@ describe CExtractorFunctions do
       expect(stripped).to eq("float f(void)")
     end
 
-    it "strips the _Noreturn function specifier" do
+    # A selected function needs it, or a caller's missing return reads as a warning
+    it "keeps the _Noreturn function specifier" do
       decorators, stripped = functions.send(:parse_decorators_and_strip, "_Noreturn void die(void)", "die")
-      expect(decorators).to eq(["_Noreturn"])
-      expect(stripped).to eq("void die(void)")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("_Noreturn void die(void)")
+    end
+
+    it "strips static and keeps _Noreturn" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static _Noreturn void fatal(void)", "fatal")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("_Noreturn void fatal(void)")
+    end
+
+    # Only whole words separated by whitespace are decorators, never text inside an attribute
+    it "leaves a decorator word inside an attribute string alone" do
+      signature = 'static int __attribute__((section(".text.static"))) g(void)'
+      decorators, stripped = functions.send(:parse_decorators_and_strip, signature, "g")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq('int __attribute__((section(".text.static"))) g(void)')
+    end
+
+    it "strips the decorator itself when an attribute string ahead of it holds the same word" do
+      signature = '__attribute__((section(".text.static"))) static int g(void)'
+      decorators, stripped = functions.send(:parse_decorators_and_strip, signature, "g")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq('__attribute__((section(".text.static"))) int g(void)')
     end
 
     it "strips extern inline from a prototype and keeps its semicolon" do

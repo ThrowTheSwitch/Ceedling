@@ -8,6 +8,7 @@
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_runtime'
 require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/c_extractor/c_extractor_functions'
 
 class PartializerUtils
 
@@ -51,10 +52,11 @@ class PartializerUtils
       # (it's followed by a body, not one), but a signature sourced from a
       # CFunctionDeclaration always does (it's a bare prototype). Strip it here so
       # callers can render "#{signature};" uniformly regardless of which kind of
-      # function this interface entry came from.
+      # function this interface entry came from. A mock always returns, so a mock
+      # declared `_Noreturn` would contradict itself; the specifier stays behind.
       Partials.manufacture_function_declaration(
         name: func.name,
-        signature: signature.sub(/;\s*\z/, '')
+        signature: CExtractorFunctions.remove_tokens( signature, ['_Noreturn'] ).strip.sub(/;\s*\z/, '')
       )
     else
       PartializerRuntime.raise_on_option(output_type)
@@ -209,7 +211,7 @@ class PartializerUtils
   # Strip decorator keywords from the front of code_block and count leading newlines removed.
   #
   # Decorators live only in the text before the function's name. Each is removed there as a
-  # whole word, so the same word inside the name, a qualifier or the body stays. Leading
+  # whole token, so the same word inside the name, an attribute string or the body stays. Leading
   # whitespace is then trimmed. Returns the trimmed code block and a count of the newlines
   # removed from the leading portion. The caller adjusts line_num with that count so that
   # emitted #line directives in generated source remain accurate.
@@ -221,9 +223,7 @@ class PartializerUtils
   def extract_code_block(code_block, decorators, name)
     match  = code_block.match( /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ )
     cut    = match ? match.begin(0) : 0
-    prefix = code_block[0...cut]
-    decorators.each { |d| prefix = prefix.sub( /(?<!\w)#{Regexp.escape( d )}(?!\w)[ \t]*/, '' ) }
-    stripped = prefix + code_block[cut..]
+    stripped = CExtractorFunctions.remove_tokens( code_block[0...cut], decorators ) + code_block[cut..]
     leading  = stripped[/\A\s*/]
     stripped = stripped.lstrip
     return stripped, leading.count("\n")

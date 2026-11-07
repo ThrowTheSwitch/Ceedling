@@ -77,6 +77,23 @@ class CExtractorFunctions
     return [true, func]
   end
 
+  # Removes each listed token once, matching whole whitespace-separated tokens only, so the
+  # same word inside an attribute string or a longer name stays. Spaces after a removed token
+  # go with it. A newline stays, because a caller may count the lines a decorator occupied.
+  def self.remove_tokens(text, tokens)
+    parts = text.split( /(\s+)/ )
+
+    tokens.each do |token|
+      index = parts.index( token )
+      next if index.nil?
+
+      parts.delete_at( index )
+      parts.delete_at( index ) if parts[index]&.match?( /\A[ \t]+\z/ )
+    end
+
+    return parts.join
+  end
+
   private
 
   # Extract a function signature from the scanner
@@ -317,9 +334,7 @@ class CExtractorFunctions
     decorators = prefix.split( /\s+/ ).select { |token| FUNCTION_DECORATOR_KEYWORDS.include?( token ) }
     return [[], signature] if decorators.empty?
 
-    return_type = prefix.gsub( FUNCTION_DECORATOR_PATTERN, '' ).lstrip
-
-    return decorators, "#{return_type}#{remainder}"
+    return decorators, "#{self.class.remove_tokens( prefix, decorators ).lstrip}#{remainder}"
   end
 
   def extract_function_name(signature)

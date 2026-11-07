@@ -167,6 +167,13 @@ describe PartializerUtils do
         expect(result).not_to respond_to(:code_block)
       end
 
+      # A mock always returns, so a mock declared _Noreturn would contradict itself
+      it "drops _Noreturn from a mockable signature" do
+        result = @utils.transform_function(mock_func, '_Noreturn void testFunc(int x);', :interface)
+
+        expect(result.signature).to eq('void testFunc(int x)')
+      end
+
       it "strips a trailing semicolon from a declaration-sourced signature" do
         # CFunctionDeclaration#signature_stripped always carries its own trailing
         # semicolon (it's a bare prototype); CFunctionDefinition#signature_stripped never
@@ -296,6 +303,13 @@ describe PartializerUtils do
       result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'is_static')
 
       expect(result).to eq("int is_static(void) { return 1; }")
+    end
+
+    it "strips the decorator itself when an attribute string ahead of it holds the same word" do
+      code_block = '__attribute__((section(".text.static"))) static int g(void) { return 0; }'
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'g')
+
+      expect(result).to eq('__attribute__((section(".text.static"))) int g(void) { return 0; }')
     end
 
     it "leaves the text alone when a decorator from the expanded copy is absent" do
