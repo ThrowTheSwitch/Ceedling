@@ -283,12 +283,22 @@ class ConfiguratorSetup
   # `:max_extraction_length` multiplies 1000 characters, so `5000` reads more clearly than
   # `5000000`. The minimum keeps that ceiling well above any ordinary C declaration or
   # signature, and catches `1000` written to mean 1000 characters.
+  #
+  # `:suppress_redundant_decls` decides whether generated code carries GCC pragmas, so a
+  # misspelled value is caught here rather than read as truthy.
   def validate_partials(config)
     max_extraction_length = config[:partials][:max_extraction_length]
     walk = @reportinator.generate_config_walk( [:partials, :max_extraction_length] )
 
     return log_invalid( "#{walk} is not an integer" ) unless max_extraction_length.is_a?( Integer )
     return log_invalid( "#{walk} must be at least 10 (10,000 characters)" ) if max_extraction_length < 10
+
+    suppress = config[:partials][:suppress_redundant_decls]
+    unless [true, false].include?( suppress )
+      walk = @reportinator.generate_config_walk( [:partials, :suppress_redundant_decls] )
+      return log_invalid( "#{walk} is '#{suppress}' but must be TRUE or FALSE" )
+    end
+
     return true
   end
 

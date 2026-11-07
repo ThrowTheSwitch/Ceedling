@@ -85,13 +85,27 @@ describe ConfiguratorSetup do
 
   context "#validate_partials" do
     it "accepts an integer at the minimum" do
-      config = { partials: { max_extraction_length: 10 } }
+      config = { partials: { max_extraction_length: 10, suppress_redundant_decls: true } }
       expect(@setup.validate_partials(config)).to be true
     end
 
     it "accepts an integer above the minimum" do
-      config = { partials: { max_extraction_length: 5000 } }
+      config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: true } }
       expect(@setup.validate_partials(config)).to be true
+    end
+
+    it "accepts either boolean for :suppress_redundant_decls" do
+      [true, false].each do |value|
+        config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: value } }
+        expect(@setup.validate_partials(config)).to be true
+      end
+    end
+
+    it "rejects a non-boolean :suppress_redundant_decls" do
+      config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: 'yes' } }
+      expect(@loginator).to receive(:log)
+        .with(/:partials ↳ :suppress_redundant_decls is 'yes' but must be TRUE or FALSE/, Verbosity::ERRORS)
+      expect(@setup.validate_partials(config)).to be false
     end
 
     it "rejects a non-integer value" do
