@@ -886,6 +886,51 @@ describe PreprocessinatorReconstructor do
 
       expect( @extractor.extract_include_guard( file_text ) ).to eq nil
     end
+
+    # A license comment longer than the scan window is ordinary in vendor headers
+    it "should extract an include guard behind a leading comment longer than the scan window" do
+      license = "/*\n" + (" * Licensed under the Apache License, Version 2.0 (the \"License\");\n" * 60) + " */\n"
+      file_text = license + <<~FILE_TEXT
+
+        // A line comment between the license and the guard
+
+        #ifndef __CMSIS_GCC_H
+        #define __CMSIS_GCC_H
+
+        #endif
+      FILE_TEXT
+
+      expect( license.bytesize ).to be > PreprocessinatorReconstructor::INCLUDE_GUARD_SCAN_BYTES
+      expect( @extractor.extract_include_guard( file_text ) ).to eq '__CMSIS_GCC_H'
+    end
+
+    it "should not extract an include guard from inside a comment" do
+      file_text = <<~FILE_TEXT
+        /* Usage:
+        #ifndef EXAMPLE_H
+        #define EXAMPLE_H
+        */
+        #ifndef REAL_H
+        #define REAL_H
+        #endif
+      FILE_TEXT
+
+      expect( @extractor.extract_include_guard( file_text ) ).to eq 'REAL_H'
+    end
+
+    # A header guarded by #pragma once has no guard, and a configuration default deep in it
+    # has the same shape as one
+    it "should not extract an include guard from beyond the scan window of code" do
+      declarations = (1..200).map { |n| "int some_function_#{n}(void);\n" }.join
+      file_text = "#pragma once\n" + declarations + <<~FILE_TEXT
+        #ifndef BUFFER_SIZE
+        #define BUFFER_SIZE 64
+        #endif
+      FILE_TEXT
+
+      expect( declarations.bytesize ).to be > PreprocessinatorReconstructor::INCLUDE_GUARD_SCAN_BYTES
+      expect( @extractor.extract_include_guard( file_text ) ).to eq nil
+    end
   end
 
   context "#extract_macro_defs" do
