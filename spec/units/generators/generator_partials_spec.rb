@@ -722,6 +722,17 @@ describe GeneratorPartials do
       expect(buf.string).to include('extern volatile cmd_t cmd;')
     end
 
+    # A header that declares a variable and a source that defines it name one variable
+    it "should write one extern declaration for a variable both declared and defined" do
+      c_module = make_module(
+        make_var(name: 'mode', type: 'int', text: 'int mode;', decorators: ['extern']),
+        make_var(name: 'mode', type: 'int', text: 'int mode = 3;')
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string.scan('extern int mode;').size).to eq(1)
+    end
+
     it "should not reapply a qualifier already embedded in a pointer-level declarator" do
       c_module = make_module(
         make_var(name: 'lookup_table', type: 'uint8_t* const', text: 'uint8_t* const lookup_table;', decorators: ['static', 'const'])

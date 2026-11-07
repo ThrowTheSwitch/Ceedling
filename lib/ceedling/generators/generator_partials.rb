@@ -211,6 +211,7 @@ class GeneratorPartials
 
     func_by_name = function_list.to_h { |f| [f.name, f] }
     emitted_funcs = {}
+    emitted_vars = {}
     last_was_func = false
     anything_emitted = false
 
@@ -250,6 +251,9 @@ class GeneratorPartials
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
         next unless include_variables
+        # A header's extern and the source's definition name one variable, so it gets one line
+        next if emitted_vars[item.name]
+        emitted_vars[item.name] = true
         # If there is no array involved, array_suffix collapses to an empty string.
         # A leading const/volatile/restrict on the original declaration (see
         # qualifier_prefix) is part of the variable's type and belongs here too,

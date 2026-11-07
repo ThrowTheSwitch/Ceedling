@@ -858,6 +858,24 @@ describe 'Partial header composition' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'a variable the header declares and the source defines' do
+  # ---------------------------------------------------------------------------
+
+    # Both files name one variable. The implementation header declares it once, so a test
+    # build that warns on redundant declarations stays clean.
+    it 'declares the variable once in the implementation header' do
+      @result = generate_partial(
+        module_name: 'moded',
+        header: "#ifndef MODED_H\n#define MODED_H\nextern int moded_mode;\nint moded_get(void);\n#endif\n",
+        source: "#include \"moded.h\"\nint moded_mode = 3;\nint moded_get(void) { return moded_mode; }\n",
+        source_includes: ['moded.h']
+      )
+
+      expect( @result.impl_h.scan( 'extern int moded_mode;' ).size ).to eq(1)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   context 'C shapes the extraction model does not yet carry' do
   # ---------------------------------------------------------------------------
 
