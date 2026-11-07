@@ -391,8 +391,8 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_interface_functions).and_return( iface )
 
       expect(@partializer).to receive(:plan_carry).with(
-        test: 'a_test', partial: 'Foo', c_module: @module_contents,
-        impl: impl, interface: iface, fallback: true, header_guarded: true
+        test: 'a_test', partial: 'Foo', c_module: @module_contents, impl: impl, interface: iface,
+        fallback: true, header_guarded: true, header_filepath: 'src/Foo.h'
       ).and_return( Partials::CarryPlan.new )
 
       @manager.stage_generate_partials( @state )

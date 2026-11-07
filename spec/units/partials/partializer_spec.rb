@@ -509,8 +509,8 @@ describe Partializer do
       ).and_return( plan )
 
       result = @partializer.plan_carry(
-        test: 'test_foo', partial: 'Foo', c_module: c_module,
-        impl: impl, interface: nil, fallback: false, header_guarded: true
+        test: 'test_foo', partial: 'Foo', c_module: c_module, impl: impl, interface: nil,
+        fallback: false, header_guarded: true, header_filepath: 'src/Foo.h'
       )
 
       expect( result ).to equal( plan )
@@ -530,7 +530,7 @@ describe Partializer do
       allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
       @partializer.plan_carry(
         test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new,
-        impl: [], interface: nil, fallback: false, header_guarded: true
+        impl: [], interface: nil, fallback: false, header_guarded: true, header_filepath: 'src/engine.h'
       )
     end
 
@@ -562,6 +562,43 @@ describe Partializer do
 
       expect(@loginator).to receive(:log).with(
         "Partial test_engine::engine \u23e9\ufe0f Not carrying helper `clamp()`: fallback preprocessing found more than one definition. Add `+clamp` if a selected function needs it",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      carry_with( plan )
+    end
+
+    it "gives one notice naming every helper an unguarded module header kept out" do
+      plan = plan_for( skipped: [
+        ['clamp', 'module header has no include guard', :unguarded_helper],
+        ['counter', 'module header has no include guard', :unguarded_helper]
+      ] )
+
+      expect(@loginator).to receive(:log).with(
+        "Partial test_engine::engine \u23e9\ufe0f Not carrying helpers `clamp()`, `counter()` from src/engine.h.\n" \
+        "Selected functions call these helpers, but src/engine.h has no include guard. Without a guard\n" \
+        "a Partial cannot stand in for the header everywhere it is included, and a carried copy could\n" \
+        "collide with the real one.\n" \
+        "\n" \
+        "OPTIONS:\n" \
+        "  1. Give src/engine.h an include guard so the Partial can stand in for it.\n" \
+        "  2. Select the helpers with `+name` (for example `+clamp`). This works only when no other\n" \
+        "     header this module includes pulls in src/engine.h.\n" \
+        "\n" \
+        "See the docs on Partials conventions.\n",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      ).once
+
+      carry_with( plan )
+    end
+
+    it "words the unguarded-header notice for a single helper" do
+      plan = plan_for( skipped: [['clamp', 'module header has no include guard', :unguarded_helper]] )
+
+      expect(@loginator).to receive(:log).with(
+        a_string_including( 'Not carrying helper `clamp()` from src/engine.h.', 'call this helper', 'Select the helper with' ),
         Verbosity::COMPLAIN,
         LogLabels::NOTICE
       )

@@ -70,15 +70,19 @@ class Partializer
   # @param impl           [Array<Partials::FunctionDefinition>] Functions selected to test
   # @param interface      [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
   # @param fallback       [Boolean] Whether fallback preprocessing produced the module's copies
-  # @param header_guarded [Boolean] Whether the module header has an include guard
+  # @param header_guarded  [Boolean] Whether the module header has an include guard
+  # @param header_filepath [String, nil] The module header, named in notices
   # @return [Partials::CarryPlan]
-  def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:)
+  def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:, header_filepath: nil)
     plan = @helper.plan_carry(
       c_module: c_module, impl: impl, interface: interface, fallback: fallback, header_guarded: header_guarded
     )
 
     _log_carried( test, partial, plan )
     plan.skipped.each { |skipped| _log_not_carried( test, partial, skipped ) }
+
+    unguarded = plan.skipped.select { |skipped| skipped.kind == :unguarded_helper }.map( &:item )
+    _log_unguarded_helpers( test, partial, unguarded, header_filepath ) unless unguarded.empty?
 
     return plan
   end
@@ -534,6 +538,27 @@ class Partializer
     return if msg.nil?
 
     @loginator.log( "Partial #{test}::#{partial} ⏩️ #{msg}", Verbosity::COMPLAIN, LogLabels::NOTICE )
+  end
+
+  # A header without an include guard can't be stood in for, so its helpers stay behind. The
+  # notice follows the linker failure guidance: what happened, why, then numbered options.
+  def _log_unguarded_helpers(test, partial, names, header)
+    many    = names.size > 1
+    helpers = names.map { |n| "`#{n}()`" }.join( ', ' )
+
+    notice  = "Partial #{test}::#{partial} ⏩️ Not carrying #{many ? 'helpers' : 'helper'} #{helpers} from #{header}.\n"
+    notice += "Selected functions call #{many ? 'these helpers' : 'this helper'}, but #{header} has no include guard. Without a guard\n"
+    notice += "a Partial cannot stand in for the header everywhere it is included, and a carried copy could\n"
+    notice += "collide with the real one.\n"
+    notice += "\n"
+    notice += "OPTIONS:\n"
+    notice += "  1. Give #{header} an include guard so the Partial can stand in for it.\n"
+    notice += "  2. Select the #{many ? 'helpers' : 'helper'} with `+name` (for example `+#{names.first}`). This works only when no other\n"
+    notice += "     header this module includes pulls in #{header}.\n"
+    notice += "\n"
+    notice += "See the docs on Partials conventions.\n"
+
+    @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
 
   # Log all user-defined (non-function) C content extracted from a module's source/header at OBNOXIOUS level.

@@ -188,13 +188,14 @@ class PartialsManager
       carry = nil
       unless implementation.nil?
         carry = @partializer.plan_carry(
-          test:           name,
-          partial:        config.module,
-          c_module:       module_contents,
-          impl:           implementation,
-          interface:      interface,
-          fallback:       !directives_only,
-          header_guarded: !module_include_guard.nil?
+          test:            name,
+          partial:         config.module,
+          c_module:        module_contents,
+          impl:            implementation,
+          interface:       interface,
+          fallback:        !directives_only,
+          header_guarded:  !module_include_guard.nil?,
+          header_filepath: config.header.filepath
         )
       end
 
