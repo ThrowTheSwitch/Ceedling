@@ -235,16 +235,9 @@ class PreprocessinatorReconstructor
   # Find include guard in a whole file's contents as string. Only code counts toward the scan
   # window, so a long license comment ahead of the guard doesn't hide it.
   def extract_include_guard(file_contents)
-    code = +''
-    @parsing_parcels.code_lines( file_contents ) do |line|
-      next if line.strip.empty?
-      code << line.rstrip << "\n"
-      break if code.bytesize >= INCLUDE_GUARD_SCAN_BYTES
-    end
-
     # Look for first occurrence of #ifndef <sring> followed by #define <string>
     regex = /#\s*ifndef\s+(\w+)(?:\s*\n)+\s*#\s*define\s+(\w+)/
-    matches = code.byteslice( 0, INCLUDE_GUARD_SCAN_BYTES ).scrub.match( regex )
+    matches = leading_code( file_contents, INCLUDE_GUARD_SCAN_BYTES ).match( regex )
 
     # Return if no match results
     return nil if matches.nil?
@@ -410,6 +403,19 @@ class PreprocessinatorReconstructor
 
     # Yield any remaining buffered line at end of input
     flush.call()
+  end
+
+
+  # The first `bytes` of a file's code, comments and blank lines left out
+  def leading_code(file_contents, bytes)
+    code = +''
+    @parsing_parcels.code_lines( file_contents ) do |line|
+      next if line.strip.empty?
+      code << line.rstrip << "\n"
+      break if code.bytesize >= bytes
+    end
+
+    return code.byteslice( 0, bytes ).scrub
   end
 
 
