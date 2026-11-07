@@ -10,6 +10,7 @@ require 'spec_helper'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partializer'
 require 'ceedling/partials/partials'
+require 'ceedling/partials/partializer_config'
 require 'ceedling/reportinator'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ostruct'
@@ -308,7 +309,7 @@ describe Partializer do
       allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
       allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'Foo',
         header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
         source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c' )
@@ -335,7 +336,7 @@ describe Partializer do
       allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
       allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'Foo',
         header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
         source: Partials::ConfigFileInfo.new( filepath: nil )
@@ -1647,7 +1648,7 @@ describe Partializer do
     end
 
     it "returns empty CModule when both directives_only_filepaths are nil" do
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: nil)
@@ -1670,7 +1671,7 @@ describe Partializer do
       ]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
         source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
@@ -1694,7 +1695,7 @@ describe Partializer do
       ]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
@@ -1723,7 +1724,7 @@ describe Partializer do
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [double('var1')])
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [double('var2')])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
@@ -1748,7 +1749,7 @@ describe Partializer do
       source_funcs = [double('func1', name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
@@ -1768,7 +1769,7 @@ describe Partializer do
       source_funcs = [double('func1', name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
@@ -1786,7 +1787,7 @@ describe Partializer do
     it "returns empty CModule when a preprocessed file has no contents" do
       empty_contents = CExtractorTypes::CModule.new(function_definitions: [], variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
         source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
@@ -1809,7 +1810,7 @@ describe Partializer do
 
       source_contents = CExtractorTypes::CModule.new(function_definitions: [], variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
@@ -1829,7 +1830,7 @@ describe Partializer do
       source_funcs    = [double('func1', name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(
@@ -1857,7 +1858,7 @@ describe Partializer do
       header_funcs    = [double('func1', name: 'func1')]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(
           filepath:               '/path/to/header.h',
@@ -1885,7 +1886,7 @@ describe Partializer do
       source_funcs    = [double('func1', name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(
