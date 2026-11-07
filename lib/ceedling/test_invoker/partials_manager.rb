@@ -183,16 +183,33 @@ class PartialsManager
         interface: interface
       )
 
+      # What the implementation source carries beyond the selection. Planned on every build,
+      # fresh or not, so its notices repeat for as long as the build depends on them.
+      carry = nil
+      unless implementation.nil?
+        carry = @partializer.plan_carry(
+          test:           name,
+          partial:        config.module,
+          c_module:       module_contents,
+          impl:           implementation,
+          interface:      interface,
+          fallback:       !directives_only,
+          header_guarded: !module_include_guard.nil?
+        )
+      end
+
       arg_hash = {
-        test:                 name,
-        partial:              config.module,
-        function_definitions: implementation,
-        c_module:             module_contents,
-        header_includes:      includes[:impl_header],
-        source_includes:      includes[:impl_source],
-        input_filepath:       config.source.filepath,
-        output_path:          testable.paths[:partials],
-        include_guard:        module_include_guard
+        test:                     name,
+        partial:                  config.module,
+        function_definitions:     implementation,
+        c_module:                 module_contents,
+        header_includes:          includes[:impl_header],
+        source_includes:          includes[:impl_source],
+        input_filepath:           config.source.filepath,
+        output_path:              testable.paths[:partials],
+        include_guard:            module_include_guard,
+        carry:                    carry,
+        suppress_redundant_decls: @configurator.partials_suppress_redundant_decls
       }
 
       unless implementation.nil?

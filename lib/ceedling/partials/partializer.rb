@@ -61,6 +61,28 @@ class Partializer
     c_module.element_sequence.reject!  { |e| removed.include?(e) }
   end
 
+  # Decides what the Partial's implementation source carries beyond its selected functions.
+  # See PartializerHelper#plan_carry for the categories it applies.
+  #
+  # @param test           [String] Test name (for log messages)
+  # @param partial        [String] Partial module name (for log messages)
+  # @param c_module       [CExtractorTypes::CModule] The module's merged contents
+  # @param impl           [Array<Partials::FunctionDefinition>] Functions selected to test
+  # @param interface      [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
+  # @param fallback       [Boolean] Whether fallback preprocessing produced the module's copies
+  # @param header_guarded [Boolean] Whether the module header has an include guard
+  # @return [Partials::CarryPlan]
+  def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:)
+    plan = @helper.plan_carry(
+      c_module: c_module, impl: impl, interface: interface, fallback: fallback, header_guarded: header_guarded
+    )
+
+    _log_carried( test, partial, plan )
+    plan.skipped.each { |skipped| _log_not_carried( test, partial, skipped ) }
+
+    return plan
+  end
+
   def validate_extracted_functions(name:, partial:, impl:, interface:)
     # Validation is only meaningful and possible if both references are non-nil.
     return if impl.nil? || interface.nil?
@@ -469,6 +491,31 @@ class Partializer
     c_module.stamp_origin!( file_type.to_sym )
 
     return c_module
+  end
+
+  # Lists what a Partial carries and why, so a user can trace what its implementation holds
+  def _log_carried(test, partial, plan)
+    entries  = plan.prototypes.map { |carried| "`#{carried.item.signature.strip}` (#{carried.reason})" }
+    entries += plan.helpers.map { |name, carried| "`#{name}()` (#{carried.reason})" }
+    return if entries.empty?
+
+    @loginator.log_list( entries, "Carried into Partial #{test}::#{partial} implementation:", Verbosity::DEBUG )
+  end
+
+  # A skipped name is one a selected function may need, so each gets a notice saying why
+  def _log_not_carried(test, partial, skipped)
+    name = skipped.item
+    msg =
+      case skipped.kind
+      when :helper_conflict
+        "Not carrying helper `#{name}()`: fallback preprocessing found more than one definition. " \
+        "Add `+#{name}` if a selected function needs it"
+      when :prototype_conflict
+        "Not carrying `#{name}()`: fallback preprocessing found conflicting declarations"
+      end
+    return if msg.nil?
+
+    @loginator.log( "Partial #{test}::#{partial} ⏩️ #{msg}", Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
 
   # Log all user-defined (non-function) C content extracted from a module's source/header at OBNOXIOUS level.

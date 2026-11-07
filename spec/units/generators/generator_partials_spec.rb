@@ -83,6 +83,24 @@ describe GeneratorPartials do
   end
 
   context "#generate_implementation" do
+    it "hands the carry plan and the suppression setting to source generation" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'm_impl.c' )
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'm_impl.h' )
+      allow(@file_wrapper).to receive(:mkdir)
+      allow(@file_wrapper).to receive(:open).and_yield( double('handle').as_null_object )
+      allow(@generator).to receive(:generate_header)
+      plan = Partials::CarryPlan.new
+
+      expect(@generator).to receive(:generate_source).with( anything, [], [], empty_module, carry: plan, suppress_redundant_decls: false )
+
+      @generator.generate_implementation(
+        test: 'test_m', name: 'm', function_definitions: [],
+        source_includes: [], header_includes: [],
+        c_module: empty_module, output_path: '/path/to/output',
+        carry: plan, suppress_redundant_decls: false
+      )
+    end
+
     # A bare module name implies no directory of its own, so the directory created is
     # just the output path it was handed.
     it "creates the output path for a module named without a directory" do
@@ -222,11 +240,13 @@ describe GeneratorPartials do
       )
 
       # Verify generate_source was called with correct parameters
+      # With nothing to carry, the default plan is empty and suppression is on
       expect(@generator).to have_received(:generate_source).with(
         source_file_handle,
         source_includes,
         defns,
-        c_module
+        c_module,
+        { carry: an_instance_of( Partials::CarryPlan ), suppress_redundant_decls: true }
       )
 
       # Verify file path utilities were called
@@ -1425,6 +1445,163 @@ describe GeneratorPartials do
       expect(buf.string).to include('int counter __attribute__((aligned(16)));')
     end
 
+    # A variable declared `extern` lives elsewhere. The implementation header already declares
+    # it, so writing it here would only define a second copy.
+    it "writes no extern variable and keeps a definition from the source" do
+      c_module = make_module(
+        make_var(name: 'board_count', type: 'int', text: 'int board_count;', decorators: ['extern']),
+        make_var(name: 'mode', type: 'int', text: 'int mode = 3;')
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string).not_to include('board_count')
+      expect(buf.string).to include('int mode = 3;')
+    end
+  end
+
+  context "#generate_source (private method) carrying unselected content" do
+    let(:buf) { StringIO.new() }
+
+    def make_decl(signature, line_num: nil, source_filepath: nil)
+      CExtractorTypes::CFunctionDeclaration.new(
+        name: signature[/(\w+)\s*\(/, 1], signature: signature, line_num: line_num, source_filepath: source_filepath
+      )
+    end
+
+    def make_defn(code_block)
+      CExtractorTypes::CFunctionDefinition.new( name: code_block[/(\w+)\s*\(/, 1], code_block: code_block )
+    end
+
+    def plan_with(prototypes: [], helpers: [])
+      plan = Partials::CarryPlan.new
+      prototypes.each { |d| plan.add_prototype( d, 'external: no body in module' ) }
+      helpers.each { |h| plan.add_helper( h, 'helper: referenced by `get`' ) }
+      plan
+    end
+
+    GUARD_OPEN  = "#if defined(__GNUC__)\n#pragma GCC diagnostic push\n#pragma GCC diagnostic ignored \"-Wredundant-decls\"\n#endif\n"
+    GUARD_CLOSE = "#if defined(__GNUC__)\n#pragma GCC diagnostic pop\n#endif\n"
+
+    it "writes nothing new when nothing is carried" do
+      tick = make_decl( 'int board_tick(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick ))
+
+      expect( buf.string.strip ).to eq( '// Ceedling generated file' )
+    end
+
+    it "writes a carried prototype word for word after the includes" do
+      twice = make_decl( 'extern inline int engine_get_twice(void);' )
+
+      @generator.send(:generate_source, buf, [UserInclude.new('engine_api.h')], [], make_module( twice ), carry: plan_with( prototypes: [twice] ))
+
+      expect( buf.string.index( 'extern inline int engine_get_twice(void);' ) ).to be > buf.string.index( '#include "engine_api.h"' )
+    end
+
+    it "writes only the prototypes the plan carries" do
+      kept    = make_decl( 'int board_tick(void);' )
+      dropped = make_decl( 'int engine_get(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( kept, dropped ), carry: plan_with( prototypes: [kept] ))
+
+      expect( buf.string ).to include( 'int board_tick(void);' )
+      expect( buf.string ).not_to include( 'int engine_get(void);' )
+    end
+
+    # Matching is by identity, because the plan chose particular declarations
+    it "skips an equal declaration the plan did not choose" do
+      chosen = make_decl( 'int board_tick(void);' )
+      twin   = make_decl( 'int board_tick(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( chosen, twin ), carry: plan_with( prototypes: [chosen] ))
+
+      expect( buf.string.scan( 'int board_tick(void);' ).size ).to eq( 1 )
+    end
+
+    it "anchors a located prototype to its original line" do
+      tick = make_decl( 'int board_tick(void);', line_num: 5, source_filepath: 'src/engine.h' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick ), carry: plan_with( prototypes: [tick] ))
+
+      expect( buf.string ).to include( "#line 5 \"src/engine.h\"\nint board_tick(void);\n" )
+    end
+
+    it "writes an unlocated prototype without a line directive" do
+      tick = make_decl( 'int board_tick(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick ), carry: plan_with( prototypes: [tick] ))
+
+      expect( buf.string ).not_to include( '#line' )
+    end
+
+    it "wraps a run of carried prototypes once in GCC diagnostic pragmas" do
+      tick  = make_decl( 'int board_tick(void);' )
+      poll  = make_decl( 'int engine_poll(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick, poll ), carry: plan_with( prototypes: [tick, poll] ))
+
+      expect( buf.string ).to include( GUARD_OPEN + "int board_tick(void);\nint engine_poll(void);\n" + GUARD_CLOSE )
+      expect( buf.string.scan( 'diagnostic push' ).size ).to eq( 1 )
+    end
+
+    it "treats an uncarried declaration between prototypes as part of the run" do
+      tick    = make_decl( 'int board_tick(void);' )
+      skipped = make_decl( 'int engine_get(void);' )
+      poll    = make_decl( 'int engine_poll(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick, skipped, poll ), carry: plan_with( prototypes: [tick, poll] ))
+
+      expect( buf.string.scan( 'diagnostic push' ).size ).to eq( 1 )
+    end
+
+    it "closes the wrapper before other content and opens a new one after it" do
+      tick = make_decl( 'int board_tick(void);' )
+      mode = make_var( name: 'mode', type: 'int', text: 'int mode = 3;' )
+      poll = make_decl( 'int engine_poll(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick, mode, poll ), carry: plan_with( prototypes: [tick, poll] ))
+
+      expect( buf.string ).to include( "int board_tick(void);\n" + GUARD_CLOSE + "int mode = 3;\n" + GUARD_OPEN + "int engine_poll(void);\n" )
+    end
+
+    it "writes carried prototypes bare when suppression is off" do
+      tick = make_decl( 'int board_tick(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick ), carry: plan_with( prototypes: [tick] ), suppress_redundant_decls: false)
+
+      expect( buf.string ).to include( 'int board_tick(void);' )
+      expect( buf.string ).not_to include( '#pragma' )
+    end
+
+    it "writes a carried helper as written, anchored to the header" do
+      clamp_def = make_defn( 'static inline int clamp(int v) { return v; }' )
+      helper    = Partials.manufacture_function_definition(
+        name: 'clamp', signature: 'static inline int clamp(int v)', code_block: 'static inline int clamp(int v) { return v; }',
+        source_filepath: 'src/engine.h', line_num: 7
+      )
+
+      @generator.send(:generate_source, buf, [], [], make_module( clamp_def ), carry: plan_with( helpers: [helper] ))
+
+      expect( buf.string ).to include( "#line 7 \"src/engine.h\"\nstatic inline int clamp(int v) { return v; }\n" )
+    end
+
+    it "writes a selected function rather than a helper of the same name" do
+      get_def  = make_defn( 'int get(void) { return 1; }' )
+      selected = Partials.manufacture_function_definition( name: 'get', signature: 'int get(void)', code_block: 'int get(void) { return 1; }' )
+
+      @generator.send(:generate_source, buf, [], [selected], make_module( get_def ), carry: Partials::CarryPlan.new)
+
+      expect( buf.string ).to include( 'int get(void) { return 1; }' )
+    end
+
+    it "closes an open wrapper at the end of the file" do
+      tick = make_decl( 'int board_tick(void);' )
+
+      @generator.send(:generate_source, buf, [], [], make_module( tick ), carry: plan_with( prototypes: [tick] ))
+
+      expect( buf.string ).to end_with( GUARD_CLOSE )
+    end
   end
 
 end

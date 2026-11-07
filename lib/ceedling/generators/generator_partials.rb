@@ -12,6 +12,11 @@ require 'ceedling/c_extractor/c_extractor_constants'
 
 class GeneratorPartials
 
+  # Carried prototypes can repeat a declaration a header already made. These pragmas keep GCC's
+  # -Wredundant-decls quiet for just those lines. Compilers that don't define __GNUC__ never see them.
+  REDUNDANT_DECLS_PUSH = "#if defined(__GNUC__)\n#pragma GCC diagnostic push\n#pragma GCC diagnostic ignored \"-Wredundant-decls\"\n#endif\n" unless const_defined?(:REDUNDANT_DECLS_PUSH, false)
+  REDUNDANT_DECLS_POP  = "#if defined(__GNUC__)\n#pragma GCC diagnostic pop\n#endif\n" unless const_defined?(:REDUNDANT_DECLS_POP, false)
+
   constructor :file_wrapper, :file_path_utils, :loginator
 
   # A module named by directory produces a nested filename, and nothing upstream creates
@@ -29,7 +34,9 @@ class GeneratorPartials
       header_includes:,
       c_module:,
       output_path:,
-      include_guard: nil
+      include_guard: nil,
+      carry: Partials::CarryPlan.new,
+      suppress_redundant_decls: true
     )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
@@ -47,7 +54,8 @@ class GeneratorPartials
     end
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
-      generate_source(file, source_includes, function_definitions, c_module)
+      generate_source(file, source_includes, function_definitions, c_module,
+                      carry: carry, suppress_redundant_decls: suppress_redundant_decls)
     end
 
     return source_filepath
@@ -291,7 +299,7 @@ class GeneratorPartials
   # @param includes             [Array]  Include directives
   # @param function_definitions [Array]  Pre-filtered Partials::FunctionDefinition objects
   # @param c_module             [CExtractorTypes::CModule] Merged module with element_sequence
-  def generate_source(io, includes, function_definitions, c_module)
+  def generate_source(io, includes, function_definitions, c_module, carry: Partials::CarryPlan.new, suppress_redundant_decls: true)
     io << "// Ceedling generated file\n"
     includes.each do |include|
       io << "#{include}\n"
@@ -304,7 +312,29 @@ class GeneratorPartials
     last_was_func = false
     anything_emitted = false
 
+    # A run of carried prototypes sits inside one pair of GCC diagnostic pragmas. Anything
+    # else written closes the run, and the end of the file closes the last one.
+    wrapped = false
+    close_wrap = lambda do
+      io << REDUNDANT_DECLS_POP if wrapped
+      wrapped = false
+    end
+
+    # Each carried prototype is written as the user spelled it, so `extern inline` keeps
+    # making this file hold the external definition. Its #line points a diagnostic home.
+    emit_prototype = lambda do |decl|
+      if suppress_redundant_decls and !wrapped
+        io << REDUNDANT_DECLS_PUSH
+        wrapped = true
+      end
+      io << "#line #{decl.line_num} \"#{decl.source_filepath}\"\n" if decl.line_num and decl.source_filepath
+      io << decl.signature.strip << "\n"
+      last_was_func = false
+      anything_emitted = true
+    end
+
     emit_func = lambda do |func|
+      close_wrap.call
       # Blank line before a function when preceded by a non-function item
       io << "\n" if anything_emitted && !last_was_func
       if func.line_num and func.source_filepath
@@ -333,10 +363,15 @@ class GeneratorPartials
         # a header -- #line-anchored function bodies below are the only other code this
         # file itself contributes.
         next unless c_module.macro_invocations.include?(item)
+        close_wrap.call
         io << item.text << "\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
+        # An `extern` variable lives elsewhere, and the implementation header already declares
+        # it. Writing it here would define a second copy the linker rejects.
+        next if item.decorators.include?( 'extern' )
+        close_wrap.call
         # `item.text` is the declaration with its leading decorator run removed (see
         # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict
         # qualifier on the base type is reapplied here via qualifier_prefix -- this
@@ -346,13 +381,18 @@ class GeneratorPartials
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition
-        func = func_by_name[item.name]
+        # A selected function, or a header helper the module's kept code calls
+        func = func_by_name[item.name] || carry.helper( item.name )
         next unless func && !emitted_funcs[item.name]
         emit_func.call(func)
+      when CExtractorTypes::CFunctionDeclaration
+        # Only the prototypes the carry plan chose
+        emit_prototype.call(item) if carry.prototype?( item )
       end
-      # CStatement and CFunctionDeclaration items are skipped in source
+      # Every other CStatement is a header's
     end
 
+    close_wrap.call
   end
 
 

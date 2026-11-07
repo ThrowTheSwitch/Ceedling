@@ -323,6 +323,8 @@ describe PartialsManager do
       allow(@partializer).to receive(:remap_interface_header_includes).and_return( [] )
       allow(@partializer).to receive(:remap_types_header_includes).and_return( [] )
       allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
+      allow(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+      allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( true )
       allow(@generator).to receive(:generate_partial_types)
       allow(@generator).to receive(:generate_partial_implementation)
       allow(@generator).to receive(:generate_partial_interface)
@@ -380,6 +382,54 @@ describe PartialsManager do
 
       expect( @testable.partials.tests ).to eq( %w[Alpha Beta Gamma] )
       expect( @testable.partials.mocks ).to eq( %w[Alpha Beta Gamma] )
+    end
+
+    it "plans what the implementation carries from both selections, the preprocessing mode and the guard" do
+      impl  = [double("FunctionDefinition")]
+      iface = [double("FunctionDeclaration")]
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( impl )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( iface )
+
+      expect(@partializer).to receive(:plan_carry).with(
+        test: 'a_test', partial: 'Foo', c_module: @module_contents,
+        impl: impl, interface: iface, fallback: true, header_guarded: true
+      ).and_return( Partials::CarryPlan.new )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Without a guard to stand in for, the real header may arrive through another include
+    it "plans for an unguarded module header when the header has no guard" do
+      allow(@partializer).to receive(:extract_module_include_guard).and_return( nil )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+
+      expect(@partializer).to receive(:plan_carry).with( hash_including( header_guarded: false ) ).and_return( Partials::CarryPlan.new )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "hands the plan and the suppression setting to implementation generation" do
+      plan = Partials::CarryPlan.new
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+      allow(@partializer).to receive(:plan_carry).and_return( plan )
+      allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( false )
+
+      expect(@generator).to receive(:generate_partial_implementation).with(
+        hash_including( carry: plan, suppress_redundant_decls: false )
+      )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "plans nothing when no implementation is extracted" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@partializer).not_to receive(:plan_carry)
+
+      @manager.stage_generate_partials( @state )
     end
 
     it "does not add to tests when no implementation is extracted" do

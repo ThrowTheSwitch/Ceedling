@@ -498,6 +498,91 @@ describe Partializer do
   ### validate_extracted_functions()
   ###
 
+  context "#plan_carry" do
+    it "returns the helper's plan for the module and both selections" do
+      c_module = CExtractorTypes::CModule.new
+      impl     = [Partials.manufacture_function_definition( name: 'get', signature: 'int get(void)', code_block: '' )]
+      plan     = Partials::CarryPlan.new
+
+      expect(@partializer_helper).to receive(:plan_carry).with(
+        c_module: c_module, impl: impl, interface: nil, fallback: false, header_guarded: true
+      ).and_return( plan )
+
+      result = @partializer.plan_carry(
+        test: 'test_foo', partial: 'Foo', c_module: c_module,
+        impl: impl, interface: nil, fallback: false, header_guarded: true
+      )
+
+      expect( result ).to equal( plan )
+    end
+
+    def plan_for(prototypes: [], helpers: [], skipped: [])
+      plan = Partials::CarryPlan.new
+      prototypes.each { |sig, reason| plan.add_prototype( CExtractorTypes::CFunctionDeclaration.new( name: sig[/(\w+)\(/, 1], signature: sig ), reason ) }
+      helpers.each do |name, reason|
+        plan.add_helper( Partials.manufacture_function_definition( name: name, signature: "int #{name}(int v)", code_block: '' ), reason )
+      end
+      skipped.each { |name, reason, kind| plan.skip( name, reason, kind ) }
+      plan
+    end
+
+    def carry_with(plan)
+      allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+      @partializer.plan_carry(
+        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new,
+        impl: [], interface: nil, fallback: false, header_guarded: true
+      )
+    end
+
+    it "lists everything carried, with reasons, at debug verbosity" do
+      plan = plan_for(
+        prototypes: [['int board_tick(void);', 'external: no body in module'], ['int engine_poll(void);', 'left out: body not selected']],
+        helpers:    [['clamp', 'helper: referenced by `engine_get`']]
+      )
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`int board_tick(void);` (external: no body in module)',
+         '`int engine_poll(void);` (left out: body not selected)',
+         '`clamp()` (helper: referenced by `engine_get`)'],
+        'Carried into Partial test_engine::engine implementation:',
+        Verbosity::DEBUG
+      )
+
+      carry_with( plan )
+    end
+
+    it "lists nothing when nothing is carried" do
+      expect(@loginator).not_to receive(:log_list)
+
+      carry_with( Partials::CarryPlan.new )
+    end
+
+    it "gives notice of a helper fallback left with more than one definition" do
+      plan = plan_for( skipped: [['clamp', 'more than one definition under fallback preprocessing', :helper_conflict]] )
+
+      expect(@loginator).to receive(:log).with(
+        "Partial test_engine::engine \u23e9\ufe0f Not carrying helper `clamp()`: fallback preprocessing found more than one definition. Add `+clamp` if a selected function needs it",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      carry_with( plan )
+    end
+
+    # Additions can't name a function the module only declares, so no `+name` hint follows
+    it "gives notice of a prototype fallback left with conflicting declarations" do
+      plan = plan_for( skipped: [['board_tick', 'conflicting declarations under fallback preprocessing', :prototype_conflict]] )
+
+      expect(@loginator).to receive(:log).with(
+        "Partial test_engine::engine \u23e9\ufe0f Not carrying `board_tick()`: fallback preprocessing found conflicting declarations",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      carry_with( plan )
+    end
+  end
+
   context "#validate_extracted_functions" do
     def make_impl(name)
       Partials.manufacture_function_definition(
