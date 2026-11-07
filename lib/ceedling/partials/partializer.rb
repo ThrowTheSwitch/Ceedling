@@ -400,7 +400,21 @@ class Partializer
     # candidate as one with a definition -- unlike extract_implementation_functions, which
     # needs real code to inject and so stays definitions-only. A function named in both
     # (declared in the header, defined in the paired source) is only counted once.
-    candidates = definitions + declarations.reject { |d| definitions.any? { |f| f.name == d.name } }
+    declaration_only = declarations.reject { |d| definitions.any? { |f| f.name == d.name } }
+
+    # An inline function the module only declares has its body in a header it includes. A mock
+    # can never replace that body, so mocking it would only define the function twice. Left out
+    # here, it becomes an external prototype the implementation source carries.
+    foreign_inline = declaration_only.select { |d| _inline_declaration?( d ) }.map( &:name ).uniq
+    unless foreign_inline.empty?
+      @loginator.log_list(
+        foreign_inline.map { |n| "`#{n}`" },
+        "Not mockable for Partial #{test}::#{partial} (inline, body outside module):",
+        Verbosity::DEBUG
+      )
+    end
+
+    candidates = definitions + declaration_only.reject { |d| foreign_inline.include?( d.name ) }
 
     # Build initial list by visibility; ACCUMULATE yields []
     funcs = @helper.filter_and_transform_funcs(candidates, pf.type, :interface)
@@ -491,6 +505,10 @@ class Partializer
     c_module.stamp_origin!( file_type.to_sym )
 
     return c_module
+  end
+
+  def _inline_declaration?(decl)
+    return decl.decorators.any? { |d| d != 'static' and CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
   end
 
   # Lists what a Partial carries and why, so a user can trace what its implementation holds

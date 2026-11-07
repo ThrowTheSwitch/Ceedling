@@ -2297,7 +2297,7 @@ describe Partializer do
 
     it "merges declaration-only functions into the DEDUCT candidate pool" do
       defn     = double('inline_func', name: 'inline_fn')
-      decl     = double('proto_func', name: 'proto_fn')
+      decl     = double('proto_func', name: 'proto_fn', decorators: [])
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_inline'), double('iface_proto')]
@@ -2317,7 +2317,7 @@ describe Partializer do
 
     it "merges declaration-only functions into the PUBLIC candidate pool too" do
       defn     = double('def_func', name: 'pub_def')
-      decl     = double('decl_func', name: 'pub_decl')
+      decl     = double('decl_func', name: 'pub_decl', decorators: [])
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_func')]
@@ -2335,9 +2335,47 @@ describe Partializer do
       expect(result).to eq(filtered)
     end
 
+    # Its body lives in a header the module includes, so a mock could never replace it. Mocking
+    # it would only define the function twice.
+    [Partials::DEDUCT, Partials::PRIVATE].each do |type|
+      it "keeps a declaration-only inline function out of the #{type} candidate pool" do
+        defn     = double('def_func', name: 'engine_get')
+        foreign  = double('extern_inline', name: 'engine_get_twice', decorators: ['extern', 'inline'])
+        filtered = [double('iface_func')]
+        pf       = make_pf(type: type)
+
+        expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+          .with([defn], type, :interface).and_return(filtered)
+        allow(@partializer_helper).to receive(:subtract_funcs).and_return(filtered)
+
+        @partializer.extract_interface_functions(
+          test: 'test_mod', partial: 'mod',
+          definitions: [defn], declarations: [foreign], config: make_config(mocks: pf)
+        )
+      end
+    end
+
+    it "lists a declaration-only inline function it keeps out, at debug verbosity" do
+      foreign = double('extern_inline', name: 'engine_get_twice', decorators: ['extern', 'inline'])
+      pf      = make_pf(type: Partials::DEDUCT)
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs).and_return([])
+      allow(@partializer_helper).to receive(:subtract_funcs).and_return([])
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`engine_get_twice`'],
+        'Not mockable for Partial test_mod::mod (inline, body outside module):',
+        Verbosity::DEBUG
+      )
+
+      @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: [], declarations: [foreign], config: make_config(mocks: pf)
+      )
+    end
+
     it "excludes a declaration already present as a definition with the same name (dedup)" do
       defn     = double('def_func', name: 'shared')
-      decl     = double('decl_func', name: 'shared') # e.g. header prototype for the same function
+      decl     = double('decl_func', name: 'shared', decorators: []) # e.g. header prototype for the same function
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_func')]
@@ -2378,7 +2416,7 @@ describe Partializer do
 
     it "searches definitions then declarations for additions" do
       defs  = []
-      decls = [double('decl', name: 'decl_only')]
+      decls = [double('decl', name: 'decl_only', decorators: [])]
       found = double('iface_func', name: 'decl_only')
       pf    = make_pf(type: Partials::ACCUMULATE, additions: ['decl_only'])
 
