@@ -422,7 +422,7 @@ module PartialsGenerationHelpers
     partials_comment_stripper.strip_file( raw )
 
     contents = File.open( raw, 'rb' ) do |file|
-      partials_reconstructor.extract_file_as_array_from_expansion( file, path )
+      partials_reconstructor.extract_file_as_array_from_expansion( file, path, rejoin: false )
     end
 
     [contents, []]

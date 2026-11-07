@@ -112,7 +112,7 @@ class PreprocessinatorFileAssembler
     # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
     # rides out the file briefly not yet being visible right after the shell-out exits.
     @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
+      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath, rejoin: false )
     end
 
     return contents
@@ -342,7 +342,7 @@ class PreprocessinatorFileAssembler
       # rides out the file briefly not yet being visible right after the shell-out exits.
       @file_wrapper.open_with_retry( directives_only_filepath, 'r' ) do |file|
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
+        @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath, rejoin: false )
       end
     end
   end
