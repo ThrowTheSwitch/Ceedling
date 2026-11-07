@@ -46,8 +46,8 @@ module CExtractorTypes
     end
 
     # Concatenate two CModule instances.
-    # element_sequence preserves first operand's items before second operand's items,
-    # maintaining source-before-header ordering regardless of line numbers.
+    # element_sequence keeps the first operand's items ahead of the second operand's items.
+    # Partials merges a header and then its source, so header items come first.
     def +(other)
       CModule.new(
         variable_declarations: (self.variable_declarations + other.variable_declarations),
@@ -60,6 +60,16 @@ module CExtractorTypes
         element_sequence:      (self.element_sequence      + other.element_sequence)
       )
     end
+
+    # Records which file of a module each function and variable came from.
+    # CExtractor reads text alone and cannot know a file's role, so the caller stamps it.
+    # element_sequence references these same objects and so reflects the stamp too.
+    def stamp_origin!(origin)
+      (function_definitions + function_declarations + variable_declarations).each do |item|
+        item.origin = origin
+      end
+      return self
+    end
   end unless const_defined?(:CModule, false)
 
   # Data class representing an extracted C function declaration
@@ -69,9 +79,11 @@ module CExtractorTypes
     :decorators,         # Array of decorator strings (e.g., ["static"])
     :signature_stripped, # Signature without decorators (e.g., "int foo(void);")
     :line_num,           # Integer — 1-based line number in source file where declaration begins
+    :source_filepath,    # Original file the declaration was located in, when a caller locates it
+    :origin,             # :header or :source when the caller knows the file's role, otherwise nil
     keyword_init: true
   ) do
-    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil)
+    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil, source_filepath: nil, origin: nil)
       super
     end
   end unless const_defined?(:CFunctionDeclaration, false)
@@ -87,20 +99,13 @@ module CExtractorTypes
     :line_num,           # Line number in source C file
     :decorators,         # Array of decorator strings (e.g., ["static"])
     :signature_stripped, # Signature without decorators (e.g., "int foo(void)")
+    :origin,             # :header or :source when the caller knows the file's role, otherwise nil
+    :expanded_body,      # Body with every macro expanded, taken from the full expansion copy when one exists
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to nil for convenience
-    def initialize(
-      name: nil,
-      signature: nil,
-      body: nil,
-      code_block: nil,
-      line_count: 0,
-      source_filepath: nil,
-      line_num: nil,
-      decorators: [],
-      signature_stripped: nil
-      )
+    def initialize(name: nil, signature: nil, body: nil, code_block: nil, line_count: 0, source_filepath: nil,
+                   line_num: nil, decorators: [], signature_stripped: nil, origin: nil, expanded_body: nil)
       super
     end
   end unless const_defined?(:CFunctionDefinition, false)
@@ -115,9 +120,10 @@ module CExtractorTypes
     :decorators,    # Array of decorator keyword strings (e.g., ["static", "const"])
     :text,          # Cleaned declaration without decorators, whitespace normalized (e.g., "int x;")
     :line_num,      # Integer — 1-based line number in source file where declaration begins
+    :origin,        # :header or :source when the caller knows the file's role, otherwise nil
     keyword_init: true
   ) do
-    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil)
+    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, origin: nil)
       super
     end
   end unless const_defined?(:CVariableDeclaration, false)

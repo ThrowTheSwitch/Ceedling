@@ -277,45 +277,7 @@ class Partializer
       # Do nothing if there's no directives-only preprocessed filepath (e.g. no source only header for a Partial mock)
       next unless c_file.directives_only_filepath
 
-      c_module = @c_extractor.from_file( c_file.directives_only_filepath )
-
-      _log_module_contents(name, config.module, file_type, c_module)
-
-      # Update function signatures from fully preprocessed output when available.
-      # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
-      # macros wrapping `static` and `inline` are resolved before visibility filtering.
-      if c_file.full_expansion_filepath
-        @helper.update_signatures_from_full_expansion(
-          funcs:                   c_module.function_definitions,
-          full_expansion_filepath: c_file.full_expansion_filepath,
-          name:                    name,
-          module_name:             config.module,
-          file_type:               file_type
-        )
-      end
-
-      # Align extracted function definitions with line markers in preprocessor output.
-      # This perfectly remaps functions found in expanded preprocessor output with 
-      # original source location.
-      # This routine depends on original, unaltered function definitions.
-      @helper.associate_function_line_numbers(
-        name: name,
-        funcs: c_module.function_definitions,
-        filepath: c_file.filepath,
-        fallback: fallback
-      )
-
-      # 1. Find any function-scope static variable declarations.
-      # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
-      # 3. Promote the function-scoped variables to be module-level variables.
-      decls = @helper.extract_function_scope_static_vars(
-        c_module.function_definitions,
-        name: name, module_name: config.module, file_type: file_type
-      )
-      c_module.variable_declarations.concat(decls)
-      c_module.element_sequence.concat(decls) unless decls.empty?
-
-      contents << c_module
+      contents << _extract_file_contents( name, config, c_file, file_type, fallback )
     end
 
     # Use `+` operator for CModule to merge everything
@@ -452,6 +414,62 @@ class Partializer
   end
 
   private
+
+  # Extracts one of a module's files, a header or a source, ready to merge with the other.
+  def _extract_file_contents(name, config, c_file, file_type, fallback)
+    c_module = @c_extractor.from_file( c_file.directives_only_filepath )
+
+    _log_module_contents(name, config.module, file_type, c_module)
+
+    # Update function signatures from fully preprocessed output when available.
+    # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
+    # macros wrapping `static` and `inline` are resolved before visibility filtering.
+    # Declarations get the same treatment for decorators while keeping their written text.
+    if c_file.full_expansion_filepath
+      @helper.update_signatures_from_full_expansion(
+        funcs:                   c_module.function_definitions,
+        decls:                   c_module.function_declarations,
+        full_expansion_filepath: c_file.full_expansion_filepath,
+        name:                    name,
+        module_name:             config.module,
+        file_type:               file_type
+      )
+    end
+
+    # Align extracted function definitions with line markers in preprocessor output.
+    # This perfectly remaps functions found in expanded preprocessor output with 
+    # original source location.
+    # This routine depends on original, unaltered function definitions.
+    @helper.associate_function_line_numbers(
+      name: name,
+      funcs: c_module.function_definitions,
+      filepath: c_file.filepath,
+      fallback: fallback
+    )
+
+    # Declarations are found in the original file's own text, where no included header's
+    # lines can be mistaken for them. A carried prototype's #line comes from here.
+    @helper.associate_declaration_line_numbers(
+      decls:    c_module.function_declarations,
+      filepath: c_file.filepath,
+      text:     @file_wrapper.read( c_file.filepath ).clean_encoding
+    ) unless c_module.function_declarations.empty?
+
+    # 1. Find any function-scope static variable declarations.
+    # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
+    # 3. Promote the function-scoped variables to be module-level variables.
+    promoted = @helper.extract_function_scope_static_vars(
+      c_module.function_definitions,
+      name: name, module_name: config.module, file_type: file_type
+    )
+    c_module.variable_declarations.concat(promoted)
+    c_module.element_sequence.concat(promoted) unless promoted.empty?
+
+    # After promotion, so promoted statics take the role of the file their body came from
+    c_module.stamp_origin!( file_type.to_sym )
+
+    return c_module
+  end
 
   # Log all user-defined (non-function) C content extracted from a module's source/header at OBNOXIOUS level.
   # Covers the four categories that are injected into generated Partial files:

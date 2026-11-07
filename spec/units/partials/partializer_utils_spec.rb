@@ -537,6 +537,22 @@ describe PartializerUtils do
     end
   end
 
+  context "#locate_declaration_in_text" do
+    it "returns the line where the declaration appears in the text" do
+      expect(@code_finder).to receive(:find_in_c_string)
+        .with("int a;\nint tick(void);\n", 'int tick(void);')
+        .and_return(2)
+
+      expect(@utils.locate_declaration_in_text(signature: 'int tick(void);', text: "int a;\nint tick(void);\n")).to eq(2)
+    end
+
+    it "returns nil when the declaration is not in the text" do
+      allow(@code_finder).to receive(:find_in_c_string).and_return(nil)
+
+      expect(@utils.locate_declaration_in_text(signature: 'int tick(void);', text: '')).to be_nil
+    end
+  end
+
   context "#locate_function_via_preprocessed" do
     let(:filepath)              { '/path/to/source.c' }
     let(:preprocessed_filepath) { '/build/preproc/source.i' }

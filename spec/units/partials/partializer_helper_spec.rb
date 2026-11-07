@@ -986,8 +986,18 @@ describe PartializerHelper do
   context "#update_signatures_from_full_expansion" do
     require 'ceedling/c_extractor/c_extractor_types'
 
-    def make_expanded_func(name:, signature:, decorators:, signature_stripped:)
+    def make_expanded_func(name:, signature:, decorators:, signature_stripped:, body: nil)
       CExtractorTypes::CFunctionDefinition.new(
+        name:               name,
+        signature:          signature,
+        decorators:         decorators,
+        signature_stripped: signature_stripped,
+        body:               body
+      )
+    end
+
+    def make_decl(name:, signature:, decorators:, signature_stripped:)
+      CExtractorTypes::CFunctionDeclaration.new(
         name:               name,
         signature:          signature,
         decorators:         decorators,
@@ -1005,6 +1015,7 @@ describe PartializerHelper do
       allow(func).to receive(:signature=)
       allow(func).to receive(:decorators=)
       allow(func).to receive(:signature_stripped=)
+      allow(func).to receive(:expanded_body=)
 
       expanded_func = make_expanded_func(
         name:               'helper',
@@ -1066,6 +1077,7 @@ describe PartializerHelper do
       allow(func_match).to receive(:signature=)
       allow(func_match).to receive(:decorators=)
       allow(func_match).to receive(:signature_stripped=)
+      allow(func_match).to receive(:expanded_body=)
 
       func_no_match = double('unmatched', name: 'orphan')
 
@@ -1108,6 +1120,118 @@ describe PartializerHelper do
           file_type:               'source'
         )
       }.not_to raise_error
+    end
+
+    # The helper scan reads calls a macro hid, so it needs the body as the compiler sees it
+    it "keeps each matched definition's expanded body" do
+      func = CExtractorTypes::CFunctionDefinition.new(name: 'get', signature: 'int get(int v)', body: '{ return CLAMP(v); }')
+      expanded = make_expanded_func(
+        name: 'get', signature: 'int get(int v)', decorators: [], signature_stripped: 'int get(int v)',
+        body: '{ return clamp(v); }'
+      )
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_definitions: [expanded]))
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [func], full_expansion_filepath: '/build/full_expansion/mod.c',
+        name: 'TestMod', module_name: 'mod', file_type: 'source'
+      )
+
+      expect(func.expanded_body).to eq('{ return clamp(v); }')
+      expect(func.body).to eq('{ return CLAMP(v); }')
+    end
+
+    # A carried prototype is written as the user spelled it, so only what the rules read changes
+    it "reconciles a declaration's decorators and stripped signature but keeps its written signature" do
+      decl = make_decl(name: 'hidden', signature: 'PRIVATE int hidden(void);', decorators: [], signature_stripped: 'PRIVATE int hidden(void);')
+      expanded = make_decl(name: 'hidden', signature: 'static int hidden(void);', decorators: ['static'], signature_stripped: 'int hidden(void);')
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [expanded]))
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [decl], full_expansion_filepath: '/build/full_expansion/mod.h',
+        name: 'TestMod', module_name: 'mod', file_type: 'header'
+      )
+
+      expect(decl.decorators).to eq(['static'])
+      expect(decl.signature_stripped).to eq('int hidden(void);')
+      expect(decl.signature).to eq('PRIVATE int hidden(void);')
+    end
+
+    it "matches declarations that share a name in the order they appear" do
+      first  = make_decl(name: 'tick', signature: 'API int tick(void);', decorators: [], signature_stripped: 'API int tick(void);')
+      second = make_decl(name: 'tick', signature: 'LOCAL int tick(void);', decorators: [], signature_stripped: 'LOCAL int tick(void);')
+      expanded = [
+        make_decl(name: 'tick', signature: 'extern int tick(void);', decorators: ['extern'], signature_stripped: 'int tick(void);'),
+        make_decl(name: 'tick', signature: 'static int tick(void);', decorators: ['static'], signature_stripped: 'int tick(void);')
+      ]
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: expanded))
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [first, second], full_expansion_filepath: '/build/full_expansion/mod.c',
+        name: 'TestMod', module_name: 'mod', file_type: 'source'
+      )
+
+      expect(first.decorators).to eq(['extern'])
+      expect(second.decorators).to eq(['static'])
+    end
+
+    it "leaves a declaration unchanged when the expanded copy lacks it" do
+      decl = make_decl(name: 'gone', signature: 'int gone(void);', decorators: [], signature_stripped: 'int gone(void);')
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new)
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [decl], full_expansion_filepath: '/build/full_expansion/mod.c',
+        name: 'TestMod', module_name: 'mod', file_type: 'source'
+      )
+
+      expect(decl.decorators).to eq([])
+      expect(decl.signature_stripped).to eq('int gone(void);')
+    end
+
+    it "lists a declaration whose decorators changed, marked as a declaration" do
+      decl = make_decl(name: 'hidden', signature: 'PRIVATE int hidden(void);', decorators: [], signature_stripped: 'PRIVATE int hidden(void);')
+      same = make_decl(name: 'plain', signature: 'int plain(void);', decorators: [], signature_stripped: 'int plain(void);')
+      expanded = [
+        make_decl(name: 'hidden', signature: 'static int hidden(void);', decorators: ['static'], signature_stripped: 'int hidden(void);'),
+        make_decl(name: 'plain', signature: 'int plain(void);', decorators: [], signature_stripped: 'int plain(void);')
+      ]
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: expanded))
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`hidden` (declaration)'],
+        'Updated signatures from full expansion for Partial TestMod::mod header:',
+        Verbosity::DEBUG
+      )
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [decl, same], full_expansion_filepath: '/build/full_expansion/mod.h',
+        name: 'TestMod', module_name: 'mod', file_type: 'header'
+      )
+    end
+  end
+
+  context "#associate_declaration_line_numbers" do
+    require 'ceedling/c_extractor/c_extractor_types'
+
+    it "records each declaration's file and its line in that file's own text" do
+      decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);', line_num: 1)
+      allow(@partializer_utils).to receive(:locate_declaration_in_text)
+        .with(signature: 'int tick(void);', text: "#include \"x.h\"\nint tick(void);\n").and_return(2)
+
+      @helper.associate_declaration_line_numbers(decls: [decl], filepath: 'src/mod.c', text: "#include \"x.h\"\nint tick(void);\n")
+
+      expect(decl.source_filepath).to eq('src/mod.c')
+      expect(decl.line_num).to eq(2)
+    end
+
+    # Without a location the declaration is written without a #line, so nothing is reported
+    it "leaves the line unset when the declaration is not found" do
+      decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);', line_num: 1)
+      allow(@partializer_utils).to receive(:locate_declaration_in_text).and_return(nil)
+
+      @helper.associate_declaration_line_numbers(decls: [decl], filepath: 'src/mod.c', text: '')
+
+      expect(decl.source_filepath).to eq('src/mod.c')
+      expect(decl.line_num).to be_nil
     end
   end
 

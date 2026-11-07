@@ -1643,6 +1643,9 @@ describe Partializer do
 
       # associate_function_line_numbers is called for every file processed; stub by default
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
+      # Declarations are located in each file's own text, read once per file; stub by default
+      allow(@partializer_helper).to receive(:associate_declaration_line_numbers)
+      allow(@file_wrapper).to receive(:read).and_return('')
       # static var extraction/promotion called for every file processed; stub by default
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
     end
@@ -1666,8 +1669,8 @@ describe Partializer do
 
     it "extracts contents from header preprocessed file only" do
       header_funcs = [
-        double('func1', name: 'func1', signature: 'void func1(void)'),
-        double('func2', name: 'func2', signature: 'int func2(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func1', signature: 'void func1(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func2', signature: 'int func2(int x)')
       ]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
@@ -1690,8 +1693,8 @@ describe Partializer do
 
     it "extracts contents from source preprocessed file only" do
       source_funcs = [
-        double('func1', name: 'func1', signature: 'static void func1(void)'),
-        double('func2', name: 'func2', signature: 'static int func2(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func1', signature: 'static void func1(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func2', signature: 'static int func2(int x)')
       ]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
@@ -1714,15 +1717,15 @@ describe Partializer do
 
     it "extracts and merges contents from both source and header preprocessed files" do
       source_funcs = [
-        double('func1', name: 'func1', signature: 'static void func1(void)'),
-        double('func2', name: 'func2', signature: 'static int func2(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func1', signature: 'static void func1(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func2', signature: 'static int func2(int x)')
       ]
       header_funcs = [
-        double('func3', name: 'func3', signature: 'void func3(void)'),
-        double('func4', name: 'func4', signature: 'int func4(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func3', signature: 'void func3(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func4', signature: 'int func4(int x)')
       ]
-      source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [double('var1')])
-      header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [double('var2')])
+      source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [CExtractorTypes::CVariableDeclaration.new(name: 'var1')])
+      header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [CExtractorTypes::CVariableDeclaration.new(name: 'var2')])
 
       config = PartializerConfig::Config.new(
         module: 'module1',
@@ -1746,7 +1749,7 @@ describe Partializer do
     end
 
     it "calls associate_function_line_numbers with the preprocessed expansion filepath, not the preprocessed filepath" do
-      source_funcs = [double('func1', name: 'func1')]
+      source_funcs = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
@@ -1766,7 +1769,7 @@ describe Partializer do
     end
 
     it "passes extraction name through to associate_function_line_numbers" do
-      source_funcs = [double('func1', name: 'func1')]
+      source_funcs = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
@@ -1827,7 +1830,7 @@ describe Partializer do
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on source" do
-      source_funcs    = [double('func1', name: 'func1')]
+      source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
@@ -1845,6 +1848,7 @@ describe Partializer do
 
       expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
         funcs:                   source_funcs,
+        decls:                   [],
         full_expansion_filepath: '/build/preproc/full_expansion/module1.c',
         name:                    @name,
         module_name:             'module1',
@@ -1855,7 +1859,7 @@ describe Partializer do
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on header" do
-      header_funcs    = [double('func1', name: 'func1')]
+      header_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
@@ -1873,6 +1877,7 @@ describe Partializer do
 
       expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
         funcs:                   header_funcs,
+        decls:                   [],
         full_expansion_filepath: '/build/preproc/full_expansion/header.h',
         name:                    @name,
         module_name:             'module1',
@@ -1883,7 +1888,7 @@ describe Partializer do
     end
 
     it "does not call update_signatures_from_full_expansion when full_expansion_filepath is nil" do
-      source_funcs    = [double('func1', name: 'func1')]
+      source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
@@ -1902,6 +1907,86 @@ describe Partializer do
       expect(@partializer_helper).not_to receive(:update_signatures_from_full_expansion)
 
       @partializer.extract_module_contents(@name, config, fallback: false)
+    end
+
+    it "passes each file's declarations to update_signatures_from_full_expansion" do
+      decls           = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
+      source_contents = CExtractorTypes::CModule.new(function_declarations: decls)
+
+      config = PartializerConfig::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(
+          filepath:                 '/src/module1.c',
+          directives_only_filepath: '/build/preproc/module1.i',
+          full_expansion_filepath:  '/build/preproc/full_expansion/module1.c'
+        )
+      )
+
+      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
+
+      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
+        hash_including( decls: decls )
+      )
+
+      @partializer.extract_module_contents(@name, config, fallback: false)
+    end
+
+    # The original file holds only its own lines, so a located declaration is always in it
+    it "locates each file's declarations in that file's own text" do
+      header_decls = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
+      source_decls = [CExtractorTypes::CFunctionDeclaration.new(name: 'twice', signature: 'extern inline int twice(void);')]
+
+      config = PartializerConfig::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', directives_only_filepath: '/build/preproc/module1.h'),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.c')
+      )
+
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.h').and_return(CExtractorTypes::CModule.new(function_declarations: header_decls))
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.c').and_return(CExtractorTypes::CModule.new(function_declarations: source_decls))
+      allow(@file_wrapper).to receive(:read).with('/src/module1.h').and_return('header text')
+      allow(@file_wrapper).to receive(:read).with('/src/module1.c').and_return('source text')
+
+      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
+        decls: header_decls, filepath: '/src/module1.h', text: 'header text'
+      )
+      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
+        decls: source_decls, filepath: '/src/module1.c', text: 'source text'
+      )
+
+      @partializer.extract_module_contents(@name, config, fallback: false)
+    end
+
+    it "stamps every function and variable with the role of the file it came from" do
+      header_def  = CExtractorTypes::CFunctionDefinition.new(name: 'clamp')
+      header_decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick')
+      header_var  = CExtractorTypes::CVariableDeclaration.new(name: 'count')
+      source_def  = CExtractorTypes::CFunctionDefinition.new(name: 'get')
+      source_decl = CExtractorTypes::CFunctionDeclaration.new(name: 'twice')
+      promoted    = CExtractorTypes::CVariableDeclaration.new(name: 'partial_get_n')
+
+      config = PartializerConfig::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', directives_only_filepath: '/build/preproc/module1.h'),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.c')
+      )
+
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.h').and_return(
+        CExtractorTypes::CModule.new(function_definitions: [header_def], function_declarations: [header_decl], variable_declarations: [header_var])
+      )
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.c').and_return(
+        CExtractorTypes::CModule.new(function_definitions: [source_def], function_declarations: [source_decl])
+      )
+      # Promotion yields a variable made from a source body, which must carry the source's role
+      allow(@partializer_helper).to receive(:extract_function_scope_static_vars) do |funcs, **|
+        funcs.include?(source_def) ? [promoted] : []
+      end
+
+      @partializer.extract_module_contents(@name, config, fallback: false)
+
+      expect([header_def, header_decl, header_var].map(&:origin)).to all(eq(:header))
+      expect([source_def, source_decl, promoted].map(&:origin)).to all(eq(:source))
     end
   end
 

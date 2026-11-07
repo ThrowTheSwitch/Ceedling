@@ -241,7 +241,9 @@ module PartialsGenerationHelpers
       includes: source_includes, defines: defines, mode: mode
     )
 
-    c_module = extract_c( pp_header ) + extract_c( pp_source )
+    # Each file's items carry the role of the file they came from, as
+    # Partializer#extract_module_contents stamps them, so carrying sees the same origins.
+    c_module = extract_c( pp_header ).stamp_origin!( :header ) + extract_c( pp_source ).stamp_origin!( :source )
 
     generator   = build_partials_generator
     partializer = build_partializer

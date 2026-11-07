@@ -159,6 +159,22 @@ class PartializerHelper
     @loginator.log_list( @utils.format_line_number_list( funcs ), header, Verbosity::DEBUG )
   end
 
+  # Record where each declaration sits in its original file.
+  #
+  # A carried prototype is written behind a #line naming this file and line, so a diagnostic
+  # points at the user's own declaration. Callers pass the file's text, read once per file.
+  # A declaration that can't be found keeps no line and is written without a #line.
+  #
+  # @param decls    [Array<CFunctionDeclaration>] Declarations extracted from one file, updated in place
+  # @param filepath [String] Path of the original header or source file
+  # @param text     [String] That file's full text
+  def associate_declaration_line_numbers(decls:, filepath:, text:)
+    decls.each do |decl|
+      decl.source_filepath = filepath
+      decl.line_num        = @utils.locate_declaration_in_text( signature: decl.signature, text: text )
+    end
+  end
+
   # Excise function-scoped static variable declarations from function bodies (to be
   # promoted to module-scope).
   #
@@ -326,8 +342,13 @@ class PartializerHelper
 
   # For each function definition in funcs, find the matching function by name in the fully
   # preprocessed expansion file and replace the three signature-related fields with their
-  # macro-expanded equivalents. All other fields — especially code_block — are preserved
+  # macro-expanded equivalents. The expanded body is kept alongside in expanded_body, where a
+  # call hidden in a macro is visible. All other fields — especially code_block — are preserved
   # from the directives-only extraction so that line number mapping stays valid.
+  #
+  # Declarations get their decorators and stripped signature the same way, so a macro that
+  # hides `static` is seen for what it is. Their written signature stays as the user spelled
+  # it, because a carried prototype is written word for word.
   #
   # @param funcs [Array<CFunctionDefinition>] Definitions to update in place.
   # @param full_expansion_filepath [String] Path to the assembled full expansion file
@@ -335,7 +356,8 @@ class PartializerHelper
   # @param name [String] Test name, used in log messages.
   # @param module_name [String] Partial module name, used in log messages.
   # @param file_type [String] "source" or "header", used in log messages.
-  def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:)
+  # @param decls [Array<CFunctionDeclaration>] Declarations to update in place.
+  def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:, decls: [])
     expanded_module  = @c_extractor.from_file( full_expansion_filepath )
     expanded_by_name = expanded_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
 
@@ -347,14 +369,36 @@ class PartializerHelper
       func.signature          = expanded.signature
       func.decorators         = expanded.decorators
       func.signature_stripped = expanded.signature_stripped
+      func.expanded_body      = expanded.body
       updated << func.name
     end
 
+    entries = updated.map { |n| "`#{n}`" } + _reconcile_declarations( decls, expanded_module )
+
     @loginator.log_list(
-      updated.map { |n| "`#{n}`" },
+      entries,
       "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
       Verbosity::DEBUG
-    ) unless updated.empty?
+    ) unless entries.empty?
+  end
+
+  # Matches each declaration to the expanded declaration of the same name, in order, since
+  # a name may be declared more than once. Returns log entries for those whose decorators changed.
+  def _reconcile_declarations(decls, expanded_module)
+    expanded_by_name = expanded_module.function_declarations.group_by( &:name )
+    changed = []
+
+    decls.group_by( &:name ).each do |decl_name, same_name|
+      same_name.zip( expanded_by_name.fetch( decl_name, [] ) ) do |decl, expanded|
+        next if expanded.nil?
+
+        changed << "`#{decl_name}` (declaration)" unless decl.decorators == expanded.decorators
+        decl.decorators         = expanded.decorators
+        decl.signature_stripped = expanded.signature_stripped
+      end
+    end
+
+    return changed
   end
 
   # Validate that every function name in additions and subtractions exists in c_module.
