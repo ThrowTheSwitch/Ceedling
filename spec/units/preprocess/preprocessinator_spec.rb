@@ -395,7 +395,8 @@ RSpec.describe Preprocessinator do
       expect(@reconstructor).to have_received(:compact_file_from_expansion).with(
         input_filepath:  '/build/directives_only/module.c',
         source_filepath: filepath,
-        output_filepath: '/build/directives_only/module_compacted.c'
+        output_filepath: '/build/directives_only/module_compacted.c',
+        rejoin:          false
       )
       expect(result).to eq('/build/directives_only/module.c')
     end

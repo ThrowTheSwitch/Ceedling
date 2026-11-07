@@ -61,7 +61,7 @@ class PreprocessinatorFileAssembler
     # Bail out if no extras are required
     return contents, [], nil if !extras
 
-    # Try to find an #include guard in the first 2k of the file text. This name is used two ways:
+    # Try to find an #include guard near the top of the file's code. This name is used two ways:
     #   1. To exclude the guard's own #define from the macro definitions preserved as "extras" below
     #      (it would be redundant -- assemble_preprocessed_header_file writes its own guard).
     #   2. Returned to the caller so the reconstructed header can reuse this exact guard name (see
@@ -73,12 +73,7 @@ class PreprocessinatorFileAssembler
     # If no guard is found (e.g. the header uses `#pragma once` or has none), `nil` flows through and
     # assemble_preprocessed_header_file falls back to a synthetic guard, matching prior behavior.
     include_guard =
-      @preprocessinator_reconstructor.extract_include_guard(
-        @file_wrapper.read(
-          filepath,
-          2048
-        ).clean_encoding
-      )
+      @preprocessinator_reconstructor.extract_include_guard( @file_wrapper.read( filepath ).clean_encoding )
 
     if fallback
       msg = @reportinator.generate_module_progress(
@@ -112,7 +107,7 @@ class PreprocessinatorFileAssembler
     # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
     # rides out the file briefly not yet being visible right after the shell-out exits.
     @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
+      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath, rejoin: false )
     end
 
     return contents
@@ -124,7 +119,7 @@ class PreprocessinatorFileAssembler
   # Mirrors the fallback branch of collect_mockable_header_file_contents.
   def collect_macros_and_pragmas_fallback(source_filepath:, defines: [])
     include_guard = @preprocessinator_reconstructor.extract_include_guard(
-      @file_wrapper.read( source_filepath, 2048 ).clean_encoding
+      @file_wrapper.read( source_filepath ).clean_encoding
     )
 
     _contents = _active_content_for( fallback: true, filepath: source_filepath, defines: defines )
@@ -342,7 +337,7 @@ class PreprocessinatorFileAssembler
       # rides out the file briefly not yet being visible right after the shell-out exits.
       @file_wrapper.open_with_retry( directives_only_filepath, 'r' ) do |file|
         # TODO: Modify to process line-at-a-time for memory savings & performance boost
-        @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath )
+        @preprocessinator_reconstructor.extract_file_as_string_from_expansion( file, filepath, rejoin: false )
       end
     end
   end
