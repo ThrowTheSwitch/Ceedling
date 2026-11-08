@@ -213,7 +213,8 @@ setting turns the wrapping off.
 [Fallback preprocessing](../conventions.md#fallback-test-build-preprocessing)
 is best effort and only partially capable. It can keep two different copies of
 one function, such as both sides of a conditional it cannot evaluate. A Partial
-carries neither copy and logs a notice naming the function. For a helper, the
-notice suggests selecting it with `+name`, which selects the first copy.
+carries neither copy. When it generates the Partial, it logs a notice naming the
+function. For a helper, the notice suggests selecting it with `+name`, which
+selects the first copy.
 
 <br/><br/>

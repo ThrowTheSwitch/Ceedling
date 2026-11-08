@@ -41,7 +41,8 @@ MOCK_PARTIAL_CONFIG(mymodule, -_InternalHelper)
     Add `--verbosity obnoxious` (or `-v 4`) to your `test:` command line invocation
     for detailed logging of the C extraction and Partials generations for your test
     build. The logged lists of functions and variables can help you fine tune or
-    troubleshoot your Partials configuration.
+    troubleshoot your Partials configuration. Extraction runs only for a Partial
+    the build generates, such as on the first build after `ceedling clobber`.
 
 ## `#include` conventions
 

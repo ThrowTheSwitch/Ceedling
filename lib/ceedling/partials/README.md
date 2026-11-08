@@ -91,8 +91,10 @@ A delta build writes a Partial’s files again only when something generation re
 
 - The module’s original header and source, and the preprocessed copies of each that extraction parses. The copies connect generation to preprocessing. Whatever rewrites them, such as forced fallback preprocessing or a different preprocessor, regenerates the Partial. An unchanged rebuild rewrites nothing.
 - The test’s selection for the module: each side’s selection mode, additions, and subtractions.
-- The include list of each generated file, which depends on the test’s other Partial modules and how each is selected.
+- The include list of each generated file, which depends on the test’s other Partial modules and how each is selected. The record’s lists leave out the types header, since the module’s files decide whether there is one.
 - The real header’s include guard, which every generated file spoofs.
 - The preprocessing flags, defines, and search paths, and the project’s `:partials` settings.
+
+The record depends on nothing extraction finds, so a build checks it before extracting. A module whose implementation and interface are both fresh is not extracted at all. Each of those files records the types header it includes as an output, so a missing or edited types header regenerates them. A types header left by an earlier build, once the module has no types, is removed when the Partial next regenerates.
 
 The code that composes Partials is not among these inputs. A Ceedling upgrade that changes what Partials contain leaves existing generated files in place until the build is clobbered.

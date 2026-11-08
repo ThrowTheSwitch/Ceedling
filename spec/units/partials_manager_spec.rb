@@ -23,6 +23,7 @@ describe PartialsManager do
     @generator        = double( "Generator" )
     @dependinator     = double( "Dependinator" )
     @file_path_utils  = double( "FilePathUtils" )
+    @file_wrapper     = double( "FileWrapper" )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
@@ -42,6 +43,7 @@ describe PartialsManager do
     allow(@dependinator).to receive(:register)
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
+    allow(@file_wrapper).to receive(:exist?).and_return( false )
 
     @manager = described_class.new(
       {
@@ -53,7 +55,8 @@ describe PartialsManager do
         :partializer      => @partializer,
         :generator        => @generator,
         :dependinator     => @dependinator,
-        :file_path_utils  => @file_path_utils
+        :file_path_utils  => @file_path_utils,
+        :file_wrapper     => @file_wrapper
       }
     )
   end
@@ -426,17 +429,6 @@ describe PartialsManager do
     end
 
     # Only a regenerating implementation reads the plan, so its notices appear with that build
-    it "plans nothing when the implementation is fresh" do
-      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
-      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
-      allow(@dependinator).to receive(:stale?).and_return( false )
-
-      expect(@partializer).not_to receive(:plan_carry)
-      expect(@generator).not_to receive(:generate_partial_implementation)
-
-      @manager.stage_generate_partials( @state )
-    end
-
     it "plans nothing when only the interface regenerates" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
@@ -478,6 +470,9 @@ describe PartialsManager do
     end
 
     it "skips writing types, implementation, and interface when the dependency tracker reports all three unchanged, but still updates tests/mocks bookkeeping" do
+      @config.tests = PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC )
+      @config.mocks = PartializerConfig::PartialFunctions.new( type: Partials::PRIVATE )
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
@@ -767,7 +762,136 @@ describe PartialsManager do
       @manager.stage_generate_partials( @state )
     end
 
+    # Generated files that are all fresh already hold what extraction would produce
+    context "when the implementation and interface are both fresh" do
+      before(:each) do
+        @config.tests = PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC )
+        @config.mocks = PartializerConfig::PartialFunctions.new( type: Partials::PRIVATE )
+        allow(@dependinator).to receive(:stale?).and_return( false )
+      end
+
+      it "extracts nothing, yet adds the module to tests and mocks" do
+        expect(@partializer).not_to receive(:extract_module_contents)
+        expect(@partializer).not_to receive(:validate_config)
+        expect(@generator).not_to receive(:generate_partial_implementation)
+
+        @manager.stage_generate_partials( @state )
+
+        expect( @testable.partials.tests ).to eq( ['Foo'] )
+        expect( @testable.partials.mocks ).to eq( ['Foo'] )
+      end
+
+      it "adds the module only to the list its selection names" do
+        @config.mocks = PartializerConfig::PartialFunctions.new
+
+        @manager.stage_generate_partials( @state )
+
+        expect( @testable.partials.tests ).to eq( ['Foo'] )
+        expect( @testable.partials.mocks ).to eq( [] )
+      end
+
+      # A module mocked from its header alone has only an interface to vouch for it
+      it "skips a mock-only Partial on its interface alone" do
+        @config.tests = PartializerConfig::PartialFunctions.new
+
+        expect(@partializer).not_to receive(:extract_module_contents)
+        expect(@reportinator).not_to receive(:generate_module_progress).with( hash_including( operation: "Skipping Partial implementation generation for" ) )
+
+        @manager.stage_generate_partials( @state )
+
+        expect( @testable.partials.tests ).to eq( [] )
+        expect( @testable.partials.mocks ).to eq( ['Foo'] )
+      end
+
+      # A full run prunes the record of any target it never registers
+      it "registers a types header still on disk, so its record survives" do
+        types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+        allow(@file_wrapper).to receive(:exist?).with( types ).and_return( true )
+
+        @manager.stage_generate_partials( @state )
+
+        expect(@dependinator).to have_received(:register).with( types, hash_including( :files, :meta ) )
+      end
+
+      # The implementation and interface vouch for the types header they include
+      it "leaves the types header's own record out of the decision" do
+        types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+        allow(@file_wrapper).to receive(:exist?).with( types ).and_return( true )
+        allow(@dependinator).to receive(:stale?) { |target| target == types }
+
+        expect(@partializer).not_to receive(:extract_module_contents)
+
+        @manager.stage_generate_partials( @state )
+      end
+
+      it "logs a skip line and counts a skip for each file it would have generated" do
+        allow(@file_wrapper).to receive(:exist?).and_return( true )
+        %w[types implementation interface].each do |kind|
+          expect(@reportinator).to receive(:generate_module_progress)
+            .with( hash_including( operation: "Skipping Partial #{kind} generation for" ) ).and_return( '' )
+        end
+        [
+          ['Partial types generation', 'types headers'],
+          ['Partial implementation generation', 'implementations'],
+          ['Partial interface generation', 'interfaces']
+        ].each do |task, noun|
+          expect(@reportinator).to receive(:generate_skip_summary).with( hash_including( task: task, count: 1, noun: noun ) )
+        end
+
+        @manager.stage_generate_partials( @state )
+      end
+
+      it "extracts and generates when the interface alone is stale" do
+        allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+        allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+        allow(@dependinator).to receive(:stale?) { |target| target.end_with?( '_interface.h' ) }
+
+        expect(@partializer).to receive(:extract_module_contents).and_return( @module_contents )
+        expect(@generator).to receive(:generate_partial_interface)
+
+        @manager.stage_generate_partials( @state )
+      end
+    end
+
+    # A types header an earlier build left would pass for current whenever the Partial is next fresh
+    it "removes a types header an earlier build left once the module has no types" do
+      types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@file_wrapper).to receive(:exist?).with( types ).and_return( true )
+
+      expect(@file_wrapper).to receive(:rm_f).with( types )
+      expect(@dependinator).to receive(:invalidate).with( types )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "keeps the types header of a module that still has types" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+
+      expect(@file_wrapper).not_to receive(:rm_f)
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Nothing else can vouch for what the module's files would generate
+    it "extracts a Partial whose selection names neither an implementation nor an interface" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@partializer).to receive(:extract_module_contents).and_return( @module_contents )
+
+      @manager.stage_generate_partials( @state )
+    end
+
     it "logs summary lines stating how many of each Partial artifact were recalled from cache" do
+      @config.tests = PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC )
+      @config.mocks = PartializerConfig::PartialFunctions.new( type: Partials::PRIVATE )
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
