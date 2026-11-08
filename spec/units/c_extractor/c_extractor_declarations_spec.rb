@@ -945,6 +945,30 @@ describe CExtractorDeclarations do
         expect( read_one( "extern char *(*name_of)(int);" ) ).to include( name: 'name_of', type: 'char *', declarator: '(*name_of)(int)' )
       end
 
+      # The declarator is repeated in an extern, which must agree with the definition
+      it "keeps a calling convention written inside the parentheses" do
+        expect( read_one( "static void (__stdcall *on_tick)(int);" ) ).to eq(
+          name: 'on_tick', type: 'void', array_suffix: '', declarator: '(__stdcall *on_tick)(int)', text: 'void (__stdcall *on_tick)(int);'
+        )
+      end
+
+      it "reads a qualifier a compiler adds past the name" do
+        expect( read_one( "int (* _Nullable np)(int);" ) ).to include( name: 'np', type: 'int', declarator: '(* _Nullable np)(int)' )
+      end
+
+      [
+        ['int x, (*fp)(int);',                [['x', 'int', nil], ['fp', 'int', '(*fp)(int)']]],
+        ['int (*fp)(int), x;',                [['fp', 'int', '(*fp)(int)'], ['x', 'int', nil]]],
+        ['void (__cdecl *a)(int), (*b)(int);', [['a', 'void', '(__cdecl *a)(int)'], ['b', 'void', '(*b)(int)']]]
+      ].each do |content, expected|
+        it "splits the compound `#{content}` by declarator" do
+          success, variables, _, _ = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.declarator] } ).to eq expected
+        end
+      end
+
       it "gives a plain declaration no declarator" do
         expect( read_one( "static uint8_t buf[16];" ) ).to include( name: 'buf', declarator: nil )
       end

@@ -316,8 +316,18 @@ class CExtractorDeclarations
       array_suffix: grouped ? '' : extract_array_suffix(extraction_text),
       decorators:   decorators,
       text:         clean_text,
-      declarator:   grouped&.declarator
+      declarator:   written_declarator(clean_text, grouped)
     )
+  end
+
+  # The declarator as written. An extern repeats it, so a calling convention inside its
+  # parentheses must stay to agree with the definition. The name was read with that convention
+  # stripped, and the stripped declarator stands when the written text reads differently.
+  def written_declarator(clean_text, grouped)
+    return nil if grouped.nil?
+
+    written = CExtractorDeclarator.parenthesized( CExtractorDeclarator.without_initializer( clean_text ) )
+    return (written and written.name == grouped.name) ? written.declarator : grouped.declarator
   end
 
   # Storage-class specifiers and base-type qualifiers precede a C declaration's type as a
