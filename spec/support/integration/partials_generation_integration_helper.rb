@@ -362,7 +362,6 @@ module PartialsGenerationHelpers
     end
 
     generator.generate_implementation(
-      test: 'PartialsGenerationTest',
       name: module_name,
       function_definitions: implementation || [],
       source_includes: source_list,
@@ -379,7 +378,6 @@ module PartialsGenerationHelpers
     # and it carries the same types header the implementation header does. Both land in one
     # translation unit when a module is tested and mocked in the same test file.
     generator.generate_interface(
-      test: 'PartialsGenerationTest',
       name: module_name,
       function_declarations: interface || [],
       includes: interface_list,

@@ -54,8 +54,8 @@ module Partials
     end
   end unless const_defined?(:FunctionDefinition, false)
 
-  # A function a Partial carries forward, or skips, and the reason why.
-  # The reason feeds debug logging so a user can trace what a Partial contains.
+  # A function a Partial carries forward and the reason why, or a name it skips and the kind of skip.
+  # The reason feeds debug logging so a user can trace what a Partial contains. The kind picks a notice.
   CarriedItem = Struct.new(
     :item,   # CFunctionDeclaration or Partials::FunctionDefinition, or a bare name when skipped
     :reason, # Short explanation such as "external: no body in module"
@@ -70,7 +70,7 @@ module Partials
   CarryPlan = Struct.new(
     :prototypes, # Array of CarriedItem wrapping a CFunctionDeclaration written word for word
     :helpers,    # Hash of function name => CarriedItem wrapping a Partials::FunctionDefinition
-    :skipped,    # Array of CarriedItem naming functions left out that a selected function needs
+    :skipped,    # Array of CarriedItem naming functions left out that kept code uses
     keyword_init: true
   ) do
     def initialize(prototypes: [], helpers: {}, skipped: [])
@@ -97,23 +97,15 @@ module Partials
       helpers[func.name] ||= CarriedItem.new( item: func, reason: reason )
     end
 
-    def helper?(name)
-      return helpers.key?( name )
-    end
-
     # The helper's definition ready to write, or nil when the name is not carried
     def helper(name)
       return helpers[name]&.item
     end
 
-    def skip(name, reason, kind)
+    def skip(name, kind)
       return if skipped.any? { |s| s.item == name and s.kind == kind }
 
-      skipped << CarriedItem.new( item: name, reason: reason, kind: kind )
-    end
-
-    def empty?
-      return prototypes.empty? && helpers.empty? && skipped.empty?
+      skipped << CarriedItem.new( item: name, kind: kind )
     end
   end unless const_defined?(:CarryPlan, false)
 

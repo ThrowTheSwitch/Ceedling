@@ -483,7 +483,6 @@ class Partializer
     _locate_contents( name, c_file, fallback, c_module )
     _promote_function_scope_statics( name, config, file_type, c_module )
 
-    # After promotion, so promoted statics take the role of the file their body came from
     return c_module.stamp_origin!( file_type.to_sym )
   end
 

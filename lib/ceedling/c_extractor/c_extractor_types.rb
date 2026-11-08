@@ -61,13 +61,11 @@ module CExtractorTypes
       )
     end
 
-    # Records which file of a module each function and variable came from.
+    # Records which file of a module each function came from.
     # CExtractor reads text alone and cannot know a file's role, so the caller stamps it.
     # element_sequence references these same objects and so reflects the stamp too.
     def stamp_origin!(origin)
-      (function_definitions + function_declarations + variable_declarations).each do |item|
-        item.origin = origin
-      end
+      (function_definitions + function_declarations).each { |item| item.origin = origin }
       return self
     end
   end unless const_defined?(:CModule, false)
@@ -120,11 +118,15 @@ module CExtractorTypes
     :decorators,    # Array of decorator keyword strings (e.g., ["static", "const"])
     :text,          # Cleaned declaration without decorators, whitespace normalized (e.g., "int x;")
     :line_num,      # Integer — 1-based line number in source file where declaration begins
-    :origin,        # :header or :source when the caller knows the file's role, otherwise nil
     keyword_init: true
   ) do
-    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, origin: nil)
+    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil)
       super
+    end
+
+    # A variable declared `extern` lives in another file, which holds its definition
+    def extern?
+      return decorators.include?( 'extern' )
     end
   end unless const_defined?(:CVariableDeclaration, false)
 

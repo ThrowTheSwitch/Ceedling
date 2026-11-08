@@ -21,9 +21,6 @@ module CExtractorConstants
   # C11/C23 bare specifier keywords (no argument list)
   C11_SPECIFIER_KEYWORDS = ['_Noreturn', '_Thread_local', '_Atomic', '_Bool', '_Complex', '_Imaginary'].freeze unless const_defined?(:C11_SPECIFIER_KEYWORDS, false)
 
-  # Common type keywords that are part of return type, not decorators
-  TYPE_KEYWORDS = ['unsigned', 'signed', 'long', 'short', 'struct', 'union', 'enum'].freeze unless const_defined?(:TYPE_KEYWORDS, false)
-
   # C type qualifiers
   TYPE_QUALIFIER_KEYWORDS = ['const', 'volatile', 'restrict'].freeze unless const_defined?(:TYPE_QUALIFIER_KEYWORDS, false)
 

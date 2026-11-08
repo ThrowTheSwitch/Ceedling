@@ -25,10 +25,10 @@ describe CExtractorTypes::CModule do
   end
 
   context "#stamp_origin!" do
-    it "stamps every function and variable with the given origin" do
+    it "stamps every function with the given origin" do
       module_of( definition, declaration, variable ).stamp_origin!( :header )
 
-      expect( [definition, declaration, variable].map( &:origin ) ).to all( eq( :header ) )
+      expect( [definition, declaration].map( &:origin ) ).to all( eq( :header ) )
     end
 
     # element_sequence references the same objects, so the generator sees the stamp in order
@@ -44,8 +44,10 @@ describe CExtractorTypes::CModule do
       expect( c_module.stamp_origin!( :header ) ).to equal( c_module )
     end
 
-    it "leaves statements without an origin" do
-      expect { module_of( statement ).stamp_origin!( :header ) }.not_to raise_error
+    # Nothing decides by where a variable or statement came from, so neither records it
+    it "leaves variables and statements without an origin" do
+      expect { module_of( variable, statement ).stamp_origin!( :header ) }.not_to raise_error
+      expect( variable ).not_to respond_to( :origin )
       expect( statement ).not_to respond_to( :origin )
     end
   end
@@ -61,10 +63,14 @@ describe CExtractorTypes::CModule do
 end
 
 describe 'C extractor item origins' do
-  it "defaults every function and variable origin to nil" do
+  it "defaults every function origin to nil" do
     expect( CExtractorTypes::CFunctionDefinition.new.origin ).to be_nil
     expect( CExtractorTypes::CFunctionDeclaration.new.origin ).to be_nil
-    expect( CExtractorTypes::CVariableDeclaration.new.origin ).to be_nil
+  end
+
+  it "tells a variable declared extern from one defined here" do
+    expect( CExtractorTypes::CVariableDeclaration.new( decorators: ['extern', 'const'] ).extern? ).to be( true )
+    expect( CExtractorTypes::CVariableDeclaration.new( decorators: ['static'] ).extern? ).to be( false )
   end
 
   it "gives a declaration a source filepath field" do

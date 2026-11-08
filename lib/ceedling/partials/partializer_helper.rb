@@ -485,7 +485,7 @@ class PartializerHelper
 
     # Fallback may keep both sides of a conditional, and two different types for one name won't compile
     if fallback and _conflicting?( keep.map( &:signature_stripped ) )
-      plan.skip( name, 'conflicting declarations under fallback preprocessing', :prototype_conflict )
+      plan.skip( name, :prototype_conflict )
       return
     end
 
@@ -547,12 +547,12 @@ class PartializerHelper
   def _helper_blocked?(scan, name, defs)
     # Without a guard the real header may arrive through another include, and its copy would collide
     unless scan.header_guarded
-      scan.plan.skip( name, 'module header has no include guard', :unguarded_helper )
+      scan.plan.skip( name, :unguarded_helper )
       return true
     end
     return false unless scan.fallback and _conflicting?( defs.map( &:code_block ) )
 
-    scan.plan.skip( name, 'more than one definition under fallback preprocessing', :helper_conflict )
+    scan.plan.skip( name, :helper_conflict )
     return true
   end
 
@@ -574,13 +574,13 @@ class PartializerHelper
 
   def _kept_bodies(c_module, impl)
     defined = c_module.function_definitions.to_h { |f| [f.name, f] }
-    return Array( impl ).map { |f| [f.name, _body_references( defined[f.name] ? _scan_text( defined[f.name] ) : f.code_block.to_s )] }
+    return Array( impl ).map { |f| [f.name, _body_references( _scan_text( defined.fetch( f.name ) ) )] }
   end
 
   # Variables and macro invocations the implementation source writes. Fallback can't expand
   # macros reliably, so there a macro definition's text counts too.
   def _kept_statements(c_module, fallback)
-    variables = c_module.variable_declarations.reject { |v| v.decorators.include?( 'extern' ) }
+    variables = c_module.variable_declarations.reject( &:extern? )
     macros    = c_module.macro_invocations + (fallback ? c_module.macro_definitions : [])
 
     return variables.map { |v| [v.name, v.text] } + macros.map { |m| [m.text.strip, m.text] }

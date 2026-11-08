@@ -45,7 +45,6 @@ class GeneratorPartials
   end
 
   def generate_implementation(
-      test:,
       name:,
       function_definitions:,
       source_includes:,
@@ -81,7 +80,7 @@ class GeneratorPartials
     return source_filepath
   end
 
-  def generate_interface(test:, name:, function_declarations:, includes:, c_module:, output_path:, include_guard: nil)
+  def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, include_guard: nil)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = _prepare( File.join(output_path, header) )
 
@@ -249,7 +248,7 @@ class GeneratorPartials
     emitted_funcs = {}
     emitted_vars = {}
     # A variable's definition knows its full type, such as an array's size, so its extern comes from there
-    defining_vars = c_module.variable_declarations.reject { |v| v.decorators.include?( 'extern' ) }.group_by( &:name ).transform_values( &:first )
+    defining_vars = c_module.variable_declarations.reject( &:extern? ).group_by( &:name ).transform_values( &:first )
     last_was_func = false
     anything_emitted = false
 
@@ -344,7 +343,7 @@ class GeneratorPartials
     emitted_funcs = {}
     last_was_func = false
     anything_emitted = false
-    module_defined_vars = Set.new( c_module.variable_declarations.reject { |v| v.decorators.include?( 'extern' ) }.map( &:name ) )
+    module_defined_vars = Set.new( c_module.variable_declarations.reject( &:extern? ).map( &:name ) )
 
     # A run of carried prototypes sits inside one pair of GCC diagnostic pragmas. Anything
     # else written closes the run, and the end of the file closes the last one. Content after a
@@ -378,7 +377,7 @@ class GeneratorPartials
     emit_variable = lambda do |var|
       # An `extern` variable lives elsewhere. Its definition, if the module has one, is written
       # where it occurs, and otherwise the setting decides.
-      if var.decorators.include?( 'extern' )
+      if var.extern?
         next if extern_variables != :weak or module_defined_vars.include?( var.name )
 
         text = weak_definition( var )

@@ -53,8 +53,8 @@ describe PartializerHelper do
     )
   end
 
-  def var(text, origin: :source, decorators: [])
-    CExtractorTypes::CVariableDeclaration.new( name: text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators, origin: origin )
+  def var(text, decorators: [])
+    CExtractorTypes::CVariableDeclaration.new( name: text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators )
   end
 
   def invocation(text)
@@ -486,7 +486,7 @@ describe PartializerHelper do
   # ---- the running example from the design ---------------------------------------
 
   it 'plans the running example' do
-    board_count = var( 'int board_count;', origin: :header, decorators: ['extern'] )
+    board_count = var( 'int board_count;', decorators: ['extern'] )
     tick        = decl( 'int board_tick(void);', origin: :header )
     raw_proto   = decl( 'static void raw_write(void);', origin: :header )
     clamp       = defn( 'static inline int clamp(int v) { return v > 9 ? 9 : v; }', origin: :header )
@@ -550,12 +550,8 @@ describe Partials::CarryPlan do
 
   it 'records a skipped name once per kind' do
     plan = described_class.new
-    2.times { plan.skip( 'clamp', 'module header has no include guard', :unguarded_helper ) }
+    2.times { plan.skip( 'clamp', :unguarded_helper ) }
 
     expect( plan.skipped.map { |s| [s.item, s.kind] } ).to eq( [['clamp', :unguarded_helper]] )
-  end
-
-  it 'is empty when nothing is carried or skipped' do
-    expect( described_class.new.empty? ).to be( true )
   end
 end

@@ -70,7 +70,7 @@ describe Generator do
 
       @generator.generate_partial_implementation(
         test: 'test_engine', partial: 'engine', function_definitions: [], source_includes: [],
-        header_includes: [], c_module: CExtractorTypes::CModule.new, input_filepath: 'src/engine.c',
+        header_includes: [], c_module: CExtractorTypes::CModule.new,
         output_path: 'build/partials', carry: plan, suppress_redundant_decls: false, extern_variables: :test
       )
 

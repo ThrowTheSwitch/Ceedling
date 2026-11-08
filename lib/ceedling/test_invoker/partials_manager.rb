@@ -207,7 +207,6 @@ class PartialsManager
         c_module:                 module_contents,
         header_includes:          includes[:impl_header],
         source_includes:          includes[:impl_source],
-        input_filepath:           config.source.filepath,
         output_path:              testable.paths[:partials],
         include_guard:            module_include_guard,
         carry:                    carry,
@@ -245,7 +244,6 @@ class PartialsManager
         function_declarations: interface,
         includes:              includes[:interface],
         c_module:              module_contents,
-        input_filepath:        config.header.filepath,
         output_path:           testable.paths[:partials],
         include_guard:         module_include_guard
       }

@@ -522,7 +522,7 @@ describe Partializer do
       helpers.each do |name, reason|
         plan.add_helper( Partials.manufacture_function_definition( name: name, signature: "int #{name}(int v)", code_block: '' ), reason )
       end
-      skipped.each { |name, reason, kind| plan.skip( name, reason, kind ) }
+      skipped.each { |name, kind| plan.skip( name, kind ) }
       plan
     end
 
@@ -585,7 +585,7 @@ describe Partializer do
     end
 
     it "gives notice of a helper fallback left with more than one definition" do
-      plan = plan_for( skipped: [['clamp', 'more than one definition under fallback preprocessing', :helper_conflict]] )
+      plan = plan_for( skipped: [['clamp', :helper_conflict]] )
 
       expect(@loginator).to receive(:log).with(
         "Partial test_engine::engine \u23e9\ufe0f Not carrying helper `clamp()`: fallback preprocessing found more than one definition. Add `+clamp` if a selected function needs it",
@@ -598,8 +598,8 @@ describe Partializer do
 
     it "gives one notice naming every helper an unguarded module header kept out" do
       plan = plan_for( skipped: [
-        ['clamp', 'module header has no include guard', :unguarded_helper],
-        ['counter', 'module header has no include guard', :unguarded_helper]
+        ['clamp', :unguarded_helper],
+        ['counter', :unguarded_helper]
       ] )
 
       expect(@loginator).to receive(:log).with(
@@ -622,7 +622,7 @@ describe Partializer do
     end
 
     it "words the unguarded-header notice for a single helper" do
-      plan = plan_for( skipped: [['clamp', 'module header has no include guard', :unguarded_helper]] )
+      plan = plan_for( skipped: [['clamp', :unguarded_helper]] )
 
       expect(@loginator).to receive(:log).with(
         a_string_including( 'Not carrying helper `clamp()` from src/engine.h.', 'call this helper', 'Select the helper with' ),
@@ -635,7 +635,7 @@ describe Partializer do
 
     # Additions can't name a function the module only declares, so no `+name` hint follows
     it "gives notice of a prototype fallback left with conflicting declarations" do
-      plan = plan_for( skipped: [['board_tick', 'conflicting declarations under fallback preprocessing', :prototype_conflict]] )
+      plan = plan_for( skipped: [['board_tick', :prototype_conflict]] )
 
       expect(@loginator).to receive(:log).with(
         "Partial test_engine::engine \u23e9\ufe0f Not carrying `board_tick()`: fallback preprocessing found conflicting declarations",
@@ -2097,13 +2097,11 @@ describe Partializer do
       @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
-    it "stamps every function and variable with the role of the file it came from" do
+    it "stamps every function with the role of the file it came from" do
       header_def  = CExtractorTypes::CFunctionDefinition.new(name: 'clamp')
       header_decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick')
-      header_var  = CExtractorTypes::CVariableDeclaration.new(name: 'count')
       source_def  = CExtractorTypes::CFunctionDefinition.new(name: 'get')
       source_decl = CExtractorTypes::CFunctionDeclaration.new(name: 'twice')
-      promoted    = CExtractorTypes::CVariableDeclaration.new(name: 'partial_get_n')
 
       config = PartializerConfig::Config.new(
         module: 'module1',
@@ -2112,20 +2110,16 @@ describe Partializer do
       )
 
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.h').and_return(
-        CExtractorTypes::CModule.new(function_definitions: [header_def], function_declarations: [header_decl], variable_declarations: [header_var])
+        CExtractorTypes::CModule.new(function_definitions: [header_def], function_declarations: [header_decl])
       )
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.c').and_return(
         CExtractorTypes::CModule.new(function_definitions: [source_def], function_declarations: [source_decl])
       )
-      # Promotion yields a variable made from a source body, which must carry the source's role
-      allow(@partializer_helper).to receive(:extract_function_scope_static_vars) do |funcs, **|
-        funcs.include?(source_def) ? [promoted] : []
-      end
 
       @partializer.extract_module_contents(@name, config, fallback: false)
 
-      expect([header_def, header_decl, header_var].map(&:origin)).to all(eq(:header))
-      expect([source_def, source_decl, promoted].map(&:origin)).to all(eq(:source))
+      expect([header_def, header_decl].map(&:origin)).to all(eq(:header))
+      expect([source_def, source_decl].map(&:origin)).to all(eq(:source))
     end
   end
 

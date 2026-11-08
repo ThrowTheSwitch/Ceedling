@@ -47,83 +47,29 @@ class Generator
   # Returns the bare generated filename (for the caller to add to each header's own includes
   # list) or nil when the module has no typedefs or aggregate definitions to share.
   def generate_partial_types(name:, partial:, c_module:, output_path:, includes: [], include_guard: nil)
-    msg = @reportinator.generate_module_progress(
-      operation: "Generating shared Partial types for",
-      module_name: name,
-      filename: partial # Partial module name, not filename
+    log_partial_progress( 'Generating shared Partial types for', name, partial )
+
+    # The module's name, not the test's: two modules Partialed in the same test file must not
+    # collide on one shared types header filename
+    return @generator_partials.generate_types(
+      name: partial, c_module: c_module, output_path: output_path, includes: includes, include_guard: include_guard
     )
-    @loginator.log( msg )
-
-    arg_hash = {
-      :name => partial, # Module name, not test name -- two modules Partialed in the same
-                        # test file must not collide on one shared types header filename
-      :c_module => c_module,
-      :output_path => output_path,
-      :includes => includes,
-      :include_guard => include_guard
-    }
-
-    return @generator_partials.generate_types( **arg_hash )
   end
 
-  def generate_partial_interface(test:, partial:, function_declarations:, includes:, c_module:, input_filepath:, output_path:, include_guard: nil)
-    msg = @reportinator.generate_module_progress(
-      operation: "Generating Partial mockable interface for",
-      module_name: test,
-      filename: partial # Partial module name, not filename
-    )
-    @loginator.log( msg )
+  # The mockable interface header for a Partial module. Everything but the test's name passes
+  # through to GeneratorPartials#generate_interface.
+  def generate_partial_interface(test:, partial:, **generation)
+    log_partial_progress( 'Generating Partial mockable interface for', test, partial )
 
-    arg_hash = {
-      :test => test,
-      :name => partial,
-      :function_declarations => function_declarations,
-      :includes => includes,
-      :c_module => c_module,
-      :output_path => output_path,
-      :include_guard => include_guard
-    }
-
-    return @generator_partials.generate_interface( **arg_hash )
+    return @generator_partials.generate_interface( name: partial, **generation )
   end
 
-  def generate_partial_implementation(
-      test:,
-      partial:,
-      function_definitions:,
-      source_includes:,
-      header_includes:,
-      c_module:,
-      input_filepath:,
-      output_path:,
-      include_guard: nil,
-      carry: Partials::CarryPlan.new,
-      suppress_redundant_decls: true,
-      extern_variables: :weak
-    )
+  # The implementation header and source for a Partial module, carry plan included. Everything
+  # but the test's name passes through to GeneratorPartials#generate_implementation.
+  def generate_partial_implementation(test:, partial:, **generation)
+    log_partial_progress( 'Generating Partial implementation for', test, partial )
 
-    msg = @reportinator.generate_module_progress(
-      operation: "Generating Partial implementation for",
-      module_name: test,
-      filename: partial # Partial module name, not filename
-    )
-    @loginator.log( msg )
-
-    arg_hash = {
-      :function_definitions => function_definitions,
-      :test => test,
-      :name => partial,
-      :source_includes => source_includes,
-      :header_includes => header_includes,
-      :c_module => c_module,
-      :output_path => output_path,
-      :include_guard => include_guard,
-      :carry => carry,
-      :suppress_redundant_decls => suppress_redundant_decls,
-      :extern_variables => extern_variables
-    }
-
-    return @generator_partials.generate_implementation( **arg_hash )
+    return @generator_partials.generate_implementation( name: partial, **generation )
   end
 
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:, mock_root:, folder: nil, overrides: {})
@@ -483,6 +429,11 @@ class Generator
     test_cases = @generator_test_results.filter_test_cases( test_cases )
 
     return crash_results( backtrace, arg_hash, shell_result, test_cases, explanation )
+  end
+
+  def log_partial_progress(operation, test, partial)
+    # `filename` is the Partial module's name, not a filename
+    @loginator.log( @reportinator.generate_module_progress( operation: operation, module_name: test, filename: partial ) )
   end
 
   def log_crash(executable, shell_result, backtrace, explanation)

@@ -97,7 +97,7 @@ describe GeneratorPartials do
       )
 
       @generator.generate_implementation(
-        test: 'test_m', name: 'm', function_definitions: [],
+        name: 'm', function_definitions: [],
         source_includes: [], header_includes: [],
         c_module: empty_module, output_path: '/path/to/output',
         carry: plan, suppress_redundant_decls: false, extern_variables: :test
@@ -116,7 +116,7 @@ describe GeneratorPartials do
       expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output' ).at_least(:once)
 
       @generator.generate_implementation(
-        test: 'test_m', name: 'm', function_definitions: [],
+        name: 'm', function_definitions: [],
         source_includes: [], header_includes: [],
         c_module: empty_module, output_path: '/path/to/output'
       )
@@ -136,7 +136,7 @@ describe GeneratorPartials do
       expect(@file_wrapper).to receive(:mkdir).with( '/path/to/output/drivers/uart' ).at_least(:once)
 
       @generator.generate_implementation(
-        test: 'test_config', name: 'drivers/uart/config', function_definitions: [],
+        name: 'drivers/uart/config', function_definitions: [],
         source_includes: [], header_includes: [],
         c_module: empty_module, output_path: '/path/to/output'
       )
@@ -158,7 +158,7 @@ describe GeneratorPartials do
         allow(@file_wrapper).to receive(:open).and_yield( handle )
 
         @generator.generate_implementation(
-          test: 'test_both', name: "#{dir}/config", function_definitions: [],
+          name: "#{dir}/config", function_definitions: [],
           source_includes: [], header_includes: [],
           c_module: empty_module, output_path: '/path/to/output'
         )
@@ -223,7 +223,6 @@ describe GeneratorPartials do
 
       # Execute
       result = @generator.generate_implementation(
-        test: 'test_my_implementation',
         name: name,
         function_definitions: defns,
         source_includes: source_includes,
@@ -304,7 +303,6 @@ describe GeneratorPartials do
 
       # Execute
       result = @generator.generate_interface(
-        test: 'test_my_interface',
         function_declarations: decls,
         name: name,
         includes: includes,
