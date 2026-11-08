@@ -96,6 +96,18 @@ describe 'Function pointers in a Partial' do
       expect( @result.interface_h ).to include( 'void ticker_register(int (*cb)(int));' )
       expect_interface_compile( @result )
     end
+
+    # A mock needs only a prototype, so a function the module declares without a body is mocked too
+    it 'mocks functions the header only declares, taking or returning a function pointer' do
+      @result = ticker(
+        header: "void ticker_register(int (*cb)(int));\nint (*ticker_getter(void))(int);\nint ticker_count(void);\n",
+        source: "int ticker_count(void) { return 0; }\n",
+        tests: nil, mocks: PartializerConfig::PUBLIC
+      )
+
+      expect( @result.interface_h ).to include( 'void ticker_register(int (*cb)(int));', 'int (*ticker_getter(void))(int);' )
+      expect_interface_compile( @result )
+    end
   end
 
   # ---------------------------------------------------------------------------

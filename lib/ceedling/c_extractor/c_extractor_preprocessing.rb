@@ -32,13 +32,15 @@ class CExtractorPreprocessing
 
   # A bare, top-level, semicolon-less macro invocation (an x-macro call expanding to a
   # full function definition once the macro itself is applied) has no leading '#' and is
-  # followed by nothing NOT_AFTER_INVOCATION names. Real compilable C at file scope always
-  # follows IDENTIFIER(balanced-args) with one of those, so this shape only exists before
+  # followed by nothing NOT_AFTER_INVOCATION names. Compilable C at file scope nearly always
+  # follows IDENTIFIER(balanced-args) with one of those, so this shape mostly exists before
   # macro expansion. Each of those shapes is left for the extractor that handles it.
   #
-  # An old K&R-style function definition (`foo(a,b)\nint a; int b;\n{...}`) also fits this
-  # shape and is misread. The extractors after this one misread it too, and the style is
-  # essentially extinct in modern embedded C, so it isn't worth real declaration grammar here.
+  # A type specifier that takes parentheses also fits this shape and is misread, as in
+  # `typeof(*p) q;`, `_Atomic(int) x;` and `_Alignas(8) int x;`. So is an old K&R-style
+  # function definition (`foo(a,b)\nint a; int b;\n{...}`). The extractors after this one
+  # misread K&R too, and the style is essentially extinct in modern embedded C, so it isn't
+  # worth real declaration grammar here.
   #
   # @param scanner [StringScanner] positioned at a potential macro invocation
   # @return [Array(Boolean, CExtractorTypes::CStatement|nil)]

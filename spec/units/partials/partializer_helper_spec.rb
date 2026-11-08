@@ -580,6 +580,23 @@ describe PartializerHelper do
         expect(func.code_block).to include('return partial_fire_cache(1);')
       end
 
+      it "promotes each function pointer of a compound static and an array of them" do
+        func = OpenStruct.new(
+          name:       'fire',
+          body:       "{\n  static int (*a)(int), (*b)(int);\n  static int (*t[2])(int) = { 0 };\n  return a(1) + b(2) + t[0](3);\n}",
+          code_block: "int fire(void) {\n  static int (*a)(int), (*b)(int);\n  static int (*t[2])(int) = { 0 };\n  return a(1) + b(2) + t[0](3);\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.declarator] }).to eq [
+          ['partial_fire_a', '(*partial_fire_a)(int)'],
+          ['partial_fire_b', '(*partial_fire_b)(int)'],
+          ['partial_fire_t', '(*partial_fire_t[2])(int)']
+        ]
+        expect(func.code_block).to include('return partial_fire_a(1) + partial_fire_b(2) + partial_fire_t[0](3);')
+      end
+
       it "does not modify code_block when function body has only non-static variables" do
         original_code_block = "void simple(void) {\n  int x = 0;\n  return x;\n}"
 

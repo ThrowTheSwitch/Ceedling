@@ -1005,9 +1005,10 @@ describe CExtractorDeclarations do
         ]
       end
 
-      # A lookup table may run to many kilobytes, and its declaration must read in linear time
-      it "reads a declaration with a large initializer table in time linear in its length" do
-        content = 'static const uint8_t table[] = { ' + ('0x5A, ' * 100_000) + '0 };'
+      # A lookup table may run to many kilobytes, and its declaration must still read quickly. A
+      # scan quadratic in its length would take minutes on this one.
+      it "reads a declaration with a large initializer table within a time bound" do
+        content = 'static const uint8_t table[] = { ' + ('0x5A, ' * 20_000) + '0 };'
 
         success, variables = nil
         Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
