@@ -192,6 +192,42 @@ describe 'Function pointers in a Partial' do
       expect_link( @result, ['g_row', 'ticker_sum'] )
     end
 
+    it 'declares a function pointer whose name sits in redundant parentheses' do
+      @result = ticker(
+        header: "int ticker_fire(int n);\n",
+        source: "static int (*(s_paren))(int);\nint ticker_fire(int n) { return s_paren ? s_paren(n) : -1; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int (*(s_paren))(int);' )
+      expect_link( @result, ['s_paren', 'ticker_fire'] )
+    end
+
+    # An attribute after a declarator would draw a warning on the extern, which needs none
+    it 'leaves a trailing attribute off a function-pointer table extern' do
+      @result = ticker(
+        header: "int ticker_one(void);\nint ticker_fire(int i);\n",
+        source: "int ticker_one(void) { return 1; }\n" \
+                "static int (* const s_vec[1])(void) __attribute__((used)) = { ticker_one };\n" \
+                "int ticker_fire(int i) { return s_vec[i](); }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int (* const s_vec[1])(void);' )
+      expect_link( @result, ['s_vec', 'ticker_fire'], flags: '-Werror=attributes' )
+    end
+
+    # An asm label names the symbol, so the extern has to carry it to reach the definition
+    it 'keeps an asm label on a function pointer extern' do
+      @result = ticker(
+        header: "int ticker_bump(int n);\nint ticker_fire(int n);\n",
+        source: "int ticker_bump(int n) { return n + 1; }\n" \
+                "int (*g_lbl)(int) __asm__(\"ticker_hook_symbol\") = ticker_bump;\n" \
+                "int ticker_fire(int n) { return g_lbl(n); }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int (*g_lbl)(int) __asm__("ticker_hook_symbol");' )
+      expect_link( @result, ['g_lbl', 'ticker_fire'] )
+    end
+
     it 'declares each function pointer of a compound declaration' do
       @result = ticker(
         header: "int ticker_fire(int n);\n",

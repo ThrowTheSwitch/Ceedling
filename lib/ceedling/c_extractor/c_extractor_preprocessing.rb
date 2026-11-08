@@ -36,7 +36,7 @@ class CExtractorPreprocessing
   # follows IDENTIFIER(balanced-args) with one of those, so this shape mostly exists before
   # macro expansion. Each of those shapes is left for the extractor that handles it.
   #
-  # A type specifier that takes parentheses also fits this shape and is misread, as in
+  # A specifier that takes parentheses also fits this shape and is misread, as in
   # `typeof(*p) q;`, `_Atomic(int) x;` and `_Alignas(8) int x;`. So is an old K&R-style
   # function definition (`foo(a,b)\nint a; int b;\n{...}`). The extractors after this one
   # misread K&R too, and the style is essentially extinct in modern embedded C, so it isn't

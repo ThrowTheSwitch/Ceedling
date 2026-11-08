@@ -67,6 +67,33 @@ describe CExtractorDeclarator do
 
     it "reads through redundant parentheses" do
       expect( read( 'int ((*p))(int)' ) ).to include( name: 'p', follows: nil, base_type: 'int' )
+      expect( read( 'int (*(rp))(int)' ) ).to include( name: 'rp', follows: nil )
+      expect( read( 'char (*(x))[4]' ) ).to include( name: 'x', follows: nil )
+      expect( read( 'int (* const (rp))(int)' ) ).to include( name: 'rp', follows: nil )
+      expect( read( 'int (*(get_cb(void)))(int)' ) ).to include( name: 'get_cb', follows: '(' )
+    end
+
+    # GCC accepts '$' in an identifier, and fallback preprocessing leaves comments in place
+    it "reads a name holding '$' or followed by a comment" do
+      expect( read( 'int (*count$all)(int)' ) ).to include( name: 'count$all', follows: nil )
+      expect( read( 'int (*s_hook /* callback */)(int)' ) ).to include( name: 's_hook', follows: nil )
+    end
+
+    # An extern repeats the declarator, and an attribute after it would draw a warning there
+    it "ends the declarator at its last parameter list or array size, keeping an asm label" do
+      expect( read( 'void (* const vec[])(void) __attribute__ ((used))' ) ).to include( declarator: '(* const vec[])(void)' )
+      expect( read( 'int (*p)[4][2] PACKED' ) ).to include( declarator: '(*p)[4][2]' )
+      expect( read( 'int (*fp)(int) __asm__("fp_label")' ) ).to include( declarator: '(*fp)(int) __asm__("fp_label")' )
+    end
+
+    # Pathological nesting must still read in one pass
+    it "reads deeply nested parentheses in linear time" do
+      text = 'int ' + ('( ' * 20_000) + '*x' + (' )' * 20_000) + '(int)'
+
+      result = nil
+      Timeout.timeout( 2 ) { result = read( text ) }
+
+      expect( result ).to include( name: 'x', follows: nil )
     end
 
     # A struct's body may declare function-pointer members, which belong to the struct

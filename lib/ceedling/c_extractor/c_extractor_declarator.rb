@@ -21,10 +21,32 @@ module CExtractorDeclarator
   # or nil. `base_type` is the text ahead of the group, and `declarator` the group onward.
   Parenthesized = Struct.new( :name, :follows, :base_type, :declarator, keyword_init: true ) unless const_defined?(:Parenthesized, false)
 
-  # A '(' opening a declarator, perhaps through redundant parentheses and a calling convention
-  POINTER_GROUP = /\([\s(]*(?:(?:#{CExtractorConstants::MSVC_CALLING_CONVENTIONS.join( '|' )})\b\s*)*\*/ unless const_defined?(:POINTER_GROUP, false)
+  CALLING_CONVENTION = /(?:#{CExtractorConstants::MSVC_CALLING_CONVENTIONS.join( '|' )})\b/ unless const_defined?(:CALLING_CONVENTION, false)
 
-  # What may follow a declarator's name. That is the group's own ')', a parameter list or an array size.
+  # A '(' opening a declarator, perhaps through redundant parentheses and a calling convention
+  POINTER_GROUP = /\([\s(]*(?:#{CALLING_CONVENTION}\s*)*\*/ unless const_defined?(:POINTER_GROUP, false)
+
+  # A '(' after a word that opens a nested pointer group rather than a parameter list
+  NESTED_GROUP = /\(\s*(?:#{CALLING_CONVENTION}\s*)*\*/ unless const_defined?(:NESTED_GROUP, false)
+
+  # Words that qualify a pointer ahead of the name, including ones a compiler adds. A '(' after
+  # one of these still opens a redundant group, as in `(* const (name))`.
+  QUALIFIERS = (
+    CExtractorConstants::TYPE_QUALIFIER_KEYWORDS + CExtractorConstants::MSVC_CALLING_CONVENTIONS +
+    %w[__restrict __restrict__ _Nullable _Nonnull _Null_unspecified __far __near __huge __ptr32 __ptr64 __unaligned]
+  ).freeze unless const_defined?(:QUALIFIERS, false)
+
+  # An identifier, which GCC lets hold '$'
+  WORD = /[A-Za-z_$][\w$]*/ unless const_defined?(:WORD, false)
+
+  # Space between a group's tokens. Fallback preprocessing leaves comments in place.
+  GAP = %r{(?:\s|/\*.*?\*/|//[^\n]*)*}m unless const_defined?(:GAP, false)
+
+  # An asm label after a declarator, which names the symbol and so must match the definition's
+  ASM_LABEL = /\s*(?:__asm__|__asm|asm)\s*(?=\()/ unless const_defined?(:ASM_LABEL, false)
+
+  # What may follow a declarator's name. That is the group's own ')', a parameter list or an
+  # array size.
   NAME_ENDS = [')', '(', '['].freeze unless const_defined?(:NAME_ENDS, false)
 
   # How each delimiter changes the nesting depth
@@ -44,7 +66,7 @@ module CExtractorDeclarator
 
     return Parenthesized.new(
       name: name, follows: (ending == ')' ? nil : ending),
-      base_type: text.byteslice( 0, start ).strip, declarator: text.byteslice( start, text.bytesize - start ).strip
+      base_type: text.byteslice( 0, start ).strip, declarator: _declarator_text( text, start )
     )
   end
 
@@ -81,7 +103,7 @@ module CExtractorDeclarator
   def self._skip_balanced(scanner)
     depth = 0
     while scanner.skip_until( /[()\[\]{}]/ )
-      depth += ['(', '[', '{'].include?( scanner.matched ) ? 1 : -1
+      depth += DEPTH_CHANGE[scanner.matched]
       return true if depth.zero?
     end
 
@@ -89,29 +111,48 @@ module CExtractorDeclarator
   end
 
   # The name inside the group at `start`, with the character that ends it. The name is the last
-  # word ahead of that end. Stars and qualifiers come before it, including ones a compiler adds,
-  # such as `_Nullable` or `__far`. A '(' that opens a nested pointer group is passed through, so
-  # only a parameter list ends the name.
+  # word ahead of that end that isn't a qualifier. A star or '(' ahead of the name clears any word
+  # read so far, since a qualifier the list lacks may come before the name. After the name, a '('
+  # opens a parameter list unless a nested pointer group starts there.
   def self._name_in(text, start)
     scanner = StringScanner.new( text )
     scanner.pos = start + 1
     name = nil
 
-    while (step = _next_in_group( scanner ))
-      name = step unless step == :group
+    while (step = _next_in_group( scanner, name ))
+      next if QUALIFIERS.include?( step )
+
+      name = (step == :open) ? nil : step
     end
 
     return [name, scanner.peek( 1 )]
   end
 
-  # Moves the scanner past any stars and then one word or the '(' of a nested pointer group. It
-  # returns the word, :group for a nested group, or nil when neither comes next.
-  def self._next_in_group(scanner)
-    scanner.skip( /[\s*]*/ )
-    return scanner.scan( /[A-Za-z_]\w*/ ) unless scanner.match?( POINTER_GROUP )
+  # Moves the scanner past the next token in a group and says what it was. That is :open for a
+  # star or a '(' passed through, or the word read. It is nil at anything else, which ends the name.
+  def self._next_in_group(scanner, name)
+    scanner.skip( GAP )
+    return :open if scanner.skip( /\*/ )
+    return scanner.scan( WORD ) unless scanner.check( /\(/ ) and (name.nil? or scanner.match?( NESTED_GROUP ))
 
     scanner.pos += 1
-    return :group
+    return :open
+  end
+
+  # The declarator's text, from its group's '(' through its last parameter list or array size,
+  # with any asm label after it. An extern repeats this text. An attribute after it is left out,
+  # since an extern needs none and some draw a warning there.
+  def self._declarator_text(text, start)
+    scanner = StringScanner.new( text )
+    scanner.pos = start
+    while scanner.match?( /\s*[(\[]/ )
+      scanner.skip( /\s*/ )
+      return text.byteslice( start, text.bytesize - start ).strip unless _skip_balanced( scanner )
+    end
+
+    finish = scanner.pos
+    finish = scanner.pos if scanner.skip( ASM_LABEL ) and _skip_balanced( scanner )
+    return text.byteslice( start, finish - start ).strip
   end
 
 end

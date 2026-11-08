@@ -2581,6 +2581,7 @@ describe CExtractorFunctions do
         ['int (*f(int (*g)(int)))(int);',                        'f'],
         ['void (*signal(int sig, void (*func)(int)))(int);',     'signal'],
         ['void (* _Nullable sigset(int, void (* _Nullable)(int)))(int);', 'sigset'],
+        ['int (*(ticker_paren(void)))(int);',                    'ticker_paren'],
         ['DECLARE_THING(*p, b);',                                'DECLARE_THING']
       ].each do |content, name|
         it "reads `#{content}` as a declaration of #{name}()" do
@@ -2600,6 +2601,9 @@ describe CExtractorFunctions do
         'int (__cdecl *on_tick)(int);',
         'int (* __attribute__((unused)) u_hook)(int);',
         'int (* _Nullable n_hook)(int);',
+        'int (*(r_hook))(int);',
+        'char (*(r_row))[4];',
+        'int (*hook$x)(int);',
         'void (__attribute__((stdcall)) *s_hook)(int);',
         'handler_t (*table[4])(void);',
         'int (*g_row)[4];'

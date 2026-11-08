@@ -956,6 +956,34 @@ describe CExtractorDeclarations do
         expect( read_one( "int (* _Nullable np)(int);" ) ).to include( name: 'np', type: 'int', declarator: '(* _Nullable np)(int)' )
       end
 
+      it "keeps a calling convention ahead of an attribute among the stars" do
+        expect( read_one( "void (__stdcall * __attribute__((unused)) fp)(int);" ) ).to include(
+          name: 'fp', type: 'void', declarator: '(__stdcall * __attribute__((unused)) fp)(int)'
+        )
+      end
+
+      [
+        ['void (*(fp34))(void) = 0;',          'fp34',      '(*(fp34))(void)'],
+        ['static int (*hook$1)(int) = 0;',     'hook$1',    '(*hook$1)(int)'],
+        ['int (*s_hook /* callback */)(int);', 's_hook',    '(*s_hook /* callback */)(int)']
+      ].each do |content, name, declarator|
+        it "reads `#{content}` by its name #{name}" do
+          expect( read_one( content ) ).to include( name: name, declarator: declarator )
+        end
+      end
+
+      # An extern repeats the declarator. An attribute after it would draw a warning there, while
+      # an asm label names the symbol and must stay.
+      it "leaves a trailing attribute out of the declarator and keeps an asm label" do
+        expect( read_one( "void (* const vec[])(void) __attribute__ ((used)) = { 0 };" ) ).to include( name: 'vec', declarator: '(* const vec[])(void)' )
+        expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int) __asm__("fp_label")' )
+      end
+
+      # Stripping extensions can uncover a different group, and only the same group's written text may stand in
+      it "keeps the stripped declarator when the written text opens a different group" do
+        expect( read_one( "void __attribute__((*odd)) (*fp)(int);" ) ).to include( name: 'fp', declarator: '(*fp)(int)' )
+      end
+
       [
         ['int x, (*fp)(int);',                [['x', 'int', nil], ['fp', 'int', '(*fp)(int)']]],
         ['int (*fp)(int), x;',                [['fp', 'int', '(*fp)(int)'], ['x', 'int', nil]]],

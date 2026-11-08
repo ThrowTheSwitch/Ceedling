@@ -320,14 +320,16 @@ class CExtractorDeclarations
     )
   end
 
-  # The declarator as written. An extern repeats it, so a calling convention inside its
-  # parentheses must stay to agree with the definition. The name was read with that convention
-  # stripped, and the stripped declarator stands when the written text reads differently.
+  # The declarator as written. An extern repeats it, so a calling convention or attribute among
+  # its stars must stay to agree with the definition. The written text stands only when it opens
+  # the same group, which the text ahead of each group shows once extensions are stripped.
+  # Otherwise the stripped declarator stands.
   def written_declarator(clean_text, grouped)
     return nil if grouped.nil?
 
     written = CExtractorDeclarator.parenthesized( CExtractorDeclarator.without_initializer( clean_text ) )
-    return (written and written.name == grouped.name) ? written.declarator : grouped.declarator
+    same    = (written and @code_text.strip_compiler_extensions( written.base_type ) == grouped.base_type)
+    return same ? written.declarator : grouped.declarator
   end
 
   # Storage-class specifiers and base-type qualifiers precede a C declaration's type as a
