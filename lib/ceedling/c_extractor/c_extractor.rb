@@ -184,9 +184,9 @@ class CExtractor
 
       # A bare, top-level, semicolon-less macro invocation (e.g. an x-macro call that
       # expands to a full function definition once the macro itself is applied) has no
-      # leading '#', no trailing ';', and no trailing '{' -- directives-only
-      # preprocessing never expands it, so it reaches every extractor below as literal,
-      # unexpanded text. Tried here, before the signature-scanning extractors, because
+      # leading '#' and none of what CExtractorPreprocessing::NOT_AFTER_INVOCATION names
+      # after it. Directives-only preprocessing never expands it, so it reaches every
+      # extractor below as literal, unexpanded text. Tried here, before the signature-scanning extractors, because
       # those scan forward for their own terminating '{'/';' with no check that what
       # they started scanning actually looks like a signature -- given this shape
       # immediately followed by an unrelated typedef, aggregate, or real function, they

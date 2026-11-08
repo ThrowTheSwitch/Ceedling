@@ -24,21 +24,21 @@ class CExtractorPreprocessing
   # ahead of.
   COMPILER_EXTENSION_IDENTIFIER = /\A(?:__\w+__|__declspec)\z/
 
+  # What can follow IDENTIFIER(balanced-args) in real code but never a bare invocation. A ';'
+  # ends a call statement and a '{' opens a function body. A declarator in parentheses, as in
+  # `int (*hook)(int) = 0;`, goes on with a parameter list, an array suffix, an initializer or
+  # another declarator.
+  NOT_AFTER_INVOCATION = [';', '{', '(', '[', '=', ','].freeze
+
   # A bare, top-level, semicolon-less macro invocation (an x-macro call expanding to a
-  # full function definition once the macro itself is applied) has no leading '#', no
-  # trailing ';', and no trailing '{' -- real compilable C at file/statement scope
-  # never has IDENTIFIER(balanced-args) followed by anything else, so this shape only
-  # exists pre-macro-expansion. A trailing ';' (an ordinary call-as-statement) or '{'
-  # (a real function definition) are both explicitly NOT this shape and are left for
-  # the extractors that already handle those correctly.
+  # full function definition once the macro itself is applied) has no leading '#' and is
+  # followed by nothing NOT_AFTER_INVOCATION names. Real compilable C at file scope always
+  # follows IDENTIFIER(balanced-args) with one of those, so this shape only exists before
+  # macro expansion. Each of those shapes is left for the extractor that handles it.
   #
-  # One accepted, pre-existing limitation, not introduced here: a K&R-style old-style
-  # function definition (`foo(a,b)\nint a; int b;\n{...}`) also matches this shape and
-  # would be misclassified -- but it already falls through to the same broken
-  # catch-all this method exists to intercept, so this swaps one already-wrong output
-  # for a different one, for a construct essentially extinct in Ceedling's actual
-  # (modern embedded C) audience. Not worth the real declaration-grammar knowledge
-  # this hand-rolled scanner doesn't have.
+  # An old K&R-style function definition (`foo(a,b)\nint a; int b;\n{...}`) also fits this
+  # shape and is misread. The extractors after this one misread it too, and the style is
+  # essentially extinct in modern embedded C, so it isn't worth real declaration grammar here.
   #
   # @param scanner [StringScanner] positioned at a potential macro invocation
   # @return [Array(Boolean, CExtractorTypes::CStatement|nil)]
@@ -81,7 +81,7 @@ class CExtractorPreprocessing
     next_char = scanner.peek(1)
     scanner.pos = after_invocation
 
-    if next_char == ';' || next_char == '{'
+    if NOT_AFTER_INVOCATION.include?( next_char )
       scanner.pos = start_pos
       return [false, nil]
     end
