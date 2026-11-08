@@ -672,20 +672,21 @@ describe Partializer do
         CExtractorTypes::CVariableDeclaration.new( name: name, type: type, decorators: ['extern'], text: "#{type} #{name};" )
       end
 
-      # Each file's raw directives-only copy, present only where `copies` gives its text
+      # Each file's raw directives-only copy, present only where `copies` gives its text. Files and
+      # copies are read as bytes, since the search needs nothing more.
       def stub_texts(header:, source:, copies: {})
-        allow(@file_wrapper).to receive(:read).with('src/engine.h').and_return( header )
-        allow(@file_wrapper).to receive(:read).with('src/engine.c').and_return( source )
+        allow(@file_wrapper).to receive(:read_binary).with('src/engine.h').and_return( header )
+        allow(@file_wrapper).to receive(:read_binary).with('src/engine.c').and_return( source )
         allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
         allow(@file_wrapper).to receive(:exist?) { |path| copies.key?( path ) }
-        copies.each { |path, text| allow(@file_wrapper).to receive(:read).with( path ).and_return( text ) }
+        copies.each { |path, text| allow(@file_wrapper).to receive(:read_binary).with( path ).and_return( text ) }
       end
 
-      def incomplete_for(c_module)
+      def incomplete_for(c_module, fallback: false)
         allow(@partializer_helper).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
         @partializer.plan_carry(
           test: 'test_engine', partial: 'engine', c_module: c_module, impl: [], interface: nil,
-          fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
+          fallback: fallback, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
         ).incomplete
       end
 
@@ -734,6 +735,33 @@ describe Partializer do
         expect( incomplete_for( c_module ) ).to be_empty
       end
 
+      # Fallback writes no raw copy, so any copy on disk is stale
+      it "reads no raw copy under fallback preprocessing" do
+        stub_texts(
+          header: "#include \"point.h\"\nextern struct point_s origin;\n", source: '',
+          copies: { 'raw/src/engine.h' => "struct point_s {\n  int x;\n};\n" }
+        )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect(@file_wrapper).not_to receive(:read_binary).with('raw/src/engine.h')
+        expect( incomplete_for( c_module, fallback: true ) ).to eq( Set['origin'] )
+      end
+
+      it "still searches the module's own files under fallback preprocessing" do
+        stub_texts( header: "extern struct point_s origin;\n", source: "struct point_s { int x; };\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module, fallback: true ) ).to be_empty
+      end
+
+      # A file read as bytes may hold CRLF line endings and bytes no encoding accepts
+      it "finds the completing definition in text read as bytes" do
+        stub_texts( header: "extern struct point_s origin;\n".b, source: "/* \xFF */\r\nstruct point_s\r\n{ int x; };\r\n".b )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+
       # A tag that merely ends in the variable's tag completes a different type
       it "does not take a longer tag's definition for the variable's own" do
         stub_texts( header: "extern struct point_s origin;\n", source: "struct my_point_s { int x; };\n" )
@@ -744,6 +772,7 @@ describe Partializer do
 
       it "reads no file when no extern variable names a struct or union" do
         expect(@file_wrapper).not_to receive(:read)
+        expect(@file_wrapper).not_to receive(:read_binary)
         c_module = CExtractorTypes::CModule.new( variable_declarations: [
           extern_var( 'count', 'int' ),
           extern_var( 'next', 'struct node_s*' ),

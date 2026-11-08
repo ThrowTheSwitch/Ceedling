@@ -73,7 +73,7 @@ Two rules hold helpers back. A module header without an include guard cannot be 
 
 The result is a `Partials::CarryPlan`. It holds the carried prototypes, the carried helpers by name, and the skipped names, each with a one-line reason. Prototypes are indexed by object identity, since the generator later walks the very declarations the plan chose. `Partializer#plan_carry` then locates each carried prototype in its original file’s own text, reading each file once, so its `#line` can name the right file and line.
 
-The plan also names each `extern` variable whose struct or union type the module never completes. No definition of such a variable compiles, weak or not. `Partializer#plan_carry` looks for the type’s completing definition in the module’s files and in their raw directives-only copies, which hold every header each file includes.
+The plan also names each `extern` variable whose struct or union type the module never completes. No definition of such a variable compiles, weak or not. `Partializer#plan_carry` looks for the type’s completing definition in the module’s files and in their raw directives-only copies, which hold every header each file includes. It reads them all as bytes. Fallback preprocessing writes no raw copy, so there it searches the module’s files alone.
 
 ## Writing the Generated Files
 

@@ -165,19 +165,20 @@ class PartializerUtils
     @code_finder.find_in_c_file(filepath, code_block)
   end
 
-  # Locate a declaration's line number in the text of the file it came from.
+  # Locate each declaration's line number in the text of the file it came from.
   #
   # The original file holds only its own lines, so a match there can't belong to a header it
   # includes. Preprocessed output can't promise that, since it carries every included header.
   #
-  # Comments are blanked first, newlines kept, so a commented-out copy of the declaration is
-  # never taken for it.
+  # Comments are blanked first, newlines kept, so a commented-out copy of a declaration is
+  # never taken for it. Blanking passes over the whole file, so it happens once for them all.
   #
-  # @param signature [String] Declaration text as extracted, ending in its semicolon
-  # @param text      [String] Full text of the original header or source file
-  # @return [Integer, nil] 1-indexed line number, or nil if not found
-  def locate_declaration_in_text(signature:, text:)
-    return @code_finder.find_in_c_string( _without_comments( text ), signature )
+  # @param signatures [Array<String>] Declaration texts as extracted, each ending in its semicolon
+  # @param text       [String] Full text of the original header or source file
+  # @return [Array<Integer, nil>] Each declaration's 1-indexed line number, or nil if not found
+  def locate_declarations_in_text(signatures:, text:)
+    code = _without_comments( text )
+    return signatures.map { |signature| @code_finder.find_in_c_string( code, signature ) }
   end
 
   # Locate a function's line number using preprocessed output with C source fallback.

@@ -1341,21 +1341,24 @@ describe PartializerHelper do
   context "#associate_declaration_line_numbers" do
     require 'ceedling/c_extractor/c_extractor_types'
 
+    # One call locates every declaration from the file
     it "records each declaration's file and its line in that file's own text" do
-      decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);', line_num: 1)
-      allow(@partializer_utils).to receive(:locate_declaration_in_text)
-        .with(signature: 'int tick(void);', text: "#include \"x.h\"\nint tick(void);\n").and_return(2)
+      tick = CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);', line_num: 1)
+      tock = CExtractorTypes::CFunctionDeclaration.new(name: 'tock', signature: 'int tock(void);', line_num: 1)
+      text = "#include \"x.h\"\nint tick(void);\nint tock(void);\n"
+      expect(@partializer_utils).to receive(:locate_declarations_in_text)
+        .with(signatures: ['int tick(void);', 'int tock(void);'], text: text).once.and_return([2, 3])
 
-      @helper.associate_declaration_line_numbers(decls: [decl], filepath: 'src/mod.c', text: "#include \"x.h\"\nint tick(void);\n")
+      @helper.associate_declaration_line_numbers(decls: [tick, tock], filepath: 'src/mod.c', text: text)
 
-      expect(decl.source_filepath).to eq('src/mod.c')
-      expect(decl.line_num).to eq(2)
+      expect([tick, tock].map(&:source_filepath)).to eq(['src/mod.c', 'src/mod.c'])
+      expect([tick, tock].map(&:line_num)).to eq([2, 3])
     end
 
     # Without a location the declaration is written without a #line, so nothing is reported
     it "leaves the line unset when the declaration is not found" do
       decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);', line_num: 1)
-      allow(@partializer_utils).to receive(:locate_declaration_in_text).and_return(nil)
+      allow(@partializer_utils).to receive(:locate_declarations_in_text).and_return([nil])
 
       @helper.associate_declaration_line_numbers(decls: [decl], filepath: 'src/mod.c', text: '')
 

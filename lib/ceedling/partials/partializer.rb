@@ -96,7 +96,7 @@ class Partializer
 
     filepaths = { header: header_filepath, source: source_filepath }
     _locate_carried( plan, filepaths )
-    plan.incomplete.merge( _incomplete_variables( c_module, filepaths.values.compact, test ) )
+    plan.incomplete.merge( _incomplete_variables( c_module, filepaths.values.compact, test, fallback ) )
 
     _log_plan( test, partial, plan, header_filepath )
     return plan
@@ -563,13 +563,14 @@ class Partializer
 
   # Variables the module declares `extern` whose struct or union type is never completed,
   # directly or through a typedef the module makes. No definition of one compiles, weak or not.
-  # The module's own files are searched for the completing definition, and so are their
+  # The module's own files are searched for the completing definition, and so are their raw
   # directives-only copies where those exist, since a copy holds every header its file includes.
-  def _incomplete_variables(c_module, filepaths, test)
+  # Fallback preprocessing writes no raw copy, so any copy on disk is stale and goes unread.
+  def _incomplete_variables(c_module, filepaths, test, fallback)
     candidates = _extern_aggregates( c_module )
     return Set.new if candidates.empty?
 
-    texts = _translation_unit_texts( filepaths, test )
+    texts = _translation_unit_texts( filepaths, test, fallback )
     return Set.new( candidates.filter_map { |var, tag| var.name unless _completed?( tag, texts ) } )
   end
 
@@ -595,9 +596,11 @@ class Partializer
     return tags
   end
 
-  def _translation_unit_texts(filepaths, test)
-    copies = filepaths.map { |filepath| @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test ) }
-    return (filepaths + copies.select { |copy| @file_wrapper.exist?( copy ) }).map { |path| @file_wrapper.read( path ).clean_encoding }
+  # Each file and, outside fallback, its raw copy, read as bytes, which is all the search needs.
+  # Transcoding a raw copy would cost far more than reading it.
+  def _translation_unit_texts(filepaths, test, fallback)
+    copies = fallback ? [] : filepaths.map { |filepath| @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test ) }
+    return (filepaths + copies.select { |copy| @file_wrapper.exist?( copy ) }).map { |path| @file_wrapper.read_binary( path ) }
   end
 
   def _completed?(tag, texts)

@@ -585,19 +585,30 @@ describe PartializerUtils do
     end
   end
 
-  context "#locate_declaration_in_text" do
-    it "returns the line where the declaration appears in the text" do
-      expect(@code_finder).to receive(:find_in_c_string)
-        .with("int a;\nint tick(void);\n", 'int tick(void);')
-        .and_return(2)
+  context "#locate_declarations_in_text" do
+    it "returns the line where each declaration appears in the text, in order" do
+      text = "int a;\nint tick(void);\nint tock(void);\n"
+      expect(@code_finder).to receive(:find_in_c_string).with(text, 'int tock(void);').and_return(3)
+      expect(@code_finder).to receive(:find_in_c_string).with(text, 'int tick(void);').and_return(2)
 
-      expect(@utils.locate_declaration_in_text(signature: 'int tick(void);', text: "int a;\nint tick(void);\n")).to eq(2)
+      expect(@utils.locate_declarations_in_text(signatures: ['int tock(void);', 'int tick(void);'], text: text)).to eq([3, 2])
     end
 
-    it "returns nil when the declaration is not in the text" do
+    it "returns nil for a declaration not in the text" do
       allow(@code_finder).to receive(:find_in_c_string).and_return(nil)
 
-      expect(@utils.locate_declaration_in_text(signature: 'int tick(void);', text: '')).to be_nil
+      expect(@utils.locate_declarations_in_text(signatures: ['int tick(void);'], text: '')).to eq([nil])
+    end
+
+    # Blanking costs a pass over the whole file, so one blanked copy serves every declaration
+    it "searches every declaration in one blanked copy of the text" do
+      searched = []
+      allow(@code_finder).to receive(:find_in_c_string) { |text, _signature| searched << text; nil }
+
+      @utils.locate_declarations_in_text(signatures: ['int tick(void);', 'int tock(void);'], text: "/* c */\nint tick(void);\n")
+
+      expect(searched.size).to eq(2)
+      expect(searched.map(&:object_id).uniq.size).to eq(1)
     end
 
     # A commented-out copy of the declaration would otherwise be found first
@@ -608,14 +619,14 @@ describe PartializerUtils do
         .with("#{' ' * line_comment.length}\n#{' ' * block_comment.length}\nint tick(void);\n", 'int tick(void);')
         .and_return(3)
 
-      @utils.locate_declaration_in_text(signature: 'int tick(void);', text: "#{line_comment}\n#{block_comment}\nint tick(void);\n")
+      @utils.locate_declarations_in_text(signatures: ['int tick(void);'], text: "#{line_comment}\n#{block_comment}\nint tick(void);\n")
     end
 
     it "keeps a comment marker inside a string literal" do
       text = "int open(const char *url) __attribute__((deprecated(\"see http://x\")));\n"
       expect(@code_finder).to receive(:find_in_c_string).with(text, 'int open(void);').and_return(nil)
 
-      @utils.locate_declaration_in_text(signature: 'int open(void);', text: text)
+      @utils.locate_declarations_in_text(signatures: ['int open(void);'], text: text)
     end
   end
 

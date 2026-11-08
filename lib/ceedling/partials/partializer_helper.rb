@@ -190,16 +190,19 @@ class PartializerHelper
   # Record where each declaration sits in its original file.
   #
   # A carried prototype is written behind a #line naming this file and line, so a diagnostic
-  # points at the user's own declaration. Callers pass the file's text, read once per file.
-  # A declaration that can't be found keeps no line and is written without a #line.
+  # points at the user's own declaration. Callers pass the file's text, read once per file. Its
+  # comments are blanked once for every declaration. A declaration that can't be found keeps no
+  # line and is written without a #line.
   #
   # @param decls    [Array<CFunctionDeclaration>] Declarations extracted from one file, updated in place
   # @param filepath [String] Path of the original header or source file
   # @param text     [String] That file's full text
   def associate_declaration_line_numbers(decls:, filepath:, text:)
-    decls.each do |decl|
+    lines = @utils.locate_declarations_in_text( signatures: decls.map( &:signature ), text: text )
+
+    decls.zip( lines ) do |decl, line_num|
       decl.source_filepath = filepath
-      decl.line_num        = @utils.locate_declaration_in_text( signature: decl.signature, text: text )
+      decl.line_num        = line_num
     end
   end
 
