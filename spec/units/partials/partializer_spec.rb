@@ -1945,6 +1945,28 @@ describe Partializer do
       allow(@file_wrapper).to receive(:exist?).and_return(false)
       # static var extraction/promotion called for every file processed; stub by default
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
+      allow(@partializer_helper).to receive(:validate_function_names_readable)
+    end
+
+    # Every later step finds a definition by its name
+    it "stops on a definition it can't name before anything reads the name" do
+      unnamed = CExtractorTypes::CFunctionDefinition.new(name: nil, signature: 'int count$all(void)')
+      source_contents = CExtractorTypes::CModule.new(function_definitions: [unnamed])
+
+      config = PartializerConfig::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
+      )
+
+      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
+      expect(@partializer_helper).to receive(:validate_function_names_readable)
+        .with(source_contents, @name, 'module1').and_raise(CeedlingException, 'unreadable')
+      expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
+      expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
+
+      expect { @partializer.extract_module_contents(@name, config, fallback: false) }
+        .to raise_error(CeedlingException, 'unreadable')
     end
 
     it "returns empty CModule when both directives_only_filepaths are nil" do

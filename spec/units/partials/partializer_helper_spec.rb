@@ -653,6 +653,68 @@ describe PartializerHelper do
   end
 
   ###
+  ### validate_function_names_readable()
+  ###
+
+  context "#validate_function_names_readable" do
+    def defined(name, signature)
+      CExtractorTypes::CFunctionDefinition.new( name: name, signature: signature )
+    end
+
+    it "does not raise when every definition has a name" do
+      c_module = CExtractorTypes::CModule.new(
+        function_definitions:  [defined( 'ticker_get', 'int (*ticker_get(void))(int)' )],
+        function_declarations: [CExtractorTypes::CFunctionDeclaration.new( name: 'ticker_count', signature: 'int ticker_count(void);' )]
+      )
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }.not_to raise_error
+    end
+
+    it "names the test, the module and the signature of a definition without a name" do
+      c_module = CExtractorTypes::CModule.new(
+        function_definitions: [defined( 'ticker_count', 'int ticker_count(void)' ), defined( nil, 'int (*ticker_get(void))(int)' )]
+      )
+
+      message = <<~MESSAGE.chomp
+        Partial test_ticker::ticker ⏩️ Cannot read the name of the function declared by `int (*ticker_get(void))(int)`.
+
+        OPTIONS:
+          1. If it returns or takes a function pointer, give that type a name with a typedef and use the name in this declaration.
+          2. If a macro generates the declaration, declare the function directly.
+      MESSAGE
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
+        .to raise_error( CeedlingException ) { |error| expect( error.message ).to eq( message ) }
+    end
+
+    # A prototype is written word for word and CMock reads its own name, so neither needs one
+    it "leaves a declaration without a name alone" do
+      c_module = CExtractorTypes::CModule.new(
+        function_declarations: [CExtractorTypes::CFunctionDeclaration.new( name: nil, signature: 'int count$all(void);' )]
+      )
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }.not_to raise_error
+    end
+
+    it "collapses whitespace in the signature it shows" do
+      c_module = CExtractorTypes::CModule.new( function_definitions: [defined( nil, "int  count$all(\n  void )" )] )
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
+        .to raise_error( CeedlingException, /declared by `int count\$all\( void \)`\./ )
+    end
+
+    # Extraction reads raw bytes, which may hold any character
+    it "shows a signature read as raw bytes" do
+      signature = "int caf\xC3\xA9$x(void)".b
+      c_module  = CExtractorTypes::CModule.new( function_definitions: [defined( nil, signature )] )
+
+      expect( signature.encoding ).to eq( Encoding::BINARY )
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
+        .to raise_error( CeedlingException, /declared by `int café\$x\(void\)`\./ )
+    end
+  end
+
+  ###
   ### validate_function_names_exist()
   ###
 

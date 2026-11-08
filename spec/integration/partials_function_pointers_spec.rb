@@ -203,4 +203,18 @@ describe 'Function pointers in a Partial' do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  context 'a function whose name a Partial cannot read' do
+  # ---------------------------------------------------------------------------
+
+    # GCC accepts '$' in an identifier, and the extractor reads no name from one
+    it 'stops the build with the definition the extractor could not name' do
+      c_module = extract_c( "int count$all(void) { return 0; }\nint count_one(void);\n" )
+
+      expect( c_module.function_definitions.map( &:name ) ).to eq( [nil] )
+      expect { partials_helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
+        .to raise_error( CeedlingException, /test_ticker::ticker .* declared by `int count\$all\(void\)`\./ )
+    end
+  end
+
 end

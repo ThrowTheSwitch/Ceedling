@@ -459,6 +459,7 @@ class Partializer
   # Extracts one of a module's files, a header or a source, ready to merge with the other.
   def _extract_file_contents(name, config, c_file, file_type, fallback)
     c_module = @c_extractor.from_file( c_file.directives_only_filepath )
+    @helper.validate_function_names_readable( c_module, name, config.module )
 
     _log_module_contents(name, config.module, file_type, c_module)
 
