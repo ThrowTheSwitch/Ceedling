@@ -8,6 +8,7 @@
 
 require 'set'
 require 'spec_helper'
+require 'timeout'
 require 'ceedling/partials/partializer_helper'
 require 'ceedling/partials/partializer_utils'
 require 'ceedling/partials/partials'
@@ -1260,6 +1261,17 @@ describe PartializerHelper do
       twice = decl( 'int twice(void);' )
 
       @helper.mark_inline_elsewhere( decls: [twice], text: "int a;\n#define LOCAL static\ninline int twice(void) { return 2; }\n" )
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
+    # A raw copy holds every header the file includes, so the scan has to stay linear in its size.
+    # A long stretch with no statement break ahead of the definition is the costly shape.
+    it "scans a long stretch with no statement break in linear time" do
+      twice = decl( 'int twice(void);' )
+      text  = ("#define LIMIT 1\n" * 20_000) + ";\ninline int twice(void) { return 2; }\n"
+
+      Timeout.timeout( 5 ) { @helper.mark_inline_elsewhere( decls: [twice], text: text ) }
 
       expect( twice.inline_elsewhere ).to be(true)
     end

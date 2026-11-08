@@ -668,15 +668,33 @@ class PartializerHelper
     return text.gsub( Partials::LITERAL_OR_COMMENT ) { |blanked| blanked.gsub( /[^\n]/, ' ' ) }
   end
 
-  # Whether the text defines the function inline with external linkage. The words ahead of a
-  # definition's name run back to the previous `;` or brace, directive lines aside.
+  # Whether the text defines the function inline with external linkage. Each place the name
+  # opens a parameter list is a definition when a body follows. The words ahead of the name
+  # run back to the previous `;` or brace, directive lines aside. Searching for the name first
+  # keeps the scan linear in a raw copy that holds every header the file includes.
   def _inline_definition?(text, name)
-    text.scan( /([^;{}]*?)(?<!\w)#{Regexp.escape( name )}\s*\([^;{}]*\)\s*\{/ ) do |(prefix)|
-      words = prefix.lines.reject { |line| line.lstrip.start_with?( '#' ) }.join.split( /\W+/ )
-      return true if Partials.inline?( words ) and !Partials.static?( words )
+    scanner = StringScanner.new( text )
+    pattern = /(?<!\w)#{Regexp.escape( name )}\s*\(/
+
+    while scanner.skip_until( pattern )
+      start = scanner.pos - scanner.matched_size
+      next unless scanner.match?( /[^;{}]*\)\s*\{/ )
+
+      return true if _inline_words?( _words_before( text, start ) )
     end
 
     return false
+  end
+
+  def _words_before(text, position)
+    boundary = position.zero? ? nil : text.rindex( /[;{}]/, position - 1 )
+    prefix   = text[(boundary ? boundary + 1 : 0)...position]
+
+    return prefix.lines.reject { |line| line.lstrip.start_with?( '#' ) }.join.split( /\W+/ )
+  end
+
+  def _inline_words?(words)
+    return (Partials.inline?( words ) and !Partials.static?( words ))
   end
 
   def _helper?(definitions)
