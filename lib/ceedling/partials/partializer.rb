@@ -79,12 +79,12 @@ class Partializer
   # Decides what the Partial's implementation source carries beyond its selected functions.
   # See PartializerHelper#plan_carry for the categories it applies.
   #
-  # @param test           [String] Test name (for log messages)
-  # @param partial        [String] Partial module name (for log messages)
-  # @param c_module       [CExtractorTypes::CModule] The module's merged contents
-  # @param impl           [Array<Partials::FunctionDefinition>] Functions selected to test
-  # @param interface      [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
-  # @param fallback       [Boolean] Whether fallback preprocessing produced the module's copies
+  # @param test            [String] Test name (for log messages)
+  # @param partial         [String] Partial module name (for log messages)
+  # @param c_module        [CExtractorTypes::CModule] The module's merged contents
+  # @param impl            [Array<Partials::FunctionDefinition>] Functions selected to test
+  # @param interface       [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
+  # @param fallback        [Boolean] Whether fallback preprocessing produced the module's copies
   # @param header_guarded  [Boolean] Whether the module header has an include guard
   # @param header_filepath [String, nil] The module header, named in notices
   # @param source_filepath [String, nil] The module source
@@ -94,14 +94,11 @@ class Partializer
       c_module: c_module, impl: impl, interface: interface, fallback: fallback, header_guarded: header_guarded
     )
 
-    _locate_carried( plan, { header: header_filepath, source: source_filepath } )
+    filepaths = { header: header_filepath, source: source_filepath }
+    _locate_carried( plan, filepaths )
+    plan.incomplete.merge( _incomplete_variables( c_module, filepaths.values.compact, test ) )
 
-    _log_carried( test, partial, plan )
-    plan.skipped.each { |skipped| _log_not_carried( test, partial, skipped ) }
-
-    unguarded = plan.skipped.select { |skipped| skipped.kind == :unguarded_helper }.map( &:item )
-    _log_unguarded_helpers( test, partial, unguarded, header_filepath ) unless unguarded.empty?
-
+    _log_plan( test, partial, plan, header_filepath )
     return plan
   end
 
@@ -532,6 +529,49 @@ class Partializer
     )
   end
 
+  # Variables the module declares `extern` whose struct or union type is never completed,
+  # directly or through a typedef the module makes. No definition of one compiles, weak or not.
+  # The module's own files are searched for the completing definition, and so are their
+  # directives-only copies where those exist, since a copy holds every header its file includes.
+  def _incomplete_variables(c_module, filepaths, test)
+    candidates = _extern_aggregates( c_module )
+    return Set.new if candidates.empty?
+
+    texts = _translation_unit_texts( filepaths, test )
+    return Set.new( candidates.filter_map { |var, tag| var.name unless _completed?( tag, texts ) } )
+  end
+
+  # Each extern variable whose type names a struct or union by value, paired with its tag
+  def _extern_aggregates(c_module)
+    tags = _aggregate_tags( c_module )
+    return c_module.variable_declarations.filter_map { |v| [v, tags[v.type.to_s]] if v.extern? and tags.key?( v.type.to_s ) }
+  end
+
+  # Each type a variable may name by value that is a struct or union tag, keyed to its tag. A
+  # pointer to an incomplete type is complete itself, so only `struct x` and typedef names count.
+  def _aggregate_tags(c_module)
+    tags = {}
+    c_module.variable_declarations.each do |v|
+      tag = v.type.to_s[/\A(?:struct|union)\s+(\w+)\z/, 1]
+      tags[v.type] = tag if tag
+    end
+    c_module.type_definitions.each do |typedef|
+      match = typedef.text.match( /\Atypedef\s+(?:struct|union)\s+(\w+)\s+(\w+)\s*;/ )
+      tags[match[2]] = match[1] if match
+    end
+
+    return tags
+  end
+
+  def _translation_unit_texts(filepaths, test)
+    copies = filepaths.map { |filepath| @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test ) }
+    return (filepaths + copies.select { |copy| @file_wrapper.exist?( copy ) }).map { |path| @file_wrapper.read( path ).clean_encoding }
+  end
+
+  def _completed?(tag, texts)
+    return texts.any? { |text| text.match?( /(?<!\w)(?:struct|union)\s+#{Regexp.escape( tag )}\s*\{/ ) }
+  end
+
   # A carried prototype is written behind a #line naming its own file and line. Each is found in
   # its original file's own text, where no included header's lines can be mistaken for it. Only
   # carried prototypes are located, since each costs a search of the file.
@@ -544,6 +584,14 @@ class Partializer
         decls: decls, filepath: filepath, text: @file_wrapper.read( filepath ).clean_encoding
       )
     end
+  end
+
+  def _log_plan(test, partial, plan, header_filepath)
+    _log_carried( test, partial, plan )
+    plan.skipped.each { |skipped| _log_not_carried( test, partial, skipped ) }
+
+    unguarded = plan.skipped.select { |skipped| skipped.kind == :unguarded_helper }.map( &:item )
+    _log_unguarded_helpers( test, partial, unguarded, header_filepath ) unless unguarded.empty?
   end
 
   # Lists what a Partial carries and why, so a user can trace what its implementation holds

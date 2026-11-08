@@ -64,12 +64,16 @@ implementation source decides what to write for the variable.
   from the test file, takes precedence over it. When nothing else defines the
   variable, the weak definition stands in, so the test links either way. The
   weak attribute sits behind `#if defined(__GNUC__)`. Other compilers get a
-  plain definition.
+  plain definition, which collides with a real one. A test built with such a
+  compiler that links the defining module needs `:test`.
 * `:test` writes no definition. The test file, or a module the test links,
   must define the variable.
 
 A variable your module defines itself is written where your module defines
-it, whatever this setting says.
+it, whatever this setting says. A variable whose struct or union type your
+module never completes gets no definition under either setting, since no
+definition of an incomplete type compiles. The module that completes the type
+must define the variable.
 
 **Default**: `:weak`
 

@@ -1506,6 +1506,30 @@ describe GeneratorPartials do
       expect(buf.string.scan('mode').size).to eq(1)
       expect(buf.string).to include('int mode = 3;')
     end
+
+    # A header and its source may both declare the same extern variable
+    it "writes one weak definition for a variable declared extern more than once" do
+      c_module = make_module(
+        make_var(name: 'board_count', type: 'int', text: 'int board_count;', decorators: ['extern']),
+        make_var(name: 'board_count', type: 'int', text: 'int board_count;', decorators: ['extern'])
+      )
+
+      @generator.send(:generate_source, buf, [], [], c_module)
+
+      expect(buf.string.scan('__attribute__((weak)) int board_count;').size).to eq(1)
+    end
+
+    # A definition of a type never completed in the module's translation unit cannot compile
+    it "writes no weak definition for a variable the plan marks incomplete" do
+      c_module = make_module(
+        make_var(name: 'handle', type: 'struct handle_s', text: 'struct handle_s handle;', decorators: ['extern'])
+      )
+      carry = Partials::CarryPlan.new( incomplete: Set['handle'] )
+
+      @generator.send(:generate_source, buf, [], [], c_module, carry: carry)
+
+      expect(buf.string).not_to include('handle')
+    end
   end
 
   context "#generate_source (private method) carrying unselected content" do

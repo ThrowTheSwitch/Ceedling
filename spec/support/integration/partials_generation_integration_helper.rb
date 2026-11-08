@@ -764,9 +764,11 @@ module PartialsGenerationHelpers
     FileWrapper.new( loginator: partials_null_loginator, verbosinator: partials_null_verbosinator )
   end
 
+  # No build tree exists, so preprocessed copies resolve under a path that holds none, as when
+  # directives-only preprocessing is unavailable
   def partials_file_path_utils
     FilePathUtils.new(
-      configurator: RSpec::Mocks::Double.new( 'Configurator' ).as_null_object,
+      configurator: RSpec::Mocks::Double.new( 'Configurator', project_test_preprocess_files_path: '/no/preprocessed/files' ).as_null_object,
       file_wrapper: partials_file_wrapper
     )
   end

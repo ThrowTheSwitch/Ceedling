@@ -23,8 +23,10 @@ generated `_impl.h` header declares it `extern`. By default, the generated
 `_impl.c` file gives it a weak definition. A real definition, from a module
 your test links or from the test file itself, takes precedence over the weak
 one. When nothing else defines the variable, the weak definition stands in.
-The [`:partials` ↳ `:extern_variables`](../../configuration/reference/partials.md#extern_variables)
-setting can leave the definition to your test instead.
+Weak definitions need a GCC-compatible compiler, such as GCC or Clang. The
+[`:partials` ↳ `:extern_variables`](../../configuration/reference/partials.md#extern_variables)
+setting can leave the definition to your test instead, and describes the
+exceptions.
 
 ### Partial file-scoped static variable example
 

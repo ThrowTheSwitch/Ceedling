@@ -10,32 +10,11 @@ require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/generators/partial_source_writer'
 
 class GeneratorPartials
 
-  # Carried prototypes can repeat a declaration a header already made. These pragmas keep GCC's
-  # -Wredundant-decls quiet for just those lines. Compilers that don't define __GNUC__ never see them.
-  REDUNDANT_DECLS_PUSH = "#if defined(__GNUC__)\n#pragma GCC diagnostic push\n#pragma GCC diagnostic ignored \"-Wredundant-decls\"\n#endif\n" unless const_defined?(:REDUNDANT_DECLS_PUSH, false)
-  REDUNDANT_DECLS_POP  = "#if defined(__GNUC__)\n#pragma GCC diagnostic pop\n#endif\n" unless const_defined?(:REDUNDANT_DECLS_POP, false)
-
   constructor :file_wrapper, :file_path_utils, :loginator
-
-  # Passes writes through and counts the lines written, so a #line can name this file's own next line
-  class LineCountingIO
-    attr_reader :lines
-
-    def initialize(io)
-      @io    = io
-      @lines = 0
-    end
-
-    def <<(text)
-      text = text.to_s
-      @io << text
-      @lines += text.count( "\n" )
-      return self
-    end
-  end
 
   # A module named by directory produces a nested filename, and nothing upstream creates
   # that directory. The file write itself does not create one either.
@@ -210,17 +189,17 @@ class GeneratorPartials
   #
   # @param decl [CExtractorTypes::CVariableDeclaration]
   # @return [String] e.g. "volatile " / "const volatile " / "" (trailing space when non-empty)
+  def qualifier_prefix(decl)
+    quals = decl.decorators.select { |kw| CExtractorConstants::TYPE_QUALIFIER_KEYWORDS.include?(kw) }
+    quals.empty? ? '' : "#{quals.join(' ')} "
+  end
+
   # A definition for a variable the module only declares `extern`. Weak, it satisfies the link
   # when nothing else defines the variable and yields to a real definition without a duplicate
   # symbol. A compiler without GCC's weak attribute gets a plain definition.
   def weak_definition(decl)
     text = "#{qualifier_prefix(decl)}#{decl.text}"
     return "#if defined(__GNUC__)\n__attribute__((weak)) #{text}\n#else\n#{text}\n#endif\n"
-  end
-
-  def qualifier_prefix(decl)
-    quals = decl.decorators.select { |kw| CExtractorConstants::TYPE_QUALIFIER_KEYWORDS.include?(kw) }
-    quals.empty? ? '' : "#{quals.join(' ')} "
   end
 
   # Emit a partial header file.
@@ -316,134 +295,70 @@ class GeneratorPartials
 
   # Emit a partial source file.
   #
-  # Iterates c_module.element_sequence to emit CVariableDeclaration and
-  # CFunctionDefinition items, plus bare-macro-invocation CStatements specifically (see
-  # the CStatement branch below for why only that one CStatement category belongs
-  # here), in their original extraction order. Every other CStatement category and
-  # CFunctionDeclaration items are skipped (they belong in headers). Function items
-  # are matched by name against function_definitions (pre-filtered
-  # Partials::FunctionDefinition objects). Any entries not found in element_sequence
-  # are emitted afterward.
+  # Iterates c_module.element_sequence and writes, in their original extraction order:
+  #   - the selected functions, matched by name against function_definitions;
+  #   - the header helpers and prototypes the carry plan carries;
+  #   - variable definitions, and for a variable the module only declares `extern`, what
+  #     `extern_variables` asks for;
+  #   - bare macro invocations, the one CStatement category that belongs here. A real function
+  #     definition, once such a macro is applied, would violate the one-definition rule the
+  #     moment more than one compiled object contains it. This is the one file that compiles to
+  #     the one object the real definition can safely live in.
+  # Every other CStatement category belongs in a header.
   #
-  # @param io                   [IO]     Output file handle
-  # @param includes             [Array]  Include directives
-  # @param function_definitions [Array]  Pre-filtered Partials::FunctionDefinition objects
-  # @param c_module             [CExtractorTypes::CModule] Merged module with element_sequence
+  # @param io                       [IO]      Output file handle
+  # @param includes                 [Array]   Include directives
+  # @param function_definitions     [Array]   Pre-filtered Partials::FunctionDefinition objects
+  # @param c_module                 [CExtractorTypes::CModule] Merged module with element_sequence
+  # @param carry                    [Partials::CarryPlan] What the source carries beyond the selection
+  # @param suppress_redundant_decls [Boolean] Whether carried prototypes sit inside GCC pragmas
+  # @param extern_variables         [Symbol]  :weak or :test, for variables the module only declares
+  # @param filepath                 [String, nil] This file's own path, for handing #line attribution back
   def generate_source(io, includes, function_definitions, c_module, carry: Partials::CarryPlan.new,
                       suppress_redundant_decls: true, extern_variables: :weak, filepath: nil)
-    io = LineCountingIO.new( io )
-    io << "// Ceedling generated file\n"
-    includes.each do |include|
-      io << "#{include}\n"
+    writer  = PartialSourceWriter.new( io: io, filepath: filepath, suppress_redundant_decls: suppress_redundant_decls )
+    context = SourceContext.new(
+      c_module: c_module, carry: carry, extern_variables: extern_variables, weak: Set.new,
+      selected: function_definitions.to_h { |f| [f.name, f] },
+      defined:  Set.new( c_module.variable_declarations.reject( &:extern? ).map( &:name ) )
+    )
+
+    writer.preamble( includes )
+    c_module.element_sequence.each { |item| _write_source_item( writer, item, context ) }
+    writer.finish
+  end
+
+  # What source generation consults about the module as it writes each item
+  SourceContext = Struct.new( :c_module, :carry, :extern_variables, :selected, :defined, :weak, keyword_init: true ) unless const_defined?(:SourceContext, false)
+
+  def _write_source_item(writer, item, context)
+    case item
+    when CExtractorTypes::CStatement
+      writer.text( "#{item.text}\n" ) if context.c_module.macro_invocations.include?( item )
+    when CExtractorTypes::CVariableDeclaration
+      text = _source_variable( item, context )
+      writer.text( text ) if text
+    when CExtractorTypes::CFunctionDefinition
+      writer.function( context.selected[item.name] || context.carry.helper( item.name ) )
+    when CExtractorTypes::CFunctionDeclaration
+      writer.prototype( item ) if context.carry.prototype?( item )
     end
+  end
 
-    io << "\n"
+  # A variable's definition, or nil. A variable the module defines is written where it does.
+  # One it only declares `extern` gets a weak definition, once, unless `extern_variables` leaves
+  # it to the test or its type is never completed, which no definition could compile with.
+  def _source_variable(var, context)
+    # `var.text` is the declaration with its leading decorator run removed (see
+    # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict qualifier on the
+    # base type is reapplied here via qualifier_prefix -- this definition's type must match the
+    # extern declaration emitted for the same variable in generate_header.
+    return "#{qualifier_prefix(var)}#{var.text}\n" unless var.extern?
+    return nil if context.extern_variables != :weak
+    return nil if context.defined.include?( var.name ) or context.carry.incomplete?( var.name )
+    return nil unless context.weak.add?( var.name )
 
-    func_by_name = function_definitions.to_h { |f| [f.name, f] }
-    emitted_funcs = {}
-    last_was_func = false
-    anything_emitted = false
-    module_defined_vars = Set.new( c_module.variable_declarations.reject( &:extern? ).map( &:name ) )
-
-    # A run of carried prototypes sits inside one pair of GCC diagnostic pragmas. Anything
-    # else written closes the run, and the end of the file closes the last one. Content after a
-    # run of located prototypes belongs to this file, so a #line hands attribution back to it
-    # unless what follows carries its own #line.
-    wrapped  = false
-    anchored = false
-    close_wrap = lambda do |resume = true|
-      io << REDUNDANT_DECLS_POP if wrapped
-      io << "#line #{io.lines + 2} \"#{filepath.tr( '\\', '/' )}\"\n" if anchored and resume and filepath
-      wrapped  = false
-      anchored = false
-    end
-
-    # Each carried prototype is written as the user spelled it, so `extern inline` keeps
-    # making this file hold the external definition. Its #line points a diagnostic home.
-    emit_prototype = lambda do |decl|
-      if suppress_redundant_decls and !wrapped
-        io << REDUNDANT_DECLS_PUSH
-        wrapped = true
-      end
-      if decl.line_num and decl.source_filepath
-        io << "#line #{decl.line_num} \"#{decl.source_filepath}\"\n"
-        anchored = true
-      end
-      io << decl.signature.strip << "\n"
-      last_was_func = false
-      anything_emitted = true
-    end
-
-    emit_variable = lambda do |var|
-      # An `extern` variable lives elsewhere. Its definition, if the module has one, is written
-      # where it occurs, and otherwise the setting decides.
-      if var.extern?
-        next if extern_variables != :weak or module_defined_vars.include?( var.name )
-
-        text = weak_definition( var )
-      else
-        # `var.text` is the declaration with its leading decorator run removed (see
-        # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict
-        # qualifier on the base type is reapplied here via qualifier_prefix -- this
-        # definition's type must match the extern declaration emitted for the same
-        # variable in generate_header.
-        text = "#{qualifier_prefix(var)}#{var.text}\n"
-      end
-      close_wrap.call
-      io << text
-      last_was_func = false
-      anything_emitted = true
-    end
-
-    emit_func = lambda do |func|
-      close_wrap.call( !(func.line_num and func.source_filepath) )
-      # Blank line before a function when preceded by a non-function item
-      io << "\n" if anything_emitted && !last_was_func
-      if func.line_num and func.source_filepath
-        # #line ties this generated file's code back to its original source
-        # location -- debuggers, error messages, and gcov coverage attribution
-        # all point at the real file/line instead of this generated stand-in.
-        # That mapping only holds if this file's line count matches what
-        # #line promises, which is why it's opened in binary mode above.
-        io << "#line #{func.line_num} \"#{func.source_filepath}\"\n"
-      end
-      io << func.code_block << "\n\n"
-      emitted_funcs[func.name] = true
-      last_was_func = true
-      anything_emitted = true
-    end
-
-    c_module.element_sequence.each do |item|
-      case item
-      when CExtractorTypes::CStatement
-        # Only a bare macro invocation belongs here -- see generate_header for why it's
-        # never emitted into any header (a real function definition, once the macro is
-        # actually applied, would violate the one-definition rule the moment more than
-        # one compiled object contains it). This is the one file that compiles to the
-        # one object the real definition can safely live in. Every other CStatement
-        # category (macro definitions, typedefs, aggregate definitions) belongs only in
-        # a header -- #line-anchored function bodies below are the only other code this
-        # file itself contributes.
-        next unless c_module.macro_invocations.include?(item)
-        close_wrap.call
-        io << item.text << "\n"
-        last_was_func = false
-        anything_emitted = true
-      when CExtractorTypes::CVariableDeclaration
-        emit_variable.call(item)
-      when CExtractorTypes::CFunctionDefinition
-        # A selected function, or a header helper the module's kept code calls
-        func = func_by_name[item.name] || carry.helper( item.name )
-        next unless func && !emitted_funcs[item.name]
-        emit_func.call(func)
-      when CExtractorTypes::CFunctionDeclaration
-        # Only the prototypes the carry plan chose
-        emit_prototype.call(item) if carry.prototype?( item )
-      end
-      # Every other CStatement is a header's
-    end
-
-    close_wrap.call( false )
+    return weak_definition( var )
   end
 
 

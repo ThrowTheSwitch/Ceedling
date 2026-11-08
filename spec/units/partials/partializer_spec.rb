@@ -645,6 +645,93 @@ describe Partializer do
 
       carry_with( plan )
     end
+
+    context "marking extern variables of incomplete types" do
+      def extern_var(name, type)
+        CExtractorTypes::CVariableDeclaration.new( name: name, type: type, decorators: ['extern'], text: "#{type} #{name};" )
+      end
+
+      # Each file's raw directives-only copy, present only where `copies` gives its text
+      def stub_texts(header:, source:, copies: {})
+        allow(@file_wrapper).to receive(:read).with('src/engine.h').and_return( header )
+        allow(@file_wrapper).to receive(:read).with('src/engine.c').and_return( source )
+        allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
+        allow(@file_wrapper).to receive(:exist?) { |path| copies.key?( path ) }
+        copies.each { |path, text| allow(@file_wrapper).to receive(:read).with( path ).and_return( text ) }
+      end
+
+      def incomplete_for(c_module)
+        allow(@partializer_helper).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+        @partializer.plan_carry(
+          test: 'test_engine', partial: 'engine', c_module: c_module, impl: [], interface: nil,
+          fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
+        ).incomplete
+      end
+
+      it "marks a struct variable whose struct the module only declares" do
+        stub_texts( header: "struct handle_s;\nextern struct handle_s handle;\n", source: "#include \"engine.h\"\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'handle', 'struct handle_s' )] )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
+      end
+
+      it "follows a typedef to the struct it names" do
+        stub_texts( header: "typedef struct handle_s handle_t;\nextern handle_t handle;\n", source: '' )
+        c_module = CExtractorTypes::CModule.new(
+          variable_declarations: [extern_var( 'handle', 'handle_t' )],
+          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef struct handle_s handle_t;' )]
+        )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
+      end
+
+      it "follows a typedef to the union it names" do
+        stub_texts( header: "typedef union word_u word_t;\nextern word_t word;\n", source: '' )
+        c_module = CExtractorTypes::CModule.new(
+          variable_declarations: [extern_var( 'word', 'word_t' )],
+          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef union word_u word_t;' )]
+        )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['word'] )
+      end
+
+      it "leaves alone a variable whose struct the module defines" do
+        stub_texts( header: "extern struct point_s origin;\n", source: "struct point_s { int x; };\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+
+      # A directives-only copy holds the text of every header its file includes
+      it "leaves alone a variable whose struct an included header defines" do
+        stub_texts(
+          header: "#include \"point.h\"\nextern struct point_s origin;\n", source: '',
+          copies: { 'raw/src/engine.h' => "struct point_s {\n  int x;\n};\nextern struct point_s origin;\n" }
+        )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+
+      # A tag that merely ends in the variable's tag completes a different type
+      it "does not take a longer tag's definition for the variable's own" do
+        stub_texts( header: "extern struct point_s origin;\n", source: "struct my_point_s { int x; };\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['origin'] )
+      end
+
+      it "reads no file when no extern variable names a struct or union" do
+        expect(@file_wrapper).not_to receive(:read)
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [
+          extern_var( 'count', 'int' ),
+          extern_var( 'next', 'struct node_s*' ),
+          CExtractorTypes::CVariableDeclaration.new( name: 'own', type: 'struct node_s', text: 'struct node_s own;' )
+        ] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+    end
   end
 
   context "#validate_extracted_functions" do

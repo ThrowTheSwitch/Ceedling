@@ -367,6 +367,21 @@ describe 'What a Partial carries' do
       link = link_partial( @result, references: ['table_get'], stubs: 'unsigned lut_size(void) { return sizeof(lut); }' )
       expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
     end
+
+    # No definition of a type the module never completes can compile, so the defining module supplies it
+    it 'writes no definition of an extern variable of an opaque struct' do
+      @result = generate_partial(
+        module_name: 'handle',
+        header: "#ifndef HANDLE_H\n#define HANDLE_H\nstruct handle_s;\nextern struct handle_s the_handle;\nstruct handle_s *handle_get(void);\n#endif\n",
+        source: "#include \"handle.h\"\nstruct handle_s *handle_get(void) { return &the_handle; }\n",
+        source_includes: ['handle.h'], mocks_expose: nil
+      )
+
+      expect( @result.impl_c ).not_to include( 'struct handle_s the_handle;' )
+
+      link = link_partial( @result, references: ['handle_get'], stubs: 'struct handle_s { int id; }; struct handle_s the_handle;' )
+      expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
+    end
   end
 
   # ---------------------------------------------------------------------------
