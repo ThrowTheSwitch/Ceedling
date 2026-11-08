@@ -10,6 +10,7 @@ require 'spec_helper'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partializer'
 require 'ceedling/partials/partials'
+require 'ceedling/partials/partializer_config'
 require 'ceedling/reportinator'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ostruct'
@@ -308,7 +309,7 @@ describe Partializer do
       allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
       allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'Foo',
         header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
         source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c' )
@@ -335,7 +336,7 @@ describe Partializer do
       allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
       allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'Foo',
         header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
         source: Partials::ConfigFileInfo.new( filepath: nil )
@@ -496,6 +497,292 @@ describe Partializer do
   ###
   ### validate_extracted_functions()
   ###
+
+  context "#plan_carry" do
+    it "returns the helper's plan for the module and both selections" do
+      c_module = CExtractorTypes::CModule.new
+      impl     = [Partials.manufacture_function_definition( name: 'get', signature: 'int get(void)', code_block: '' )]
+      plan     = Partials::CarryPlan.new
+
+      expect(@partializer_helper).to receive(:plan_carry).with(
+        c_module: c_module, impl: impl, interface: nil, fallback: false, header_guarded: true
+      ).and_return( plan )
+
+      result = @partializer.plan_carry(
+        test: 'test_foo', partial: 'Foo', c_module: c_module, impl: impl, interface: nil,
+        fallback: false, header_guarded: true, header_filepath: 'src/Foo.h', source_filepath: 'src/Foo.c'
+      )
+
+      expect( result ).to equal( plan )
+    end
+
+    def plan_for(prototypes: [], helpers: [], skipped: [])
+      plan = Partials::CarryPlan.new
+      prototypes.each { |sig, reason| plan.add_prototype( CExtractorTypes::CFunctionDeclaration.new( name: sig[/(\w+)\(/, 1], signature: sig ), reason ) }
+      helpers.each do |name, reason|
+        plan.add_helper( Partials.manufacture_function_definition( name: name, signature: "int #{name}(int v)", code_block: '' ), reason )
+      end
+      skipped.each { |name, kind| plan.skip( name, kind ) }
+      plan
+    end
+
+    def carry_with(plan)
+      allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+      @partializer.plan_carry(
+        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil,
+        fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
+      )
+    end
+
+    # A match in the original file can't belong to a header that file includes
+    it "locates each carried prototype in the text of the file it came from" do
+      header_proto = CExtractorTypes::CFunctionDeclaration.new( name: 'tick', signature: 'int tick(void);', origin: :header )
+      source_proto = CExtractorTypes::CFunctionDeclaration.new( name: 'twice', signature: 'extern inline int twice(void);', origin: :source )
+      plan = Partials::CarryPlan.new
+      plan.add_prototype( header_proto, 'external: no body in module' )
+      plan.add_prototype( source_proto, 'external: no body in module' )
+      allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+      allow(@file_wrapper).to receive(:read).with('src/engine.h').and_return('header text')
+      allow(@file_wrapper).to receive(:read).with('src/engine.c').and_return('source text')
+
+      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
+        decls: [header_proto], filepath: 'src/engine.h', text: 'header text'
+      )
+      expect(@partializer_helper).to receive(:associate_declaration_line_numbers).with(
+        decls: [source_proto], filepath: 'src/engine.c', text: 'source text'
+      )
+
+      carry_with( plan )
+    end
+
+    # A prototype with no known file, or from a file the module lacks, is written without a #line
+    it "searches no file for a prototype whose file is unknown" do
+      unknown = CExtractorTypes::CFunctionDeclaration.new( name: 'tick', signature: 'int tick(void);', origin: nil )
+      source  = CExtractorTypes::CFunctionDeclaration.new( name: 'twice', signature: 'int twice(void);', origin: :source )
+      plan    = Partials::CarryPlan.new
+      plan.add_prototype( unknown, 'external: no body in module' )
+      plan.add_prototype( source, 'external: no body in module' )
+      allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+
+      expect(@file_wrapper).not_to receive(:read)
+      expect(@partializer_helper).not_to receive(:associate_declaration_line_numbers)
+
+      @partializer.plan_carry(
+        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil,
+        fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: nil
+      )
+    end
+
+    it "reads no file when nothing is carried" do
+      expect(@file_wrapper).not_to receive(:read)
+
+      carry_with( Partials::CarryPlan.new )
+    end
+
+    it "lists everything carried, with reasons, at debug verbosity" do
+      plan = plan_for(
+        prototypes: [['int board_tick(void);', 'external: no body in module'], ['int engine_poll(void);', 'left out: body not selected']],
+        helpers:    [['clamp', 'helper: referenced by `engine_get`']]
+      )
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`int board_tick(void);` (external: no body in module)',
+         '`int engine_poll(void);` (left out: body not selected)',
+         '`clamp()` (helper: referenced by `engine_get`)'],
+        'Carried into Partial test_engine::engine implementation:',
+        Verbosity::DEBUG
+      )
+
+      carry_with( plan )
+    end
+
+    it "lists nothing when nothing is carried" do
+      expect(@loginator).not_to receive(:log_list)
+
+      carry_with( Partials::CarryPlan.new )
+    end
+
+    it "gives notice of a helper fallback left with more than one definition" do
+      plan = plan_for( skipped: [['clamp', :helper_conflict]] )
+
+      expect(@loginator).to receive(:log).with(
+        "Partial test_engine::engine \u23e9\ufe0f Not carrying helper `clamp()`: fallback preprocessing found more than one definition. Add `+clamp` if a selected function needs it",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      carry_with( plan )
+    end
+
+    it "gives one notice naming every helper an unguarded module header kept out" do
+      plan = plan_for( skipped: [
+        ['clamp', :unguarded_helper],
+        ['counter', :unguarded_helper]
+      ] )
+
+      allow(@loginator).to receive(:log)
+
+      carry_with( plan )
+
+      expect(@loginator).to have_received(:log).with(
+        "Partial test_engine::engine \u23e9\ufe0f Not carrying helpers `clamp()`, `counter()` from src/engine.h.\n" \
+        "Selected functions call these helpers, but src/engine.h has no include guard. Without a guard\n" \
+        "a Partial cannot stand in for the header everywhere it is included, and a carried copy could\n" \
+        "collide with the real one.\n" \
+        "\n" \
+        "OPTIONS:\n" \
+        "  1. Give src/engine.h an include guard so the Partial can stand in for it.\n" \
+        "  2. Select the helpers with `+name` (for example `+clamp`). This works only when no other\n" \
+        "     header this module includes pulls in src/engine.h.\n" \
+        "\n" \
+        "See the docs on Partials conventions.\n",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+      expect(@loginator).to have_received(:log).once
+    end
+
+    it "words the unguarded-header notice for a single helper" do
+      plan = plan_for( skipped: [['clamp', :unguarded_helper]] )
+
+      expect(@loginator).to receive(:log).with(
+        a_string_including( 'Not carrying helper `clamp()` from src/engine.h.', 'call this helper', 'Select the helper with' ),
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      carry_with( plan )
+    end
+
+    # Additions can't name a function the module only declares, so no `+name` hint follows
+    it "gives notice of a prototype fallback left with conflicting declarations" do
+      plan = plan_for( skipped: [['board_tick', :prototype_conflict]] )
+
+      expect(@loginator).to receive(:log).with(
+        "Partial test_engine::engine \u23e9\ufe0f Not carrying `board_tick()`: fallback preprocessing found conflicting declarations",
+        Verbosity::COMPLAIN,
+        LogLabels::NOTICE
+      )
+
+      carry_with( plan )
+    end
+
+    context "marking extern variables of incomplete types" do
+      def extern_var(name, type)
+        CExtractorTypes::CVariableDeclaration.new( name: name, type: type, decorators: ['extern'], text: "#{type} #{name};" )
+      end
+
+      # Each file's raw directives-only copy, present only where `copies` gives its text. Files and
+      # copies are read as bytes, since the search needs nothing more.
+      def stub_texts(header:, source:, copies: {})
+        allow(@file_wrapper).to receive(:read_binary).with('src/engine.h').and_return( header )
+        allow(@file_wrapper).to receive(:read_binary).with('src/engine.c').and_return( source )
+        allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
+        allow(@file_wrapper).to receive(:exist?) { |path| copies.key?( path ) }
+        copies.each { |path, text| allow(@file_wrapper).to receive(:read_binary).with( path ).and_return( text ) }
+      end
+
+      def incomplete_for(c_module, fallback: false)
+        allow(@partializer_helper).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+        @partializer.plan_carry(
+          test: 'test_engine', partial: 'engine', c_module: c_module, impl: [], interface: nil,
+          fallback: fallback, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
+        ).incomplete
+      end
+
+      it "marks a struct variable whose struct the module only declares" do
+        stub_texts( header: "struct handle_s;\nextern struct handle_s handle;\n", source: "#include \"engine.h\"\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'handle', 'struct handle_s' )] )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
+      end
+
+      it "follows a typedef to the struct it names" do
+        stub_texts( header: "typedef struct handle_s handle_t;\nextern handle_t handle;\n", source: '' )
+        c_module = CExtractorTypes::CModule.new(
+          variable_declarations: [extern_var( 'handle', 'handle_t' )],
+          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef struct handle_s handle_t;' )]
+        )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
+      end
+
+      it "follows a typedef to the union it names" do
+        stub_texts( header: "typedef union word_u word_t;\nextern word_t word;\n", source: '' )
+        c_module = CExtractorTypes::CModule.new(
+          variable_declarations: [extern_var( 'word', 'word_t' )],
+          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef union word_u word_t;' )]
+        )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['word'] )
+      end
+
+      it "leaves alone a variable whose struct the module defines" do
+        stub_texts( header: "extern struct point_s origin;\n", source: "struct point_s { int x; };\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+
+      # A directives-only copy holds the text of every header its file includes
+      it "leaves alone a variable whose struct an included header defines" do
+        stub_texts(
+          header: "#include \"point.h\"\nextern struct point_s origin;\n", source: '',
+          copies: { 'raw/src/engine.h' => "struct point_s {\n  int x;\n};\nextern struct point_s origin;\n" }
+        )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+
+      # Fallback writes no raw copy, so any copy on disk is stale
+      it "reads no raw copy under fallback preprocessing" do
+        stub_texts(
+          header: "#include \"point.h\"\nextern struct point_s origin;\n", source: '',
+          copies: { 'raw/src/engine.h' => "struct point_s {\n  int x;\n};\n" }
+        )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect(@file_wrapper).not_to receive(:read_binary).with('raw/src/engine.h')
+        expect( incomplete_for( c_module, fallback: true ) ).to eq( Set['origin'] )
+      end
+
+      it "still searches the module's own files under fallback preprocessing" do
+        stub_texts( header: "extern struct point_s origin;\n", source: "struct point_s { int x; };\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module, fallback: true ) ).to be_empty
+      end
+
+      # A file read as bytes may hold CRLF line endings and bytes no encoding accepts
+      it "finds the completing definition in text read as bytes" do
+        stub_texts( header: "extern struct point_s origin;\n".b, source: "/* \xFF */\r\nstruct point_s\r\n{ int x; };\r\n".b )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+
+      # A tag that merely ends in the variable's tag completes a different type
+      it "does not take a longer tag's definition for the variable's own" do
+        stub_texts( header: "extern struct point_s origin;\n", source: "struct my_point_s { int x; };\n" )
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['origin'] )
+      end
+
+      it "reads no file when no extern variable names a struct or union" do
+        expect(@file_wrapper).not_to receive(:read)
+        expect(@file_wrapper).not_to receive(:read_binary)
+        c_module = CExtractorTypes::CModule.new( variable_declarations: [
+          extern_var( 'count', 'int' ),
+          extern_var( 'next', 'struct node_s*' ),
+          CExtractorTypes::CVariableDeclaration.new( name: 'own', type: 'struct node_s', text: 'struct node_s own;' )
+        ] )
+
+        expect( incomplete_for( c_module ) ).to be_empty
+      end
+    end
+  end
 
   context "#validate_extracted_functions" do
     def make_impl(name)
@@ -1642,12 +1929,15 @@ describe Partializer do
 
       # associate_function_line_numbers is called for every file processed; stub by default
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
+      # Each file's raw directives-only copy is absent unless an example provides it
+      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
+      allow(@file_wrapper).to receive(:exist?).and_return(false)
       # static var extraction/promotion called for every file processed; stub by default
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
     end
 
     it "returns empty CModule when both directives_only_filepaths are nil" do
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: nil)
@@ -1665,12 +1955,12 @@ describe Partializer do
 
     it "extracts contents from header preprocessed file only" do
       header_funcs = [
-        double('func1', name: 'func1', signature: 'void func1(void)'),
-        double('func2', name: 'func2', signature: 'int func2(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func1', signature: 'void func1(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func2', signature: 'int func2(int x)')
       ]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
         source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
@@ -1689,12 +1979,12 @@ describe Partializer do
 
     it "extracts contents from source preprocessed file only" do
       source_funcs = [
-        double('func1', name: 'func1', signature: 'static void func1(void)'),
-        double('func2', name: 'func2', signature: 'static int func2(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func1', signature: 'static void func1(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func2', signature: 'static int func2(int x)')
       ]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
@@ -1713,17 +2003,17 @@ describe Partializer do
 
     it "extracts and merges contents from both source and header preprocessed files" do
       source_funcs = [
-        double('func1', name: 'func1', signature: 'static void func1(void)'),
-        double('func2', name: 'func2', signature: 'static int func2(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func1', signature: 'static void func1(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func2', signature: 'static int func2(int x)')
       ]
       header_funcs = [
-        double('func3', name: 'func3', signature: 'void func3(void)'),
-        double('func4', name: 'func4', signature: 'int func4(int x)')
+        CExtractorTypes::CFunctionDefinition.new(name: 'func3', signature: 'void func3(void)'),
+        CExtractorTypes::CFunctionDefinition.new(name: 'func4', signature: 'int func4(int x)')
       ]
-      source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [double('var1')])
-      header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [double('var2')])
+      source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [CExtractorTypes::CVariableDeclaration.new(name: 'var1')])
+      header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [CExtractorTypes::CVariableDeclaration.new(name: 'var2')])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
         source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
@@ -1745,10 +2035,10 @@ describe Partializer do
     end
 
     it "calls associate_function_line_numbers with the preprocessed expansion filepath, not the preprocessed filepath" do
-      source_funcs = [double('func1', name: 'func1')]
+      source_funcs = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
@@ -1765,10 +2055,10 @@ describe Partializer do
     end
 
     it "passes extraction name through to associate_function_line_numbers" do
-      source_funcs = [double('func1', name: 'func1')]
+      source_funcs = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
@@ -1786,7 +2076,7 @@ describe Partializer do
     it "returns empty CModule when a preprocessed file has no contents" do
       empty_contents = CExtractorTypes::CModule.new(function_definitions: [], variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
         source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
@@ -1809,7 +2099,7 @@ describe Partializer do
 
       source_contents = CExtractorTypes::CModule.new(function_definitions: [], variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
@@ -1826,10 +2116,10 @@ describe Partializer do
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on source" do
-      source_funcs    = [double('func1', name: 'func1')]
+      source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(
@@ -1844,6 +2134,7 @@ describe Partializer do
 
       expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
         funcs:                   source_funcs,
+        decls:                   [],
         full_expansion_filepath: '/build/preproc/full_expansion/module1.c',
         name:                    @name,
         module_name:             'module1',
@@ -1854,10 +2145,10 @@ describe Partializer do
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on header" do
-      header_funcs    = [double('func1', name: 'func1')]
+      header_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(
           filepath:               '/path/to/header.h',
@@ -1872,6 +2163,7 @@ describe Partializer do
 
       expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
         funcs:                   header_funcs,
+        decls:                   [],
         full_expansion_filepath: '/build/preproc/full_expansion/header.h',
         name:                    @name,
         module_name:             'module1',
@@ -1882,10 +2174,10 @@ describe Partializer do
     end
 
     it "does not call update_signatures_from_full_expansion when full_expansion_filepath is nil" do
-      source_funcs    = [double('func1', name: 'func1')]
+      source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
-      config = Partials::Config.new(
+      config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
         source: Partials::ConfigFileInfo.new(
@@ -1901,6 +2193,200 @@ describe Partializer do
       expect(@partializer_helper).not_to receive(:update_signatures_from_full_expansion)
 
       @partializer.extract_module_contents(@name, config, fallback: false)
+    end
+
+    it "passes each file's declarations to update_signatures_from_full_expansion" do
+      decls           = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
+      source_contents = CExtractorTypes::CModule.new(function_declarations: decls)
+
+      config = PartializerConfig::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        source: Partials::ConfigFileInfo.new(
+          filepath:                 '/src/module1.c',
+          directives_only_filepath: '/build/preproc/module1.i',
+          full_expansion_filepath:  '/build/preproc/full_expansion/module1.c'
+        )
+      )
+
+      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
+
+      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
+        hash_including( decls: decls )
+      )
+
+      @partializer.extract_module_contents(@name, config, fallback: false)
+    end
+
+    # Locating declarations costs a search of the file's text each, so only carried ones are located
+    it "leaves declarations unlocated during extraction" do
+      config = PartializerConfig::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', directives_only_filepath: '/build/preproc/module1.h'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+      )
+      decls = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: decls))
+
+      expect(@partializer_helper).not_to receive(:associate_declaration_line_numbers)
+      expect(@file_wrapper).not_to receive(:read)
+
+      @partializer.extract_module_contents(@name, config, fallback: false)
+    end
+
+    context "marking functions an included header defines inline" do
+      let(:config) do
+        PartializerConfig::Config.new(
+          module: 'engine',
+          header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+          source: Partials::ConfigFileInfo.new(filepath: 'src/engine.c', directives_only_filepath: '/build/preproc/engine.c')
+        )
+      end
+      let(:twice) { CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get_twice', signature: 'int engine_get_twice(void);' ) }
+      let(:both_files) do
+        PartializerConfig::Config.new(
+          module: 'engine',
+          header: Partials::ConfigFileInfo.new(filepath: 'src/engine.h', directives_only_filepath: '/build/preproc/engine.h'),
+          source: Partials::ConfigFileInfo.new(filepath: 'src/engine.c', directives_only_filepath: '/build/preproc/engine.c')
+        )
+      end
+
+      # The raw copy holds every header the file includes, so the inline body is found there.
+      # The scan needs only bytes, so the copy is never transcoded.
+      it "marks a source declaration against the source's raw copy, read as bytes" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+        allow(@file_wrapper).to receive(:exist?).with('raw/src/engine.c').and_return(true)
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.c').and_return('raw bytes')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'raw bytes' )
+        expect(@file_wrapper).not_to receive(:read)
+        expect(@file_path_utils).not_to receive(:form_preprocessed_file_raw_directives_only_filepath).with(nil, anything)
+
+        @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+
+      # A module mocked from its header alone has no source, and every declaration is the header's
+      it "marks a header-only Partial's declarations against the header's raw copy" do
+        header_only = PartializerConfig::Config.new(
+          module: 'engine',
+          header: Partials::ConfigFileInfo.new(filepath: 'src/engine.h', directives_only_filepath: '/build/preproc/engine.h'),
+          source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+        )
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+        allow(@file_wrapper).to receive(:exist?).with('raw/src/engine.h').and_return(true)
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'header bytes' )
+        expect(@file_path_utils).not_to receive(:form_preprocessed_file_raw_directives_only_filepath).with(nil, anything)
+
+        @partializer.extract_module_contents(@name, header_only, fallback: false)
+      end
+
+      # Each file's raw copy holds the headers that file includes, so each is searched for its own
+      it "marks each file's declarations against that file's own raw copy" do
+        tick = CExtractorTypes::CFunctionDeclaration.new( name: 'board_tick', signature: 'int board_tick(void);' )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.h').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [tick])
+        )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [twice])
+        )
+        allow(@file_wrapper).to receive(:exist?).and_return(true)
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.c').and_return('source bytes')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [tick], text: 'header bytes' )
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'source bytes' )
+
+        @partializer.extract_module_contents(@name, both_files, fallback: false)
+      end
+
+      # Only a function the module has no body for can be defined inline elsewhere
+      it "marks only the header declarations whose function has no body in the module" do
+        get  = CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get', signature: 'int engine_get(void);' )
+        tick = CExtractorTypes::CFunctionDeclaration.new( name: 'board_tick', signature: 'int board_tick(void);' )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.h').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [get, tick])
+        )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
+          CExtractorTypes::CModule.new(function_definitions: [CExtractorTypes::CFunctionDefinition.new(name: 'engine_get')])
+        )
+        allow(@file_wrapper).to receive(:exist?).and_return(true)
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [tick], text: 'header bytes' ).once
+
+        @partializer.extract_module_contents(@name, both_files, fallback: false)
+      end
+
+      it "reads no file when every declaration's function has a body in the module" do
+        get = CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get', signature: 'int engine_get(void);' )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.h').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [get])
+        )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
+          CExtractorTypes::CModule.new(function_definitions: [CExtractorTypes::CFunctionDefinition.new(name: 'engine_get')])
+        )
+
+        expect(@file_wrapper).not_to receive(:exist?)
+        expect(@file_wrapper).not_to receive(:read_binary)
+        expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
+
+        @partializer.extract_module_contents(@name, both_files, fallback: false)
+      end
+
+      it "reads no file and marks nothing without a raw copy" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+
+        expect(@file_wrapper).not_to receive(:read_binary)
+        expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
+
+        @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+
+      # Fallback writes no raw copy, so any copy on disk is stale
+      it "marks nothing under fallback preprocessing, even when a raw copy remains" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+        allow(@file_wrapper).to receive(:exist?).and_return(true)
+
+        expect(@file_wrapper).not_to receive(:read_binary)
+        expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
+
+        @partializer.extract_module_contents(@name, config, fallback: true)
+      end
+
+      it "reads no file when the file declares no function" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new)
+
+        expect(@file_wrapper).not_to receive(:exist?)
+
+        @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+    end
+
+    it "stamps every function with the role of the file it came from" do
+      header_def  = CExtractorTypes::CFunctionDefinition.new(name: 'clamp')
+      header_decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick')
+      source_def  = CExtractorTypes::CFunctionDefinition.new(name: 'get')
+      source_decl = CExtractorTypes::CFunctionDeclaration.new(name: 'twice')
+
+      config = PartializerConfig::Config.new(
+        module: 'module1',
+        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', directives_only_filepath: '/build/preproc/module1.h'),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.c')
+      )
+
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.h').and_return(
+        CExtractorTypes::CModule.new(function_definitions: [header_def], function_declarations: [header_decl])
+      )
+      allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.c').and_return(
+        CExtractorTypes::CModule.new(function_definitions: [source_def], function_declarations: [source_decl])
+      )
+
+      @partializer.extract_module_contents(@name, config, fallback: false)
+
+      expect([header_def, header_decl].map(&:origin)).to all(eq(:header))
+      expect([source_def, source_decl].map(&:origin)).to all(eq(:source))
     end
   end
 
@@ -2126,7 +2612,7 @@ describe Partializer do
 
     it "merges declaration-only functions into the DEDUCT candidate pool" do
       defn     = double('inline_func', name: 'inline_fn')
-      decl     = double('proto_func', name: 'proto_fn')
+      decl     = double('proto_func', name: 'proto_fn', decorators: [], inline_elsewhere: false)
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_inline'), double('iface_proto')]
@@ -2146,7 +2632,7 @@ describe Partializer do
 
     it "merges declaration-only functions into the PUBLIC candidate pool too" do
       defn     = double('def_func', name: 'pub_def')
-      decl     = double('decl_func', name: 'pub_decl')
+      decl     = double('decl_func', name: 'pub_decl', decorators: [], inline_elsewhere: false)
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_func')]
@@ -2164,9 +2650,66 @@ describe Partializer do
       expect(result).to eq(filtered)
     end
 
+    # Its body lives in a header the module includes, so a mock could never replace it. Mocking
+    # it would only define the function twice.
+    [Partials::DEDUCT, Partials::PRIVATE].each do |type|
+      it "keeps a declaration-only inline function out of the #{type} candidate pool" do
+        defn     = double('def_func', name: 'engine_get')
+        foreign  = double('extern_inline', name: 'engine_get_twice', decorators: ['extern', 'inline'])
+        filtered = [double('iface_func')]
+        pf       = make_pf(type: type)
+
+        expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+          .with([defn], type, :interface).and_return(filtered)
+        allow(@partializer_helper).to receive(:subtract_funcs).and_return(filtered)
+
+        @partializer.extract_interface_functions(
+          test: 'test_mod', partial: 'mod',
+          definitions: [defn], declarations: [foreign], config: make_config(mocks: pf)
+        )
+      end
+    end
+
+    # Declared without `inline`, it is still a function whose body another header holds
+    it "keeps a declaration of a function another header defines inline out of the PUBLIC candidate pool" do
+      defn     = double('def_func', name: 'engine_get')
+      foreign  = CExtractorTypes::CFunctionDeclaration.new(
+        name: 'engine_get_twice', signature: 'int engine_get_twice(void);', inline_elsewhere: true
+      )
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::PUBLIC)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn], Partials::PUBLIC, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs).and_return(filtered)
+
+      @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: [defn], declarations: [foreign], config: make_config(mocks: pf)
+      )
+    end
+
+    it "lists a declaration-only inline function it keeps out, at debug verbosity" do
+      foreign = double('extern_inline', name: 'engine_get_twice', decorators: ['extern', 'inline'])
+      pf      = make_pf(type: Partials::DEDUCT)
+      allow(@partializer_helper).to receive(:filter_and_transform_funcs).and_return([])
+      allow(@partializer_helper).to receive(:subtract_funcs).and_return([])
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`engine_get_twice`'],
+        'Not mockable for Partial test_mod::mod (inline, body outside module):',
+        Verbosity::DEBUG
+      )
+
+      @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: [], declarations: [foreign], config: make_config(mocks: pf)
+      )
+    end
+
     it "excludes a declaration already present as a definition with the same name (dedup)" do
       defn     = double('def_func', name: 'shared')
-      decl     = double('decl_func', name: 'shared') # e.g. header prototype for the same function
+      decl     = double('decl_func', name: 'shared', decorators: [], inline_elsewhere: false) # e.g. header prototype for the same function
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_func')]
@@ -2207,7 +2750,7 @@ describe Partializer do
 
     it "searches definitions then declarations for additions" do
       defs  = []
-      decls = [double('decl', name: 'decl_only')]
+      decls = [double('decl', name: 'decl_only', decorators: [], inline_elsewhere: false)]
       found = double('iface_func', name: 'decl_only')
       pf    = make_pf(type: Partials::ACCUMULATE, additions: ['decl_only'])
 

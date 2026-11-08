@@ -5,6 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/partials/carry_plan'
+
 module Partials
   # Constants
   PUBLIC     = :public     unless const_defined?(:PUBLIC)
@@ -17,19 +20,16 @@ module Partials
   MOCK_PUBLIC  = :mock_public   unless const_defined?(:MOCK_PUBLIC)
   MOCK_PRIVATE = :mock_private  unless const_defined?(:MOCK_PRIVATE)
 
+  # A string or character literal, or a comment. One pattern finds both, so whichever starts
+  # first wins, as it does for the compiler.
+  LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:LITERAL_OR_COMMENT)
+
   # Data class representing a source or header file to be partialized
   ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
     def initialize(filepath: nil, directives_only_filepath: nil, full_expansion_filepath: nil, includes: [])
       super
     end
   end unless const_defined?(:ConfigFileInfo, false)
-
-  # Data class representing a C partial to be generated
-  Config = Struct.new(:module, :types, :header, :source, keyword_init: true) do
-    def initialize(module:, types: [], header: ConfigFileInfo.new, source: ConfigFileInfo.new)
-      super
-    end
-  end unless const_defined?(:Config, false)
 
   # Data class representing a C function signature
   FunctionDeclaration = Struct.new(
@@ -60,6 +60,23 @@ module Partials
       super
     end
   end unless const_defined?(:FunctionDefinition, false)
+
+  # A `static` function is private to its file
+  def self.static?(decorators)
+    return decorators.include?( 'static' )
+  end
+
+  # Any inline specifier. `static` only narrows linkage, so it doesn't count.
+  def self.inline?(decorators)
+    return decorators.any? { |d| d != 'static' and CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
+  end
+
+  # A declaration of an inline function whose body another header holds. Under C99 a file
+  # declaring such a function `extern`, or without `inline`, holds its external definition.
+  # A declaration marked `inline` counts too, the body being nowhere else.
+  def self.foreign_inline?(decl)
+    return (inline?( decl.decorators ) or decl.inline_elsewhere) ? true : false
+  end
 
   def self.manufacture_function_declaration(line_num: nil, source_filepath: nil, name:, signature:)
     return FunctionDeclaration.new(

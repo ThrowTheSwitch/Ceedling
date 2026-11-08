@@ -10,6 +10,7 @@ require 'ceedling/exceptions'
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/c_extractor/c_extractor_functions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'strscan'
 require 'ceedling/constants'
@@ -35,6 +36,33 @@ class PartializerHelper
   # filename is naming a macro. PreprocessinatorIncludesHandler draws the same distinction for
   # the same reason, against its own copy of this pattern.
   ANY_INCLUDE_DIRECTIVE = /^\s*#\s*include\s+\S/ unless const_defined?(:ANY_INCLUDE_DIRECTIVE, false)
+
+  # Code uses a function wherever it names one. A call counts, and so do an address taken, a
+  # callback passed by name and an entry in a table of handlers.
+  C_IDENTIFIER = /(?<!\w)[A-Za-z_]\w*/ unless const_defined?(:C_IDENTIFIER, false)
+
+  # A struct or union member, or a struct, union or enum tag, which only shares a name with any function
+  C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_]\w*/ unless const_defined?(:C_MEMBER_ACCESS, false)
+  C_TAG           = /(?<!\w)(?:struct|union|enum)\s+[A-Za-z_]\w*/ unless const_defined?(:C_TAG, false)
+
+  # A local variable declared at the start of a statement. Any qualifiers come first, then a
+  # type name, any pointer stars, and the variable's name ahead of `=`, `;`, `,` or `[`. A
+  # keyword that starts a statement is no type, so `return x;` declares nothing.
+  C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_]\w*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_]\w*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
+  C_STATEMENT_KEYWORDS = %w[return goto case default else do sizeof typedef break continue].freeze unless const_defined?(:C_STATEMENT_KEYWORDS, false)
+
+  # A preprocessor directive line, matched from the line's start past any leading whitespace
+  DIRECTIVE_START = /[\t\v\f\r ]*#/ unless const_defined?(:DIRECTIVE_START, false)
+
+  # What one walk of a run has seen so far. Words on a directive line never set a specifier.
+  DefinitionWalk = Struct.new( :directive, :inline, :static, keyword_init: true ) unless const_defined?(:DefinitionWalk, false)
+  OPEN_BRACE      = '{'.ord unless const_defined?(:OPEN_BRACE, false)
+
+  # The names a carry plan decides by, grouped once per module
+  CarryFacts = Struct.new( :selected, :defined, :declared, :helpers, keyword_init: true ) unless const_defined?(:CarryFacts, false)
+
+  # What the helper scan shares while it walks. That is the plan it fills and the facts that gate it.
+  CarryScan = Struct.new( :plan, :declared, :fallback, :header_guarded, keyword_init: true ) unless const_defined?(:CarryScan, false)
 
 
   include Partials
@@ -107,8 +135,8 @@ class PartializerHelper
   # calculate the 1-indexed source line number. This line number is then written 
   # back into the `FunctionDefinition` struct alongside the originating filepath.
   #
-  # `FunctionDefinition` entries whose `code_block` cannot be located in the
-  # preprocessor output are skipped -- `line_num` fields remain unset.
+  # An entry whose `code_block` the preprocessor output lacks is searched for in
+  # the original source. One found in neither gets a nil `line_num`.
   # 
   # `source_filepath` is always updated.
   #
@@ -126,27 +154,20 @@ class PartializerHelper
 
     @utils.stamp_source_filepaths( funcs, filepath )
 
+    # Every function is located with one read of each file searched
+    code_blocks = funcs.map( &:code_block )
     if fallback
       msg = "Using fallback C function location search for #{filepath}"
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-      funcs.each do |func|
-        func.line_num = @utils.locate_function_in_source(
-          code_block:  func.code_block,
-          filepath:    filepath
-        )
-      end
-
+      lines = @utils.locate_functions_in_source( code_blocks: code_blocks, filepath: filepath )
     else
-      funcs.each do |func|
-        # Uses `locate_function_in_source` as an automatic fallback
-        func.line_num = @utils.locate_function_via_preprocessed(
-          code_block:            func.code_block,
-          filepath:              filepath,
-          preprocessed_filepath: preprocessed_filepath
-        )
-      end
+      # Searches the original source for any function the preprocessed copy lacks
+      lines = @utils.locate_functions_via_preprocessed(
+        code_blocks: code_blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath
+      )
     end
+    funcs.zip( lines ) { |func, line_num| func.line_num = line_num }
 
     funcs.each do |func|
       if func.line_num.nil?
@@ -157,6 +178,25 @@ class PartializerHelper
 
     header = "Found functions at line numbers in #{filepath}:"
     @loginator.log_list( @utils.format_line_number_list( funcs ), header, Verbosity::DEBUG )
+  end
+
+  # Record where each declaration sits in its original file.
+  #
+  # A carried prototype is written behind a #line naming this file and line, so a diagnostic
+  # points at the user's own declaration. Callers pass the file's text, read once per file. Its
+  # comments are blanked once for every declaration. A declaration that can't be found keeps no
+  # line and is written without a #line.
+  #
+  # @param decls    [Array<CFunctionDeclaration>] Declarations extracted from one file, updated in place
+  # @param filepath [String] Path of the original header or source file
+  # @param text     [String] That file's full text
+  def associate_declaration_line_numbers(decls:, filepath:, text:)
+    lines = @utils.locate_declarations_in_text( signatures: decls.map( &:signature ), text: text )
+
+    decls.zip( lines ) do |decl, line_num|
+      decl.source_filepath = filepath
+      decl.line_num        = line_num
+    end
   end
 
   # Excise function-scoped static variable declarations from function bodies (to be
@@ -326,8 +366,13 @@ class PartializerHelper
 
   # For each function definition in funcs, find the matching function by name in the fully
   # preprocessed expansion file and replace the three signature-related fields with their
-  # macro-expanded equivalents. All other fields — especially code_block — are preserved
+  # macro-expanded equivalents. The expanded body is kept alongside in expanded_body, where a
+  # call hidden in a macro is visible. All other fields — especially code_block — are preserved
   # from the directives-only extraction so that line number mapping stays valid.
+  #
+  # Declarations get their decorators and stripped signature the same way, so a macro that
+  # hides `static` is seen for what it is. Their written signature stays as the user spelled
+  # it, because a carried prototype is written word for word.
   #
   # @param funcs [Array<CFunctionDefinition>] Definitions to update in place.
   # @param full_expansion_filepath [String] Path to the assembled full expansion file
@@ -335,26 +380,368 @@ class PartializerHelper
   # @param name [String] Test name, used in log messages.
   # @param module_name [String] Partial module name, used in log messages.
   # @param file_type [String] "source" or "header", used in log messages.
-  def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:)
-    expanded_module  = @c_extractor.from_file( full_expansion_filepath )
+  # @param decls [Array<CFunctionDeclaration>] Declarations to update in place.
+  def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:, decls: [])
+    expanded_module = @c_extractor.from_file( full_expansion_filepath )
+    entries         = _reconcile_definitions( funcs, expanded_module ) + _reconcile_declarations( decls, expanded_module )
+
+    @loginator.log_list(
+      entries,
+      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
+      Verbosity::DEBUG
+    ) unless entries.empty?
+  end
+
+  # Updates each definition from the expanded definition of the same name. Returns log entries
+  # for those it found.
+  def _reconcile_definitions(funcs, expanded_module)
     expanded_by_name = expanded_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
 
-    updated = []
-    funcs.each do |func|
+    return funcs.filter_map do |func|
       expanded = expanded_by_name[func.name]
       next unless expanded
 
-      func.signature          = expanded.signature
-      func.decorators         = expanded.decorators
-      func.signature_stripped = expanded.signature_stripped
-      updated << func.name
+      _take_expanded( func, expanded )
+      "`#{func.name}`"
+    end
+  end
+
+  # Everything about a definition that a macro can hide. Its code block stays as written, so
+  # line mapping still holds.
+  def _take_expanded(func, expanded)
+    func.signature          = expanded.signature
+    func.decorators         = expanded.decorators
+    func.signature_stripped = expanded.signature_stripped
+    func.expanded_body      = expanded.body
+  end
+
+  # Matches each declaration to the expanded declaration of the same name, in order, since
+  # a name may be declared more than once. Returns log entries for those whose decorators changed.
+  def _reconcile_declarations(decls, expanded_module)
+    expanded_by_name = expanded_module.function_declarations.group_by( &:name )
+
+    return decls.group_by( &:name ).flat_map do |decl_name, same_name|
+      same_name.zip( expanded_by_name.fetch( decl_name, [] ) ).filter_map { |decl, expanded| _reconcile_declaration( decl, expanded ) }
+    end
+  end
+
+  # Updates one declaration from its expanded counterpart. Returns a log entry when its decorators changed.
+  def _reconcile_declaration(decl, expanded)
+    return nil if expanded.nil?
+
+    changed = decl.decorators != expanded.decorators
+    decl.decorators         = expanded.decorators
+    decl.signature_stripped = expanded.signature_stripped
+    return changed ? "`#{decl.name}` (declaration)" : nil
+  end
+
+  # Marks each declaration whose function the text defines inline with external linkage. Given
+  # a file's raw directives-only copy, which holds every header the file includes, a mark means
+  # the declaring file holds the function's external definition under C99.
+  #
+  # @param decls [Array<CExtractorTypes::CFunctionDeclaration>] The file's declarations of functions the module never defines, decorators reconciled
+  # @param text  [String] The file's raw directives-only copy, read as bytes
+  def mark_inline_elsewhere(decls:, text:)
+    defined = _inline_definitions( text, Set.new( decls.map( &:name ) ) )
+
+    decls.each do |decl|
+      decl.inline_elsewhere = (!Partials.static?( decl.decorators ) and defined.include?( decl.name ))
+    end
+  end
+
+  # Decide what a Partial's implementation source carries beyond its selected functions.
+  #
+  # A module's code relies on more than the functions a test selects. It uses functions defined
+  # elsewhere through prototypes, and small static or inline helpers its header defines. Each
+  # function name falls into one category.
+  #   - Selected to test or to mock. Nothing is carried.
+  #   - External, declared but defined nowhere in the module. Its prototypes that are not
+  #     static, when kept code uses the name. A prototype of an inline function another header
+  #     defines always, since it makes this file hold the function's external definition.
+  #   - A header helper, a static or inline body in the header. The body and its prototypes,
+  #     when kept code uses it.
+  #   - Left out, any other unselected body. Its prototypes that are neither static nor
+  #     inline, when kept code uses the name.
+  #
+  # The result is pure data. The generator writes it into the implementation source after
+  # every include, where each carried item can see everything the module's code saw.
+  #
+  # @param c_module       [CExtractorTypes::CModule] Merged module with origins and reconciled decorators
+  # @param impl           [Array<Partials::FunctionDefinition>] Functions selected to test
+  # @param interface      [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
+  # @param fallback       [Boolean] Whether fallback preprocessing produced the module's copies
+  # @param header_guarded [Boolean] Whether the module header has an include guard to stand in for
+  # @return [Partials::CarryPlan]
+  def plan_carry(c_module:, impl:, interface:, fallback:, header_guarded:)
+    facts = _carry_facts( c_module, impl, interface )
+    plan  = Partials::CarryPlan.new
+
+    scan       = CarryScan.new( plan: plan, declared: facts.declared, fallback: fallback, header_guarded: header_guarded )
+    references = _plan_helpers( scan, c_module, impl, facts.helpers )
+
+    _plan_all_prototypes( plan, facts, fallback, references )
+
+    return plan
+  end
+
+  def _plan_all_prototypes(plan, facts, fallback, references)
+    facts.declared.each do |name, decls|
+      next unless _prototype_candidate?( facts, name )
+
+      _plan_prototypes(
+        plan, name, decls, has_body: facts.defined.key?( name ), fallback: fallback, referenced: references.include?( name )
+      )
+    end
+  end
+
+  # The names a plan decides by. They are the names the test selected, those with bodies,
+  # those with prototypes, and the unselected bodies that are header helpers.
+  def _carry_facts(c_module, impl, interface)
+    selected = Set.new( Array( impl ).map( &:name ) + Array( interface ).map( &:name ) )
+    defined  = c_module.function_definitions.group_by( &:name )
+
+    return CarryFacts.new(
+      selected: selected,
+      defined:  defined,
+      declared: c_module.function_declarations.group_by( &:name ),
+      helpers:  defined.select { |name, defs| !selected.include?( name ) and _helper?( defs ) }
+    )
+  end
+
+  # A selected function is written as selected, and a helper's prototypes travel with its body
+  def _prototype_candidate?(facts, name)
+    return !(facts.selected.include?( name ) or facts.helpers.key?( name ))
+  end
+
+  def _plan_prototypes(plan, name, decls, has_body:, fallback:, referenced:)
+    keep = _carryable_prototypes( decls, has_body, referenced )
+    return if keep.empty?
+
+    # Fallback may keep both sides of a conditional, and two different types for one name won't compile
+    if fallback and _conflicting?( keep.map( &:signature_stripped ) )
+      plan.skip( name, :prototype_conflict )
+      return
     end
 
-    @loginator.log_list(
-      updated.map { |n| "`#{n}`" },
-      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
-      Verbosity::DEBUG
-    ) unless updated.empty?
+    reason = has_body ? 'left out: body not selected' : 'external: no body in module'
+    keep.each { |d| plan.add_prototype( d, reason ) }
+  end
+
+  # Never a static prototype. An inline prototype promises an inline body, and a left-out body
+  # isn't there. A prototype comes along when kept code uses the name. One for an inline body in
+  # another header comes along regardless, since it makes this file hold the external definition.
+  def _carryable_prototypes(decls, has_body, referenced)
+    keep = decls.reject { |d| Partials.static?( d.decorators ) or (has_body and Partials.inline?( d.decorators )) }
+    keep = keep.select { |d| !has_body and Partials.foreign_inline?( d ) } unless referenced
+    return _distinct( keep )
+  end
+
+  # Scans kept code for helper names, then each carried helper in turn, until nothing new is found.
+  # Only a referenced helper is carried, so carrying never forces unused code to compile.
+  # Returns every name the carried code references, which decides the prototypes it needs.
+  def _plan_helpers(scan, c_module, impl, helpers)
+    references = Set.new
+    pending    = _kept_code( c_module, impl, scan.fallback )
+    handled    = Set.new
+
+    until pending.empty?
+      referrer, names = pending.shift
+      references.merge( names )
+      pending.concat( _follow( scan, helpers, handled, referrer, names ) )
+    end
+
+    return references
+  end
+
+  # Carries each helper the names reach for the first time. Returns their bodies' references to scan next.
+  def _follow(scan, helpers, handled, referrer, names)
+    reached = helpers.select { |name, _| names.include?( name ) and !handled.include?( name ) }
+
+    return reached.filter_map do |name, defs|
+      handled << name
+      carried = _carry_helper( scan, name, defs, referrer )
+      [name, _body_references( carried )] if carried
+    end
+  end
+
+  # Carries one referenced helper, or records why it can't be. Returns the carried definition.
+  def _carry_helper(scan, name, defs, referrer)
+    return nil if _helper_blocked?( scan, name, defs )
+
+    helper = defs.first
+    scan.plan.add_helper( _as_written( helper ), "helper: referenced by `#{referrer}`" )
+    _distinct( scan.declared.fetch( name, [] ) ).each do |d|
+      scan.plan.add_prototype( d, "prototype of helper `#{name}`" )
+    end
+
+    return helper
+  end
+
+  # A helper stays behind when its header can't be stood in for, or when fallback left two bodies
+  def _helper_blocked?(scan, name, defs)
+    # Without a guard the real header may arrive through another include, and its copy would collide
+    unless scan.header_guarded
+      scan.plan.skip( name, :unguarded_helper )
+      return true
+    end
+    return false unless scan.fallback and _conflicting?( defs.map( &:code_block ) )
+
+    scan.plan.skip( name, :helper_conflict )
+    return true
+  end
+
+  # Built from the helper's own text, with any function-scope static promoted. Transforming it
+  # would strip `static inline` and give the helper external linkage it never had.
+  def _as_written(helper)
+    return Partials.manufacture_function_definition(
+      name: helper.name, signature: helper.signature, code_block: helper.code_block,
+      source_filepath: helper.source_filepath, line_num: helper.line_num
+    )
+  end
+
+  # Everything the implementation source compiles that could use a function, as
+  # [referrer, Set of referenced names] pairs
+  def _kept_code(c_module, impl, fallback)
+    statements = _kept_statements( c_module, fallback ).map { |referrer, text| [referrer, _statement_references( text )] }
+    return _kept_bodies( c_module, impl ) + statements
+  end
+
+  def _kept_bodies(c_module, impl)
+    defined = c_module.function_definitions.to_h { |f| [f.name, f] }
+    return Array( impl ).map { |f| [f.name, _body_references( defined.fetch( f.name ) )] }
+  end
+
+  # Variables and macro invocations the implementation source writes. Fallback can't expand
+  # macros reliably, so there a macro definition's text counts too.
+  def _kept_statements(c_module, fallback)
+    variables = c_module.variable_declarations.reject( &:extern? )
+    macros    = c_module.macro_invocations + (fallback ? c_module.macro_definitions : [])
+
+    return variables.map { |v| [v.name, v.text] } + macros.map { |m| [m.text.strip, m.text] }
+  end
+
+  # The names a definition's body uses. Its own parameters and local variables only share a
+  # name with any function, so they don't count.
+  def _body_references(definition)
+    code = _blank_non_code( _scan_text( definition ) )
+    return _identifiers( code ) - _locals( code ) - _parameters( definition )
+  end
+
+  # The names a variable initializer or macro invocation uses
+  def _statement_references(text)
+    return _identifiers( _blank_non_code( text.to_s ) )
+  end
+
+  def _identifiers(code)
+    return Set.new( code.gsub( C_MEMBER_ACCESS, ' ' ).gsub( C_TAG, ' ' ).scan( C_IDENTIFIER ) )
+  end
+
+  def _locals(code)
+    return code.scan( C_LOCAL_DECLARATION ).filter_map { |type, name| name unless C_STATEMENT_KEYWORDS.include?( type ) }
+  end
+
+  # Every name in a definition's parameter list. Type names come along too, and those are never
+  # function names, so taking them all away removes just the parameters.
+  def _parameters(definition)
+    signature = definition.signature.to_s
+    start     = CExtractorFunctions.name_position( signature, definition.name.to_s )
+    return [] if start.nil?
+
+    return _parenthesized( signature, signature.index( '(', start ) ).scan( C_IDENTIFIER )
+  end
+
+  # The text from the parenthesis at `open` through the one that closes it
+  def _parenthesized(text, open)
+    steps = { '(' => 1, ')' => -1 }
+    depth = 0
+    close = (open...text.length).find { |i| (depth += steps.fetch( text[i], 0 )).zero? }
+
+    return text[open..close].to_s
+  end
+
+  def _conflicting?(texts)
+    return texts.map { |t| _normalized( t ) }.uniq.size > 1
+  end
+
+  # A body as the compiler sees it when the expanded copy has one
+  def _scan_text(definition)
+    return (definition.expanded_body || definition.body || definition.code_block).to_s
+  end
+
+  # Literals and comments become spaces, newlines kept. Neither can use a function however it reads.
+  def _blank_non_code(text)
+    return text.gsub( Partials::LITERAL_OR_COMMENT ) { |blanked| blanked.gsub( /[^\n]/, ' ' ) }
+  end
+
+  # The wanted names the text defines inline with external linkage, found in one pass. The text
+  # breaks into runs at each `;` and brace. A run that ends in a parameter list just before a `{`
+  # opens a definition. Each wanted name opening a parameter list there is judged by the words
+  # ahead of it. One pass keeps the cost linear in a raw copy that holds every header the file
+  # includes, however many names are wanted.
+  def _inline_definitions(text, wanted)
+    found   = Set.new
+    scanner = StringScanner.new( text )
+    start   = 0
+
+    # Scanner positions count bytes, so each run is cut out by bytes
+    while scanner.skip_until( /[;{}]/ )
+      _definition_names( text.byteslice( start...(scanner.pos - 1) ), wanted, found ) if text.getbyte( scanner.pos - 1 ) == OPEN_BRACE
+      start = scanner.pos
+    end
+
+    return found
+  end
+
+  # Adds each wanted name the run defines inline with external linkage. A name counts when the
+  # words ahead of it in the run hold an inline specifier and no `static`. Words on a directive
+  # line never count. One walk carries what the words so far have said, so a run that mentions
+  # many names stays linear.
+  def _definition_names(run, wanted, found)
+    # Every inline specifier spells `inline`, so a run without it is passed over
+    return unless run.include?( 'inline' ) and run.match?( /\)\s*\z/ )
+
+    scanner = StringScanner.new( run )
+    walk    = DefinitionWalk.new( directive: _directive_line?( scanner ), inline: false, static: false )
+    _walk_word( walk, scanner, wanted, found ) while scanner.skip_until( /\n|\w+/ )
+  end
+
+  # One word of a run, or the newline that starts its next line
+  def _walk_word(walk, scanner, wanted, found)
+    word = scanner.matched
+    if word == "\n"
+      walk.directive = _directive_line?( scanner )
+      return
+    end
+
+    found << word if _defined_inline?( walk, scanner, wanted, word )
+    return if walk.directive
+
+    walk.inline ||= Partials.inline?( [word] )
+    walk.static ||= Partials.static?( [word] )
+  end
+
+  # A wanted name opening a parameter list, after words that made the definition inline and not static
+  def _defined_inline?(walk, scanner, wanted, word)
+    return (walk.inline and !walk.static and wanted.include?( word ) and scanner.match?( /\s*\(/ ))
+  end
+
+  def _directive_line?(scanner)
+    return !scanner.match?( DIRECTIVE_START ).nil?
+  end
+
+  def _helper?(definitions)
+    return definitions.all? do |f|
+      f.origin == :header and (Partials.static?( f.decorators ) or Partials.inline?( f.decorators ))
+    end
+  end
+
+  # One of each prototype, comparing text with whitespace collapsed
+  def _distinct(decls)
+    return decls.uniq { |d| _normalized( d.signature ) }
+  end
+
+  def _normalized(text)
+    return text.to_s.gsub( /\s+/, ' ' ).strip
   end
 
   # Validate that every function name in additions and subtractions exists in c_module.

@@ -21,15 +21,14 @@ module CExtractorConstants
   # C11/C23 bare specifier keywords (no argument list)
   C11_SPECIFIER_KEYWORDS = ['_Noreturn', '_Thread_local', '_Atomic', '_Bool', '_Complex', '_Imaginary'].freeze unless const_defined?(:C11_SPECIFIER_KEYWORDS, false)
 
-  # Common type keywords that are part of return type, not decorators
-  TYPE_KEYWORDS = ['unsigned', 'signed', 'long', 'short', 'struct', 'union', 'enum'].freeze unless const_defined?(:TYPE_KEYWORDS, false)
-
   # C type qualifiers
   TYPE_QUALIFIER_KEYWORDS = ['const', 'volatile', 'restrict'].freeze unless const_defined?(:TYPE_QUALIFIER_KEYWORDS, false)
 
-  # C function modifier keywords
-  MODIFIER_KEYWORDS = (['extern'] + TYPE_QUALIFIER_KEYWORDS).freeze unless const_defined?(:MODIFIER_KEYWORDS, false)
+  # Keywords that decorate a function rather than its return type. A storage class or inline
+  # specifier says how the function links or inlines. A type qualifier belongs to the return type,
+  # and `_Noreturn` stays with a selected function so its callers still compile cleanly.
+  FUNCTION_DECORATOR_KEYWORDS = (PRIVATE_KEYWORDS + ['extern']).freeze unless const_defined?(:FUNCTION_DECORATOR_KEYWORDS, false)
 
-  # Keywords stripped when producing clean `declaration` / `signature_stripped` fields
+  # Keywords stripped when producing a variable's clean `text`
   DECORATOR_KEYWORDS = (PRIVATE_KEYWORDS + TYPE_QUALIFIER_KEYWORDS + ['extern']).freeze unless const_defined?(:DECORATOR_KEYWORDS, false)
 end

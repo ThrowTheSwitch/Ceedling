@@ -235,6 +235,15 @@ describe PreprocessinatorCodeFinder do
       expect( @finder.find_in_c_string( content, "int baz(void);" ) ).to be_nil
     end
 
+    it "does not match code starting in the middle of a longer word" do
+      content = "uint tick(void);\nint tick(void);\n"
+      expect( @finder.find_in_c_string( content, "int tick(void);" ) ).to eq 2
+    end
+
+    it "returns nil when the code appears only inside a longer word" do
+      expect( @finder.find_in_c_string( "uint tick(void);\n", "int tick(void);" ) ).to be_nil
+    end
+
     # -----------------------------------------------------------------------
     # Line number arithmetic — no GCC markers, pure newline count
     # -----------------------------------------------------------------------
@@ -359,21 +368,75 @@ describe PreprocessinatorCodeFinder do
 
   end
 
-  context "#find_in_preprocessed_file" do
-    it "opens the file through FileWrapper in read mode and delegates to the string search" do
-      content = "# 1 \"source.c\"\nint foo(void) { return 0; }\n"
-      allow(@file_wrapper).to receive(:open_with_retry).with('source.c', 'r').and_yield(StringIO.new(content))
+  context "#find_all_in_preprocessed_file" do
+    # Built-in markers, a system header, a return marker, then the file's own lines
+    let(:content) do
+      <<~PREPROCESSED
+        # 1 "source.c"
+        # 1 "<built-in>" 1
+        # 1 "/usr/include/stdint.h" 1 3
+        typedef unsigned int uint32_t;
+        # 5 "source.c" 2
+        uint32_t counter;
+        void increment(uint32_t *p) { (*p)++; }
+        void reset(uint32_t *p)
+        {
+          *p = 0;
+        }
+        # 20 "source.c"
+        int done(void) { return 1; }
+      PREPROCESSED
+    end
 
-      expect( @finder.find_in_preprocessed_file( 'source.c', 'int foo(void) { return 0; }' ) ).to eq 1
+    # The file is read once however many functions it holds
+    it "opens the file once and returns each code block's source line, in order" do
+      expect(@file_wrapper).to receive(:open_with_retry).with('source.c', 'r').once.and_yield(StringIO.new(content))
+
+      lines = @finder.find_all_in_preprocessed_file(
+        'source.c', ["int done(void) { return 1; }", "void reset(uint32_t *p)\n{\n  *p = 0;\n}", "void increment(uint32_t *p) { (*p)++; }"]
+      )
+
+      expect( lines ).to eq [20, 7, 6]
+    end
+
+    it "returns nil for a code block the file does not hold" do
+      allow(@file_wrapper).to receive(:open_with_retry).and_yield(StringIO.new(content))
+
+      expect( @finder.find_all_in_preprocessed_file( 'source.c', ["int missing(void) {}", "uint32_t counter;"] ) ).to eq [nil, 5]
+    end
+
+    it "returns nil for a code block no line marker precedes" do
+      allow(@file_wrapper).to receive(:open_with_retry).and_yield(StringIO.new("int early(void) {}\n#{content}"))
+
+      expect( @finder.find_all_in_preprocessed_file( 'source.c', ["int early(void) {}", "uint32_t counter;"] ) ).to eq [nil, 5]
+    end
+
+    it "returns nil for every code block in an empty file" do
+      allow(@file_wrapper).to receive(:open_with_retry).and_yield(StringIO.new(''))
+
+      expect( @finder.find_all_in_preprocessed_file( 'source.c', ["int a(void) {}", "int b(void) {}"] ) ).to eq [nil, nil]
+    end
+
+    # Opening a file that isn't there yet waits out several retries
+    it "opens no file when there is no code to find" do
+      expect(@file_wrapper).not_to receive(:open_with_retry)
+
+      expect( @finder.find_all_in_preprocessed_file( 'source.c', [] ) ).to eq []
     end
   end
 
-  context "#find_in_c_file" do
-    it "opens the file through FileWrapper in read mode and delegates to the string search" do
-      content = "#include <stdint.h>\nvoid foo(void) {}\n"
-      allow(@file_wrapper).to receive(:open).with('source.c', 'r').and_yield(StringIO.new(content))
+  context "#find_all_in_c_file" do
+    it "opens the source once and returns each code block's line, in order" do
+      content = "#include <stdint.h>\nvoid foo(void) {}\nvoid bar(void) {}\n"
+      expect(@file_wrapper).to receive(:open).with('source.c', 'r').once.and_yield(StringIO.new(content))
 
-      expect( @finder.find_in_c_file( 'source.c', 'void foo(void) {}' ) ).to eq 2
+      expect( @finder.find_all_in_c_file( 'source.c', ['void bar(void) {}', 'void foo(void) {}', 'void baz(void) {}'] ) ).to eq [3, 2, nil]
+    end
+
+    it "opens no file when there is no code to find" do
+      expect(@file_wrapper).not_to receive(:open)
+
+      expect( @finder.find_all_in_c_file( 'source.c', [] ) ).to eq []
     end
   end
 

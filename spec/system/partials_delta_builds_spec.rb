@@ -37,6 +37,24 @@ PARTIALS_DELTA_ENGINE_SOURCE = <<~C
   }
 C
 
+# A typedef gives the Partial a shared types header, which its implementation includes
+PARTIALS_DELTA_TYPED_HEADER = <<~C
+  #ifndef ENGINE_H
+  #define ENGINE_H
+  typedef int engine_count_t;
+  engine_count_t engine_get(void);
+  #endif
+C
+
+PARTIALS_DELTA_TYPED_SOURCE = <<~C
+  #include "engine.h"
+
+  engine_count_t engine_get(void)
+  {
+      return 42;
+  }
+C
+
 PARTIALS_DELTA_PREAMBLE = "#include \"unity.h\"\n#include \"ceedling.h\"\n"
 
 # Only engine_get(), which the public selection holds
@@ -88,6 +106,24 @@ ceedling_system_tests do
       File.write( 'test/test_engine.c', PARTIALS_DELTA_PUBLIC_TEST )
       output = build_passing( 1 )
       expect(output).to match(/Generating Partial implementation for .*engine/)
+    end
+  end
+
+  # The implementation and interface vouch for the types header they include, so even a build
+  # that finds every other file fresh restores it
+  it "restores a Partial's shared types header when it goes missing" do
+    in_project do
+      File.write( 'src/engine.h', PARTIALS_DELTA_TYPED_HEADER )
+      File.write( 'src/engine.c', PARTIALS_DELTA_TYPED_SOURCE )
+      build_passing( 1 )
+
+      types = Dir.glob( 'build/test/partials/**/ceedling_partial_engine_types.h' )
+      expect(types).to_not be_empty
+      File.delete( *types )
+
+      output = build_passing( 1 )
+      expect(output).to match(/Generating shared Partial types for .*engine/)
+      expect(types).to all( satisfy { |path| File.exist?( path ) } )
     end
   end
 

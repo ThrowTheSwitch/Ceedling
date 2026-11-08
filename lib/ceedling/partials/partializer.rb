@@ -19,6 +19,21 @@ require 'ceedling/encodinator'
 
 class Partializer
 
+  # Explains helpers a Partial leaves behind because the module header has no include guard
+  UNGUARDED_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_HELPERS_NOTICE, false)
+    Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
+    Selected functions call %<these>s, but %<header>s has no include guard. Without a guard
+    a Partial cannot stand in for the header everywhere it is included, and a carried copy could
+    collide with the real one.
+
+    OPTIONS:
+      1. Give %<header>s an include guard so the Partial can stand in for it.
+      2. Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other
+         header this module includes pulls in %<header>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
   include Partials
 
   constructor :configurator, :partializer_helper, :file_finder, :c_extractor, :file_path_utils,
@@ -55,6 +70,32 @@ class Partializer
     # Remove from both the macro_definitions list and the element_sequence that references it
     c_module.macro_definitions.reject! { |m| removed.include?(m) }
     c_module.element_sequence.reject!  { |e| removed.include?(e) }
+  end
+
+  # Decides what the Partial's implementation source carries beyond its selected functions.
+  # See PartializerHelper#plan_carry for the categories it applies.
+  #
+  # @param test            [String] Test name (for log messages)
+  # @param partial         [String] Partial module name (for log messages)
+  # @param c_module        [CExtractorTypes::CModule] The module's merged contents
+  # @param impl            [Array<Partials::FunctionDefinition>] Functions selected to test
+  # @param interface       [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
+  # @param fallback        [Boolean] Whether fallback preprocessing produced the module's copies
+  # @param header_guarded  [Boolean] Whether the module header has an include guard
+  # @param header_filepath [String, nil] The module header, searched for carried prototypes and named in notices
+  # @param source_filepath [String, nil] The module source, searched for carried prototypes
+  # @return [Partials::CarryPlan]
+  def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:, header_filepath: nil, source_filepath: nil)
+    plan = @helper.plan_carry(
+      c_module: c_module, impl: impl, interface: interface, fallback: fallback, header_guarded: header_guarded
+    )
+
+    filepaths = { header: header_filepath, source: source_filepath }
+    _locate_carried( plan, filepaths )
+    plan.incomplete.merge( _incomplete_variables( c_module, filepaths.values.compact, test, fallback ) )
+
+    _log_plan( test, partial, plan, header_filepath )
+    return plan
   end
 
   def validate_extracted_functions(name:, partial:, impl:, interface:)
@@ -251,10 +292,11 @@ class Partializer
   # CModule structure.
   #
   # @param name [String] The test this extraction is running for (log/error context).
-  # @param config [Partials::ModuleConfig] The Partial's own config, carrying `header`/
+  # @param config [PartializerConfig::Config] The Partial's own config, carrying `header`/
   #   `source` (each a ConfigFileInfo) and `module`, the module name.
   # @param fallback [Boolean] Passed through to `associate_function_line_numbers` --
-  #   whether to fall back to plain (non-directives-only) line-number association.
+  #   whether to fall back to plain (non-directives-only) line-number association. It also
+  #   skips inline marking, which needs a raw directives-only copy.
   #
   # @return [CExtractorTypes::CModule] A merged CModule containing all extracted contents
   #   from both files. The structure includes:
@@ -273,49 +315,15 @@ class Partializer
       # Do nothing if there's no directives-only preprocessed filepath (e.g. no source only header for a Partial mock)
       next unless c_file.directives_only_filepath
 
-      c_module = @c_extractor.from_file( c_file.directives_only_filepath )
-
-      _log_module_contents(name, config.module, file_type, c_module)
-
-      # Update function signatures from fully preprocessed output when available.
-      # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
-      # macros wrapping `static` and `inline` are resolved before visibility filtering.
-      if c_file.full_expansion_filepath
-        @helper.update_signatures_from_full_expansion(
-          funcs:                   c_module.function_definitions,
-          full_expansion_filepath: c_file.full_expansion_filepath,
-          name:                    name,
-          module_name:             config.module,
-          file_type:               file_type
-        )
-      end
-
-      # Align extracted function definitions with line markers in preprocessor output.
-      # This perfectly remaps functions found in expanded preprocessor output with 
-      # original source location.
-      # This routine depends on original, unaltered function definitions.
-      @helper.associate_function_line_numbers(
-        name: name,
-        funcs: c_module.function_definitions,
-        filepath: c_file.filepath,
-        fallback: fallback
-      )
-
-      # 1. Find any function-scope static variable declarations.
-      # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
-      # 3. Promote the function-scoped variables to be module-level variables.
-      decls = @helper.extract_function_scope_static_vars(
-        c_module.function_definitions,
-        name: name, module_name: config.module, file_type: file_type
-      )
-      c_module.variable_declarations.concat(decls)
-      c_module.element_sequence.concat(decls) unless decls.empty?
-
-      contents << c_module
+      contents << _extract_file_contents( name, config, c_file, file_type, fallback )
     end
 
     # Use `+` operator for CModule to merge everything
     contents = contents.reduce(&:+)
+
+    # Only the merged module knows which functions have a body. Fallback preprocessing writes no
+    # raw copy, so any copy on disk is stale.
+    _mark_inline_elsewhere( name, config, contents ) unless fallback
 
     return contents
   end
@@ -407,12 +415,7 @@ class Partializer
       Verbosity::DEBUG
     )
 
-    # A mock interface only ever needs a signature, never a body, so a declaration-only
-    # function (no body found anywhere in this module's merged content) is just as valid a
-    # candidate as one with a definition -- unlike extract_implementation_functions, which
-    # needs real code to inject and so stays definitions-only. A function named in both
-    # (declared in the header, defined in the paired source) is only counted once.
-    candidates = definitions + declarations.reject { |d| definitions.any? { |f| f.name == d.name } }
+    candidates = _mock_candidates( test, partial, definitions, declarations )
 
     # Build initial list by visibility; ACCUMULATE yields []
     funcs = @helper.filter_and_transform_funcs(candidates, pf.type, :interface)
@@ -448,6 +451,220 @@ class Partializer
   end
 
   private
+
+  # Extracts one of a module's files, a header or a source, ready to merge with the other.
+  def _extract_file_contents(name, config, c_file, file_type, fallback)
+    c_module = @c_extractor.from_file( c_file.directives_only_filepath )
+
+    _log_module_contents(name, config.module, file_type, c_module)
+
+    _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.full_expansion_filepath
+    _locate_contents( name, c_file, fallback, c_module )
+    _promote_function_scope_statics( name, config, file_type, c_module )
+
+    return c_module.stamp_origin!( file_type.to_sym )
+  end
+
+  # Update function signatures from fully preprocessed output when available.
+  # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
+  # macros wrapping `static` and `inline` are resolved before visibility filtering.
+  # Each definition also keeps its expanded body, where a call a macro hides is visible.
+  # Declarations take decorators and stripped signature while keeping their written text.
+  def _reconcile_with_full_expansion(name, config, c_file, file_type, c_module)
+    @helper.update_signatures_from_full_expansion(
+      funcs:                   c_module.function_definitions,
+      decls:                   c_module.function_declarations,
+      full_expansion_filepath: c_file.full_expansion_filepath,
+      name:                    name,
+      module_name:             config.module,
+      file_type:               file_type
+    )
+  end
+
+  # A header a file includes may define inline a function the module declares but never
+  # defines. Under C99 the declaring file then holds that function's external definition. Each
+  # file's raw directives-only copy holds every header it includes, so the inline body is
+  # looked for there. A function the module defines is never looked for, since nothing reads
+  # its mark. The copy is read as bytes, which is all the scan needs.
+  def _mark_inline_elsewhere(name, config, c_module)
+    undefined = _declaration_only( c_module.function_definitions, c_module.function_declarations )
+
+    { header: config.header, source: config.source }.each do |origin, c_file|
+      decls = undefined.select { |decl| decl.origin == origin }
+      _mark_from_raw_copy( name, c_file, decls ) unless decls.empty?
+    end
+  end
+
+  def _mark_from_raw_copy(name, c_file, decls)
+    raw = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( c_file.filepath, name )
+    return unless @file_wrapper.exist?( raw )
+
+    @helper.mark_inline_elsewhere( decls: decls, text: @file_wrapper.read_binary( raw ) )
+  end
+
+  # The declarations of functions with no definition among `definitions`
+  def _declaration_only(definitions, declarations)
+    defined = Set.new( definitions.map( &:name ) )
+    return declarations.reject { |decl| defined.include?( decl.name ) }
+  end
+
+  def _locate_contents(name, c_file, fallback, c_module)
+    # Align extracted function definitions with line markers in preprocessor output.
+    # This perfectly remaps functions found in expanded preprocessor output with 
+    # original source location.
+    # This routine depends on original, unaltered function definitions.
+    @helper.associate_function_line_numbers(
+      name: name, funcs: c_module.function_definitions, filepath: c_file.filepath, fallback: fallback
+    )
+  end
+
+  # 1. Find any function-scope static variable declarations.
+  # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
+  # 3. Promote the function-scoped variables to be module-level variables.
+  def _promote_function_scope_statics(name, config, file_type, c_module)
+    promoted = @helper.extract_function_scope_static_vars(
+      c_module.function_definitions,
+      name: name, module_name: config.module, file_type: file_type
+    )
+    c_module.variable_declarations.concat(promoted)
+    c_module.element_sequence.concat(promoted) unless promoted.empty?
+  end
+
+  # A mock interface only ever needs a signature, never a body, so a declaration-only
+  # function (no body found anywhere in this module's merged content) is just as valid a
+  # candidate as one with a definition -- unlike extract_implementation_functions, which
+  # needs real code to inject and so stays definitions-only. A function named in both
+  # (declared in the header, defined in the paired source) is only counted once.
+  #
+  # An inline function the module only declares has its body in a header it includes. A mock
+  # can never replace that body, so mocking it would only define the function twice. It stays
+  # out, and the implementation source carries its prototype when the module is also tested.
+  def _mock_candidates(test, partial, definitions, declarations)
+    declaration_only = _declaration_only( definitions, declarations )
+    foreign_inline   = Set.new( declaration_only.select { |d| Partials.foreign_inline?( d ) }.map( &:name ) )
+
+    _log_not_mockable( test, partial, foreign_inline )
+    return definitions + declaration_only.reject { |d| foreign_inline.include?( d.name ) }
+  end
+
+  def _log_not_mockable(test, partial, names)
+    return if names.empty?
+
+    @loginator.log_list(
+      names.map { |n| "`#{n}`" },
+      "Not mockable for Partial #{test}::#{partial} (inline, body outside module):",
+      Verbosity::DEBUG
+    )
+  end
+
+  # Variables the module declares `extern` whose struct or union type is never completed,
+  # directly or through a typedef the module makes. No definition of one compiles, weak or not.
+  # The module's own files are searched for the completing definition, and so are their raw
+  # directives-only copies where those exist, since a copy holds every header its file includes.
+  # Fallback preprocessing writes no raw copy, so any copy on disk is stale and goes unread.
+  def _incomplete_variables(c_module, filepaths, test, fallback)
+    candidates = _extern_aggregates( c_module )
+    return Set.new if candidates.empty?
+
+    texts = _translation_unit_texts( filepaths, test, fallback )
+    return Set.new( candidates.filter_map { |var, tag| var.name unless _completed?( tag, texts ) } )
+  end
+
+  # Each extern variable whose type names a struct or union by value, paired with its tag
+  def _extern_aggregates(c_module)
+    tags = _aggregate_tags( c_module )
+    return c_module.variable_declarations.filter_map { |v| [v, tags[v.type.to_s]] if v.extern? and tags.key?( v.type.to_s ) }
+  end
+
+  # Each type a variable may name by value that is a struct or union tag, keyed to its tag. A
+  # pointer to an incomplete type is complete itself, so only `struct x` and typedef names count.
+  def _aggregate_tags(c_module)
+    tags = {}
+    c_module.variable_declarations.each do |v|
+      tag = v.type.to_s[/\A(?:struct|union)\s+(\w+)\z/, 1]
+      tags[v.type] = tag if tag
+    end
+    c_module.type_definitions.each do |typedef|
+      match = typedef.text.match( /\Atypedef\s+(?:struct|union)\s+(\w+)\s+(\w+)\s*;/ )
+      tags[match[2]] = match[1] if match
+    end
+
+    return tags
+  end
+
+  # Each file and, outside fallback, its raw copy, read as bytes, which is all the search needs.
+  # Transcoding a raw copy would cost far more than reading it.
+  def _translation_unit_texts(filepaths, test, fallback)
+    copies = fallback ? [] : filepaths.map { |filepath| @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test ) }
+    return (filepaths + copies.select { |copy| @file_wrapper.exist?( copy ) }).map { |path| @file_wrapper.read_binary( path ) }
+  end
+
+  def _completed?(tag, texts)
+    return texts.any? { |text| text.match?( /(?<!\w)(?:struct|union)\s+#{Regexp.escape( tag )}\s*\{/ ) }
+  end
+
+  # A carried prototype is written behind a #line naming its own file and line. Each is found in
+  # its original file's own text, where no included header's lines can be mistaken for it. Only
+  # carried prototypes are located, since each costs a search of the file.
+  def _locate_carried(plan, filepaths)
+    plan.prototypes.map( &:item ).group_by( &:origin ).each do |origin, decls|
+      filepath = filepaths[origin]
+      next if filepath.nil?
+
+      @helper.associate_declaration_line_numbers(
+        decls: decls, filepath: filepath, text: @file_wrapper.read( filepath ).clean_encoding
+      )
+    end
+  end
+
+  def _log_plan(test, partial, plan, header_filepath)
+    _log_carried( test, partial, plan )
+    plan.skipped.each { |skipped| _log_not_carried( test, partial, skipped ) }
+
+    unguarded = plan.skipped.select { |skipped| skipped.kind == :unguarded_helper }.map( &:item )
+    _log_unguarded_helpers( test, partial, unguarded, header_filepath ) unless unguarded.empty?
+  end
+
+  # Lists what a Partial carries and why, so a user can trace what its implementation holds
+  def _log_carried(test, partial, plan)
+    entries  = plan.prototypes.map { |carried| "`#{carried.item.signature.strip}` (#{carried.reason})" }
+    entries += plan.helpers.map { |name, carried| "`#{name}()` (#{carried.reason})" }
+    return if entries.empty?
+
+    @loginator.log_list( entries, "Carried into Partial #{test}::#{partial} implementation:", Verbosity::DEBUG )
+  end
+
+  # A skipped name is one a selected function may need, so each gets a notice saying why
+  def _log_not_carried(test, partial, skipped)
+    msg = _not_carried_message( skipped.kind, skipped.item )
+    @loginator.log( "Partial #{test}::#{partial} ⏩️ #{msg}", Verbosity::COMPLAIN, LogLabels::NOTICE ) if msg
+  end
+
+  def _not_carried_message(kind, name)
+    case kind
+    when :helper_conflict
+      return "Not carrying helper `#{name}()`: fallback preprocessing found more than one definition. " \
+             "Add `+#{name}` if a selected function needs it"
+    when :prototype_conflict
+      return "Not carrying `#{name}()`: fallback preprocessing found conflicting declarations"
+    end
+
+    return nil
+  end
+
+  # A header without an include guard can't be stood in for, so its helpers stay behind. The
+  # notice follows the linker failure guidance: what happened, why, then numbered options.
+  def _log_unguarded_helpers(test, partial, names, header)
+    many   = names.size > 1
+    notice = format(
+      UNGUARDED_HELPERS_NOTICE,
+      partial: "#{test}::#{partial}", header: header, first: names.first,
+      helpers: names.map { |n| "`#{n}()`" }.join( ', ' ),
+      noun: many ? 'helpers' : 'helper', these: many ? 'these helpers' : 'this helper'
+    )
+
+    @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
+  end
 
   # Log all user-defined (non-function) C content extracted from a module's source/header at OBNOXIOUS level.
   # Covers the four categories that are injected into generated Partial files:

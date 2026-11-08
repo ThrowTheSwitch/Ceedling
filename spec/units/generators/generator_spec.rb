@@ -64,6 +64,22 @@ describe Generator do
     end
   end
 
+  describe '#generate_partial_implementation' do
+    it 'hands the carry plan and both Partials settings to Partial generation' do
+      plan = Partials::CarryPlan.new
+
+      @generator.generate_partial_implementation(
+        test: 'test_engine', partial: 'engine', function_definitions: [], source_includes: [],
+        header_includes: [], c_module: CExtractorTypes::CModule.new,
+        output_path: 'build/partials', carry: plan, suppress_redundant_decls: false, extern_variables: :test
+      )
+
+      expect(@collaborators[:generator_partials]).to have_received(:generate_implementation).with(
+        hash_including( carry: plan, suppress_redundant_decls: false, extern_variables: :test )
+      )
+    end
+  end
+
   describe '#generate_test_results' do
     before(:each) do
       allow(@collaborators[:generator_helper]).to receive(:test_crash?).and_return( false )

@@ -115,6 +115,18 @@ describe ConsoleReportinator do
     end
   end
 
+  describe '#partial_replacements' do
+    it 'keys each Partial to the original source it replaces' do
+      sources = ['src/foo.c', 'src/bar.c', 'src/ceedling_partial_foo_impl.c']
+      result = reportinator.send(:partial_replacements, sources)
+      expect(result).to eq({ 'src/ceedling_partial_foo_impl.c' => ['src/foo.c'] })
+    end
+
+    it 'keys nothing when there are no Partials' do
+      expect( reportinator.send(:partial_replacements, ['src/foo.c']) ).to eq({})
+    end
+  end
+
   describe '#extract_gcov_source_path' do
     it 'matches the File header for the queried source filename among several' do
       results = "File '/proj/src/stdio_stub.h'\nLines executed:10.00% of 1\nFile '/proj/src/foo.c'\nLines executed:80.00% of 5\n"
@@ -126,6 +138,25 @@ describe ConsoleReportinator do
       results = "File '/proj/src/foo.c'\nLines executed:80.00% of 5\n"
       path = reportinator.send(:extract_gcov_source_path, results, 'test_foo', 'src/ceedling_partial_foo_impl.c')
       expect(path).to eq(File.expand_path('/proj/src/foo.c'))
+    end
+
+    # A carried helper or inline function body puts its header's coverage ahead of the module's
+    it 'prefers the original a Partial replaces over headers its carried code came from' do
+      results = "File 'src/ForestUnits.h'\nLines executed:100.00% of 2\n" \
+                "File 'src/RainGauge.c'\nLines executed:100.00% of 20\n" \
+                "File 'src/RainGauge.h'\nLines executed:100.00% of 2\n"
+      path = reportinator.send(
+        :extract_gcov_source_path, results, 'test_rain', 'build/ceedling_partial_RainGauge_impl.c', original: 'src/RainGauge.c'
+      )
+      expect(path).to eq(File.expand_path('src/RainGauge.c'))
+    end
+
+    it 'does not take a longer filename ending in the original\'s filename' do
+      results = "File 'src/MyRainGauge.c'\nLines executed:50.00% of 4\nFile 'src/RainGauge.c'\nLines executed:100.00% of 20\n"
+      path = reportinator.send(
+        :extract_gcov_source_path, results, 'test_rain', 'build/ceedling_partial_RainGauge_impl.c', original: 'src/RainGauge.c'
+      )
+      expect(path).to eq(File.expand_path('src/RainGauge.c'))
     end
 
     it 'returns an empty string and logs when no File header can be parsed at all' do
@@ -351,6 +382,19 @@ describe ConsoleReportinator do
       allow(reportinator).to receive(:run_gcov_summary).and_return(nil)
       expect(reportinator).to_not receive(:extract_gcov_source_path)
       expect(reportinator).to_not receive(:log_coverage_report)
+
+      reportinator.generate_reports({})
+    end
+
+    it 'reports a Partial under the module source it replaces' do
+      partial = 'build/test/partials/test_rain/ceedling_partial_RainGauge_impl.c'
+      allow(test_invoker).to receive(:each_test_with_sources).and_yield('test_rain', ['src/RainGauge.c', partial])
+      allow(reportinator).to receive(:run_gcov_summary).with('test_rain', partial, {}).and_return(
+        "File 'src/ForestUnits.h'\nLines executed:100.00% of 2\n" \
+        "File 'src/RainGauge.c'\nLines executed:100.00% of 20\n"
+      )
+
+      expect(loginator).to receive(:log).with("RainGauge.c | Lines executed:100.00% of 20\n")
 
       reportinator.generate_reports({})
     end

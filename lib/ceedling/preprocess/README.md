@@ -193,7 +193,7 @@ Later steps read macro definitions and marker macros straight out of preprocesso
 
 ## Finding Where a Snippet Came From
 
-`PreprocessinatorCodeFinder` (`preprocessinator_code_finder.rb`) traces a piece of already-preprocessed text back to its original file and line by walking backward through the nearest line markers. Ceedling’s Partials feature uses this to point a copied-out function at its true source location.
+`PreprocessinatorCodeFinder` (`preprocessinator_code_finder.rb`) traces a piece of already-preprocessed text back to its original line. It finds the last line marker ending at or before the text and counts the newlines after it. One read of a file serves every piece searched in it. Ceedling’s Partials feature uses this to point a copied-out function at its true source location.
 
 ## Caching and the Fallback Path
 
