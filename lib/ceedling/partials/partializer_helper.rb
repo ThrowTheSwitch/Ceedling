@@ -10,6 +10,7 @@ require 'ceedling/exceptions'
 require 'ceedling/array_patches' # Redundant `require` to ensure patching in test cases
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_declarations'
+require 'ceedling/c_extractor/c_extractor_functions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'strscan'
 require 'ceedling/constants'
@@ -36,17 +37,23 @@ class PartializerHelper
   # the same reason, against its own copy of this pattern.
   ANY_INCLUDE_DIRECTIVE = /^\s*#\s*include\s+\S/ unless const_defined?(:ANY_INCLUDE_DIRECTIVE, false)
 
-  # A string or character literal, which can't reference a function however it reads
-  C_LITERAL = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/ unless const_defined?(:C_LITERAL, false)
+  # A string or character literal, or a comment, none of which can use a function however it
+  # reads. One pattern finds both, so whichever starts first wins, as it does for the compiler.
+  C_LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:C_LITERAL_OR_COMMENT, false)
 
-  # The ways code names a function. A call, an address taken, and any identifier at all, which
-  # a variable initializer or macro invocation may use to name a function it doesn't call.
-  C_CALL       = /(?<!\w)([A-Za-z_]\w*)\s*\(/ unless const_defined?(:C_CALL, false)
-  C_ADDRESS_OF = /(?<!&)&(?!&)\s*([A-Za-z_]\w*)/ unless const_defined?(:C_ADDRESS_OF, false)
+  # Code uses a function wherever it names one: a call, an address taken, a callback passed by
+  # name, or an entry in a table of handlers
   C_IDENTIFIER = /(?<!\w)[A-Za-z_]\w*/ unless const_defined?(:C_IDENTIFIER, false)
 
-  # A struct or union member, which only shares a name with any function
+  # A struct or union member, or a struct, union or enum tag, which only shares a name with any function
   C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_]\w*/ unless const_defined?(:C_MEMBER_ACCESS, false)
+  C_TAG           = /(?<!\w)(?:struct|union|enum)\s+[A-Za-z_]\w*/ unless const_defined?(:C_TAG, false)
+
+  # A local variable declared at the start of a statement: any qualifiers, a type name, any
+  # pointer stars, then the variable's name ahead of `=`, `;`, `,` or `[`. A keyword that starts
+  # a statement is no type, so `return x;` declares nothing.
+  C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_]\w*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_]\w*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
+  C_STATEMENT_KEYWORDS = %w[return goto case default else do sizeof typedef break continue].freeze unless const_defined?(:C_STATEMENT_KEYWORDS, false)
 
   # The names a carry plan decides by, grouped once per module
   CarryFacts = Struct.new( :selected, :defined, :declared, :helpers, keyword_init: true ) unless const_defined?(:CarryFacts, false)
@@ -537,7 +544,7 @@ class PartializerHelper
     return reached.filter_map do |name, defs|
       handled << name
       carried = _carry_helper( scan, name, defs, referrer )
-      [name, _body_references( _scan_text( carried ) )] if carried
+      [name, _body_references( carried )] if carried
     end
   end
 
@@ -579,13 +586,13 @@ class PartializerHelper
   # Everything the implementation source compiles that could use a function, as
   # [referrer, Set of referenced names] pairs
   def _kept_code(c_module, impl, fallback)
-    statements = _kept_statements( c_module, fallback ).map { |referrer, text| [referrer, _statement_references( text.to_s )] }
+    statements = _kept_statements( c_module, fallback ).map { |referrer, text| [referrer, _statement_references( text )] }
     return _kept_bodies( c_module, impl ) + statements
   end
 
   def _kept_bodies(c_module, impl)
     defined = c_module.function_definitions.to_h { |f| [f.name, f] }
-    return Array( impl ).map { |f| [f.name, _body_references( _scan_text( defined.fetch( f.name ) ) )] }
+    return Array( impl ).map { |f| [f.name, _body_references( defined.fetch( f.name ) )] }
   end
 
   # Variables and macro invocations the implementation source writes. Fallback can't expand
@@ -597,21 +604,43 @@ class PartializerHelper
     return variables.map { |v| [v.name, v.text] } + macros.map { |m| [m.text.strip, m.text] }
   end
 
-  # The functions a body uses: every name it calls or takes the address of. A member access or a
-  # local variable that merely shares a function's name doesn't count.
-  def _body_references(text)
-    code = _without_members( _blank_literals( text ) )
-    return Set.new( code.scan( C_CALL ).flatten + code.scan( C_ADDRESS_OF ).flatten )
+  # The names a definition's body uses. Its own parameters and local variables only share a
+  # name with any function, so they don't count.
+  def _body_references(definition)
+    code = _blank_non_code( _scan_text( definition ) )
+    return _identifiers( code ) - _locals( code ) - _parameters( definition )
   end
 
-  # A variable initializer or macro invocation names a function without calling it, as in a table
-  # of handlers, so any identifier there counts
+  # The names a variable initializer or macro invocation uses
   def _statement_references(text)
-    return Set.new( _without_members( _blank_literals( text ) ).scan( C_IDENTIFIER ) )
+    return _identifiers( _blank_non_code( text.to_s ) )
   end
 
-  def _without_members(code)
-    return code.gsub( C_MEMBER_ACCESS, ' ' )
+  def _identifiers(code)
+    return Set.new( code.gsub( C_MEMBER_ACCESS, ' ' ).gsub( C_TAG, ' ' ).scan( C_IDENTIFIER ) )
+  end
+
+  def _locals(code)
+    return code.scan( C_LOCAL_DECLARATION ).filter_map { |type, name| name unless C_STATEMENT_KEYWORDS.include?( type ) }
+  end
+
+  # Every name in a definition's parameter list. Type names come along too, and those are never
+  # function names, so taking them all away removes just the parameters.
+  def _parameters(definition)
+    signature = definition.signature.to_s
+    start     = CExtractorFunctions.name_position( signature, definition.name.to_s )
+    return [] if start.nil?
+
+    return _parenthesized( signature, signature.index( '(', start ) ).scan( C_IDENTIFIER )
+  end
+
+  # The text from the parenthesis at `open` through the one that closes it
+  def _parenthesized(text, open)
+    steps = { '(' => 1, ')' => -1 }
+    depth = 0
+    close = (open...text.length).find { |i| (depth += steps.fetch( text[i], 0 )).zero? }
+
+    return text[open..close].to_s
   end
 
   def _conflicting?(texts)
@@ -623,8 +652,9 @@ class PartializerHelper
     return (definition.expanded_body || definition.body || definition.code_block).to_s
   end
 
-  def _blank_literals(text)
-    return text.gsub( C_LITERAL ) { |literal| ' ' * literal.length }
+  # Literals and comments become spaces, newlines kept
+  def _blank_non_code(text)
+    return text.gsub( C_LITERAL_OR_COMMENT ) { |blanked| blanked.gsub( /[^\n]/, ' ' ) }
   end
 
   def _helper?(definitions)

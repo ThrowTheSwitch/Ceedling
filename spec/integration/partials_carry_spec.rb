@@ -223,6 +223,24 @@ describe 'What a Partial carries' do
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
 
+    # Passing a helper by name uses it as surely as calling it
+    it 'compiles a helper a selected body passes as a callback' do
+      @result = generate_partial(
+        module_name: 'ticker',
+        header: "#ifndef TICKER_H\n#define TICKER_H\ntypedef int (*ticker_cb_t)(int);\n" \
+                "static inline int doubled(int v) { return v * 2; }\n" \
+                "void ticker_register(ticker_cb_t cb);\nvoid ticker_init(void);\n#endif\n",
+        source: "#include \"ticker.h\"\nvoid ticker_init(void) { ticker_register(doubled); }\n",
+        source_includes: ['ticker.h'],
+        tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil
+      )
+
+      expect( @result.impl_c ).to include( 'static inline int doubled(int v)' )
+
+      compile = compile_objects( @result, flags: '-Wall -Werror' )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
     # A plain inline helper gets its external definition from the source's extern inline prototype
     it 'links a plain inline helper through its extern inline prototype' do
       @result = generate_partial(

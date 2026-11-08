@@ -130,10 +130,10 @@ Each comes along only when the code the Partial keeps uses it.
   A call made through a macro counts. So does a call from another helper that
   came along.
 
-A function counts as used when the code calls it or takes its address. It
-also counts when a variable initializer or a macro invocation names it, as a
-table of handlers does. A struct member or a local variable that merely
-shares a function's name does not count.
+A function counts as used wherever the code names it. A call counts, and so
+does taking its address, passing it as a callback, or listing it in a table of
+handlers. A struct member, a parameter or a local variable that merely shares
+a function's name does not count, and neither does a mention in a comment.
 
 Each carried item keeps its original spelling and decorators. A line marker
 (`#line`) ahead of each points back to its original file and line, so compiler

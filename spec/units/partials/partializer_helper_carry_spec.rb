@@ -142,6 +142,13 @@ describe PartializerHelper do
       expect( carried_prototypes( plan( c_module( tick, get ), impl: selected( get ) ) ) ).to eq( ['int board_tick(void);'] )
     end
 
+    it 'counts a function a body passes by name as a callback' do
+      get  = defn( 'int engine_start(void) { return register_cb(board_tick); }' )
+      tick = decl( 'int board_tick(void);', origin: :header )
+
+      expect( carried_prototypes( plan( c_module( tick, get ), impl: selected( get ) ) ) ).to eq( ['int board_tick(void);'] )
+    end
+
     it 'never carries a static prototype without a body' do
       get    = defn( 'int engine_get(void) { return 1; }' )
       orphan = decl( 'static int orphan(void);' )
@@ -336,10 +343,61 @@ describe PartializerHelper do
       expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
     end
 
-    it 'does not read a logical and as taking an address' do
+    it 'ignores a local pointer that shares a helper\'s name' do
+      get = defn( 'int engine_get(const int *v) { const int *clamp = v; return *clamp; }' )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'ignores a loop variable that shares a helper\'s name' do
+      get = defn( 'int engine_sum(void) { int s = 0; for (int clamp = 0; clamp < 3; clamp++) { s += clamp; } return s; }' )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'ignores a parameter that shares a helper\'s name' do
       get = defn( 'int engine_get(int clamp) { return 1 && clamp; }' )
 
       expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    # A bitwise and reads like taking an address, but the operand is still the parameter
+    it 'ignores a parameter after a bitwise and' do
+      get = defn( 'int engine_mask(int clamp) { return 0x0F & clamp; }' )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'ignores a struct tag that shares a helper\'s name' do
+      get = defn( 'int engine_size(void) { return (int)sizeof(struct clamp); }' )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'ignores a helper name inside a comment' do
+      get = defn( "int engine_get(void) { /* clamp(v) later */ return 1; // or clamp(v) now\n}" )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+    end
+
+    it 'counts a helper a body passes as a callback' do
+      cmp = defn( 'static inline int cmp(const void *a, const void *b) { return *(const int *)a - *(const int *)b; }', origin: :header )
+      get = defn( 'void engine_sort(int *v) { qsort(v, 4, sizeof(int), cmp); }' )
+
+      expect( carried_helpers( plan( c_module( cmp, get ), impl: selected( get ) ) ) ).to eq( ['cmp'] )
+    end
+
+    it 'counts a helper a body names in a designated initializer' do
+      add = defn( 'static inline int op_add(int a, int b) { return a + b; }', origin: :header )
+      get = defn( 'int engine_apply(void) { ops_t ops = { .fn = op_add }; return ops.fn(1, 2); }' )
+
+      expect( carried_helpers( plan( c_module( add, get ), impl: selected( get ) ) ) ).to eq( ['op_add'] )
+    end
+
+    it 'counts a helper whose name a quote in a comment does not hide' do
+      get = defn( "int engine_get(void) { /* don't */ return clamp(12); }" )
+
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to eq( ['clamp'] )
     end
 
     it 'counts a helper whose address a body takes' do
