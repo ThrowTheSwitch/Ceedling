@@ -152,17 +152,16 @@ class PartializerUtils
     funcs.each { |func| func.source_filepath = filepath }
   end
 
-  # Locate a function's line number by searching the original C source file.
+  # Locate each function's line number by searching the original C source file once.
   #
   # Used when the global fallback mode is active — i.e., preprocessed output is
-  # unavailable for all functions in the current context. Delegates directly to
-  # `code_finder.find_in_c_file`.
+  # unavailable for all functions in the current context.
   #
-  # @param code_block  [String] Function definition text to search for
+  # @param code_blocks [Array<String>] Function definition texts to search for
   # @param filepath    [String] Path to the C source file to search
-  # @return [Integer, nil] 1-indexed source line number, or nil if not found
-  def locate_function_in_source(code_block:, filepath:)
-    @code_finder.find_in_c_file(filepath, code_block)
+  # @return [Array<Integer, nil>] Each 1-indexed source line number, or nil where not found
+  def locate_functions_in_source(code_blocks:, filepath:)
+    return @code_finder.find_all_in_c_file( filepath, code_blocks )
   end
 
   # Locate each declaration's line number in the text of the file it came from.
@@ -181,26 +180,28 @@ class PartializerUtils
     return signatures.map { |signature| @code_finder.find_in_c_string( code, signature ) }
   end
 
-  # Locate a function's line number using preprocessed output with C source fallback.
+  # Locate each function's line number using preprocessed output with C source fallback.
   #
-  # Two-strategy lookup for a single function:
-  #   1. Try the GCC-preprocessed directives-only file — exact match preserving line markers.
-  #   2. If that yields nil, fall back to the original C source file.
+  # Two-strategy lookup, each file read once for all the functions it serves:
+  #   1. Search the GCC-preprocessed directives-only file, whose line markers give original lines.
+  #   2. Search the original C source file for each function step 1 didn't find.
   #
-  # Returns line number or nil if neither approach succeeds.
-  #
-  # @param code_block            [String] Function definition text to search for
+  # @param code_blocks           [Array<String>] Function definition texts to search for
   # @param filepath              [String] Path to the original C source file (fallback target)
   # @param preprocessed_filepath [String] Path to the preprocessed directives-only file
-  # @return [Integer, nil] 1-indexed source line number, or nil if not found
-  def locate_function_via_preprocessed(code_block:, filepath:, preprocessed_filepath:)
-    line_num = @code_finder.find_in_preprocessed_file(preprocessed_filepath, code_block)
-    return line_num unless line_num.nil?
+  # @return [Array<Integer, nil>] Each 1-indexed source line number, or nil where neither search finds it
+  def locate_functions_via_preprocessed(code_blocks:, filepath:, preprocessed_filepath:)
+    lines   = @code_finder.find_all_in_preprocessed_file( preprocessed_filepath, code_blocks )
+    missing = lines.each_index.select { |index| lines[index].nil? }
+    return lines if missing.empty?
 
     msg = "Using fallback C function location search for #{filepath}"
-    @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
+    missing.each { @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING ) }
 
-    return @code_finder.find_in_c_file(filepath, code_block)
+    found = @code_finder.find_all_in_c_file( filepath, missing.map { |index| code_blocks[index] } )
+    missing.zip( found ) { |index, line_num| lines[index] = line_num }
+
+    return lines
   end
 
   # Format per-function line-number results as a list of human-readable strings.

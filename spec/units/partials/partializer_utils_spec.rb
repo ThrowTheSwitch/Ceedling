@@ -559,29 +559,14 @@ describe PartializerUtils do
     end
   end
 
-  context "#locate_function_in_source" do
-    it "returns the line number when function is found" do
-      expect(@code_finder).to receive(:find_in_c_file)
-        .with('/path/to/file.c', 'void foo(void) {}')
-        .and_return(42)
+  context "#locate_functions_in_source" do
+    it "returns each function's line from one search of the source" do
+      expect(@code_finder).to receive(:find_all_in_c_file)
+        .with('/path/to/file.c', ['void foo(void) {}', 'void missing(void) {}']).once
+        .and_return([42, nil])
 
-      result = @utils.locate_function_in_source(code_block: 'void foo(void) {}', filepath: '/path/to/file.c')
-      expect(result).to eq(42)
-    end
-
-    it "returns nil when function is not found" do
-      allow(@code_finder).to receive(:find_in_c_file).and_return(nil)
-
-      result = @utils.locate_function_in_source(code_block: 'void missing(void) {}', filepath: '/path/to/file.c')
-      expect(result).to be_nil
-    end
-
-    it "forwards exact arguments to code_finder" do
-      expect(@code_finder).to receive(:find_in_c_file)
-        .with('/exact/path.c', 'exact code block')
-        .and_return(nil)
-
-      @utils.locate_function_in_source(code_block: 'exact code block', filepath: '/exact/path.c')
+      result = @utils.locate_functions_in_source(code_blocks: ['void foo(void) {}', 'void missing(void) {}'], filepath: '/path/to/file.c')
+      expect(result).to eq([42, nil])
     end
   end
 
@@ -630,62 +615,36 @@ describe PartializerUtils do
     end
   end
 
-  context "#locate_function_via_preprocessed" do
+  context "#locate_functions_via_preprocessed" do
     let(:filepath)              { '/path/to/source.c' }
     let(:preprocessed_filepath) { '/build/preproc/source.i' }
-    let(:code_block)            { 'void foo(void) {}' }
+    let(:blocks)                { ['void foo(void) {}', 'void bar(void) {}', 'void baz(void) {}'] }
 
-    it "returns line number from preprocessed file when found there" do
-      expect(@code_finder).to receive(:find_in_preprocessed_file)
-        .with(preprocessed_filepath, code_block)
-        .and_return(10)
-      expect(@code_finder).not_to receive(:find_in_c_file)
+    it "returns each function's line from the preprocessed file when found there" do
+      expect(@code_finder).to receive(:find_all_in_preprocessed_file).with(preprocessed_filepath, blocks).once.and_return([10, 20, 30])
+      expect(@code_finder).not_to receive(:find_all_in_c_file)
 
-      result = @utils.locate_function_via_preprocessed(
-        code_block:            code_block,
-        filepath:              filepath,
-        preprocessed_filepath: preprocessed_filepath
-      )
-      expect(result).to eq(10)
+      result = @utils.locate_functions_via_preprocessed(code_blocks: blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath)
+      expect(result).to eq([10, 20, 30])
     end
 
-    it "falls back to C source when not found in preprocessed file" do
-      allow(@code_finder).to receive(:find_in_preprocessed_file).and_return(nil)
-      expect(@code_finder).to receive(:find_in_c_file).with(filepath, code_block).and_return(25)
+    # The source is searched once, and only for what the preprocessed file lacks
+    it "falls back to the C source for just the functions the preprocessed file lacks" do
+      allow(@code_finder).to receive(:find_all_in_preprocessed_file).and_return([nil, 20, nil])
+      expect(@code_finder).to receive(:find_all_in_c_file).with(filepath, [blocks[0], blocks[2]]).once.and_return([25, nil])
 
-      result = @utils.locate_function_via_preprocessed(
-        code_block:            code_block,
-        filepath:              filepath,
-        preprocessed_filepath: preprocessed_filepath
-      )
-      expect(result).to eq(25)
+      result = @utils.locate_functions_via_preprocessed(code_blocks: blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath)
+      expect(result).to eq([25, 20, nil])
     end
 
-    it "returns nil when found in neither preprocessed nor C source" do
-      allow(@code_finder).to receive(:find_in_preprocessed_file).and_return(nil)
-      allow(@code_finder).to receive(:find_in_c_file).and_return(nil)
+    it "logs the fallback search once for each function that needs it" do
+      allow(@code_finder).to receive(:find_all_in_preprocessed_file).and_return([10, nil, nil])
+      allow(@code_finder).to receive(:find_all_in_c_file).and_return([25, nil])
 
-      result = @utils.locate_function_via_preprocessed(
-        code_block:            code_block,
-        filepath:              filepath,
-        preprocessed_filepath: preprocessed_filepath
-      )
-      expect(result).to be_nil
-    end
+      expect(@loginator).to receive(:log)
+        .with("Using fallback C function location search for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::WARNING).twice
 
-    it "forwards correct arguments to both code_finder methods" do
-      expect(@code_finder).to receive(:find_in_preprocessed_file)
-        .with('/exact/preproc.i', 'exact block')
-        .and_return(nil)
-      expect(@code_finder).to receive(:find_in_c_file)
-        .with('/exact/source.c', 'exact block')
-        .and_return(nil)
-
-      @utils.locate_function_via_preprocessed(
-        code_block:            'exact block',
-        filepath:              '/exact/source.c',
-        preprocessed_filepath: '/exact/preproc.i'
-      )
+      @utils.locate_functions_via_preprocessed(code_blocks: blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath)
     end
   end
 

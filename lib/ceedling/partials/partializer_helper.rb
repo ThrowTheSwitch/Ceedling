@@ -135,8 +135,8 @@ class PartializerHelper
   # calculate the 1-indexed source line number. This line number is then written 
   # back into the `FunctionDefinition` struct alongside the originating filepath.
   #
-  # `FunctionDefinition` entries whose `code_block` cannot be located in the
-  # preprocessor output are skipped -- `line_num` fields remain unset.
+  # An entry whose `code_block` the preprocessor output lacks is searched for in
+  # the original source. One found in neither gets a nil `line_num`.
   # 
   # `source_filepath` is always updated.
   #
@@ -154,27 +154,20 @@ class PartializerHelper
 
     @utils.stamp_source_filepaths( funcs, filepath )
 
+    # Every function is located with one read of each file searched
+    code_blocks = funcs.map( &:code_block )
     if fallback
       msg = "Using fallback C function location search for #{filepath}"
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
-      funcs.each do |func|
-        func.line_num = @utils.locate_function_in_source(
-          code_block:  func.code_block,
-          filepath:    filepath
-        )
-      end
-
+      lines = @utils.locate_functions_in_source( code_blocks: code_blocks, filepath: filepath )
     else
-      funcs.each do |func|
-        # Uses `locate_function_in_source` as an automatic fallback
-        func.line_num = @utils.locate_function_via_preprocessed(
-          code_block:            func.code_block,
-          filepath:              filepath,
-          preprocessed_filepath: preprocessed_filepath
-        )
-      end
+      # Searches the original source for any function the preprocessed copy lacks
+      lines = @utils.locate_functions_via_preprocessed(
+        code_blocks: code_blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath
+      )
     end
+    funcs.zip( lines ) { |func, line_num| func.line_num = line_num }
 
     funcs.each do |func|
       if func.line_num.nil?
