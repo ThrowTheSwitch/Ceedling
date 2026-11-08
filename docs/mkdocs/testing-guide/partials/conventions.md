@@ -237,9 +237,10 @@ that calls them.
 
 A Partial reads each declaration as written, before macros expand. A macro that
 spells part of a declarator can hide what the declaration names, as `WINAPI`
-does in `void (WINAPI *fp)(int);`. Give such a function-pointer
-type a name with a typedef and use the name in the declaration, or declare the
-function directly. When a Partial finds no name at all for a function your
-module defines, it stops the build with a message naming the definition.
+does in `void (WINAPI *fp)(int);`. For a function pointer, give its type a name
+with a typedef and use the name in the declaration. For a function a macro
+declares, declare the function directly. When a Partial finds no name at all
+for a function your module defines, it stops the build with a message naming
+the definition.
 
 <br/><br/>
