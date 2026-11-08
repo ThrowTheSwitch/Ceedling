@@ -589,6 +589,24 @@ describe PartializerUtils do
 
       expect(@utils.locate_declaration_in_text(signature: 'int tick(void);', text: '')).to be_nil
     end
+
+    # A commented-out copy of the declaration would otherwise be found first
+    it "searches the text with its comments blanked and its lines kept" do
+      line_comment  = '// int tick(void);'
+      block_comment = '/* int tick(void); */'
+      expect(@code_finder).to receive(:find_in_c_string)
+        .with("#{' ' * line_comment.length}\n#{' ' * block_comment.length}\nint tick(void);\n", 'int tick(void);')
+        .and_return(3)
+
+      @utils.locate_declaration_in_text(signature: 'int tick(void);', text: "#{line_comment}\n#{block_comment}\nint tick(void);\n")
+    end
+
+    it "keeps a comment marker inside a string literal" do
+      text = "int open(const char *url) __attribute__((deprecated(\"see http://x\")));\n"
+      expect(@code_finder).to receive(:find_in_c_string).with(text, 'int open(void);').and_return(nil)
+
+      @utils.locate_declaration_in_text(signature: 'int open(void);', text: text)
+    end
   end
 
   context "#locate_function_via_preprocessed" do

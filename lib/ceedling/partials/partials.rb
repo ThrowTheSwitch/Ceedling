@@ -20,6 +20,10 @@ module Partials
   MOCK_PUBLIC  = :mock_public   unless const_defined?(:MOCK_PUBLIC)
   MOCK_PRIVATE = :mock_private  unless const_defined?(:MOCK_PRIVATE)
 
+  # A string or character literal, or a comment. One pattern finds both, so whichever starts
+  # first wins, as it does for the compiler.
+  LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:LITERAL_OR_COMMENT)
+
   # Data class representing a source or header file to be partialized
   ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
     def initialize(filepath: nil, directives_only_filepath: nil, full_expansion_filepath: nil, includes: [])

@@ -170,11 +170,14 @@ class PartializerUtils
   # The original file holds only its own lines, so a match there can't belong to a header it
   # includes. Preprocessed output can't promise that, since it carries every included header.
   #
+  # Comments are blanked first, newlines kept, so a commented-out copy of the declaration is
+  # never taken for it.
+  #
   # @param signature [String] Declaration text as extracted, ending in its semicolon
   # @param text      [String] Full text of the original header or source file
   # @return [Integer, nil] 1-indexed line number, or nil if not found
   def locate_declaration_in_text(signature:, text:)
-    return @code_finder.find_in_c_string( text, signature )
+    return @code_finder.find_in_c_string( _without_comments( text ), signature )
   end
 
   # Locate a function's line number using preprocessed output with C source fallback.
@@ -214,6 +217,11 @@ class PartializerUtils
   end
 
   private
+
+  # A literal stays, since a comment marker inside one starts no comment
+  def _without_comments(text)
+    return text.gsub( Partials::LITERAL_OR_COMMENT ) { |found| found.start_with?( '/' ) ? found.gsub( /[^\n]/, ' ' ) : found }
+  end
 
   # Does any decorator in a list matche any private keyword (case-insensitive)
   def is_function_private?(decorators)

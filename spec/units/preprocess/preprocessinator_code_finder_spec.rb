@@ -235,6 +235,15 @@ describe PreprocessinatorCodeFinder do
       expect( @finder.find_in_c_string( content, "int baz(void);" ) ).to be_nil
     end
 
+    it "does not match code starting in the middle of a longer word" do
+      content = "uint tick(void);\nint tick(void);\n"
+      expect( @finder.find_in_c_string( content, "int tick(void);" ) ).to eq 2
+    end
+
+    it "returns nil when the code appears only inside a longer word" do
+      expect( @finder.find_in_c_string( "uint tick(void);\n", "int tick(void);" ) ).to be_nil
+    end
+
     # -----------------------------------------------------------------------
     # Line number arithmetic — no GCC markers, pure newline count
     # -----------------------------------------------------------------------

@@ -37,10 +37,6 @@ class PartializerHelper
   # the same reason, against its own copy of this pattern.
   ANY_INCLUDE_DIRECTIVE = /^\s*#\s*include\s+\S/ unless const_defined?(:ANY_INCLUDE_DIRECTIVE, false)
 
-  # A string or character literal, or a comment, none of which can use a function however it
-  # reads. One pattern finds both, so whichever starts first wins, as it does for the compiler.
-  C_LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:C_LITERAL_OR_COMMENT, false)
-
   # Code uses a function wherever it names one: a call, an address taken, a callback passed by
   # name, or an entry in a table of handlers
   C_IDENTIFIER = /(?<!\w)[A-Za-z_]\w*/ unless const_defined?(:C_IDENTIFIER, false)
@@ -652,9 +648,9 @@ class PartializerHelper
     return (definition.expanded_body || definition.body || definition.code_block).to_s
   end
 
-  # Literals and comments become spaces, newlines kept
+  # Literals and comments become spaces, newlines kept. Neither can use a function however it reads.
   def _blank_non_code(text)
-    return text.gsub( C_LITERAL_OR_COMMENT ) { |blanked| blanked.gsub( /[^\n]/, ' ' ) }
+    return text.gsub( Partials::LITERAL_OR_COMMENT ) { |blanked| blanked.gsub( /[^\n]/, ' ' ) }
   end
 
   def _helper?(definitions)

@@ -48,7 +48,7 @@ class PreprocessinatorCodeFinder
 
   # Wrap a C file content string in a StringIO and search it for code.
   # Returns the 1-indexed source line number of the match, or nil if not found.
-  # Intended for test use so that specs require no temporary files.
+  # Partials searches file text it has already read this way.
   def find_in_c_string(content, code)
     buffer = StringIO.new( content )
     return find_in_c_code( io: buffer, search: code )
@@ -134,6 +134,10 @@ class PreprocessinatorCodeFinder
 
     # Replace the whitespace token with regex whitespace-insenstive matcher
     _code.gsub!(/#{WHITESPACE_MARKER}/, '\s+')
+
+    # Code starting with a word can't start in the middle of one, so `int f(void);` never
+    # matches inside `uint f(void);`
+    _code = '(?<!\w)' + _code if code.match?( /\A\w/ )
 
     # Create the regex we'll use
     pattern = Regexp.new( _code )
