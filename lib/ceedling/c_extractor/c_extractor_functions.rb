@@ -77,10 +77,14 @@ class CExtractorFunctions
     return [true, func]
   end
 
+  # Each name's pattern, compiled once, since a name is looked up for every function extracted.
+  # The name must be a whole word followed by its parameter list.
+  NAME_PATTERNS = Hash.new { |patterns, name| patterns[name] = /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ } unless const_defined?(:NAME_PATTERNS, false)
+
   # Where a function's name starts in text that begins with its signature, or nil. The name must
   # be a whole word followed by its parameter list, so `f` is never found inside `float`.
   def self.name_position(text, name)
-    return text.match( /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ )&.begin(0)
+    return text.index( NAME_PATTERNS[name] )
   end
 
   # Removes each listed token once, matching whole whitespace-separated tokens only, so the

@@ -2958,6 +2958,39 @@ describe CExtractorFunctions do
     it "does not find a name without a parameter list after it" do
       expect( described_class.name_position( "int f;", 'f' ) ).to be_nil
     end
+
+    it "finds a name at the very start of the text" do
+      expect( described_class.name_position( "f(void)", 'f' ) ).to eq( 0 )
+    end
+
+    it "does not find a name at the start of a longer one" do
+      expect( described_class.name_position( "int fx(void)", 'f' ) ).to be_nil
+    end
+
+    it "finds the name with a newline and a tab before its parameter list" do
+      expect( described_class.name_position( "int f\n\t(void)", 'f' ) ).to eq( 4 )
+    end
+
+    it "finds the name right after a pointer star" do
+      expect( described_class.name_position( "int *f(void)", 'f' ) ).to eq( 5 )
+    end
+
+    # A struct tag may share the function's name
+    it "passes over an earlier occurrence with no parameter list after it" do
+      expect( described_class.name_position( "struct f f(void)", 'f' ) ).to eq( 9 )
+    end
+
+    it "passes over the name inside a longer word to find it whole later" do
+      expect( described_class.name_position( "int buf; int f(void)", 'f' ) ).to eq( 13 )
+    end
+
+    it "does not find a name that only overlaps a longer run of its letters" do
+      expect( described_class.name_position( "int fff(void)", 'ff' ) ).to be_nil
+    end
+
+    it "counts the position in characters" do
+      expect( described_class.name_position( "/* é */ int f(void)", 'f' ) ).to eq( 12 )
+    end
   end
 
 end
