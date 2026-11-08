@@ -267,6 +267,11 @@ class PartializerHelper
       # corrupted by a subsequent replace call.
       groups = _decls.group_by { |var| var.original.strip }
 
+      # A static the extractor read no name from, such as one a macro declares, can't be renamed.
+      # Its whole statement stays in the body, still a valid local, and nothing of it is promoted.
+      groups.reject! { |_original, vars| vars.any? { |var| var.name.nil? } }
+      _decls = groups.values.flatten
+
       groups.each do |_original, vars|
         # Pre-compute old/new names before any mutation of var.name
         old_names   = vars.map(&:name)

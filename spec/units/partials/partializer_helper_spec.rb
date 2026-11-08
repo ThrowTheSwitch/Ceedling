@@ -580,6 +580,32 @@ describe PartializerHelper do
         expect(func.code_block).to include('return partial_fire_cache(1);')
       end
 
+      it "promotes a function-scope static function pointer whose name sits in redundant parentheses" do
+        func = OpenStruct.new(
+          name:       'fire',
+          body:       "{\n  static int (*(cache))(int) = 0;\n  return cache(1);\n}",
+          code_block: "int fire(void) {\n  static int (*(cache))(int) = 0;\n  return cache(1);\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.declarator] }).to eq [['partial_fire_cache', '(*(partial_fire_cache))(int)']]
+      end
+
+      # A macro may declare a static whole, and one the extractor reads no name from stays in place
+      it "leaves a function-scope static it can't name in the body" do
+        func = OpenStruct.new(
+          name:       'tally',
+          body:       "{\n  static ARR_OF(int, hits)[3];\n  static int n;\n  return n;\n}",
+          code_block: "int tally(void) {\n  static ARR_OF(int, hits)[3];\n  static int n;\n  return n;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:name)).to eq ['partial_tally_n']
+        expect(func.code_block).to include('static ARR_OF(int, hits)[3];')
+      end
+
       it "promotes each function pointer of a compound static and an array of them" do
         func = OpenStruct.new(
           name:       'fire',
