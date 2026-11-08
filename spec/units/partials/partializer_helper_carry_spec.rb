@@ -116,6 +116,18 @@ describe PartializerHelper do
       expect( carried_prototypes( result ) ).to eq( ['extern inline int engine_get_twice(void);'] )
     end
 
+    # C99 gives the external definition to a file declaring the function `extern` or without
+    # `inline`, so such a prototype can't depend on a use either
+    it 'carries a plain prototype of an inline function another header defines, unused' do
+      get   = defn( 'int engine_get(void) { return 1; }' )
+      twice = decl( 'extern int engine_get_twice(void);' )
+      twice.inline_elsewhere = true
+
+      result = plan( c_module( twice, get ), impl: selected( get ) )
+
+      expect( carried_prototypes( result ) ).to eq( ['extern int engine_get_twice(void);'] )
+    end
+
     it 'carries no prototype that nothing kept calls' do
       get    = defn( 'int engine_get(void) { return 1; }' )
       unused = decl( 'int board_reset(void);', origin: :header )

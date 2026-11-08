@@ -71,6 +71,13 @@ module Partials
     return decorators.any? { |d| d != 'static' and CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
   end
 
+  # A declaration of an inline function whose body another header holds. Under C99 a file
+  # declaring such a function `extern`, or without `inline`, holds its external definition.
+  # A declaration marked `inline` counts too, the body being nowhere else.
+  def self.foreign_inline?(decl)
+    return (inline?( decl.decorators ) or decl.inline_elsewhere) ? true : false
+  end
+
   def self.manufacture_function_declaration(line_num: nil, source_filepath: nil, name:, signature:)
     return FunctionDeclaration.new(
       name: name,

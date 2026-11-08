@@ -432,6 +432,18 @@ class PartializerHelper
     return changed ? "`#{decl.name}` (declaration)" : nil
   end
 
+  # Marks each declaration whose function the text defines inline with external linkage. Given
+  # a file's raw directives-only copy, which holds every header the file includes, a mark means
+  # the declaring file holds the function's external definition under C99.
+  #
+  # @param decls [Array<CExtractorTypes::CFunctionDeclaration>] The file's declarations, decorators reconciled
+  # @param text  [String] The file's raw directives-only copy
+  def mark_inline_elsewhere(decls:, text:)
+    decls.each do |decl|
+      decl.inline_elsewhere = (!Partials.static?( decl.decorators ) and _inline_definition?( text, decl.name ))
+    end
+  end
+
   # Decide what a Partial's implementation source carries beyond its selected functions.
   #
   # A module's code relies on more than the functions a test selects. It uses functions defined
@@ -439,8 +451,8 @@ class PartializerHelper
   # function name falls into one category.
   #   - Selected to test or to mock. Nothing is carried.
   #   - External, declared but defined nowhere in the module. Its prototypes that are not
-  #     static, when kept code uses the name. An inline prototype always, since it makes this
-  #     file hold the function's external definition.
+  #     static, when kept code uses the name. A prototype of an inline function another header
+  #     defines always, since it makes this file hold the function's external definition.
   #   - A header helper, a static or inline body in the header. The body and its prototypes,
   #     when kept code uses it.
   #   - Left out, any other unselected body. Its prototypes that are neither static nor
@@ -511,11 +523,11 @@ class PartializerHelper
   end
 
   # Never a static prototype. An inline prototype promises an inline body, and a left-out body
-  # isn't there. A prototype comes along when kept code uses the name. An inline one for a body
-  # elsewhere comes along regardless, since it makes this file hold the external definition.
+  # isn't there. A prototype comes along when kept code uses the name. One for an inline body in
+  # another header comes along regardless, since it makes this file hold the external definition.
   def _carryable_prototypes(decls, has_body, referenced)
     keep = decls.reject { |d| Partials.static?( d.decorators ) or (has_body and Partials.inline?( d.decorators )) }
-    keep = keep.select { |d| Partials.inline?( d.decorators ) } unless referenced
+    keep = keep.select { |d| !has_body and Partials.foreign_inline?( d ) } unless referenced
     return _distinct( keep )
   end
 
@@ -654,6 +666,17 @@ class PartializerHelper
   # Literals and comments become spaces, newlines kept. Neither can use a function however it reads.
   def _blank_non_code(text)
     return text.gsub( Partials::LITERAL_OR_COMMENT ) { |blanked| blanked.gsub( /[^\n]/, ' ' ) }
+  end
+
+  # Whether the text defines the function inline with external linkage. The words ahead of a
+  # definition's name run back to the previous `;` or brace, directive lines aside.
+  def _inline_definition?(text, name)
+    text.scan( /([^;{}]*?)(?<!\w)#{Regexp.escape( name )}\s*\([^;{}]*\)\s*\{/ ) do |(prefix)|
+      words = prefix.lines.reject { |line| line.lstrip.start_with?( '#' ) }.join.split( /\W+/ )
+      return true if Partials.inline?( words ) and !Partials.static?( words )
+    end
+
+    return false
   end
 
   def _helper?(definitions)

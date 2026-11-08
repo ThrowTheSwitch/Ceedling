@@ -1209,6 +1209,70 @@ describe PartializerHelper do
     end
   end
 
+  context "#mark_inline_elsewhere" do
+    require 'ceedling/c_extractor/c_extractor_types'
+
+    def decl(signature)
+      CExtractorTypes::CFunctionDeclaration.new(
+        name: signature[/(\w+)\s*\(/, 1], signature: signature, decorators: signature.start_with?( 'static' ) ? ['static'] : []
+      )
+    end
+
+    # Under C99 the declaring file then holds the external definition
+    it "marks a declaration whose function an included header defines inline" do
+      twice = decl( 'int engine_get_twice(void);' )
+      tick  = decl( 'int board_tick(void);' )
+      text  = "# 1 \"src/engine_api.h\" 1\nint engine_get(void);\ninline int engine_get_twice(void)\n{\n  return 2;\n}\n" \
+              "# 2 \"src/engine.c\" 2\nint engine_get_twice(void);\nint board_tick(void);\n"
+
+      @helper.mark_inline_elsewhere( decls: [twice, tick], text: text )
+
+      expect( twice.inline_elsewhere ).to be(true)
+      expect( tick.inline_elsewhere ).to be(false)
+    end
+
+    it "marks no declaration of a function a header defines static inline" do
+      clamp = decl( 'int clamp(int v);' )
+
+      @helper.mark_inline_elsewhere( decls: [clamp], text: "static inline int clamp(int v) { return v; }\nint clamp(int v);\n" )
+
+      expect( clamp.inline_elsewhere ).to be(false)
+    end
+
+    it "marks no static declaration" do
+      local = decl( 'static int local(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [local], text: "inline int local(void) { return 1; }\n" )
+
+      expect( local.inline_elsewhere ).to be(false)
+    end
+
+    it "marks no declaration of a function a header defines without inline" do
+      plain = decl( 'int plain(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [plain], text: "int plain(void) { return 1; }\nint plain(void);\n" )
+
+      expect( plain.inline_elsewhere ).to be(false)
+    end
+
+    # A directive line between definitions holds no specifier of the definition after it
+    it "reads past a directive line naming static" do
+      twice = decl( 'int twice(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: "int a;\n#define LOCAL static\ninline int twice(void) { return 2; }\n" )
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
+    it "does not take a longer name's inline definition for the declared function's" do
+      twice = decl( 'int twice(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: "inline int get_twice(void) { return 2; }\n" )
+
+      expect( twice.inline_elsewhere ).to be(false)
+    end
+  end
+
   context "#associate_declaration_line_numbers" do
     require 'ceedling/c_extractor/c_extractor_types'
 

@@ -117,12 +117,12 @@ Partial's generated implementation source, written as your module writes them.
 
 A Partial carries three kinds of content beyond the functions you select.
 Each comes along only when the code the Partial keeps uses it. The one
-exception is an `inline` prototype for a function defined in another header.
+exception is a prototype of an inline function another header defines.
 
 * **Prototypes of functions defined elsewhere.** Your module declares a
   function that another file defines. The prototype comes along when the
-  Partial's code uses the function. An `extern inline` prototype, described
-  below, always comes along.
+  Partial's code uses the function. A prototype that gives an inline function
+  its external definition, described below, always comes along.
 * **Prototypes of functions your test leaves out.** A test can subtract a
   function, such as `-engine_poll`, and define a stub of its own. The
   prototype comes along so a selected function calling it links to your stub.
@@ -167,15 +167,19 @@ Some content stays behind, because carrying it could break a build that works.
 
 ### Inline functions with an external definition
 
-C99 gives an inline function its external definition through an
-`extern inline` prototype. A header defines the function `inline`, and one
-source file declares it `extern inline`. That source file's object then holds
-the definition that an unoptimized call links to. A Partial carries the
-prototype, so a test calling the function links.
+C99 gives an inline function its external definition through a declaration.
+A header defines the function `inline`. One source file declares it
+`extern inline`, `extern`, or with no `inline` at all. That source file's
+object then holds the definition that an unoptimized call links to. A Partial
+carries the declaration, so a test calling the function links.
 
-A Partial never mocks a function it sees only as an `inline` declaration. The
-function's body lives in another header, which a mock cannot replace. The
-Partial's implementation source carries the prototype instead.
+Ceedling finds the inline body in the headers your source file includes. Under
+[fallback preprocessing](#fallback-preprocessing) it cannot look there. Only a
+declaration that says `inline` itself is then carried this way.
+
+A Partial never mocks a function your module only declares when another header
+defines it inline. The body lives in that header, which a mock cannot replace.
+The Partial's implementation source carries the declaration instead.
 
 A test that also mocks the module holding the inline body, as a Partial,
 removes that body. Some compilers then warn that the inline function is not

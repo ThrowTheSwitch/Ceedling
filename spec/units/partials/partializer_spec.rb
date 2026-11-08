@@ -1900,6 +1900,9 @@ describe Partializer do
 
       # associate_function_line_numbers is called for every file processed; stub by default
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
+      # Each file's raw directives-only copy is absent unless an example provides it
+      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
+      allow(@file_wrapper).to receive(:exist?).and_return(false)
       # static var extraction/promotion called for every file processed; stub by default
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
     end
@@ -2202,6 +2205,45 @@ describe Partializer do
       @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
+    context "marking functions an included header defines inline" do
+      let(:config) do
+        PartializerConfig::Config.new(
+          module: 'engine',
+          header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+          source: Partials::ConfigFileInfo.new(filepath: 'src/engine.c', directives_only_filepath: '/build/preproc/engine.c')
+        )
+      end
+      let(:twice) { CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get_twice', signature: 'int engine_get_twice(void);' ) }
+
+      # The raw copy holds every header the file includes, so the inline body is found there
+      it "has the helper mark the file's declarations against its raw directives-only copy" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+        allow(@file_wrapper).to receive(:exist?).with('raw/src/engine.c').and_return(true)
+        allow(@file_wrapper).to receive(:read).with('raw/src/engine.c').and_return('raw text')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'raw text' )
+
+        @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+
+      it "reads no file and marks nothing without a raw copy" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+
+        expect(@file_wrapper).not_to receive(:read)
+        expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
+
+        @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+
+      it "reads no file when the file declares no function" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new)
+
+        expect(@file_wrapper).not_to receive(:exist?)
+
+        @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+    end
+
     it "stamps every function with the role of the file it came from" do
       header_def  = CExtractorTypes::CFunctionDefinition.new(name: 'clamp')
       header_decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick')
@@ -2450,7 +2492,7 @@ describe Partializer do
 
     it "merges declaration-only functions into the DEDUCT candidate pool" do
       defn     = double('inline_func', name: 'inline_fn')
-      decl     = double('proto_func', name: 'proto_fn', decorators: [])
+      decl     = double('proto_func', name: 'proto_fn', decorators: [], inline_elsewhere: false)
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_inline'), double('iface_proto')]
@@ -2470,7 +2512,7 @@ describe Partializer do
 
     it "merges declaration-only functions into the PUBLIC candidate pool too" do
       defn     = double('def_func', name: 'pub_def')
-      decl     = double('decl_func', name: 'pub_decl', decorators: [])
+      decl     = double('decl_func', name: 'pub_decl', decorators: [], inline_elsewhere: false)
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_func')]
@@ -2508,6 +2550,25 @@ describe Partializer do
       end
     end
 
+    # Declared without `inline`, it is still a function whose body another header holds
+    it "keeps a declaration of a function another header defines inline out of the PUBLIC candidate pool" do
+      defn     = double('def_func', name: 'engine_get')
+      foreign  = CExtractorTypes::CFunctionDeclaration.new(
+        name: 'engine_get_twice', signature: 'int engine_get_twice(void);', inline_elsewhere: true
+      )
+      filtered = [double('iface_func')]
+      pf       = make_pf(type: Partials::PUBLIC)
+
+      expect(@partializer_helper).to receive(:filter_and_transform_funcs)
+        .with([defn], Partials::PUBLIC, :interface).and_return(filtered)
+      allow(@partializer_helper).to receive(:subtract_funcs).and_return(filtered)
+
+      @partializer.extract_interface_functions(
+        test: 'test_mod', partial: 'mod',
+        definitions: [defn], declarations: [foreign], config: make_config(mocks: pf)
+      )
+    end
+
     it "lists a declaration-only inline function it keeps out, at debug verbosity" do
       foreign = double('extern_inline', name: 'engine_get_twice', decorators: ['extern', 'inline'])
       pf      = make_pf(type: Partials::DEDUCT)
@@ -2528,7 +2589,7 @@ describe Partializer do
 
     it "excludes a declaration already present as a definition with the same name (dedup)" do
       defn     = double('def_func', name: 'shared')
-      decl     = double('decl_func', name: 'shared', decorators: []) # e.g. header prototype for the same function
+      decl     = double('decl_func', name: 'shared', decorators: [], inline_elsewhere: false) # e.g. header prototype for the same function
       defs     = [defn]
       decls    = [decl]
       filtered = [double('iface_func')]
@@ -2569,7 +2630,7 @@ describe Partializer do
 
     it "searches definitions then declarations for additions" do
       defs  = []
-      decls = [double('decl', name: 'decl_only', decorators: [])]
+      decls = [double('decl', name: 'decl_only', decorators: [], inline_elsewhere: false)]
       found = double('iface_func', name: 'decl_only')
       pf    = make_pf(type: Partials::ACCUMULATE, additions: ['decl_only'])
 

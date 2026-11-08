@@ -458,6 +458,7 @@ class Partializer
     _log_module_contents(name, config.module, file_type, c_module)
 
     _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.full_expansion_filepath
+    _mark_inline_elsewhere( name, c_file, c_module )
     _locate_contents( name, c_file, fallback, c_module )
     _promote_function_scope_statics( name, config, file_type, c_module )
 
@@ -478,6 +479,19 @@ class Partializer
       module_name:             config.module,
       file_type:               file_type
     )
+  end
+
+  # A header the file includes may define inline a function the file declares. Under C99 the
+  # file then holds that function's external definition. The file's raw directives-only copy
+  # holds every header it includes, so the inline body is looked for there. Without the copy,
+  # as under fallback preprocessing, nothing is marked.
+  def _mark_inline_elsewhere(name, c_file, c_module)
+    return if c_module.function_declarations.empty?
+
+    raw = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( c_file.filepath, name )
+    return unless @file_wrapper.exist?( raw )
+
+    @helper.mark_inline_elsewhere( decls: c_module.function_declarations, text: @file_wrapper.read( raw ).clean_encoding )
   end
 
   def _locate_contents(name, c_file, fallback, c_module)
@@ -514,7 +528,7 @@ class Partializer
   def _mock_candidates(test, partial, definitions, declarations)
     defined          = Set.new( definitions.map( &:name ) )
     declaration_only = declarations.reject { |d| defined.include?( d.name ) }
-    foreign_inline   = Set.new( declaration_only.select { |d| Partials.inline?( d.decorators ) }.map( &:name ) )
+    foreign_inline   = Set.new( declaration_only.select { |d| Partials.foreign_inline?( d ) }.map( &:name ) )
 
     _log_not_mockable( test, partial, foreign_inline )
     return definitions + declaration_only.reject { |d| foreign_inline.include?( d.name ) }

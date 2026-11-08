@@ -32,16 +32,8 @@ module CExtractorTypes
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to empty arrays for convenience
-    def initialize(
-        variable_declarations: [],
-        function_definitions: [],
-        function_declarations: [],
-        macro_definitions: [],
-        type_definitions: [],
-        aggregate_definitions: [],
-        macro_invocations: [],
-        element_sequence: []
-      )
+    def initialize(variable_declarations: [], function_definitions: [], function_declarations: [], macro_definitions: [],
+                   type_definitions: [], aggregate_definitions: [], macro_invocations: [], element_sequence: [])
       super
     end
 
@@ -79,9 +71,10 @@ module CExtractorTypes
     :line_num,           # Integer — 1-based line number in source file where declaration begins
     :source_filepath,    # Original file the declaration was located in, when a caller locates it
     :origin,             # :header or :source when the caller knows the file's role, otherwise nil
+    :inline_elsewhere,   # True when a header the declaring file includes defines the function inline
     keyword_init: true
   ) do
-    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil, source_filepath: nil, origin: nil)
+    def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil, source_filepath: nil, origin: nil, inline_elsewhere: false)
       super
     end
   end unless const_defined?(:CFunctionDeclaration, false)

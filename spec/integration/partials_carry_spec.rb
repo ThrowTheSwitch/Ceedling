@@ -62,6 +62,26 @@ describe 'What a Partial carries' do
       expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
     end
 
+    # C99 gives the external definition to a file declaring the function `extern` or without
+    # `inline`, so a plain prototype does the same job as `extern inline`
+    ['extern int engine_get_twice(void);', 'int engine_get_twice(void);'].each do |declaration|
+      it "links a call to an inline function the module declares as `#{declaration}`" do
+        @result = generate_partial(
+          module_name: 'engine',
+          header: "#ifndef ENGINE_H\n#define ENGINE_H\nint engine_get(void);\n#endif\n",
+          source: "#include \"engine.h\"\n#include \"engine_api.h\"\n#{declaration}\nint engine_get(void) { return 1; }\n",
+          source_includes: ['engine.h', 'engine_api.h'],
+          extra: { 'engine_api.h' => engine_api_h },
+          tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil
+        )
+
+        expect( @result.impl_c ).to include( declaration )
+
+        link = link_partial( @result, references: ['engine_get_twice'], flags: '-O0' )
+        expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
+      end
+    end
+
     it 'compiles a call to a function the source declares extern' do
       @result = generate_partial(
         module_name: 'ticker',
