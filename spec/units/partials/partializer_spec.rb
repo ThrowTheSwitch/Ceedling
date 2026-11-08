@@ -2214,25 +2214,116 @@ describe Partializer do
         )
       end
       let(:twice) { CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get_twice', signature: 'int engine_get_twice(void);' ) }
+      let(:both_files) do
+        PartializerConfig::Config.new(
+          module: 'engine',
+          header: Partials::ConfigFileInfo.new(filepath: 'src/engine.h', directives_only_filepath: '/build/preproc/engine.h'),
+          source: Partials::ConfigFileInfo.new(filepath: 'src/engine.c', directives_only_filepath: '/build/preproc/engine.c')
+        )
+      end
 
-      # The raw copy holds every header the file includes, so the inline body is found there
-      it "has the helper mark the file's declarations against its raw directives-only copy" do
+      # The raw copy holds every header the file includes, so the inline body is found there.
+      # The scan needs only bytes, so the copy is never transcoded.
+      it "marks a source declaration against the source's raw copy, read as bytes" do
         allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
         allow(@file_wrapper).to receive(:exist?).with('raw/src/engine.c').and_return(true)
-        allow(@file_wrapper).to receive(:read).with('raw/src/engine.c').and_return('raw text')
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.c').and_return('raw bytes')
 
-        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'raw text' )
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'raw bytes' )
+        expect(@file_wrapper).not_to receive(:read)
+        expect(@file_path_utils).not_to receive(:form_preprocessed_file_raw_directives_only_filepath).with(nil, anything)
 
         @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+
+      # A module mocked from its header alone has no source, and every declaration is the header's
+      it "marks a header-only Partial's declarations against the header's raw copy" do
+        header_only = PartializerConfig::Config.new(
+          module: 'engine',
+          header: Partials::ConfigFileInfo.new(filepath: 'src/engine.h', directives_only_filepath: '/build/preproc/engine.h'),
+          source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+        )
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+        allow(@file_wrapper).to receive(:exist?).with('raw/src/engine.h').and_return(true)
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'header bytes' )
+        expect(@file_path_utils).not_to receive(:form_preprocessed_file_raw_directives_only_filepath).with(nil, anything)
+
+        @partializer.extract_module_contents(@name, header_only, fallback: false)
+      end
+
+      # Each file's raw copy holds the headers that file includes, so each is searched for its own
+      it "marks each file's declarations against that file's own raw copy" do
+        tick = CExtractorTypes::CFunctionDeclaration.new( name: 'board_tick', signature: 'int board_tick(void);' )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.h').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [tick])
+        )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [twice])
+        )
+        allow(@file_wrapper).to receive(:exist?).and_return(true)
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.c').and_return('source bytes')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [tick], text: 'header bytes' )
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'source bytes' )
+
+        @partializer.extract_module_contents(@name, both_files, fallback: false)
+      end
+
+      # Only a function the module has no body for can be defined inline elsewhere
+      it "marks only the header declarations whose function has no body in the module" do
+        get  = CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get', signature: 'int engine_get(void);' )
+        tick = CExtractorTypes::CFunctionDeclaration.new( name: 'board_tick', signature: 'int board_tick(void);' )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.h').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [get, tick])
+        )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
+          CExtractorTypes::CModule.new(function_definitions: [CExtractorTypes::CFunctionDefinition.new(name: 'engine_get')])
+        )
+        allow(@file_wrapper).to receive(:exist?).and_return(true)
+        allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
+
+        expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [tick], text: 'header bytes' ).once
+
+        @partializer.extract_module_contents(@name, both_files, fallback: false)
+      end
+
+      it "reads no file when every declaration's function has a body in the module" do
+        get = CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get', signature: 'int engine_get(void);' )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.h').and_return(
+          CExtractorTypes::CModule.new(function_declarations: [get])
+        )
+        allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
+          CExtractorTypes::CModule.new(function_definitions: [CExtractorTypes::CFunctionDefinition.new(name: 'engine_get')])
+        )
+
+        expect(@file_wrapper).not_to receive(:exist?)
+        expect(@file_wrapper).not_to receive(:read_binary)
+        expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
+
+        @partializer.extract_module_contents(@name, both_files, fallback: false)
       end
 
       it "reads no file and marks nothing without a raw copy" do
         allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
 
-        expect(@file_wrapper).not_to receive(:read)
+        expect(@file_wrapper).not_to receive(:read_binary)
         expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
 
         @partializer.extract_module_contents(@name, config, fallback: false)
+      end
+
+      # Fallback writes no raw copy, so any copy on disk is stale
+      it "marks nothing under fallback preprocessing, even when a raw copy remains" do
+        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
+        allow(@file_wrapper).to receive(:exist?).and_return(true)
+
+        expect(@file_wrapper).not_to receive(:read_binary)
+        expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
+
+        @partializer.extract_module_contents(@name, config, fallback: true)
       end
 
       it "reads no file when the file declares no function" do

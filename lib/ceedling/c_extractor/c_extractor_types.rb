@@ -71,7 +71,7 @@ module CExtractorTypes
     :line_num,           # Integer — 1-based line number in source file where declaration begins
     :source_filepath,    # Original file the declaration was located in, when a caller locates it
     :origin,             # :header or :source when the caller knows the file's role, otherwise nil
-    :inline_elsewhere,   # True when a header the declaring file includes defines the function inline
+    :inline_elsewhere,   # True when the module never defines the function and a header the declaring file includes defines it inline
     keyword_init: true
   ) do
     def initialize(name: nil, signature: nil, decorators: [], signature_stripped: nil, line_num: nil, source_filepath: nil, origin: nil, inline_elsewhere: false)

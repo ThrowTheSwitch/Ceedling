@@ -436,8 +436,8 @@ class PartializerHelper
   # a file's raw directives-only copy, which holds every header the file includes, a mark means
   # the declaring file holds the function's external definition under C99.
   #
-  # @param decls [Array<CExtractorTypes::CFunctionDeclaration>] The file's declarations, decorators reconciled
-  # @param text  [String] The file's raw directives-only copy
+  # @param decls [Array<CExtractorTypes::CFunctionDeclaration>] The file's declarations of functions the module never defines, decorators reconciled
+  # @param text  [String] The file's raw directives-only copy, read as bytes
   def mark_inline_elsewhere(decls:, text:)
     decls.each do |decl|
       decl.inline_elsewhere = (!Partials.static?( decl.decorators ) and _inline_definition?( text, decl.name ))

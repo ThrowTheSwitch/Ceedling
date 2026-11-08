@@ -299,7 +299,8 @@ class Partializer
   # @param config [PartializerConfig::Config] The Partial's own config, carrying `header`/
   #   `source` (each a ConfigFileInfo) and `module`, the module name.
   # @param fallback [Boolean] Passed through to `associate_function_line_numbers` --
-  #   whether to fall back to plain (non-directives-only) line-number association.
+  #   whether to fall back to plain (non-directives-only) line-number association. It also
+  #   skips inline marking, which needs a raw directives-only copy.
   #
   # @return [CExtractorTypes::CModule] A merged CModule containing all extracted contents
   #   from both files. The structure includes:
@@ -323,6 +324,10 @@ class Partializer
 
     # Use `+` operator for CModule to merge everything
     contents = contents.reduce(&:+)
+
+    # Only the merged module knows which functions have a body. Fallback preprocessing writes no
+    # raw copy, so any copy on disk is stale.
+    _mark_inline_elsewhere( name, config, contents ) unless fallback
 
     return contents
   end
@@ -458,7 +463,6 @@ class Partializer
     _log_module_contents(name, config.module, file_type, c_module)
 
     _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.full_expansion_filepath
-    _mark_inline_elsewhere( name, c_file, c_module )
     _locate_contents( name, c_file, fallback, c_module )
     _promote_function_scope_statics( name, config, file_type, c_module )
 
@@ -481,17 +485,31 @@ class Partializer
     )
   end
 
-  # A header the file includes may define inline a function the file declares. Under C99 the
-  # file then holds that function's external definition. The file's raw directives-only copy
-  # holds every header it includes, so the inline body is looked for there. Without the copy,
-  # as under fallback preprocessing, nothing is marked.
-  def _mark_inline_elsewhere(name, c_file, c_module)
-    return if c_module.function_declarations.empty?
+  # A header a file includes may define inline a function the module declares but never
+  # defines. Under C99 the declaring file then holds that function's external definition. Each
+  # file's raw directives-only copy holds every header it includes, so the inline body is
+  # looked for there. A function the module defines is never looked for, since nothing reads
+  # its mark. The copy is read as bytes, which is all the scan needs.
+  def _mark_inline_elsewhere(name, config, c_module)
+    undefined = _declaration_only( c_module.function_definitions, c_module.function_declarations )
 
+    { header: config.header, source: config.source }.each do |origin, c_file|
+      decls = undefined.select { |decl| decl.origin == origin }
+      _mark_from_raw_copy( name, c_file, decls ) unless decls.empty?
+    end
+  end
+
+  def _mark_from_raw_copy(name, c_file, decls)
     raw = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( c_file.filepath, name )
     return unless @file_wrapper.exist?( raw )
 
-    @helper.mark_inline_elsewhere( decls: c_module.function_declarations, text: @file_wrapper.read( raw ).clean_encoding )
+    @helper.mark_inline_elsewhere( decls: decls, text: @file_wrapper.read_binary( raw ) )
+  end
+
+  # The declarations of functions with no definition among `definitions`
+  def _declaration_only(definitions, declarations)
+    defined = Set.new( definitions.map( &:name ) )
+    return declarations.reject { |decl| defined.include?( decl.name ) }
   end
 
   def _locate_contents(name, c_file, fallback, c_module)
@@ -526,8 +544,7 @@ class Partializer
   # can never replace that body, so mocking it would only define the function twice. It stays
   # out, and the implementation source carries its prototype when the module is also tested.
   def _mock_candidates(test, partial, definitions, declarations)
-    defined          = Set.new( definitions.map( &:name ) )
-    declaration_only = declarations.reject { |d| defined.include?( d.name ) }
+    declaration_only = _declaration_only( definitions, declarations )
     foreign_inline   = Set.new( declaration_only.select { |d| Partials.foreign_inline?( d ) }.map( &:name ) )
 
     _log_not_mockable( test, partial, foreign_inline )

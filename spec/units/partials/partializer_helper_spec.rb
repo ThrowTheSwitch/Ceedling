@@ -1283,6 +1283,16 @@ describe PartializerHelper do
 
       expect( twice.inline_elsewhere ).to be(false)
     end
+
+    # A raw copy is read as bytes, and a vendor header's comments may hold any byte at all
+    it "marks from a raw copy read as bytes, whatever bytes its comments hold" do
+      twice = decl( 'int twice(void);' )
+      text  = "/* 10 \xB5s tick \xFF */\ninline int twice(void) { return 2; }\n".b
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: text )
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
   end
 
   context "#associate_declaration_line_numbers" do

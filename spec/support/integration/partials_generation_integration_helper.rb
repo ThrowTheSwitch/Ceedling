@@ -259,16 +259,19 @@ module PartialsGenerationHelpers
     reconcile_with_full_expansion( header_module, dir: dir, filename: "#{module_name}.h", defines: defines, file_type: 'header' )
     reconcile_with_full_expansion( source_module, dir: dir, filename: "#{module_name}.c", defines: defines, file_type: 'source' )
 
-    # Production marks a declared function an included header defines inline, reading each
-    # file's raw directives-only copy. Fallback writes no such copy, so it marks nothing.
+    c_module = header_module + source_module
+
+    # Production marks a function the module declares but never defines when an included
+    # header defines it inline, reading each file's raw directives-only copy as bytes.
+    # Fallback writes no such copy, so it marks nothing.
     if mode == :accurate
+      defined = c_module.function_definitions.map( &:name )
       { header_module => "#{module_name}.h", source_module => "#{module_name}.c" }.each do |file_module, filename|
-        raw = File.join( dir, "#{filename}.directives_only" )
-        partials_helper.mark_inline_elsewhere( decls: file_module.function_declarations, text: File.read( raw ) ) if File.exist?( raw )
+        raw   = File.join( dir, "#{filename}.directives_only" )
+        decls = file_module.function_declarations.reject { |decl| defined.include?( decl.name ) }
+        partials_helper.mark_inline_elsewhere( decls: decls, text: File.binread( raw ) ) if File.exist?( raw ) and !decls.empty?
       end
     end
-
-    c_module = header_module + source_module
 
     generator   = build_partials_generator
     partializer = build_partializer
