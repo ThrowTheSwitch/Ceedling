@@ -11,6 +11,8 @@ This example project illustrates:
   and `static` variables that are normally inaccessible to the linker
 - **Every major Partials pattern** across a range of sensor and system modules
 - **Partials and mocks used together** in the same test suite
+- **Carrying** — a Partial bringing along the helpers, prototypes, and
+  variables its selected functions rely on
 
 This project is test-suite only (no release build).
 
@@ -33,6 +35,9 @@ wondrous_forest/
 │   ├── ForestMonitor.c/.h
 │   ├── SensorHal.c/.h
 │   ├── UartDriver.c/.h
+│   ├── RainGauge.c/.h
+│   ├── RainTipIsr.c/.h # Defines the tip counter RainGauge.h declares extern
+│   ├── ForestUnits.h   # C99 inline functions, no source file of its own
 │   ├── sensors/soil/Calibration.c/.h   # Same module name as the one below
 │   ├── sensors/light/Calibration.c/.h  # Told apart by directory
 │   └── Types.h
@@ -45,7 +50,9 @@ wondrous_forest/
     ├── TestEventQueue.c
     ├── TestForestMonitor.c
     ├── TestSensorHal.c
-    └── TestUartDriver.c
+    ├── TestUartDriver.c
+    ├── TestRainGauge.c
+    └── TestCalibration.c
 ```
 
 ---
@@ -64,6 +71,27 @@ wondrous_forest/
 | TestSensorHal.c         | Traditional — HAL has no private statics                      |
 | TestUartDriver.c        | Traditional — UART driver has no private statics              |
 | TestCalibration.c       | `TEST_PARTIAL_PRIVATE_MODULE_AT` — two same-named modules     |
+| TestRainGauge.c         | `TEST_PARTIAL_PUBLIC_MODULE` + a subtracted, stubbed function |
+
+---
+
+## What a Partial Carries
+
+A Partial brings along what its selected functions rely on. `TestRainGauge.c`
+selects RainGauge's public functions and subtracts one of them. Those
+functions rely on code the test does not select, so the Partial carries it.
+Run the test with `--verbosity=debug` to see each carried item and why.
+
+| Carried item | Why the Partial needs it |
+|---|---|
+| `RainGauge_TipsToMicrometers()` | `RainGauge.h` defines this `static inline` helper, and `RainGauge_Update()` calls it |
+| `extern inline` prototype of `ForestUnits_MicrometersToTenthsMm()` | `ForestUnits.h` defines the function C99 `inline`. The prototype makes the Partial hold its external definition |
+| Prototype of `RainGauge_ReportStorm()` | The test subtracts this function and defines a stub. `RainGauge_Update()` calls the stub |
+| Weak definition of `g_rain_tip_count` | `RainGauge.h` declares the counter `extern`. Its real definition in `RainTipIsr.c`, which the test links, takes precedence |
+
+Each carried item keeps its original spelling. A `#line` directive ahead of
+each points back to its original file and line. Coverage of the carried
+helper therefore counts toward `RainGauge.h`.
 
 ---
 

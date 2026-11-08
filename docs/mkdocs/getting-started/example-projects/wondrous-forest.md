@@ -41,5 +41,7 @@ comprehensive reference:
 | TestForestMonitor.c     | `TEST_PARTIAL_PUBLIC_MODULE` + `MOCK_PARTIAL_PRIVATE_MODULE` |
 | TestSensorHal.c         | Traditional — HAL has no private statics                     |
 | TestUartDriver.c        | Traditional — UART driver has no private statics             |
+| TestCalibration.c       | `TEST_PARTIAL_PRIVATE_MODULE_AT` — two same-named modules    |
+| TestRainGauge.c         | `TEST_PARTIAL_PUBLIC_MODULE` + a subtracted, stubbed function |
 
 <br/><br/>
