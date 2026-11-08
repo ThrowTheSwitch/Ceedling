@@ -425,14 +425,25 @@ describe PartialsManager do
       @manager.stage_generate_partials( @state )
     end
 
-    # The plan's notices repeat for as long as the build depends on what they report
-    it "plans what the implementation carries even when the implementation is fresh" do
+    # Only a regenerating implementation reads the plan, so its notices appear with that build
+    it "plans nothing when the implementation is fresh" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
       allow(@dependinator).to receive(:stale?).and_return( false )
 
-      expect(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+      expect(@partializer).not_to receive(:plan_carry)
       expect(@generator).not_to receive(:generate_partial_implementation)
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "plans nothing when only the interface regenerates" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@dependinator).to receive(:stale?) { |target| target.end_with?( 'ceedling_partial_Foo_interface.h' ) }
+
+      expect(@partializer).not_to receive(:plan_carry)
+      expect(@generator).to receive(:generate_partial_interface)
 
       @manager.stage_generate_partials( @state )
     end

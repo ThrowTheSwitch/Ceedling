@@ -173,23 +173,6 @@ class PartialsManager
         interface: interface
       )
 
-      # What the implementation source carries beyond the selection. Planned on every build,
-      # fresh or not, so its notices repeat for as long as the build depends on them.
-      carry = nil
-      unless implementation.nil?
-        carry = @partializer.plan_carry(
-          test:            name,
-          partial:         config.module,
-          c_module:        module_contents,
-          impl:            implementation,
-          interface:       interface,
-          fallback:        !directives_only,
-          header_guarded:  !module_include_guard.nil?,
-          header_filepath: config.header.filepath,
-          source_filepath: config.source.filepath
-        )
-      end
-
       unless implementation.nil?
         # The same call writes a header alongside the source, so the source vouches for it
         # as an output. A modified or deleted header then regenerates both.
@@ -197,6 +180,20 @@ class PartialsManager
         header_target = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_header_filename( config.module ) )
 
         skipped = generate_when_stale( target: target, outputs: [header_target], kind: 'implementation', **record ) do
+          # What the implementation source carries beyond the selection. Planned only when the
+          # source regenerates, so its notices appear with that build.
+          carry = @partializer.plan_carry(
+            test:            name,
+            partial:         config.module,
+            c_module:        module_contents,
+            impl:            implementation,
+            interface:       interface,
+            fallback:        !directives_only,
+            header_guarded:  !module_include_guard.nil?,
+            header_filepath: config.header.filepath,
+            source_filepath: config.source.filepath
+          )
+
           @generator.generate_partial_implementation(
             test:                     name,
             partial:                  config.module,

@@ -58,7 +58,7 @@ A function can never appear in both lists at once. Being directly tested means i
 
 ## Carrying What the Selected Functions Rely On
 
-A Partial’s implementation source carries more than the selected functions. The module’s code relies on prototypes of functions defined elsewhere, and on small `static` or `inline` helpers its header defines. Without them, selected code fails to compile, or an `extern inline` function never gets its external definition. `PartializerHelper#plan_carry` decides what comes along, and `Partializer#plan_carry` logs that decision.
+A Partial’s implementation source carries more than the selected functions. The module’s code relies on prototypes of functions defined elsewhere, and on small `static` or `inline` helpers its header defines. Without them, selected code fails to compile, or an `extern inline` function never gets its external definition. `PartializerHelper#plan_carry` decides what comes along, and `Partializer#plan_carry` logs that decision. `PartialsManager` plans only when it regenerates the implementation source, so the plan’s notices appear with that build.
 
 The decision is made per function name, from facts extraction already recorded. Those facts are whether the module defines a body for the name, whether the test selected it, which file each item came from, and its reconciled storage class. Each name falls into one category.
 

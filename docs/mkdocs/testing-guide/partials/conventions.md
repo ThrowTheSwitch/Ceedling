@@ -143,7 +143,8 @@ its original file and line, so compiler messages and coverage reports name your
 own files.
 
 !!! tip "See what a Partial carries"
-    Run a test build with `--verbosity=debug`. Each Partial lists what it
+    Run a test build with `--verbosity=debug` that generates the Partial, such
+    as the first build after `ceedling clobber`. Each Partial lists what it
     carried and why.
 
 ### What is not carried
@@ -193,7 +194,8 @@ header your module includes may pull the real header in again, helpers and
 all. A carried copy of a helper would then collide with the real one.
 
 A Partial therefore carries no helpers from a header without an include guard.
-It logs a notice naming the helpers the Partial's code uses. Give the
+When it generates the Partial, it logs a notice naming the helpers the
+Partial's code uses. Give the
 header an include guard to have its helpers carried. Selecting a helper with
 `+name` also works when no other header pulls the real header in.
 
