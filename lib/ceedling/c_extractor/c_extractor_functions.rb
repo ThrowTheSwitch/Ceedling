@@ -315,10 +315,11 @@ class CExtractorFunctions
   end
 
   # Splits a function signature into its decorators and the signature without them.
-  # Decorators are the storage-class and function-specifier keywords of FUNCTION_DECORATOR_KEYWORDS.
-  # Every other word before the name belongs to the return type and keeps its place and order.
-  # That includes qualifiers, type keywords, typedef names and unexpanded macros. Reconciling
-  # with the fully expanded copy resolves a macro that hides a storage class.
+  # Decorators are the storage-class and inline keywords of FUNCTION_DECORATOR_KEYWORDS.
+  # Every other word before the name keeps its place and order. That includes the return type's
+  # qualifiers, type keywords and typedef names, and also `_Noreturn`, attributes, calling
+  # conventions and unexpanded macros. Reconciling with the fully expanded copy resolves a
+  # macro that hides a storage class.
   #
   # Parameters:
   #   signature: Complete function signature string

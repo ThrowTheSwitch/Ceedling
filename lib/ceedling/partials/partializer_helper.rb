@@ -37,24 +37,24 @@ class PartializerHelper
   # the same reason, against its own copy of this pattern.
   ANY_INCLUDE_DIRECTIVE = /^\s*#\s*include\s+\S/ unless const_defined?(:ANY_INCLUDE_DIRECTIVE, false)
 
-  # Code uses a function wherever it names one: a call, an address taken, a callback passed by
-  # name, or an entry in a table of handlers
+  # Code uses a function wherever it names one. A call counts, and so do an address taken, a
+  # callback passed by name and an entry in a table of handlers.
   C_IDENTIFIER = /(?<!\w)[A-Za-z_]\w*/ unless const_defined?(:C_IDENTIFIER, false)
 
   # A struct or union member, or a struct, union or enum tag, which only shares a name with any function
   C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_]\w*/ unless const_defined?(:C_MEMBER_ACCESS, false)
   C_TAG           = /(?<!\w)(?:struct|union|enum)\s+[A-Za-z_]\w*/ unless const_defined?(:C_TAG, false)
 
-  # A local variable declared at the start of a statement: any qualifiers, a type name, any
-  # pointer stars, then the variable's name ahead of `=`, `;`, `,` or `[`. A keyword that starts
-  # a statement is no type, so `return x;` declares nothing.
+  # A local variable declared at the start of a statement. Any qualifiers come first, then a
+  # type name, any pointer stars, and the variable's name ahead of `=`, `;`, `,` or `[`. A
+  # keyword that starts a statement is no type, so `return x;` declares nothing.
   C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_]\w*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_]\w*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
   C_STATEMENT_KEYWORDS = %w[return goto case default else do sizeof typedef break continue].freeze unless const_defined?(:C_STATEMENT_KEYWORDS, false)
 
   # The names a carry plan decides by, grouped once per module
   CarryFacts = Struct.new( :selected, :defined, :declared, :helpers, keyword_init: true ) unless const_defined?(:CarryFacts, false)
 
-  # What the helper scan shares while it walks: the plan it fills and the facts that gate it
+  # What the helper scan shares while it walks. That is the plan it fills and the facts that gate it.
   CarryScan = Struct.new( :plan, :declared, :fallback, :header_guarded, keyword_init: true ) unless const_defined?(:CarryScan, false)
 
 
@@ -434,14 +434,17 @@ class PartializerHelper
 
   # Decide what a Partial's implementation source carries beyond its selected functions.
   #
-  # A module's code relied on more than the functions a test selects. It called functions
-  # defined elsewhere through prototypes, and it called small static or inline helpers its
-  # header defines. Each function name falls into one category:
-  #   - selected to test or to mock: handled as before, nothing carried;
-  #   - external, declared but defined nowhere in the module: every non-static prototype;
-  #   - a header helper, a static or inline body in the header: the body and its prototypes,
-  #     but only when kept code references it;
-  #   - left out, any other unselected body: prototypes that are neither static nor inline.
+  # A module's code relies on more than the functions a test selects. It uses functions defined
+  # elsewhere through prototypes, and small static or inline helpers its header defines. Each
+  # function name falls into one category.
+  #   - Selected to test or to mock. Nothing is carried.
+  #   - External, declared but defined nowhere in the module. Its prototypes that are not
+  #     static, when kept code uses the name. An inline prototype always, since it makes this
+  #     file hold the function's external definition.
+  #   - A header helper, a static or inline body in the header. The body and its prototypes,
+  #     when kept code uses it.
+  #   - Left out, any other unselected body. Its prototypes that are neither static nor
+  #     inline, when kept code uses the name.
   #
   # The result is pure data. The generator writes it into the implementation source after
   # every include, where each carried item can see everything the module's code saw.
@@ -474,8 +477,8 @@ class PartializerHelper
     end
   end
 
-  # The names a plan decides by: which the test selected, which have bodies, which have
-  # prototypes, and which unselected bodies are header helpers
+  # The names a plan decides by. They are the names the test selected, those with bodies,
+  # those with prototypes, and the unselected bodies that are header helpers.
   def _carry_facts(c_module, impl, interface)
     selected = Set.new( Array( impl ).map( &:name ) + Array( interface ).map( &:name ) )
     defined  = c_module.function_definitions.group_by( &:name )
@@ -508,8 +511,8 @@ class PartializerHelper
   end
 
   # Never a static prototype. An inline prototype promises an inline body, and a left-out body
-  # isn't there. A prototype comes along when kept code uses the name, except an inline one for a
-  # body elsewhere: that prototype is what makes this file hold the external definition, used or not.
+  # isn't there. A prototype comes along when kept code uses the name. An inline one for a body
+  # elsewhere comes along regardless, since it makes this file hold the external definition.
   def _carryable_prototypes(decls, has_body, referenced)
     keep = decls.reject { |d| Partials.static?( d.decorators ) or (has_body and Partials.inline?( d.decorators )) }
     keep = keep.select { |d| Partials.inline?( d.decorators ) } unless referenced
@@ -570,8 +573,8 @@ class PartializerHelper
     return true
   end
 
-  # Built from the original text. Transforming it would strip `static inline` and give the
-  # helper external linkage it never had.
+  # Built from the helper's own text, with any function-scope static promoted. Transforming it
+  # would strip `static inline` and give the helper external linkage it never had.
   def _as_written(helper)
     return Partials.manufacture_function_definition(
       name: helper.name, signature: helper.signature, code_block: helper.code_block,

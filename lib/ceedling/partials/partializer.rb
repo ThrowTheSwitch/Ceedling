@@ -86,8 +86,8 @@ class Partializer
   # @param interface       [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
   # @param fallback        [Boolean] Whether fallback preprocessing produced the module's copies
   # @param header_guarded  [Boolean] Whether the module header has an include guard
-  # @param header_filepath [String, nil] The module header, named in notices
-  # @param source_filepath [String, nil] The module source
+  # @param header_filepath [String, nil] The module header, searched for carried prototypes and named in notices
+  # @param source_filepath [String, nil] The module source, searched for carried prototypes
   # @return [Partials::CarryPlan]
   def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:, header_filepath: nil, source_filepath: nil)
     plan = @helper.plan_carry(
@@ -296,7 +296,7 @@ class Partializer
   # CModule structure.
   #
   # @param name [String] The test this extraction is running for (log/error context).
-  # @param config [Partials::ModuleConfig] The Partial's own config, carrying `header`/
+  # @param config [PartializerConfig::Config] The Partial's own config, carrying `header`/
   #   `source` (each a ConfigFileInfo) and `module`, the module name.
   # @param fallback [Boolean] Passed through to `associate_function_line_numbers` --
   #   whether to fall back to plain (non-directives-only) line-number association.
@@ -467,7 +467,8 @@ class Partializer
   # Update function signatures from fully preprocessed output when available.
   # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
   # macros wrapping `static` and `inline` are resolved before visibility filtering.
-  # Declarations get the same treatment for decorators while keeping their written text.
+  # Each definition also keeps its expanded body, where a call a macro hides is visible.
+  # Declarations take decorators and stripped signature while keeping their written text.
   def _reconcile_with_full_expansion(name, config, c_file, file_type, c_module)
     @helper.update_signatures_from_full_expansion(
       funcs:                   c_module.function_definitions,

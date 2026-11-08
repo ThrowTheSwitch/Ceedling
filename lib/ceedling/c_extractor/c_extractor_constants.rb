@@ -29,6 +29,6 @@ module CExtractorConstants
   # and `_Noreturn` stays with a selected function so its callers still compile cleanly.
   FUNCTION_DECORATOR_KEYWORDS = (PRIVATE_KEYWORDS + ['extern']).freeze unless const_defined?(:FUNCTION_DECORATOR_KEYWORDS, false)
 
-  # Keywords stripped when producing a variable's clean `declaration` text
+  # Keywords stripped when producing a variable's clean `text`
   DECORATOR_KEYWORDS = (PRIVATE_KEYWORDS + TYPE_QUALIFIER_KEYWORDS + ['extern']).freeze unless const_defined?(:DECORATOR_KEYWORDS, false)
 end

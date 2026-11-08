@@ -18,15 +18,16 @@ that `extern` declaration into scope, causing the variable to accessible in
 test code directly by its **original name** — no renaming or helper macro is 
 required.
 
-A variable your module declares `extern` is defined somewhere else. The
-generated `_impl.h` header declares it `extern`. By default, the generated
-`_impl.c` file gives it a weak definition. A real definition, from a module
-your test links or from the test file itself, takes precedence over the weak
-one. When nothing else defines the variable, the weak definition stands in.
+A variable your module declares `extern` but never defines lives somewhere
+else. The generated `_impl.h` header declares it `extern`. By default, the
+generated `_impl.c` file gives it a weak definition. A real definition, from a
+module your test links or from the test file itself, takes precedence over the
+weak one. When nothing else defines the variable, the weak definition stands in.
 Weak definitions need a GCC-compatible compiler, such as GCC or Clang. The
 [`:partials` ↳ `:extern_variables`](../../configuration/reference/partials.md#extern_variables)
 setting can leave the definition to your test instead, and describes the
-exceptions.
+exceptions. A variable your module defines is written where your module
+defines it.
 
 ### Partial file-scoped static variable example
 
@@ -53,7 +54,7 @@ Ceedling strips `static` when generating the test Partial:
 
 ```c
 // ceedling_partial_sensor_impl.c (generated) ---------------
-// `static` stripped -- now has external linkage
+// `static` stripped, giving it external linkage
 uint32_t g_error_count = 0;
 // ...
 int Sensor_ReadCelsius(void)

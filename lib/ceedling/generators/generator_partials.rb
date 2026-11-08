@@ -208,8 +208,8 @@ class GeneratorPartials
   # aggregates, and optionally variable extern declarations) in their original extraction
   # order. Function items in element_sequence are matched by name against function_list
   # (pre-filtered Partials::FunctionDeclaration or Partials::FunctionDefinition objects)
-  # and emitted at their natural position. Any function_list entries not found in
-  # element_sequence (e.g., added from a different module) are emitted afterward.
+  # and emitted at their natural position. An entry element_sequence never names is not
+  # written.
   #
   # @param io              [IO]     Output file handle
   # @param name            [String] Header filename (used for include guard)

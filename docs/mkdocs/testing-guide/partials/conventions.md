@@ -86,8 +86,9 @@ A `static` function has internal linkage. It is invisible to the linker
 outside its containing translation unit, and therefore cannot be called or 
 mocked from a test build without special handling. `inline` functions may be 
 folded away by the compiler entirely. Partials use decorators to organize
-lists of functions for testing and mocking, but the decorators are stripped
-in the resulting generated code.
+lists of functions for testing and mocking, and the decorators are stripped
+from the functions you select. What a Partial carries keeps its decorators, as
+[described below](#what-a-partial-carries-from-your-module).
 
 !!! note "Because of preproccesing only the “private” keywords are recognized"
     The preprocesing steps that are part of generating Partials expand any
@@ -110,34 +111,36 @@ A Partial brings along what your selected functions rely on. Your module's
 code calls functions it only declares, and its header may define small
 `static` or `inline` helpers. A Partial holding only the selected functions
 would fail to compile or link without them. Ceedling copies them into the
-Partial's generated implementation source, written exactly as your module
-writes them.
+Partial's generated implementation source, written as your module writes them.
 
 ### What is carried
 
 A Partial carries three kinds of content beyond the functions you select.
-Each comes along only when the code the Partial keeps uses it.
+Each comes along only when the code the Partial keeps uses it. The one
+exception is an `inline` prototype for a function defined in another header.
 
 * **Prototypes of functions defined elsewhere.** Your module declares a
-  function that another file defines. The prototype comes along when a
-  selected function calls it. An `extern inline` prototype, described below,
-  always comes along.
+  function that another file defines. The prototype comes along when the
+  Partial's code uses the function. An `extern inline` prototype, described
+  below, always comes along.
 * **Prototypes of functions your test leaves out.** A test can subtract a
   function, such as `-engine_poll`, and define a stub of its own. The
   prototype comes along so a selected function calling it links to your stub.
 * **Helpers your module header defines.** A `static` or `inline` function
-  defined in the module header comes along when a selected function calls it.
-  A call made through a macro counts. So does a call from another helper that
-  came along.
+  defined in the module header comes along when the Partial's code uses it.
+  A use through a macro counts. So does a use by another helper that came
+  along.
 
 A function counts as used wherever the code names it. A call counts, and so
 does taking its address, passing it as a callback, or listing it in a table of
 handlers. A struct member, a parameter or a local variable that merely shares
 a function's name does not count, and neither does a mention in a comment.
 
-Each carried item keeps its original spelling and decorators. A line marker
-(`#line`) ahead of each points back to its original file and line, so compiler
-messages and coverage reports name your own files.
+Each carried item keeps its original spelling and decorators. A carried helper
+has any function-scope `static` promoted, as every function in a Partial does.
+A line marker (`#line`) ahead of each item Ceedling can locate points back to
+its original file and line, so compiler messages and coverage reports name your
+own files.
 
 !!! tip "See what a Partial carries"
     Run a test build with `--verbosity=debug`. Each Partial lists what it
@@ -147,9 +150,9 @@ messages and coverage reports name your own files.
 
 Some content stays behind, because carrying it could break a build that works.
 
-* A helper that no selected function calls stays behind. Its own code never
-  has to compile in the Partial.
-* A prototype that nothing selected calls stays behind. A header included
+* A helper the Partial's code never uses stays behind. Its own code never has
+  to compile in the Partial.
+* A prototype the Partial's code never uses stays behind. A header included
   later may define a macro of the same name, and the macro would mangle a
   prototype nothing needed.
 * A function your module's source defines and your test does not select stays
@@ -158,8 +161,9 @@ Some content stays behind, because carrying it could break a build that works.
   Add it with `+name`, or select the whole module with
   `TEST_PARTIAL_ALL_MODULE`.
 * A `static` prototype stays behind unless its helper comes along.
-* Nothing is added to a Partial's headers, so your test file sees exactly what
-  it saw before. A test that calls a helper directly selects it with `+name`.
+* Nothing is added to a Partial's headers, so your test file sees only what
+  the selection gives it. A test that calls a helper directly selects it with
+  `+name`.
 
 ### Inline functions with an external definition
 
@@ -171,7 +175,7 @@ prototype, so a test calling the function links.
 
 A Partial never mocks a function it sees only as an `inline` declaration. The
 function's body lives in another header, which a mock cannot replace. The
-Partial carries the prototype instead.
+Partial's implementation source carries the prototype instead.
 
 A test that also mocks the module holding the inline body, as a Partial,
 removes that body. Some compilers then warn that the inline function is not
@@ -185,7 +189,7 @@ header your module includes may pull the real header in again, helpers and
 all. A carried copy of a helper would then collide with the real one.
 
 A Partial therefore carries no helpers from a header without an include guard.
-It logs a notice naming the helpers your selected functions call. Give the
+It logs a notice naming the helpers the Partial's code uses. Give the
 header an include guard to have its helpers carried. Selecting a helper with
 `+name` also works when no other header pulls the real header in.
 
@@ -203,6 +207,7 @@ setting turns the wrapping off.
 [Fallback preprocessing](../conventions.md#fallback-test-build-preprocessing)
 is best effort and only partially capable. It can keep two different copies of
 one function, such as both sides of a conditional it cannot evaluate. A Partial
-carries neither copy and logs a notice naming the function.
+carries neither copy and logs a notice naming the function. For a helper, the
+notice suggests selecting it with `+name`, which selects the first copy.
 
 <br/><br/>

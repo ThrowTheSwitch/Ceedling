@@ -323,7 +323,7 @@ DEFAULT_CEEDLING_PROJECT_CONFIG = {
     # outright rather than silently dropping an oversized construct and everything after
     # it in the file. Value is a multiplier of 1000 characters -- 5000 means 5,000,000.
     :max_extraction_length => 5000,
-    # A Partial's implementation source carries prototypes the module's code relied on, and some
+    # A Partial's implementation source carries prototypes the module's code relies on, and some
     # repeat a declaration a header already made. GCC diagnostic pragmas around them keep
     # -Wredundant-decls quiet for those lines, so a build treating warnings as errors still passes.
     :suppress_redundant_decls => true,

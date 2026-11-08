@@ -49,17 +49,19 @@ When creating a Partial, Ceedling:
     1. Reconstructed with the `#include` directives from (1) and elements 
        from (2).
     1. Reorganized and slightly altered so the C elements can be accessed by 
-       assertions and mocks in your test cases. Functions are stripped of 
-       `static` and `inline`. Variables are stripped of `static` and `extern`ed.
-    1. Accompanied by what the selected functions rely on including prototypes of
-       functions defined elsewhere and the header helpers they call, copied
-       unchanged ([details](conventions.md#what-a-partial-carries-from-your-module)).
+       assertions and mocks in your test cases. Selected functions are stripped
+       of `static`, `extern` and `inline`. Variables are stripped of `static`
+       and `extern`ed.
+    1. In the implementation source, accompanied by what the selected functions
+       rely on. That includes prototypes of functions defined elsewhere or left
+       out, and the header helpers the functions use
+       ([details](conventions.md#what-a-partial-carries-from-your-module)).
 1. Structures the test build to omit the original source file from the 
    resulting test executable. Generated Partials stand in for the original C
    code from which the Partials are derived.
-1. Maps the reorganized functions in generated Partials back to the 
-   original source module's filepath and line numbers (using GCC's `#line` 
-   directive) for correct test coverage reporting.
+1. Maps the functions and carried items in generated Partials back to their
+   original filepaths and line numbers (using C's `#line` directive) for
+   correct test coverage reporting.
 
 !!! tip "Walk-through example"
     See [Partials Walk-Through Example](example.md) for a complete end-to-end
@@ -70,7 +72,7 @@ When creating a Partial, Ceedling:
 | Partial | Purpose | Generated filename pattern |
 |---|---|---|
 | Testable header | <ul><li>Declares functions</li><li>`extern`s variables</li></ul> | `ceedling_partial_<module>_impl.h` |
-| Testable source | <ul><li>Defines functions</li><li>Defines `static`-less variables</li></ul> | `ceedling_partial_<module>_impl.c` |
+| Testable source | <ul><li>Defines functions</li><li>Defines `static`-less variables</li><li>Carries what the functions rely on</li></ul> | `ceedling_partial_<module>_impl.c` |
 | Mockable header | <ul><li>Declares function signatures</li></ul> | `ceedling_partial_<module>_interface.h` |
 
 Ceedling uses CMock to generate mocks from Partials interface header files
