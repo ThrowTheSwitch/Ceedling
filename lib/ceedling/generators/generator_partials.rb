@@ -272,11 +272,14 @@ class GeneratorPartials
         emitted_vars[item.name] = true
         var = defining_vars[item.name] || item
         # If there is no array involved, array_suffix collapses to an empty string.
+        # A function pointer or a pointer to an array has its name inside a parenthesized
+        # declarator. The extern writes the declarator whole.
         # A leading const/volatile/restrict on the original declaration (see
         # qualifier_prefix) is part of the variable's type and belongs here too,
         # so this extern agrees with the definition and any other declaration of
         # the same variable elsewhere in the translation unit.
-        io << "extern #{qualifier_prefix(var)}#{var.type} #{var.name}#{var.array_suffix};\n"
+        declared = var.declarator || "#{var.name}#{var.array_suffix}"
+        io << "extern #{qualifier_prefix(var)}#{var.type} #{declared};\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration

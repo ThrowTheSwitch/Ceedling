@@ -280,6 +280,7 @@ class PartializerHelper
         # Rename all variables' token-bounded references (shared logic for both cases)
         vars.zip( old_names, new_names ).each do |var, old_name, new_name|
           var.text        = @utils.rename_c_identifier( var.text,        old_name, new_name )
+          var.declarator  = @utils.rename_c_identifier( var.declarator,  old_name, new_name ) if var.declarator
           var.name        = new_name
           func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
           func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )

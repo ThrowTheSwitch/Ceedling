@@ -697,6 +697,17 @@ describe Partializer do
         expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
       end
 
+      # A pointer is complete whatever it points to, so a function pointer can always be defined
+      it "leaves alone a function pointer returning a struct the module only declares" do
+        stub_texts( header: "struct handle_s;\nextern struct handle_s (*make_handle)(void);\n", source: '' )
+        maker = CExtractorTypes::CVariableDeclaration.new(
+          name: 'make_handle', type: 'struct handle_s', declarator: '(*make_handle)(void)',
+          decorators: ['extern'], text: 'struct handle_s (*make_handle)(void);'
+        )
+
+        expect( incomplete_for( CExtractorTypes::CModule.new( variable_declarations: [maker] ) ) ).to be_empty
+      end
+
       it "follows a typedef to the struct it names" do
         stub_texts( header: "typedef struct handle_s handle_t;\nextern handle_t handle;\n", source: '' )
         c_module = CExtractorTypes::CModule.new(

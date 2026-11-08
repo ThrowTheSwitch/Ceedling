@@ -565,6 +565,21 @@ describe PartializerHelper do
         expect(func.code_block).to include('static int count')
       end
 
+      # A function pointer's declarator wraps its name, so the new name has to reach it too
+      it "promotes a function-scope static function pointer under its new name, declarator and all" do
+        func = OpenStruct.new(
+          name:       'fire',
+          body:       "{\n  static int (*cache)(int) = 0;\n  return cache(1);\n}",
+          code_block: "int fire(void) {\n  static int (*cache)(int) = 0;\n  return cache(1);\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.type, v.declarator] }).to eq [['partial_fire_cache', 'int', '(*partial_fire_cache)(int)']]
+        expect(result.first.text).to include('(*partial_fire_cache)(int)')
+        expect(func.code_block).to include('return partial_fire_cache(1);')
+      end
+
       it "does not modify code_block when function body has only non-static variables" do
         original_code_block = "void simple(void) {\n  int x = 0;\n  return x;\n}"
 
