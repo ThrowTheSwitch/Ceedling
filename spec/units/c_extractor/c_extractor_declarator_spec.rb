@@ -87,14 +87,23 @@ describe CExtractorDeclarator do
       expect( read( 'int (*s_hook /* callback */)(int)' ) ).to include( name: 's_hook', follows: nil )
     end
 
-    # An extern repeats the declarator, and an attribute after it would draw a warning there. An
-    # asm label names the symbol, so it stays wherever it sits, and so does anything else.
-    it "leaves the attributes after a declarator out of it and keeps the rest" do
+    # An extern repeats the declarator. An attribute or macro after its last suffix could draw a
+    # warning there, while an asm label names the symbol and so stays wherever it sits.
+    it "keeps only an asm label from what follows a declarator's last suffix" do
       expect( read( 'void (* const vec[])(void) __attribute__ ((used))' ) ).to include( declarator: '(* const vec[])(void)' )
+      expect( read( 'int (*g)(int) __attribute((used))' ) ).to include( declarator: '(*g)(int)' )
+      expect( read( 'int (*g)(int) MY_USED' ) ).to include( declarator: '(*g)(int)' )
+      expect( read( 'int (*g)(int) MY__attribute__(4)' ) ).to include( declarator: '(*g)(int)' )
+      expect( read( 'int (*g)(int) /* 1) */' ) ).to include( declarator: '(*g)(int)' )
       expect( read( 'int (*fp)(int) __asm__("fp_label")' ) ).to include( declarator: '(*fp)(int) __asm__("fp_label")' )
-      expect( read( 'int (*g)(int) __attribute__((used)) __asm__("sym")' ) ).to include( declarator: '(*g)(int) __asm__("sym")' )
-      expect( read( 'int (*g)(int) ASM_NAME("sym")' ) ).to include( declarator: '(*g)(int) ASM_NAME("sym")' )
+      expect( read( 'int (*g)(int) __attribute__((used)) MY_SECTION __asm__("sym")' ) ).to include( declarator: '(*g)(int) __asm__("sym")' )
+    end
+
+    # A macro may sit ahead of an array size, but a word ahead of a '(' is a macro call
+    it "keeps every suffix, with what sits between them" do
       expect( read( 'int (*g_cb) /* cb */ (int)' ) ).to include( declarator: '(*g_cb) /* cb */ (int)' )
+      expect( read( 'int (*p) PACKED [2]' ) ).to include( declarator: '(*p) PACKED [2]' )
+      expect( read( 'int (*p)[4] ALIGN(4)' ) ).to include( declarator: '(*p)[4]' )
       expect( read( 'void (*fp)(int __attribute__((unused)) n)' ) ).to include( declarator: '(*fp)(int __attribute__((unused)) n)' )
     end
 
@@ -162,6 +171,12 @@ describe CExtractorDeclarator do
     # An array size may compare, and only a top-level '=' starts an initializer
     it "ignores an equals sign inside brackets or parentheses" do
       expect( described_class.without_initializer( 'int a[sizeof(int) == 4 ? 1 : 2] = { 0 };' ) ).to eq( 'int a[sizeof(int) == 4 ? 1 : 2]' )
+    end
+
+    # A bracket in a comment or literal doesn't count, so the initializer is still found
+    it "finds the initializer past brackets in comments and literals" do
+      expect( described_class.without_initializer( 'int (*g)(int) /* 1) */ = f;' ) ).to eq( 'int (*g)(int) /* 1) */' )
+      expect( described_class.without_initializer( "char (*g_z)[sizeof(')')] = 0;" ) ).to eq( "char (*g_z)[sizeof(')')]" )
     end
 
     # A large lookup table is common, and only its declarator need be read

@@ -215,6 +215,18 @@ describe 'Function pointers in a Partial' do
       expect_link( @result, ['s_vec', 'ticker_fire'], flags: '-Werror=attributes' )
     end
 
+    it 'leaves a macro-spelled attribute off a function pointer extern' do
+      @result = ticker(
+        header: "int ticker_bump(int n);\nint ticker_fire(int n);\n",
+        source: "#define TICKER_USED __attribute__((used))\nint ticker_bump(int n) { return n + 1; }\n" \
+                "int (*g_used)(int) TICKER_USED = ticker_bump;\n" \
+                "int ticker_fire(int n) { return g_used(n); }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int (*g_used)(int);' )
+      expect_link( @result, ['g_used', 'ticker_fire'], flags: '-Werror=attributes' )
+    end
+
     # An asm label names the symbol, so the extern has to carry it to reach the definition
     it 'keeps an asm label on a function pointer extern' do
       @result = ticker(

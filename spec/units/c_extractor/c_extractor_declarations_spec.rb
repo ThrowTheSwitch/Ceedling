@@ -978,6 +978,12 @@ describe CExtractorDeclarations do
         expect( read_one( "void (* const vec[])(void) __attribute__ ((used)) = { 0 };" ) ).to include( name: 'vec', declarator: '(* const vec[])(void)' )
         expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int) __asm__("fp_label")' )
         expect( read_one( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ) ).to include( name: 'g', declarator: '(*g)(int) __asm__("sym")' )
+        expect( read_one( 'int (*g_u)(int) MY_USED = f;' ) ).to include( name: 'g_u', declarator: '(*g_u)(int)' )
+      end
+
+      # Fallback preprocessing leaves comments in place, and a bracket in one doesn't count
+      it "finds the initializer past a comment holding a bracket" do
+        expect( read_one( 'int (*g_cb)(int) /* 1) */ = ticker_bump;' ) ).to include( name: 'g_cb', declarator: '(*g_cb)(int)' )
       end
 
       # The written text may open a different group than the stripped text does, as an attribute
