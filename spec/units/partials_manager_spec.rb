@@ -410,7 +410,7 @@ describe PartialsManager do
       @manager.stage_generate_partials( @state )
     end
 
-    it "hands the plan and the suppression setting to implementation generation" do
+    it "hands the plan and both Partials settings to implementation generation" do
       plan = Partials::CarryPlan.new
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
@@ -421,6 +421,18 @@ describe PartialsManager do
       expect(@generator).to receive(:generate_partial_implementation).with(
         hash_including( carry: plan, suppress_redundant_decls: false, extern_variables: :test )
       )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # The plan's notices repeat for as long as the build depends on what they report
+    it "plans what the implementation carries even when the implementation is fresh" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+      expect(@generator).not_to receive(:generate_partial_implementation)
 
       @manager.stage_generate_partials( @state )
     end

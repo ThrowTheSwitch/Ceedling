@@ -83,7 +83,7 @@ describe GeneratorPartials do
   end
 
   context "#generate_implementation" do
-    it "hands the carry plan and the suppression setting to source generation" do
+    it "hands the carry plan and both Partials settings to source generation" do
       allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'm_impl.c' )
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'm_impl.h' )
       allow(@file_wrapper).to receive(:mkdir)
@@ -242,14 +242,15 @@ describe GeneratorPartials do
       )
 
       # Verify generate_source was called with correct parameters
-      # With nothing to carry, the default plan is empty and suppression is on
+      # With nothing to carry, the default plan is empty, suppression is on and extern
+      # variables get weak definitions
       expect(@generator).to have_received(:generate_source).with(
         source_file_handle,
         source_includes,
         defns,
         c_module,
-        { carry: an_instance_of( Partials::CarryPlan ), suppress_redundant_decls: true,
-          extern_variables: :weak, filepath: expected_source_filepath }
+        { carry: an_instance_of( Partials::CarryPlan ).and( have_attributes( prototypes: [], helpers: {}, skipped: [] ) ),
+          suppress_redundant_decls: true, extern_variables: :weak, filepath: expected_source_filepath }
       )
 
       # Verify file path utilities were called
@@ -1552,9 +1553,6 @@ describe GeneratorPartials do
       plan
     end
 
-    GUARD_OPEN  = "#if defined(__GNUC__)\n#pragma GCC diagnostic push\n#pragma GCC diagnostic ignored \"-Wredundant-decls\"\n#endif\n"
-    GUARD_CLOSE = "#if defined(__GNUC__)\n#pragma GCC diagnostic pop\n#endif\n"
-
     it "writes nothing new when nothing is carried" do
       tick = make_decl( 'int board_tick(void);' )
 
@@ -1613,7 +1611,7 @@ describe GeneratorPartials do
 
       @generator.send(:generate_source, buf, [], [], make_module( tick, poll ), carry: plan_with( prototypes: [tick, poll] ))
 
-      expect( buf.string ).to include( GUARD_OPEN + "int board_tick(void);\nint engine_poll(void);\n" + GUARD_CLOSE )
+      expect( buf.string ).to include( PartialSourceWriter::REDUNDANT_DECLS_PUSH + "int board_tick(void);\nint engine_poll(void);\n" + PartialSourceWriter::REDUNDANT_DECLS_POP )
       expect( buf.string.scan( 'diagnostic push' ).size ).to eq( 1 )
     end
 
@@ -1634,7 +1632,7 @@ describe GeneratorPartials do
 
       @generator.send(:generate_source, buf, [], [], make_module( tick, mode, poll ), carry: plan_with( prototypes: [tick, poll] ))
 
-      expect( buf.string ).to include( "int board_tick(void);\n" + GUARD_CLOSE + "int mode = 3;\n" + GUARD_OPEN + "int engine_poll(void);\n" )
+      expect( buf.string ).to include( "int board_tick(void);\n" + PartialSourceWriter::REDUNDANT_DECLS_POP + "int mode = 3;\n" + PartialSourceWriter::REDUNDANT_DECLS_PUSH + "int engine_poll(void);\n" )
     end
 
     it "writes carried prototypes bare when suppression is off" do
@@ -1661,10 +1659,14 @@ describe GeneratorPartials do
     it "writes a selected function rather than a helper of the same name" do
       get_def  = make_defn( 'int get(void) { return 1; }' )
       selected = Partials.manufacture_function_definition( name: 'get', signature: 'int get(void)', code_block: 'int get(void) { return 1; }' )
+      helper   = Partials.manufacture_function_definition(
+        name: 'get', signature: 'static inline int get(void)', code_block: 'static inline int get(void) { return 2; }'
+      )
 
-      @generator.send(:generate_source, buf, [], [selected], make_module( get_def ), carry: Partials::CarryPlan.new)
+      @generator.send(:generate_source, buf, [], [selected], make_module( get_def ), carry: plan_with( helpers: [helper] ))
 
       expect( buf.string ).to include( 'int get(void) { return 1; }' )
+      expect( buf.string ).not_to include( 'return 2;' )
     end
 
     # Items after a located prototype would otherwise be attributed to the prototype's header
@@ -1708,7 +1710,7 @@ describe GeneratorPartials do
 
       @generator.send(:generate_source, buf, [], [], make_module( tick ), carry: plan_with( prototypes: [tick] ))
 
-      expect( buf.string ).to end_with( GUARD_CLOSE )
+      expect( buf.string ).to end_with( PartialSourceWriter::REDUNDANT_DECLS_POP )
     end
   end
 

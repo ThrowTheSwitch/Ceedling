@@ -65,7 +65,7 @@ describe Generator do
   end
 
   describe '#generate_partial_implementation' do
-    it 'hands the carry plan and the suppression setting to Partial generation' do
+    it 'hands the carry plan and both Partials settings to Partial generation' do
       plan = Partials::CarryPlan.new
 
       @generator.generate_partial_implementation(

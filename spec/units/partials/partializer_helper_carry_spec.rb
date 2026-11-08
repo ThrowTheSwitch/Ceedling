@@ -33,23 +33,23 @@ describe PartializerHelper do
 
   # ---- builders --------------------------------------------------------------
 
-  def decl(signature, origin: :source, decorators: nil)
-    name = signature[/(\w+)\s*\(/, 1]
-    decorators ||= signature.split( /\s+/ ).take_while { |t| %w[static inline extern __inline __inline__].include?( t ) }
+  def decl(signature, origin: :source)
+    name       = signature[/(\w+)\s*\(/, 1]
+    decorators = signature.split( /\s+/ ).take_while { |t| %w[static inline extern __inline __inline__].include?( t ) }
     CExtractorTypes::CFunctionDeclaration.new(
       name: name, signature: signature, decorators: decorators,
       signature_stripped: signature.sub( /\A(?:(?:static|inline|extern)\s+)+/, '' ), origin: origin
     )
   end
 
-  def defn(code_block, origin: :source, expanded_body: nil, line_num: 1, source_filepath: nil)
+  def defn(code_block, origin: :source, expanded_body: nil, line_num: 1)
     signature  = code_block[/\A[^{]*/].strip
     name       = signature[/(\w+)\s*\(/, 1]
     decorators = signature.split( /\s+/ ).take_while { |t| %w[static inline extern __inline __inline__].include?( t ) }
     CExtractorTypes::CFunctionDefinition.new(
       name: name, signature: signature, decorators: decorators, code_block: code_block,
       body: code_block[/\{.*\}/m], expanded_body: expanded_body, origin: origin,
-      line_num: line_num, source_filepath: source_filepath || (origin == :header ? 'src/engine.h' : 'src/engine.c')
+      line_num: line_num, source_filepath: (origin == :header ? 'src/engine.h' : 'src/engine.c')
     )
   end
 
@@ -57,11 +57,8 @@ describe PartializerHelper do
     CExtractorTypes::CVariableDeclaration.new( name: text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators )
   end
 
-  def invocation(text)
-    CExtractorTypes::CStatement.new( text: text )
-  end
-
-  def macro(text)
+  # A macro definition or a bare macro invocation
+  def statement(text)
     CExtractorTypes::CStatement.new( text: text )
   end
 
@@ -108,8 +105,8 @@ describe PartializerHelper do
       expect( result.prototypes.first.reason ).to eq( 'external: no body in module' )
     end
 
-    # The prototype's whole job is to make this file hold the external definition, so a
-    # carried prototype can't depend on a call
+    # The prototype's whole job is to make this file hold the external definition, so an
+    # inline prototype can't depend on a use
     it 'carries an extern inline prototype that nothing calls' do
       get   = defn( 'int engine_get(void) { return 1; }' )
       twice = decl( 'extern inline int engine_get_twice(void);' )
@@ -150,7 +147,7 @@ describe PartializerHelper do
     end
 
     it 'never carries a static prototype without a body' do
-      get    = defn( 'int engine_get(void) { return 1; }' )
+      get    = defn( 'int engine_get(void) { return orphan(); }' )
       orphan = decl( 'static int orphan(void);' )
 
       expect( carried_prototypes( plan( c_module( orphan, get ), impl: selected( get ) ) ) ).to be_empty
@@ -180,10 +177,11 @@ describe PartializerHelper do
 
   context 'selected functions' do
     it 'carries no prototype of a function selected to test' do
-      get   = defn( 'int engine_get(void) { return 1; }' )
-      proto = decl( 'int engine_get(void);', origin: :header )
+      get    = defn( 'int engine_get(void) { return 1; }' )
+      report = defn( 'int engine_report(void) { return engine_get() + 1; }' )
+      proto  = decl( 'int engine_get(void);', origin: :header )
 
-      expect( carried_prototypes( plan( c_module( proto, get ), impl: selected( get ) ) ) ).to be_empty
+      expect( carried_prototypes( plan( c_module( proto, get, report ), impl: selected( get, report ) ) ) ).to be_empty
     end
 
     it 'carries no prototype of a function selected to mock' do
@@ -206,12 +204,25 @@ describe PartializerHelper do
       expect( carried_prototypes( result ) ).to be_empty
       expect( carried_helpers( result ) ).to be_empty
     end
+
+    # A header helper the test selects is written as a selected function, so carrying it too
+    # would define it twice
+    it 'carries neither the body nor the prototypes of a header helper selected to test' do
+      clamp = defn( 'static inline int clamp(int v) { return v > 9 ? 9 : v; }', origin: :header )
+      fwd   = decl( 'static inline int clamp(int v);', origin: :header )
+      get   = defn( 'int engine_get(void) { return clamp(12); }' )
+
+      result = plan( c_module( fwd, clamp, get ), impl: selected( get, clamp ) )
+
+      expect( carried_helpers( result ) ).to be_empty
+      expect( carried_prototypes( result ) ).to be_empty
+    end
   end
 
   # ---- left out: the module defines it, but the test didn't select it --------
 
   context 'left-out functions' do
-    it 'carries the prototype of a subtracted function so a test stub links' do
+    it 'carries the prototype of a left-out function, so a test stub links' do
       poll   = defn( 'int engine_poll(void) { return 1; }' )
       report = defn( 'int engine_report(void) { return engine_poll() + 1; }' )
       proto  = decl( 'int engine_poll(void);', origin: :header )
@@ -232,7 +243,7 @@ describe PartializerHelper do
 
     it 'carries no static prototype of an unselected source function' do
       raw   = defn( 'static void raw_write(void) { }' )
-      get   = defn( 'int engine_get(void) { return 1; }' )
+      get   = defn( 'int engine_get(void) { raw_write(); return 1; }' )
       proto = decl( 'static void raw_write(void);', origin: :header )
 
       expect( carried_prototypes( plan( c_module( proto, raw, get ), impl: selected( get ) ) ) ).to be_empty
@@ -240,7 +251,7 @@ describe PartializerHelper do
 
     it 'carries no inline prototype whose body was left out' do
       fast  = defn( 'int fast(void) { return 1; }' )
-      get   = defn( 'int engine_get(void) { return 1; }' )
+      get   = defn( 'int engine_get(void) { return fast(); }' )
       proto = decl( 'extern inline int fast(void);' )
 
       expect( carried_prototypes( plan( c_module( proto, fast, get ), impl: selected( get ) ) ) ).to be_empty
@@ -289,11 +300,15 @@ describe PartializerHelper do
       expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
     end
 
-    it 'carries no prototype of a helper it does not carry' do
-      fwd = decl( 'static inline int clamp(int v);', origin: :header )
-      get = defn( 'int engine_get(void) { return 1; }' )
+    # A helper's prototypes travel with its body, so a helper left behind takes them with it
+    it 'carries no prototype of a referenced helper it leaves behind' do
+      twice = defn( 'inline int twice(void) { return 2; }', origin: :header )
+      fwd   = decl( 'int twice(void);', origin: :header )
+      get   = defn( 'int engine_get(void) { return twice(); }' )
 
-      expect( carried_prototypes( plan( c_module( fwd, clamp, get ), impl: selected( get ) ) ) ).to be_empty
+      result = plan( c_module( fwd, twice, get ), impl: selected( get ), header_guarded: false )
+
+      expect( carried_prototypes( result ) ).to be_empty
     end
 
     it 'carries a carried helper\'s prototypes, static ones included' do
@@ -318,21 +333,22 @@ describe PartializerHelper do
     end
 
     it 'ignores a helper name inside a string literal' do
-      get = defn( 'const char *engine_name(void) { return "clamp"; }' )
+      get = defn( 'const char *engine_name(void) { return "clamp(1)"; }' )
 
       expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
     end
 
-    it 'ignores a helper name inside a character literal' do
-      get = defn( "int engine_mark(void) { return 'c' + 'l'; }" )
+    # A quote inside a character literal starts no string, so the call between two of them counts
+    it 'reads past a quote inside a character literal' do
+      get = defn( %q{int engine_mark(void) { return '"' + clamp(1) + '"'; }} )
 
-      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to be_empty
+      expect( carried_helpers( plan( c_module( clamp, get ), impl: selected( get ) ) ) ).to eq( ['clamp'] )
     end
 
     # A member or a local that shares a helper's name is not a use of the helper
     it 'ignores a member access with a helper\'s name' do
       size = defn( 'static inline int size(const buf_t *b) { return b->len; }', origin: :header )
-      get  = defn( 'int engine_len(const buf_t *b) { return b->size + b . size; }' )
+      get  = defn( 'int engine_len(const buf_t *b) { return b->size(b) + b . size; }' )
 
       expect( carried_helpers( plan( c_module( size, get ), impl: selected( get ) ) ) ).to be_empty
     end
@@ -428,6 +444,35 @@ describe PartializerHelper do
       expect( result.helpers['clamp'].reason ).to eq( 'helper: referenced by `bound`' )
     end
 
+    it 'follows a chain of helpers in the order each reaches the next' do
+      bound = defn( 'static inline int bound(int v) { return clamp(v); }', origin: :header )
+      scale = defn( 'static inline int scale(int v) { return bound(v * 2); }', origin: :header )
+      get   = defn( 'int engine_get(void) { return scale(3); }' )
+
+      result = plan( c_module( clamp, bound, scale, get ), impl: selected( get ) )
+
+      expect( carried_helpers( result ) ).to eq( ['scale', 'bound', 'clamp'] )
+      expect( result.helpers['bound'].reason ).to eq( 'helper: referenced by `scale`' )
+    end
+
+    it 'carries a helper that calls itself once' do
+      walk = defn( 'static inline int walk(int n) { return n ? walk(n - 1) : 0; }', origin: :header )
+      get  = defn( 'int engine_get(void) { return walk(3); }' )
+
+      expect( carried_helpers( plan( c_module( walk, get ), impl: selected( get ) ) ) ).to eq( ['walk'] )
+    end
+
+    it 'carries helpers that call each other once each' do
+      even = defn( 'static inline int is_even(int n) { return n ? is_odd(n - 1) : 1; }', origin: :header )
+      odd  = defn( 'static inline int is_odd(int n) { return n ? is_even(n - 1) : 0; }', origin: :header )
+      get  = defn( 'int engine_get(void) { return is_even(4); }' )
+
+      result = plan( c_module( even, odd, get ), impl: selected( get ) )
+
+      expect( carried_helpers( result ) ).to eq( ['is_even', 'is_odd'] )
+      expect( result.helpers['is_odd'].reason ).to eq( 'helper: referenced by `is_even`' )
+    end
+
     it 'counts a reference from a variable written into the implementation source' do
       table = var( 'int (*filters[1])(int) = { clamp };' )
       get   = defn( 'int engine_get(void) { return 1; }' )
@@ -436,7 +481,7 @@ describe PartializerHelper do
     end
 
     it 'counts a reference from a bare macro invocation' do
-      call = invocation( 'REGISTER(clamp)' )
+      call = statement( 'REGISTER(clamp)' )
       get  = defn( 'int engine_get(void) { return 1; }' )
       mod  = c_module( clamp, call, get )
       mod.macro_invocations << call
@@ -534,7 +579,7 @@ describe PartializerHelper do
       clamp = defn( 'static inline int clamp(int v) { return v; }', origin: :header )
       get   = defn( 'int engine_get(int v) { return CLAMP(v); }' )
       mod   = c_module( clamp, get )
-      mod.macro_definitions << macro( '#define CLAMP(x) clamp(x)' )
+      mod.macro_definitions << statement( '#define CLAMP(x) clamp(x)' )
 
       expect( carried_helpers( plan( mod, impl: selected( get ), fallback: true ) ) ).to eq( ['clamp'] )
       expect( carried_helpers( plan( mod, impl: selected( get ), fallback: false ) ) ).to be_empty
@@ -577,15 +622,6 @@ describe Partials::CarryPlan do
 
     expect( plan.prototype?( proto ) ).to be( true )
     expect( plan.prototype?( proto.dup ) ).to be( false )
-  end
-
-  it 'finds a prototype among many without comparing content' do
-    plan   = described_class.new
-    protos = Array.new( 500 ) { |i| CExtractorTypes::CFunctionDeclaration.new( name: "f#{i}", signature: "int f#{i}(void);" ) }
-    protos.each { |d| plan.add_prototype( d, 'external: no body in module' ) }
-
-    expect( protos.all? { |d| plan.prototype?( d ) } ).to be( true )
-    expect( plan.prototype?( protos.first.dup ) ).to be( false )
   end
 
   it 'records a prototype once' do

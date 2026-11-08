@@ -30,12 +30,14 @@ describe 'What a Partial carries' do
   # The harness mocks every function unless told otherwise. A mocked function is never carried,
   # so cases about carrying turn mocking off and a case about mocking says how it mocks.
 
-  ENGINE_API_H = <<~C
-    #ifndef ENGINE_API_H
-    #define ENGINE_API_H
-    inline int engine_get_twice(void) { return 42; }
-    #endif
-  C
+  let(:engine_api_h) do
+    <<~C
+      #ifndef ENGINE_API_H
+      #define ENGINE_API_H
+      inline int engine_get_twice(void) { return 42; }
+      #endif
+    C
+  end
 
   # ---------------------------------------------------------------------------
   context 'prototypes of functions the module declares but never defines' do
@@ -50,7 +52,7 @@ describe 'What a Partial carries' do
         header: "#ifndef ENGINE_H\n#define ENGINE_H\nint engine_get(void);\n#endif\n",
         source: "#include \"engine.h\"\n#include \"engine_api.h\"\nextern inline int engine_get_twice(void);\nint engine_get(void) { return 1; }\n",
         source_includes: ['engine.h', 'engine_api.h'],
-        extra: { 'engine_api.h' => ENGINE_API_H },
+        extra: { 'engine_api.h' => engine_api_h },
         tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil
       )
 
@@ -72,6 +74,7 @@ describe 'What a Partial carries' do
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
 
+    # Its #line names the header line the prototype came from, found in the header's own text
     it 'compiles a call to a function the header declares and another module defines' do
       @result = generate_partial(
         module_name: 'counter',
@@ -79,6 +82,8 @@ describe 'What a Partial carries' do
         source: "#include \"counter.h\"\nint counter_get(void) { return board_tick() + 1; }\n",
         source_includes: ['counter.h'], mocks_expose: nil
       )
+
+      expect( @result.impl_c ).to match( /^#line 4 "[^"]*counter\.h"\nint board_tick\(void\);$/ )
 
       compile = compile_objects( @result )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
@@ -131,7 +136,7 @@ describe 'What a Partial carries' do
   context 'helpers the module header defines' do
   # ---------------------------------------------------------------------------
 
-    it 'compiles a selected call to a static inline helper, anchored to the header' do
+    it 'compiles a selected call to a static inline helper' do
       @result = generate_partial(
         module_name: 'clamped',
         header: "#ifndef CLAMPED_H\n#define CLAMPED_H\nstatic inline int clamp(int v) { return v > 9 ? 9 : v; }\nint clamped_get(int v);\n#endif\n",
@@ -171,6 +176,8 @@ describe 'What a Partial carries' do
         tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil
       )
 
+      expect( @result.impl_c ).to include( 'static inline int clamp(int v)' )
+
       compile = compile_objects( @result )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
@@ -206,18 +213,20 @@ describe 'What a Partial carries' do
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
 
-    # A member that shares a helper's name is not a call. Carrying the helper anyway leaves an
-    # unused static function, which -Wall -Werror rejects.
+    # A call through a member that shares a helper's name is not a use of the helper. Carrying
+    # the helper anyway leaves an unused static function, which -Wall -Werror rejects.
     it 'carries no helper that only a member access names' do
       @result = generate_partial(
         module_name: 'buffers',
-        header: "#ifndef BUFFERS_H\n#define BUFFERS_H\ntypedef struct { int len; int size; } buf_t;\nstatic inline int size(const buf_t *b) { return b->len; }\nint buffers_get(const buf_t *b);\n#endif\n",
-        source: "#include \"buffers.h\"\nint buffers_get(const buf_t *b) { return b->size; }\n",
+        header: "#ifndef BUFFERS_H\n#define BUFFERS_H\n" \
+                "typedef struct buf { int len; int (*size)(const struct buf *b); } buf_t;\n" \
+                "static int size(const buf_t *b) { return b->len; }\nint buffers_get(const buf_t *b);\n#endif\n",
+        source: "#include \"buffers.h\"\nint buffers_get(const buf_t *b) { return b->size(b); }\n",
         source_includes: ['buffers.h'],
         tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil
       )
 
-      expect( @result.impl_c ).not_to include( 'static inline int size' )
+      expect( @result.impl_c ).not_to include( 'static int size' )
 
       compile = compile_objects( @result, flags: '-Wall -Werror' )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
@@ -283,13 +292,11 @@ describe 'What a Partial carries' do
   context 'prototypes a header already declared' do
   # ---------------------------------------------------------------------------
 
-    REDUNDANT_SOURCE = "#include \"repeats.h\"\n#include \"repeats_board.h\"\nextern int board_tick(void);\nint repeats_get(void) { return board_tick(); }\n"
-
     def generate_repeats(suppress:)
       generate_partial(
         module_name: 'repeats',
         header: "#ifndef REPEATS_H\n#define REPEATS_H\nint board_tick(void);\nint repeats_get(void);\n#endif\n",
-        source: REDUNDANT_SOURCE,
+        source: "#include \"repeats.h\"\n#include \"repeats_board.h\"\nextern int board_tick(void);\nint repeats_get(void) { return board_tick(); }\n",
         source_includes: ['repeats.h', 'repeats_board.h'],
         extra: { 'repeats_board.h' => "#ifndef REPEATS_BOARD_H\n#define REPEATS_BOARD_H\nint board_tick(void);\n#endif\n" },
         suppress_redundant_decls: suppress, mocks_expose: nil
@@ -308,6 +315,17 @@ describe 'What a Partial carries' do
 
       expect( @result.impl_c ).to include( 'extern int board_tick(void);' )
       expect( @result.impl_c ).not_to include( '#pragma' )
+    end
+
+    # Clang accepts -Wredundant-decls but never reports it, so only GCC shows what the pragmas quiet
+    it 'fails under -Wredundant-decls -Werror with suppression off' do
+      skip 'only GCC reports -Wredundant-decls' unless partials_compiler_gcc?
+
+      @result = generate_repeats( suppress: false )
+
+      compile = compile_objects( @result, flags: '-Wredundant-decls -Werror' )
+      expect( compile.ok ).to be(false)
+      expect( compile.stderr ).to include( 'redundant redeclaration' )
     end
   end
 
@@ -335,26 +353,25 @@ describe 'What a Partial carries' do
   context 'variables' do
   # ---------------------------------------------------------------------------
 
-    # Two definitions of one variable are a link error wherever common symbols are off
-    it 'links an extern variable defined elsewhere without defining it again' do
+    let(:tally_h) { "#ifndef TALLY_H\n#define TALLY_H\nextern int board_count;\nint tally_get(void);\n#endif\n" }
+    let(:tally_c) { "#include \"tally.h\"\nint tally_get(void) { return board_count + 1; }\n" }
+
+    # The weak definition gives way, even where common symbols are off and two definitions collide
+    it 'links a real definition of an extern variable over the weak one' do
       @result = generate_partial(
-        module_name: 'tally',
-        header: "#ifndef TALLY_H\n#define TALLY_H\nextern int board_count;\nint tally_get(void);\n#endif\n",
-        source: "#include \"tally.h\"\nint tally_get(void) { return board_count + 1; }\n",
-        source_includes: ['tally.h'], mocks_expose: nil
+        module_name: 'tally', header: tally_h, source: tally_c, source_includes: ['tally.h'], mocks_expose: nil
       )
+
+      expect( @result.impl_c ).to include( '__attribute__((weak)) int board_count;' )
 
       link = link_partial( @result, references: ['tally_get'], stubs: 'int board_count = 41;', flags: '-fno-common' )
       expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
     end
 
-    TALLY_H = "#ifndef TALLY_H\n#define TALLY_H\nextern int board_count;\nint tally_get(void);\n#endif\n"
-    TALLY_C = "#include \"tally.h\"\nint tally_get(void) { return board_count + 1; }\n"
-
     # The weak definition stands in when the defining module isn't part of the test
     it 'links an extern variable nothing else defines' do
       @result = generate_partial(
-        module_name: 'tally', header: TALLY_H, source: TALLY_C, source_includes: ['tally.h'], mocks_expose: nil
+        module_name: 'tally', header: tally_h, source: tally_c, source_includes: ['tally.h'], mocks_expose: nil
       )
 
       link = link_partial( @result, references: ['tally_get'], flags: '-fno-common' )
@@ -363,7 +380,7 @@ describe 'What a Partial carries' do
 
     it 'leaves the definition to the test when told to' do
       @result = generate_partial(
-        module_name: 'tally', header: TALLY_H, source: TALLY_C, source_includes: ['tally.h'],
+        module_name: 'tally', header: tally_h, source: tally_c, source_includes: ['tally.h'],
         mocks_expose: nil, extern_variables: :test
       )
 
@@ -433,7 +450,7 @@ describe 'What a Partial carries' do
         header: "#ifndef MOCKED_H\n#define MOCKED_H\nint mocked_get(void);\n#endif\n",
         source: "#include \"mocked.h\"\n#include \"engine_api.h\"\nextern inline int engine_get_twice(void);\nstatic int mocked_base(void) { return 41; }\nint mocked_get(void) { return mocked_base() + 1; }\n",
         source_includes: ['mocked.h', 'engine_api.h'],
-        extra: { 'engine_api.h' => ENGINE_API_H },
+        extra: { 'engine_api.h' => engine_api_h },
         tests_expose: PartializerConfig::PUBLIC, mocks_expose: PartializerConfig::PRIVATE
       )
 

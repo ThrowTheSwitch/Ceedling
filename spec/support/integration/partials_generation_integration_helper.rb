@@ -248,7 +248,7 @@ module PartialsGenerationHelpers
       includes: source_includes, defines: defines, mode: mode
     )
 
-    # Each file's items carry the role of the file they came from, as
+    # Each file's functions carry the role of the file they came from, as
     # Partializer#extract_module_contents stamps them, so carrying sees the same origins.
     header_module = extract_c( pp_header ).stamp_origin!( :header )
     source_module = extract_c( pp_source ).stamp_origin!( :source )
@@ -267,8 +267,9 @@ module PartialsGenerationHelpers
     # Function-scoped statics are promoted to module scope before generation, the way
     # Partializer#extract_module_contents does it. Promotion is what puts a name that was
     # private to one function into link-time resolution, so a linkage case cannot see its
-    # own subject without this step. Line-number association is deliberately skipped: it
-    # only sets `#line` attribution, which no assertion here depends on.
+    # own subject without this step. Function line-number association is skipped, so selected
+    # bodies and helpers carry no `#line`. Carried prototypes are located in their files'
+    # text with the real code finder, as production locates them.
     promoted = partials_helper.extract_function_scope_static_vars(
       c_module.function_definitions,
       name: 'PartialsGenerationTest', module_name: module_name, file_type: 'source'
@@ -507,6 +508,10 @@ module PartialsGenerationHelpers
 
   # ---- compilation -------------------------------------------------------------
 
+  # GCC before 14 only warns about a call to an undeclared function, as Clang does not. A
+  # missing prototype has to fail on every compiler for a case about carrying one to mean anything.
+  STRICT_DECLARATIONS = '-Werror=implicit-function-declaration' unless const_defined?( :STRICT_DECLARATIONS )
+
   # Compiles a translation unit that includes the generated implementation header, the way a
   # generated test runner would. Syntax-only: this probes declarations and ordering, not code
   # generation.
@@ -541,7 +546,7 @@ module PartialsGenerationHelpers
   end
 
   def syntax_only(result, probe)
-    command = "#{partials_compiler} -fsyntax-only -I#{result.dir} #{probe}"
+    command = "#{partials_compiler} #{STRICT_DECLARATIONS} -fsyntax-only -I#{result.dir} #{probe}"
     _out, stderr, status = Open3.capture3( command )
 
     PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
@@ -562,7 +567,7 @@ module PartialsGenerationHelpers
     object = File.join( result.dir, "ceedling_partial_#{result.module_name}_impl.o" )
     source = File.join( result.dir, "ceedling_partial_#{result.module_name}_impl.c" )
 
-    command = "#{partials_compiler} #{flags} -c -I#{result.dir} #{source} -o #{object}".squeeze( ' ' )
+    command = "#{partials_compiler} #{STRICT_DECLARATIONS} #{flags} -c -I#{result.dir} #{source} -o #{object}".squeeze( ' ' )
     _out, stderr, status = Open3.capture3( command )
 
     PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
@@ -594,7 +599,7 @@ module PartialsGenerationHelpers
     includes = results.map( &:dir ).uniq.map { |d| "-I#{d}" }.join( ' ' )
     output = File.join( dir, "probe_link_#{results.map( &:module_name ).join( '_' )}" )
 
-    command = "#{partials_compiler} #{flags} #{includes} #{probe} #{sources.join( ' ' )} -o #{output}".squeeze( ' ' )
+    command = "#{partials_compiler} #{STRICT_DECLARATIONS} #{flags} #{includes} #{probe} #{sources.join( ' ' )} -o #{output}".squeeze( ' ' )
     _out, stderr, status = Open3.capture3( command )
 
     PartialsGeneration::Compilation.new( ok: status.success?, stderr: stderr, command: command )
@@ -635,6 +640,12 @@ module PartialsGenerationHelpers
 
   def partials_compiler
     ENV.fetch( 'PARTIALS_GENERATION_CC', 'gcc' )
+  end
+
+  # Clang answers to `gcc` on macOS, and some warnings only GCC reports
+  def partials_compiler_gcc?
+    @partials_compiler_gcc = !`#{partials_compiler} --version 2>&1`.match?( /clang/i ) if @partials_compiler_gcc.nil?
+    return @partials_compiler_gcc
   end
 
   # ---- construction -------------------------------------------------------------

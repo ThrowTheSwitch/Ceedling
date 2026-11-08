@@ -534,7 +534,7 @@ describe Partializer do
       )
     end
 
-    # The original file holds only its own lines, so a located prototype is always in it
+    # A match in the original file can't belong to a header that file includes
     it "locates each carried prototype in the text of the file it came from" do
       header_proto = CExtractorTypes::CFunctionDeclaration.new( name: 'tick', signature: 'int tick(void);', origin: :header )
       source_proto = CExtractorTypes::CFunctionDeclaration.new( name: 'twice', signature: 'extern inline int twice(void);', origin: :source )
@@ -553,6 +553,24 @@ describe Partializer do
       )
 
       carry_with( plan )
+    end
+
+    # A prototype with no known file, or from a file the module lacks, is written without a #line
+    it "searches no file for a prototype whose file is unknown" do
+      unknown = CExtractorTypes::CFunctionDeclaration.new( name: 'tick', signature: 'int tick(void);', origin: nil )
+      source  = CExtractorTypes::CFunctionDeclaration.new( name: 'twice', signature: 'int twice(void);', origin: :source )
+      plan    = Partials::CarryPlan.new
+      plan.add_prototype( unknown, 'external: no body in module' )
+      plan.add_prototype( source, 'external: no body in module' )
+      allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+
+      expect(@file_wrapper).not_to receive(:read)
+      expect(@partializer_helper).not_to receive(:associate_declaration_line_numbers)
+
+      @partializer.plan_carry(
+        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil,
+        fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: nil
+      )
     end
 
     it "reads no file when nothing is carried" do
@@ -602,7 +620,11 @@ describe Partializer do
         ['counter', :unguarded_helper]
       ] )
 
-      expect(@loginator).to receive(:log).with(
+      allow(@loginator).to receive(:log)
+
+      carry_with( plan )
+
+      expect(@loginator).to have_received(:log).with(
         "Partial test_engine::engine \u23e9\ufe0f Not carrying helpers `clamp()`, `counter()` from src/engine.h.\n" \
         "Selected functions call these helpers, but src/engine.h has no include guard. Without a guard\n" \
         "a Partial cannot stand in for the header everywhere it is included, and a carried copy could\n" \
@@ -616,9 +638,8 @@ describe Partializer do
         "See the docs on Partials conventions.\n",
         Verbosity::COMPLAIN,
         LogLabels::NOTICE
-      ).once
-
-      carry_with( plan )
+      )
+      expect(@loginator).to have_received(:log).once
     end
 
     it "words the unguarded-header notice for a single helper" do
@@ -1879,9 +1900,6 @@ describe Partializer do
 
       # associate_function_line_numbers is called for every file processed; stub by default
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
-      # Declarations are located in each file's own text, read once per file; stub by default
-      allow(@partializer_helper).to receive(:associate_declaration_line_numbers)
-      allow(@file_wrapper).to receive(:read).and_return('')
       # static var extraction/promotion called for every file processed; stub by default
       allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
     end
@@ -2168,7 +2186,6 @@ describe Partializer do
       @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
-    # The original file holds only its own lines, so a located declaration is always in it
     # Locating declarations costs a search of the file's text each, so only carried ones are located
     it "leaves declarations unlocated during extraction" do
       config = PartializerConfig::Config.new(
@@ -2180,6 +2197,7 @@ describe Partializer do
       allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: decls))
 
       expect(@partializer_helper).not_to receive(:associate_declaration_line_numbers)
+      expect(@file_wrapper).not_to receive(:read)
 
       @partializer.extract_module_contents(@name, config, fallback: false)
     end

@@ -2906,4 +2906,58 @@ describe CExtractorFunctions do
     end
   end
 
+  describe ".remove_tokens" do
+    def remove(text, tokens)
+      described_class.remove_tokens( text, tokens )
+    end
+
+    it "removes a token with the spaces after it" do
+      expect( remove( "static int f(void)", ['static'] ) ).to eq( "int f(void)" )
+    end
+
+    it "removes a token with the tab after it" do
+      expect( remove( "static\tint f(void)", ['static'] ) ).to eq( "int f(void)" )
+    end
+
+    # A caller counts the lines a decorator occupied, so a newline after it stays
+    it "keeps a newline after a token" do
+      expect( remove( "static\nint f(void)", ['static'] ) ).to eq( "\nint f(void)" )
+    end
+
+    it "keeps whitespace after a token when it holds a newline" do
+      expect( remove( "static \nint f(void)", ['static'] ) ).to eq( " \nint f(void)" )
+    end
+
+    it "removes each listed token once" do
+      expect( remove( "static static int f(void)", ['static'] ) ).to eq( "static int f(void)" )
+      expect( remove( "static static int f(void)", ['static', 'static'] ) ).to eq( "int f(void)" )
+    end
+
+    it "leaves a token that is only part of a longer word" do
+      expect( remove( "int is_static(void)", ['static'] ) ).to eq( "int is_static(void)" )
+    end
+
+    it "leaves the text alone when a token is absent" do
+      expect( remove( "int f(void)", ['inline'] ) ).to eq( "int f(void)" )
+    end
+  end
+
+  describe ".name_position" do
+    it "finds the name ahead of its parameter list" do
+      expect( described_class.name_position( "static int f(void)", 'f' ) ).to eq( 11 )
+    end
+
+    it "finds the name with space before its parameter list" do
+      expect( described_class.name_position( "int f (void)", 'f' ) ).to eq( 4 )
+    end
+
+    it "does not find a name inside a longer one" do
+      expect( described_class.name_position( "int buf(void)", 'f' ) ).to be_nil
+    end
+
+    it "does not find a name without a parameter list after it" do
+      expect( described_class.name_position( "int f;", 'f' ) ).to be_nil
+    end
+  end
+
 end

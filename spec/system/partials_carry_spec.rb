@@ -11,10 +11,12 @@ require 'spec_system_helper'
 ## What a Partial Carries Through Real Builds
 ## ==========================================
 ##
-## A Partial's implementation source carries what the module's code relied on beyond the
-## selected functions: prototypes of functions defined elsewhere, prototypes of functions the
-## test left out, and the header helpers kept code calls. These builds run unoptimized, where
-## an inline function's call needs a real external definition to link against.
+## A Partial's implementation source carries what the module's code relies on beyond the
+## selected functions. That is prototypes of functions defined elsewhere, prototypes of
+## functions the test left out, and the header helpers kept code uses. These builds run
+## unoptimized, where an inline function's call needs a real external definition to link
+## against. A call to an undeclared function fails on every compiler, GCC before 14 included,
+## so a prototype left behind can't pass as a warning.
 ##
 
 PARTIALS_CARRY_PREAMBLE = "#include \"unity.h\"\n#include \"ceedling.h\"\n"
@@ -144,7 +146,10 @@ ceedling_system_tests do
 
   before do
     in_project do
-      @c.merge_project_yml_for_test( { :project => { :use_partials => true } } )
+      @c.merge_project_yml_for_test( {
+        :project => { :use_partials => true },
+        :flags   => { :test => { :compile => { '*' => ['-Werror=implicit-function-declaration'] } } }
+      } )
     end
   end
 
@@ -174,6 +179,22 @@ ceedling_system_tests do
       File.write( 'test/test_board_engine.c', PARTIALS_CARRY_HELPER_TEST )
 
       build_passing( 3 )
+    end
+  end
+
+  it "writes no weak definition and no pragmas when the project file turns both off" do
+    in_project do
+      @c.merge_project_yml_for_test( { :partials => { :extern_variables => :test, :suppress_redundant_decls => false } } )
+      File.write( 'src/board_engine.h', PARTIALS_CARRY_HELPER_HEADER )
+      File.write( 'src/board_engine.c', PARTIALS_CARRY_HELPER_SOURCE )
+      File.write( 'test/test_board_engine.c', PARTIALS_CARRY_HELPER_TEST )
+
+      build_passing( 3 )
+
+      impl = File.read( Dir.glob( 'build/test/partials/**/ceedling_partial_board_engine_impl.c' ).first )
+      expect( impl ).to include( 'int board_tick(void);' )
+      expect( impl ).not_to include( 'int board_count;' )
+      expect( impl ).not_to include( '#pragma GCC diagnostic' )
     end
   end
 

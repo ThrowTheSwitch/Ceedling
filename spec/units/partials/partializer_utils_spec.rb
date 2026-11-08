@@ -223,7 +223,7 @@ describe PartializerUtils do
 
   # Test private method for code block manipulation used by `transform_function()`
   context "#extract_code_block" do
-    it "strips a single inline decorator and returns 0 leading newlines" do
+    it "strips a decorator on the signature's own line and counts no newlines" do
       code_block = "static void foo(void) {\n  return;\n}"
       result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
@@ -231,9 +231,9 @@ describe PartializerUtils do
       expect(newlines).to eq(0)
     end
 
-    it "strips multiple inline decorators and returns 0 leading newlines" do
-      code_block = "__pragma__ static void foo(void) { return; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['__pragma__', 'static'], 'foo')
+    it "strips several decorators on the signature's own line and counts no newlines" do
+      code_block = "static inline void foo(void) { return; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static', 'inline'], 'foo')
 
       expect(result).to eq("void foo(void) { return; }")
       expect(newlines).to eq(0)
@@ -288,13 +288,23 @@ describe PartializerUtils do
       expect(newlines).to eq(0)
     end
 
-    it "removes only the first occurrence of a decorator that appears in the body too" do
+    it "leaves a decorator word in the body alone" do
       # 'static' in the body (e.g., a local static var) must not be touched
       code_block = "static int foo(void) {\n  static int x = 0;\n  return x;\n}"
       result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
       expect(result).to start_with("int foo(void)")
       expect(result).to include("static int x = 0;")
+    end
+
+    # Only the text before the name is searched, so a body's own static stays when a macro
+    # hides the signature's
+    it "leaves a body's decorator word alone when the signature spells its decorator as a macro" do
+      code_block = "PRIVATE int hidden(void) { static int n; return n; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'hidden')
+
+      expect(result).to eq(code_block)
+      expect(newlines).to eq(0)
     end
 
     it "strips multiple decorators and counts newlines for inline+multiline mix" do
@@ -323,10 +333,10 @@ describe PartializerUtils do
 
     # A decorator word inside the name or body is not a decorator
     it "leaves a decorator word that appears inside the function name" do
-      code_block = "static int is_static(void) { return 1; }"
+      code_block = "PRIVATE int is_static(void) { return 1; }"
       result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'is_static')
 
-      expect(result).to eq("int is_static(void) { return 1; }")
+      expect(result).to eq(code_block)
     end
 
     it "strips the decorator itself when an attribute string ahead of it holds the same word" do
