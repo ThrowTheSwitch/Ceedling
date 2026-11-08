@@ -106,14 +106,17 @@ module CExtractorTypes
     :original,      # Full original C text (e.g., "static int x, y;") -- shared by all Structs
                     # created from a single compound declaration.
     :name,          # Variable name (e.g., "x") -- array subscripts stripped
-    :type,          # Type without decorator keywords (e.g., "int", "char*") -- array subscripts stripped
-    :array_suffix,  # Array subscript string (e.g., "[8]", "[M][N]", "" for scalars)
+    :type,          # Type without decorator keywords (e.g., "int", "char*") -- array subscripts stripped.
+                    # With a declarator, only the text ahead of it (e.g., "int" for "int (*hook)(int)").
+    :array_suffix,  # Array subscript string (e.g., "[8]", "[M][N]", "" for scalars). "" with a
+                    # declarator, which keeps any subscripts itself.
     :decorators,    # Array of decorator keyword strings (e.g., ["static", "const"])
     :text,          # Cleaned declaration without decorators, whitespace normalized (e.g., "int x;")
     :line_num,      # Integer — 1-based line number in source file where declaration begins
+    :declarator,    # A parenthesized declarator from its '(' onward (e.g., "(*hook)(int)" after type "int"), or nil
     keyword_init: true
   ) do
-    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil)
+    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, declarator: nil)
       super
     end
 

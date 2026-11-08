@@ -7,6 +7,7 @@
 
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
+require 'ceedling/c_extractor/c_extractor_declarator'
 
 class CExtractorFunctions
 
@@ -245,16 +246,20 @@ class CExtractorFunctions
           # NOT: type name[...] ; (array variable)
           # NOT: type name = ... ; (variable with initializer)
           cleaned = clean_declaration(signature)
-          
-          # Check if this looks like a function declaration
-          # Pattern: ends with identifier followed by (...) and semicolon
-          # NOT: contains (*identifier) pattern (function pointer variable)
-          if cleaned.match?(/\(\s*\*\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\)/)
-            # This is a function pointer variable, not a function declaration
+
+          # A name inside parentheses declares a function only when a parameter list follows it.
+          # Otherwise the declaration is an object's, such as a pointer to a function or an array.
+          # A pointer inside the parameter list declares a parameter and decides nothing.
+          # Attributes may sit among the stars, so they are stripped first.
+          grouped = CExtractorDeclarator.parenthesized( @code_text.strip_compiler_extensions( cleaned ) )
+          if grouped and grouped.follows != '('
             scanner.pos = start_pos
             return nil
           end
-          
+
+          # A function returning a pointer to an array ends with the array's size, not a ')'
+          return cleaned if grouped
+
           # Additional check: ensure the pattern is identifier(...); not identifier[...]; or identifier;
           # Strip compiler extensions (e.g. trailing __attribute__((...)) or __declspec(...)) before
           # checking the closing paren — otherwise a trailing attribute's ')' fools the check into
@@ -348,32 +353,19 @@ class CExtractorFunctions
   end
 
   def extract_function_name(signature)
-    # Paren depth for balance validation only, no text collection — not suitable for collect_balanced()
-    paren_depth = 0
-    signature.each_char do |char|
-      case char
-      when '('
-        paren_depth += 1
-      when ')'
-        paren_depth -= 1
-        return nil if paren_depth < 0  # Unbalanced - closing before opening
-      end
-    end
-    
     # If parentheses aren't balanced, return nil
-    return nil unless paren_depth == 0
-    
+    return nil unless parens_balanced?( signature )
+
     # Strategy: Find the main parameter list by looking for the pattern:
     # identifier followed by '(' that represents the function's parameter list
-    
-    # First, handle function pointer return types: int (*name(params))(params)
-    # Pattern: (*identifier(...))
-    if signature =~ /\(\s*\*\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/
-      return $1
-    end
-    
+
     cleaned = @code_text.strip_compiler_extensions(signature.dup)
-    
+
+    # A function returning a function pointer, as in int (*name(params))(params), names itself
+    # inside the declarator's parentheses
+    grouped = CExtractorDeclarator.parenthesized( cleaned )
+    return grouped.name if grouped and grouped.follows == '('
+
     # Now find the function name in the cleaned signature
     # Look for: identifier followed by '('
     # The identifier should be preceded by whitespace or * (for pointer returns)
@@ -384,5 +376,18 @@ class CExtractorFunctions
     # Fallback: no valid function name found
     nil
   end
-  
+
+  # True when every ')' closes an earlier '(' and none stays open. It only counts, so it needs
+  # nothing collect_balanced() does.
+  def parens_balanced?(text)
+    depth = 0
+    text.each_char do |char|
+      depth += 1 if char == '('
+      depth -= 1 if char == ')'
+      return false if depth < 0
+    end
+
+    return depth.zero?
+  end
+
 end
