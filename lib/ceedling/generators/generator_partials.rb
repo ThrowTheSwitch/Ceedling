@@ -267,6 +267,8 @@ class GeneratorPartials
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
         next unless include_variables
+        # A variable the extractor read no name from, such as one a macro declares, has no extern to write
+        next if item.name.nil?
         # A header's extern and the source's definition name one variable, so it gets one line
         next if emitted_vars[item.name]
         emitted_vars[item.name] = true

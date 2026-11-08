@@ -789,6 +789,18 @@ describe GeneratorPartials do
       expect(buf.string).not_to include('table[])')
     end
 
+    # A macro may spell a whole declaration, and the extractor then reads no name from it
+    it "should write no extern declaration for a variable without a name" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: nil, text: 'DEFINE_VAR(int, g_x) = 5;'),
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_y', type: 'int', text: 'int g_y;')
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern int g_y;')
+      expect(buf.string.scan('extern').size).to eq(1)
+    end
+
     it "should reapply a leading qualifier ahead of a declarator" do
       c_module = make_module(
         CExtractorTypes::CVariableDeclaration.new(name: 'pick', type: 'char', declarator: '(*pick)(int)', text: 'char (*pick)(int);', decorators: ['const'])
