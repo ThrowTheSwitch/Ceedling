@@ -321,9 +321,10 @@ class CExtractorDeclarations
   end
 
   # The declarator as written. An extern repeats it, so a calling convention or attribute among
-  # its stars must stay to agree with the definition. The written text stands only when it opens
-  # the same group, which the text ahead of each group shows once extensions are stripped.
-  # Otherwise the stripped declarator stands.
+  # its stars and an asm label after it must stay to agree with the definition. Stripping
+  # extensions removes them. The written text stands only when it opens the same group, which
+  # the text ahead of each group shows once extensions are stripped. Otherwise the stripped
+  # declarator stands.
   def written_declarator(clean_text, grouped)
     return nil if grouped.nil?
 

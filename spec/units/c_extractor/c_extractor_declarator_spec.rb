@@ -73,17 +73,36 @@ describe CExtractorDeclarator do
       expect( read( 'int (*(get_cb(void)))(int)' ) ).to include( name: 'get_cb', follows: '(' )
     end
 
+    # The name's own parentheses close before what follows it decides the kind
+    it "reads past the parentheses around a name to what follows them" do
+      expect( read( 'int (*(get_a)(void))(int)' ) ).to include( name: 'get_a', follows: '(' )
+      expect( read( 'int (*(fy)(int))[3]' ) ).to include( name: 'fy', follows: '(' )
+      expect( read( 'int (*(arr)[3])(int)' ) ).to include( name: 'arr', follows: '[' )
+      expect( read( 'FOO(* const (a), b)' ) ).to be_nil
+    end
+
     # GCC accepts '$' in an identifier, and fallback preprocessing leaves comments in place
     it "reads a name holding '$' or followed by a comment" do
       expect( read( 'int (*count$all)(int)' ) ).to include( name: 'count$all', follows: nil )
       expect( read( 'int (*s_hook /* callback */)(int)' ) ).to include( name: 's_hook', follows: nil )
     end
 
-    # An extern repeats the declarator, and an attribute after it would draw a warning there
-    it "ends the declarator at its last parameter list or array size, keeping an asm label" do
+    # An extern repeats the declarator, and an attribute after it would draw a warning there. An
+    # asm label names the symbol, so it stays wherever it sits, and so does anything else.
+    it "leaves the attributes after a declarator out of it and keeps the rest" do
       expect( read( 'void (* const vec[])(void) __attribute__ ((used))' ) ).to include( declarator: '(* const vec[])(void)' )
-      expect( read( 'int (*p)[4][2] PACKED' ) ).to include( declarator: '(*p)[4][2]' )
       expect( read( 'int (*fp)(int) __asm__("fp_label")' ) ).to include( declarator: '(*fp)(int) __asm__("fp_label")' )
+      expect( read( 'int (*g)(int) __attribute__((used)) __asm__("sym")' ) ).to include( declarator: '(*g)(int) __asm__("sym")' )
+      expect( read( 'int (*g)(int) ASM_NAME("sym")' ) ).to include( declarator: '(*g)(int) ASM_NAME("sym")' )
+      expect( read( 'int (*g_cb) /* cb */ (int)' ) ).to include( declarator: '(*g_cb) /* cb */ (int)' )
+      expect( read( 'void (*fp)(int __attribute__((unused)) n)' ) ).to include( declarator: '(*fp)(int __attribute__((unused)) n)' )
+    end
+
+    # A bracket in a string or a comment doesn't count toward a group's balance
+    it "passes over brackets in strings and comments" do
+      expect( read( 'char (*p)[sizeof ")"]' ) ).to include( name: 'p', declarator: '(*p)[sizeof ")"]' )
+      expect( read( 'int (*g /* ) */)(int)' ) ).to include( name: 'g', declarator: '(*g /* ) */)(int)' )
+      expect( read( 'int (*g)(int /* ) */)' ) ).to include( name: 'g', declarator: '(*g)(int /* ) */)' )
     end
 
     # Pathological nesting must still read in one pass

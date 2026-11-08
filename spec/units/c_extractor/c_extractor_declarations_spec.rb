@@ -977,9 +977,11 @@ describe CExtractorDeclarations do
       it "leaves a trailing attribute out of the declarator and keeps an asm label" do
         expect( read_one( "void (* const vec[])(void) __attribute__ ((used)) = { 0 };" ) ).to include( name: 'vec', declarator: '(* const vec[])(void)' )
         expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int) __asm__("fp_label")' )
+        expect( read_one( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ) ).to include( name: 'g', declarator: '(*g)(int) __asm__("sym")' )
       end
 
-      # Stripping extensions can uncover a different group, and only the same group's written text may stand in
+      # The written text may open a different group than the stripped text does, as an attribute
+      # whose argument opens with a star can. Then the stripped declarator stands.
       it "keeps the stripped declarator when the written text opens a different group" do
         expect( read_one( "void __attribute__((*odd)) (*fp)(int);" ) ).to include( name: 'fp', declarator: '(*fp)(int)' )
       end

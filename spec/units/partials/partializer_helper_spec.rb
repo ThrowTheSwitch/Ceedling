@@ -606,6 +606,20 @@ describe PartializerHelper do
         expect(func.code_block).to include('static ARR_OF(int, hits)[3];')
       end
 
+      # Renaming part of a statement would leave the rest of it unpromoted, so the whole one stays
+      it "leaves a compound static whole when it can't name one of its variables" do
+        func = OpenStruct.new(
+          name:       'tally',
+          body:       "{\n  static ARR_OF(int, hits)[3], n;\n  static int m;\n  return n + m;\n}",
+          code_block: "int tally(void) {\n  static ARR_OF(int, hits)[3], n;\n  static int m;\n  return n + m;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:name)).to eq ['partial_tally_m']
+        expect(func.code_block).to include('static ARR_OF(int, hits)[3], n;', 'return n + partial_tally_m;')
+      end
+
       it "promotes each function pointer of a compound static and an array of them" do
         func = OpenStruct.new(
           name:       'fire',

@@ -1095,6 +1095,10 @@ describe CExtractorFunctions do
         expect(parse_name.call("int (* __attribute__((unused)) getUnused(void))(int)")).to eq("getUnused")
       end
 
+      it "extracts name from function returning a function pointer with its name in parentheses" do
+        expect(parse_name.call("int (*(getWrapped)(void))(int)")).to eq("getWrapped")
+      end
+
       it "extracts name from function returning a pointer to an array" do
         signature = "int (*getRow(void))[4]"
         name = parse_name.call(signature)
@@ -2582,6 +2586,7 @@ describe CExtractorFunctions do
         ['void (*signal(int sig, void (*func)(int)))(int);',     'signal'],
         ['void (* _Nullable sigset(int, void (* _Nullable)(int)))(int);', 'sigset'],
         ['int (*(ticker_paren(void)))(int);',                    'ticker_paren'],
+        ['int (*(ticker_wrap)(void))(int);',                     'ticker_wrap'],
         ['DECLARE_THING(*p, b);',                                'DECLARE_THING']
       ].each do |content, name|
         it "reads `#{content}` as a declaration of #{name}()" do
