@@ -283,13 +283,24 @@ class ConfiguratorSetup
   # `:max_extraction_length` multiplies 1000 characters, so `5000` reads more clearly than
   # `5000000`. The minimum keeps that ceiling well above any ordinary C declaration or
   # signature, and catches `1000` written to mean 1000 characters.
+  #
+  # `:suppress_redundant_decls` decides whether generated code carries GCC pragmas, so a
+  # misspelled value is caught here rather than read as truthy. `:extern_variables` must name
+  # one of its two behaviors.
   def validate_partials(config)
     max_extraction_length = config[:partials][:max_extraction_length]
     walk = @reportinator.generate_config_walk( [:partials, :max_extraction_length] )
 
     return log_invalid( "#{walk} is not an integer" ) unless max_extraction_length.is_a?( Integer )
     return log_invalid( "#{walk} must be at least 10 (10,000 characters)" ) if max_extraction_length < 10
-    return true
+
+    suppress = config[:partials][:suppress_redundant_decls]
+    unless [true, false].include?( suppress )
+      walk = @reportinator.generate_config_walk( [:partials, :suppress_redundant_decls] )
+      return log_invalid( "#{walk} is '#{suppress}' but must be TRUE or FALSE" )
+    end
+
+    return validate_option( config, :extern_variables, [:weak, :test], section: :partials )
   end
 
   # Discovery records a path beneath :plugins for each enabled plugin it found, whatever
@@ -464,12 +475,18 @@ class ConfiguratorSetup
     @loginator.log( "Preprocessing configured at #{walk} is only supported in the :test context", Verbosity::ERRORS, LogLabels::WARNING )
   end
 
-  def validate_option(config, key, options)
-    value = config[:project][key]
+  def validate_option(config, key, options, section: :project)
+    value = config[section][key]
     return true if options.include?( value )
 
-    walk = @reportinator.generate_config_walk( [:project, key] )
-    return log_invalid( "#{walk} is ':#{value}' but must be one of {#{options.map { |option| ":#{option}" }.join( ', ' )}}" )
+    walk = @reportinator.generate_config_walk( [section, key] )
+    return log_invalid( "#{walk} is #{option_value( value )} but must be one of {#{options.map { |option| ":#{option}" }.join( ', ' )}}" )
+  end
+
+  # A Symbol reads as YAML writes it. Anything else reads as itself, so a string missing its
+  # leading colon can't pass for the symbol it resembles.
+  def option_value(value)
+    return value.is_a?( Symbol ) ? "':#{value}'" : value.inspect
   end
 
   def validate_thread_count(config, key)

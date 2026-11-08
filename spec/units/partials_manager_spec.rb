@@ -23,6 +23,7 @@ describe PartialsManager do
     @generator        = double( "Generator" )
     @dependinator     = double( "Dependinator" )
     @file_path_utils  = double( "FilePathUtils" )
+    @file_wrapper     = double( "FileWrapper" )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
@@ -42,6 +43,7 @@ describe PartialsManager do
     allow(@dependinator).to receive(:register)
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
+    allow(@file_wrapper).to receive(:exist?).and_return( false )
 
     @manager = described_class.new(
       {
@@ -53,7 +55,8 @@ describe PartialsManager do
         :partializer      => @partializer,
         :generator        => @generator,
         :dependinator     => @dependinator,
-        :file_path_utils  => @file_path_utils
+        :file_path_utils  => @file_path_utils,
+        :file_wrapper     => @file_wrapper
       }
     )
   end
@@ -323,6 +326,9 @@ describe PartialsManager do
       allow(@partializer).to receive(:remap_interface_header_includes).and_return( [] )
       allow(@partializer).to receive(:remap_types_header_includes).and_return( [] )
       allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
+      allow(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+      allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( true )
+      allow(@configurator).to receive(:partials_extern_variables).and_return( :weak )
       allow(@generator).to receive(:generate_partial_types)
       allow(@generator).to receive(:generate_partial_implementation)
       allow(@generator).to receive(:generate_partial_interface)
@@ -382,6 +388,67 @@ describe PartialsManager do
       expect( @testable.partials.mocks ).to eq( %w[Alpha Beta Gamma] )
     end
 
+    it "plans what the implementation carries from both selections, the preprocessing mode and the guard" do
+      impl  = [double("FunctionDefinition")]
+      iface = [double("FunctionDeclaration")]
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( impl )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( iface )
+
+      expect(@partializer).to receive(:plan_carry).with(
+        test: 'a_test', partial: 'Foo', c_module: @module_contents, impl: impl, interface: iface,
+        fallback: true, header_guarded: true, header_filepath: 'src/Foo.h', source_filepath: 'src/Foo.c'
+      ).and_return( Partials::CarryPlan.new )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Without a guard to stand in for, the real header may arrive through another include
+    it "plans for an unguarded module header when the header has no guard" do
+      allow(@partializer).to receive(:extract_module_include_guard).and_return( nil )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+
+      expect(@partializer).to receive(:plan_carry).with( hash_including( header_guarded: false ) ).and_return( Partials::CarryPlan.new )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "hands the plan and both Partials settings to implementation generation" do
+      plan = Partials::CarryPlan.new
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+      allow(@partializer).to receive(:plan_carry).and_return( plan )
+      allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( false )
+      allow(@configurator).to receive(:partials_extern_variables).and_return( :test )
+
+      expect(@generator).to receive(:generate_partial_implementation).with(
+        hash_including( carry: plan, suppress_redundant_decls: false, extern_variables: :test )
+      )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Only a regenerating implementation reads the plan, so its notices appear with that build
+    it "plans nothing when only the interface regenerates" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@dependinator).to receive(:stale?) { |target| target.end_with?( 'ceedling_partial_Foo_interface.h' ) }
+
+      expect(@partializer).not_to receive(:plan_carry)
+      expect(@generator).to receive(:generate_partial_interface)
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "plans nothing when no implementation is extracted" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@partializer).not_to receive(:plan_carry)
+
+      @manager.stage_generate_partials( @state )
+    end
+
     it "does not add to tests when no implementation is extracted" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
@@ -403,6 +470,9 @@ describe PartialsManager do
     end
 
     it "skips writing types, implementation, and interface when the dependency tracker reports all three unchanged, but still updates tests/mocks bookkeeping" do
+      @config.tests = PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC )
+      @config.mocks = PartializerConfig::PartialFunctions.new( type: Partials::PRIVATE )
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
@@ -431,6 +501,45 @@ describe PartialsManager do
         'build/test/partials/a_test/ceedling_partial_Foo_impl.c',
         hash_including( outputs: ['build/test/partials/a_test/ceedling_partial_Foo_impl.h'] )
       )
+    end
+
+    # Both include the types header, so each vouches for it
+    it "registers the types header as an output of both the implementation and the interface" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      @manager.stage_generate_partials( @state )
+
+      types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+      expect(@dependinator).to have_received(:register).with(
+        'build/test/partials/a_test/ceedling_partial_Foo_impl.c',
+        hash_including( outputs: ['build/test/partials/a_test/ceedling_partial_Foo_impl.h', types] )
+      )
+      expect(@dependinator).to have_received(:register).with(
+        'build/test/partials/a_test/ceedling_partial_Foo_interface.h', hash_including( outputs: [types] )
+      )
+    end
+
+    # Whether a types header exists follows from the module files the record already holds, so
+    # the record can be known before extraction while generation still includes the header
+    it "records include lists without the types header and still generates with it" do
+      types_include = UserInclude.new( 'ceedling_partial_Foo_types.h' )
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      [:remap_implementation_header_includes, :remap_interface_header_includes].each do |remap|
+        allow(@partializer).to receive(remap) { |types_header: nil, **| [types_header && types_include, UserInclude.new( 'dep.h' )].compact }
+      end
+
+      metas = []
+      allow(@dependinator).to receive(:register) { |_target, meta: {}, **| metas << meta }
+      expect(@generator).to receive(:generate_partial_implementation).with( hash_including( header_includes: [types_include, UserInclude.new( 'dep.h' )] ) )
+      expect(@generator).to receive(:generate_partial_interface).with( hash_including( includes: [types_include, UserInclude.new( 'dep.h' )] ) )
+
+      @manager.stage_generate_partials( @state )
+
+      expect( metas.map { |meta| meta.values_at( :impl_header_includes, :interface_includes ) }.uniq ).to eq( [[['#include "dep.h"'], ['#include "dep.h"']]] )
     end
 
     it "registers the whole :partials config as meta, and an empty tools list since this stage runs no shell tool" do
@@ -522,21 +631,34 @@ describe PartialsManager do
       @manager.stage_generate_partials( @state )
     end
 
-    it "computes each include list once and hands that same list to generation" do
+    # Remapping logs each list it computes for a named test, so generation's lists are the only ones named
+    it "computes generation's include lists once, logged under the test's name, and hands them to generation" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
       impl_h    = [UserInclude.new('impl_h_dep.h')]
       impl_c    = [UserInclude.new('impl_c_dep.h')]
       interface = [UserInclude.new('interface_dep.h')]
-      expect(@partializer).to receive(:remap_implementation_header_includes).once.and_return( impl_h )
-      expect(@partializer).to receive(:remap_implementation_source_includes).once.and_return( impl_c )
-      expect(@partializer).to receive(:remap_interface_header_includes).once.and_return( interface )
+      expect(@partializer).to receive(:remap_implementation_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( impl_h )
+      expect(@partializer).to receive(:remap_implementation_source_includes).with( hash_including( test: 'a_test' ) ).once.and_return( impl_c )
+      expect(@partializer).to receive(:remap_interface_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( interface )
+      expect(@partializer).to receive(:remap_types_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( [] )
 
       expect(@generator).to receive(:generate_partial_implementation).with(
         hash_including( header_includes: impl_h, source_includes: impl_c )
       )
       expect(@generator).to receive(:generate_partial_interface).with( hash_including( includes: interface ) )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "computes the record's include lists without a test name, so nothing logs them" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      %i[remap_types_header_includes remap_implementation_header_includes remap_implementation_source_includes remap_interface_header_includes].each do |remap|
+        expect(@partializer).to receive(remap).with( hash_including( test: nil ) ).once.and_return( [] )
+      end
 
       @manager.stage_generate_partials( @state )
     end
@@ -640,7 +762,136 @@ describe PartialsManager do
       @manager.stage_generate_partials( @state )
     end
 
+    # Generated files that are all fresh already hold what extraction would produce
+    context "when the implementation and interface are both fresh" do
+      before(:each) do
+        @config.tests = PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC )
+        @config.mocks = PartializerConfig::PartialFunctions.new( type: Partials::PRIVATE )
+        allow(@dependinator).to receive(:stale?).and_return( false )
+      end
+
+      it "extracts nothing, yet adds the module to tests and mocks" do
+        expect(@partializer).not_to receive(:extract_module_contents)
+        expect(@partializer).not_to receive(:validate_config)
+        expect(@generator).not_to receive(:generate_partial_implementation)
+
+        @manager.stage_generate_partials( @state )
+
+        expect( @testable.partials.tests ).to eq( ['Foo'] )
+        expect( @testable.partials.mocks ).to eq( ['Foo'] )
+      end
+
+      it "adds the module only to the list its selection names" do
+        @config.mocks = PartializerConfig::PartialFunctions.new
+
+        @manager.stage_generate_partials( @state )
+
+        expect( @testable.partials.tests ).to eq( ['Foo'] )
+        expect( @testable.partials.mocks ).to eq( [] )
+      end
+
+      # A module mocked from its header alone has only an interface to vouch for it
+      it "skips a mock-only Partial on its interface alone" do
+        @config.tests = PartializerConfig::PartialFunctions.new
+
+        expect(@partializer).not_to receive(:extract_module_contents)
+        expect(@reportinator).not_to receive(:generate_module_progress).with( hash_including( operation: "Skipping Partial implementation generation for" ) )
+
+        @manager.stage_generate_partials( @state )
+
+        expect( @testable.partials.tests ).to eq( [] )
+        expect( @testable.partials.mocks ).to eq( ['Foo'] )
+      end
+
+      # A full run prunes the record of any target it never registers
+      it "registers a types header still on disk, so its record survives" do
+        types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+        allow(@file_wrapper).to receive(:exist?).with( types ).and_return( true )
+
+        @manager.stage_generate_partials( @state )
+
+        expect(@dependinator).to have_received(:register).with( types, hash_including( :files, :meta ) )
+      end
+
+      # The implementation and interface vouch for the types header they include
+      it "leaves the types header's own record out of the decision" do
+        types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+        allow(@file_wrapper).to receive(:exist?).with( types ).and_return( true )
+        allow(@dependinator).to receive(:stale?) { |target| target == types }
+
+        expect(@partializer).not_to receive(:extract_module_contents)
+
+        @manager.stage_generate_partials( @state )
+      end
+
+      it "logs a skip line and counts a skip for each file it would have generated" do
+        allow(@file_wrapper).to receive(:exist?).and_return( true )
+        %w[types implementation interface].each do |kind|
+          expect(@reportinator).to receive(:generate_module_progress)
+            .with( hash_including( operation: "Skipping Partial #{kind} generation for" ) ).and_return( '' )
+        end
+        [
+          ['Partial types generation', 'types headers'],
+          ['Partial implementation generation', 'implementations'],
+          ['Partial interface generation', 'interfaces']
+        ].each do |task, noun|
+          expect(@reportinator).to receive(:generate_skip_summary).with( hash_including( task: task, count: 1, noun: noun ) )
+        end
+
+        @manager.stage_generate_partials( @state )
+      end
+
+      it "extracts and generates when the interface alone is stale" do
+        allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+        allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+        allow(@dependinator).to receive(:stale?) { |target| target.end_with?( '_interface.h' ) }
+
+        expect(@partializer).to receive(:extract_module_contents).and_return( @module_contents )
+        expect(@generator).to receive(:generate_partial_interface)
+
+        @manager.stage_generate_partials( @state )
+      end
+    end
+
+    # A types header an earlier build left would pass for current whenever the Partial is next fresh
+    it "removes a types header an earlier build left once the module has no types" do
+      types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@file_wrapper).to receive(:exist?).with( types ).and_return( true )
+
+      expect(@file_wrapper).to receive(:rm_f).with( types )
+      expect(@dependinator).to receive(:invalidate).with( types )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "keeps the types header of a module that still has types" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+
+      expect(@file_wrapper).not_to receive(:rm_f)
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Nothing else can vouch for what the module's files would generate
+    it "extracts a Partial whose selection names neither an implementation nor an interface" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( nil )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@partializer).to receive(:extract_module_contents).and_return( @module_contents )
+
+      @manager.stage_generate_partials( @state )
+    end
+
     it "logs summary lines stating how many of each Partial artifact were recalled from cache" do
+      @config.tests = PartializerConfig::PartialFunctions.new( type: Partials::PUBLIC )
+      @config.mocks = PartializerConfig::PartialFunctions.new( type: Partials::PRIVATE )
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )

@@ -2608,6 +2608,15 @@ describe CExtractorFunctions do
         expect(decl.decorators).to eq(["extern"])
         expect(decl.signature_stripped).to eq("void bar(int x);")
       end
+
+      it "keeps an unsigned long return type in a declaration" do
+        content = "unsigned long big(void);"
+        success, decl, _, _ = try_extract_decl.call(content)
+
+        expect(success).to be true
+        expect(decl.decorators).to eq([])
+        expect(decl.signature_stripped).to eq("unsigned long big(void);")
+      end
     end
 
     context "failed extraction" do
@@ -2676,32 +2685,113 @@ describe CExtractorFunctions do
       expect(stripped).to eq("int foo(void)")
     end
 
-    it "extracts const decorator from return type" do
+    # A qualifier before the return type belongs to that type, so stripping it would change it
+    it "keeps a const qualifier as part of the return type" do
       decorators, stripped = functions.send(:parse_decorators_and_strip, "const int* foo(void)", "foo")
-      expect(decorators).to eq(["const"])
-      expect(stripped).to eq("int* foo(void)")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("const int* foo(void)")
     end
 
-    it "separates leading type keyword token and remainder for unsigned int return type" do
-      # The algorithm treats leading TYPE_KEYWORDS as the split point; "unsigned" becomes a decorator
-      # and "int" becomes the start of the return type
+    it "keeps every keyword of an unsigned int return type" do
       decorators, stripped = functions.send(:parse_decorators_and_strip, "unsigned int foo(void)", "foo")
-      expect(decorators).to eq(["unsigned"])
-      expect(stripped).to eq("int foo(void)")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("unsigned int foo(void)")
     end
 
-    it "separates leading struct keyword token and remainder for struct return type" do
-      # Similarly, "struct" is a TYPE_KEYWORD and becomes the split point
+    it "keeps a struct return type whole" do
       decorators, stripped = functions.send(:parse_decorators_and_strip, "struct Point* foo(void)", "foo")
-      expect(decorators).to eq(["struct"])
-      expect(stripped).to eq("Point* foo(void)")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("struct Point* foo(void)")
     end
 
-    it "separates leading long keyword token and remainder for long return type" do
-      # Similarly, "long" is a TYPE_KEYWORD and becomes the split point
+    it "keeps every keyword of a long int return type" do
       decorators, stripped = functions.send(:parse_decorators_and_strip, "long int foo(void)", "foo")
-      expect(decorators).to eq(["long"])
+      expect(decorators).to eq([])
+      expect(stripped).to eq("long int foo(void)")
+    end
+
+    it "keeps a typedef name before a spaced pointer" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "uint8_t *get_buf(void)", "get_buf")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("uint8_t *get_buf(void)")
+    end
+
+    it "keeps an enum return type whole" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "enum mode get_mode(void)", "get_mode")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("enum mode get_mode(void)")
+    end
+
+    it "keeps both words of a long long return type" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "long long foo(void)", "foo")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("long long foo(void)")
+    end
+
+    it "keeps a calling convention between the return type and the name" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "int __cdecl foo(void)", "foo")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("int __cdecl foo(void)")
+    end
+
+    # Macros are resolved by reconciling with the fully expanded copy, not by guessing here
+    it "keeps an unexpanded macro before the return type" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "PRIVATE int foo(void)", "foo")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("PRIVATE int foo(void)")
+    end
+
+    it "strips a storage class written after a qualifier and keeps the qualifier" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "const static int *t(void)", "t")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("const int *t(void)")
+    end
+
+    it "strips a storage class written after the return type" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "int static foo(void)", "foo")
+      expect(decorators).to eq(["static"])
       expect(stripped).to eq("int foo(void)")
+    end
+
+    # The name must be found as a whole word, not inside a return type such as "float"
+    it "finds a short name that also appears inside the return type" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static float f(void)", "f")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("float f(void)")
+    end
+
+    # A selected function needs it, or a caller's missing return reads as a warning
+    it "keeps the _Noreturn function specifier" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "_Noreturn void die(void)", "die")
+      expect(decorators).to eq([])
+      expect(stripped).to eq("_Noreturn void die(void)")
+    end
+
+    it "strips static and keeps _Noreturn" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "static _Noreturn void fatal(void)", "fatal")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("_Noreturn void fatal(void)")
+    end
+
+    # Only whole words separated by whitespace are decorators, never text inside an attribute
+    it "leaves a decorator word inside an attribute string alone" do
+      signature = 'static int __attribute__((section(".text.static"))) g(void)'
+      decorators, stripped = functions.send(:parse_decorators_and_strip, signature, "g")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq('int __attribute__((section(".text.static"))) g(void)')
+    end
+
+    it "strips the decorator itself when an attribute string ahead of it holds the same word" do
+      signature = '__attribute__((section(".text.static"))) static int g(void)'
+      decorators, stripped = functions.send(:parse_decorators_and_strip, signature, "g")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq('__attribute__((section(".text.static"))) int g(void)')
+    end
+
+    it "strips extern inline from a prototype and keeps its semicolon" do
+      decorators, stripped = functions.send(:parse_decorators_and_strip, "extern inline int twice(void);", "twice")
+      expect(decorators).to eq(["extern", "inline"])
+      expect(stripped).to eq("int twice(void);")
     end
 
     it "returns empty decorators and original signature when name is nil" do
@@ -2734,11 +2824,10 @@ describe CExtractorFunctions do
       expect(stripped).to eq("char* foo(void)")
     end
 
-    it "handles static const pointer return -- both static and const are decorators" do
-      # const is in MODIFIER_KEYWORDS, so algorithm treats it as decorator alongside static
+    it "strips static from a const pointer return and keeps const" do
       decorators, stripped = functions.send(:parse_decorators_and_strip, "static const char* foo(void)", "foo")
-      expect(decorators).to eq(["static", "const"])
-      expect(stripped).to eq("char* foo(void)")
+      expect(decorators).to eq(["static"])
+      expect(stripped).to eq("const char* foo(void)")
     end
 
     it "handles function with parameters that include type keywords" do
@@ -2800,6 +2889,107 @@ describe CExtractorFunctions do
       expect(success).to be true
       expect(func.decorators).to eq(["static", "inline"])
       expect(func.signature_stripped).to eq("int bar(int x)")
+    end
+
+    it "keeps a struct pointer return type when stripping static" do
+      success, func = try_extract.call("static struct point *origin(void) { return 0; }")
+      expect(success).to be true
+      expect(func.decorators).to eq(["static"])
+      expect(func.signature_stripped).to eq("struct point *origin(void)")
+    end
+
+    it "keeps a const return type on a function with no decorators" do
+      success, func = try_extract.call("const char *name(void) { return \"n\"; }")
+      expect(success).to be true
+      expect(func.decorators).to eq([])
+      expect(func.signature_stripped).to eq("const char *name(void)")
+    end
+  end
+
+  describe ".remove_tokens" do
+    def remove(text, tokens)
+      described_class.remove_tokens( text, tokens )
+    end
+
+    it "removes a token with the spaces after it" do
+      expect( remove( "static int f(void)", ['static'] ) ).to eq( "int f(void)" )
+    end
+
+    it "removes a token with the tab after it" do
+      expect( remove( "static\tint f(void)", ['static'] ) ).to eq( "int f(void)" )
+    end
+
+    # A caller counts the lines a decorator occupied, so a newline after it stays
+    it "keeps a newline after a token" do
+      expect( remove( "static\nint f(void)", ['static'] ) ).to eq( "\nint f(void)" )
+    end
+
+    it "keeps whitespace after a token when it holds a newline" do
+      expect( remove( "static \nint f(void)", ['static'] ) ).to eq( " \nint f(void)" )
+    end
+
+    it "removes each listed token once" do
+      expect( remove( "static static int f(void)", ['static'] ) ).to eq( "static int f(void)" )
+      expect( remove( "static static int f(void)", ['static', 'static'] ) ).to eq( "int f(void)" )
+    end
+
+    it "leaves a token that is only part of a longer word" do
+      expect( remove( "int is_static(void)", ['static'] ) ).to eq( "int is_static(void)" )
+    end
+
+    it "leaves the text alone when a token is absent" do
+      expect( remove( "int f(void)", ['inline'] ) ).to eq( "int f(void)" )
+    end
+  end
+
+  describe ".name_position" do
+    it "finds the name ahead of its parameter list" do
+      expect( described_class.name_position( "static int f(void)", 'f' ) ).to eq( 11 )
+    end
+
+    it "finds the name with space before its parameter list" do
+      expect( described_class.name_position( "int f (void)", 'f' ) ).to eq( 4 )
+    end
+
+    it "does not find a name inside a longer one" do
+      expect( described_class.name_position( "int buf(void)", 'f' ) ).to be_nil
+    end
+
+    it "does not find a name without a parameter list after it" do
+      expect( described_class.name_position( "int f;", 'f' ) ).to be_nil
+    end
+
+    it "finds a name at the very start of the text" do
+      expect( described_class.name_position( "f(void)", 'f' ) ).to eq( 0 )
+    end
+
+    it "does not find a name at the start of a longer one" do
+      expect( described_class.name_position( "int fx(void)", 'f' ) ).to be_nil
+    end
+
+    it "finds the name with a newline and a tab before its parameter list" do
+      expect( described_class.name_position( "int f\n\t(void)", 'f' ) ).to eq( 4 )
+    end
+
+    it "finds the name right after a pointer star" do
+      expect( described_class.name_position( "int *f(void)", 'f' ) ).to eq( 5 )
+    end
+
+    # A struct tag may share the function's name
+    it "passes over an earlier occurrence with no parameter list after it" do
+      expect( described_class.name_position( "struct f f(void)", 'f' ) ).to eq( 9 )
+    end
+
+    it "passes over the name inside a longer word to find it whole later" do
+      expect( described_class.name_position( "int buf; int f(void)", 'f' ) ).to eq( 13 )
+    end
+
+    it "does not find a name that only overlaps a longer run of its letters" do
+      expect( described_class.name_position( "int fff(void)", 'ff' ) ).to be_nil
+    end
+
+    it "counts the position in characters" do
+      expect( described_class.name_position( "/* é */ int f(void)", 'f' ) ).to eq( 12 )
     end
   end
 

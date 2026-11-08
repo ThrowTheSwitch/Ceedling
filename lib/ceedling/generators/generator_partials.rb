@@ -5,10 +5,12 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/generators/partial_source_writer'
 
 class GeneratorPartials
 
@@ -22,14 +24,16 @@ class GeneratorPartials
   end
 
   def generate_implementation(
-      test:,
       name:,
       function_definitions:,
       source_includes:,
       header_includes:,
       c_module:,
       output_path:,
-      include_guard: nil
+      include_guard: nil,
+      carry: Partials::CarryPlan.new,
+      suppress_redundant_decls: true,
+      extern_variables: :weak
     )
     source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
@@ -47,13 +51,15 @@ class GeneratorPartials
     end
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
-      generate_source(file, source_includes, function_definitions, c_module)
+      generate_source(file, source_includes, function_definitions, c_module,
+                      carry: carry, suppress_redundant_decls: suppress_redundant_decls,
+                      extern_variables: extern_variables, filepath: source_filepath)
     end
 
     return source_filepath
   end
 
-  def generate_interface(test:, name:, function_declarations:, includes:, c_module:, output_path:, include_guard: nil)
+  def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, include_guard: nil)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = _prepare( File.join(output_path, header) )
 
@@ -188,14 +194,22 @@ class GeneratorPartials
     quals.empty? ? '' : "#{quals.join(' ')} "
   end
 
+  # A definition for a variable the module only declares `extern`. Weak, it satisfies the link
+  # when nothing else defines the variable and yields to a real definition without a duplicate
+  # symbol. A compiler without GCC's weak attribute gets a plain definition.
+  def weak_definition(decl)
+    text = "#{qualifier_prefix(decl)}#{decl.text}"
+    return "#if defined(__GNUC__)\n__attribute__((weak)) #{text}\n#else\n#{text}\n#endif\n"
+  end
+
   # Emit a partial header file.
   #
   # Iterates c_module.element_sequence to emit non-function items (macros, typedefs,
   # aggregates, and optionally variable extern declarations) in their original extraction
   # order. Function items in element_sequence are matched by name against function_list
   # (pre-filtered Partials::FunctionDeclaration or Partials::FunctionDefinition objects)
-  # and emitted at their natural position. Any function_list entries not found in
-  # element_sequence (e.g., added from a different module) are emitted afterward.
+  # and emitted at their natural position. An entry element_sequence never names is not
+  # written.
   #
   # @param io              [IO]     Output file handle
   # @param name            [String] Header filename (used for include guard)
@@ -211,6 +225,9 @@ class GeneratorPartials
 
     func_by_name = function_list.to_h { |f| [f.name, f] }
     emitted_funcs = {}
+    emitted_vars = {}
+    # A variable's definition knows its full type, such as an array's size, so its extern comes from there
+    defining_vars = c_module.variable_declarations.reject( &:extern? ).group_by( &:name ).transform_values( &:first )
     last_was_func = false
     anything_emitted = false
 
@@ -250,12 +267,16 @@ class GeneratorPartials
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
         next unless include_variables
+        # A header's extern and the source's definition name one variable, so it gets one line
+        next if emitted_vars[item.name]
+        emitted_vars[item.name] = true
+        var = defining_vars[item.name] || item
         # If there is no array involved, array_suffix collapses to an empty string.
         # A leading const/volatile/restrict on the original declaration (see
         # qualifier_prefix) is part of the variable's type and belongs here too,
         # so this extern agrees with the definition and any other declaration of
         # the same variable elsewhere in the translation unit.
-        io << "extern #{qualifier_prefix(item)}#{item.type} #{item.name}#{item.array_suffix};\n"
+        io << "extern #{qualifier_prefix(var)}#{var.type} #{var.name}#{var.array_suffix};\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration
@@ -274,81 +295,70 @@ class GeneratorPartials
 
   # Emit a partial source file.
   #
-  # Iterates c_module.element_sequence to emit CVariableDeclaration and
-  # CFunctionDefinition items, plus bare-macro-invocation CStatements specifically (see
-  # the CStatement branch below for why only that one CStatement category belongs
-  # here), in their original extraction order. Every other CStatement category and
-  # CFunctionDeclaration items are skipped (they belong in headers). Function items
-  # are matched by name against function_definitions (pre-filtered
-  # Partials::FunctionDefinition objects). Any entries not found in element_sequence
-  # are emitted afterward.
+  # Iterates c_module.element_sequence and writes, in their original extraction order:
+  #   - the selected functions, matched by name against function_definitions;
+  #   - the header helpers and prototypes the carry plan carries;
+  #   - variable definitions, and for a variable the module only declares `extern`, what
+  #     `extern_variables` asks for;
+  #   - bare macro invocations, the one CStatement category that belongs here. A real function
+  #     definition, once such a macro is applied, would violate the one-definition rule the
+  #     moment more than one compiled object contains it. This is the one file that compiles to
+  #     the one object the real definition can safely live in.
+  # Every other CStatement category belongs in a header.
   #
-  # @param io                   [IO]     Output file handle
-  # @param includes             [Array]  Include directives
-  # @param function_definitions [Array]  Pre-filtered Partials::FunctionDefinition objects
-  # @param c_module             [CExtractorTypes::CModule] Merged module with element_sequence
-  def generate_source(io, includes, function_definitions, c_module)
-    io << "// Ceedling generated file\n"
-    includes.each do |include|
-      io << "#{include}\n"
+  # @param io                       [IO]      Output file handle
+  # @param includes                 [Array]   Include directives
+  # @param function_definitions     [Array]   Pre-filtered Partials::FunctionDefinition objects
+  # @param c_module                 [CExtractorTypes::CModule] Merged module with element_sequence
+  # @param carry                    [Partials::CarryPlan] What the source carries beyond the selection
+  # @param suppress_redundant_decls [Boolean] Whether carried prototypes sit inside GCC pragmas
+  # @param extern_variables         [Symbol]  :weak or :test, for variables the module only declares
+  # @param filepath                 [String, nil] This file's own path, for handing #line attribution back
+  def generate_source(io, includes, function_definitions, c_module, carry: Partials::CarryPlan.new,
+                      suppress_redundant_decls: true, extern_variables: :weak, filepath: nil)
+    writer  = PartialSourceWriter.new( io: io, filepath: filepath, suppress_redundant_decls: suppress_redundant_decls )
+    context = SourceContext.new(
+      c_module: c_module, carry: carry, extern_variables: extern_variables, weak: Set.new,
+      selected: function_definitions.to_h { |f| [f.name, f] },
+      defined:  Set.new( c_module.variable_declarations.reject( &:extern? ).map( &:name ) )
+    )
+
+    writer.preamble( includes )
+    c_module.element_sequence.each { |item| _write_source_item( writer, item, context ) }
+    writer.finish
+  end
+
+  # What source generation consults about the module as it writes each item
+  SourceContext = Struct.new( :c_module, :carry, :extern_variables, :selected, :defined, :weak, keyword_init: true ) unless const_defined?(:SourceContext, false)
+
+  def _write_source_item(writer, item, context)
+    case item
+    when CExtractorTypes::CStatement
+      writer.text( "#{item.text}\n" ) if context.c_module.macro_invocations.include?( item )
+    when CExtractorTypes::CVariableDeclaration
+      text = _source_variable( item, context )
+      writer.text( text ) if text
+    when CExtractorTypes::CFunctionDefinition
+      writer.function( context.selected[item.name] || context.carry.helper( item.name ) )
+    when CExtractorTypes::CFunctionDeclaration
+      writer.prototype( item ) if context.carry.prototype?( item )
     end
+  end
 
-    io << "\n"
+  # A variable's definition, or nil. A variable the module defines is written where it does.
+  # One it only declares `extern` gets a weak definition, once, unless `extern_variables` leaves
+  # it to the test or its type is never completed, which no definition could compile with.
+  def _source_variable(var, context)
+    # `var.text` is the declaration with its leading decorator run removed (see
+    # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict qualifier on the
+    # base type is reapplied here via qualifier_prefix -- this definition's type must match the
+    # extern declaration emitted for the same variable in generate_header.
+    return "#{qualifier_prefix(var)}#{var.text}\n" unless var.extern?
+    return nil if context.extern_variables != :weak
+    return nil if context.defined.include?( var.name ) or context.carry.incomplete?( var.name )
+    return nil unless context.weak.add?( var.name )
 
-    func_by_name = function_definitions.to_h { |f| [f.name, f] }
-    emitted_funcs = {}
-    last_was_func = false
-    anything_emitted = false
-
-    emit_func = lambda do |func|
-      # Blank line before a function when preceded by a non-function item
-      io << "\n" if anything_emitted && !last_was_func
-      if func.line_num and func.source_filepath
-        # #line ties this generated file's code back to its original source
-        # location -- debuggers, error messages, and gcov coverage attribution
-        # all point at the real file/line instead of this generated stand-in.
-        # That mapping only holds if this file's line count matches what
-        # #line promises, which is why it's opened in binary mode above.
-        io << "#line #{func.line_num} \"#{func.source_filepath}\"\n"
-      end
-      io << func.code_block << "\n\n"
-      emitted_funcs[func.name] = true
-      last_was_func = true
-      anything_emitted = true
-    end
-
-    c_module.element_sequence.each do |item|
-      case item
-      when CExtractorTypes::CStatement
-        # Only a bare macro invocation belongs here -- see generate_header for why it's
-        # never emitted into any header (a real function definition, once the macro is
-        # actually applied, would violate the one-definition rule the moment more than
-        # one compiled object contains it). This is the one file that compiles to the
-        # one object the real definition can safely live in. Every other CStatement
-        # category (macro definitions, typedefs, aggregate definitions) belongs only in
-        # a header -- #line-anchored function bodies below are the only other code this
-        # file itself contributes.
-        next unless c_module.macro_invocations.include?(item)
-        io << item.text << "\n"
-        last_was_func = false
-        anything_emitted = true
-      when CExtractorTypes::CVariableDeclaration
-        # `item.text` is the declaration with its leading decorator run removed (see
-        # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict
-        # qualifier on the base type is reapplied here via qualifier_prefix -- this
-        # definition's type must match the extern declaration emitted for the same
-        # variable in generate_header.
-        io << "#{qualifier_prefix(item)}#{item.text}\n"
-        last_was_func = false
-        anything_emitted = true
-      when CExtractorTypes::CFunctionDefinition
-        func = func_by_name[item.name]
-        next unless func && !emitted_funcs[item.name]
-        emit_func.call(func)
-      end
-      # CStatement and CFunctionDeclaration items are skipped in source
-    end
-
+    return weak_definition( var )
   end
 
 

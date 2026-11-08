@@ -8,6 +8,7 @@
 
 require 'set'
 require 'spec_helper'
+require 'timeout'
 require 'ceedling/partials/partializer_helper'
 require 'ceedling/partials/partializer_utils'
 require 'ceedling/partials/partials'
@@ -286,6 +287,8 @@ describe PartializerHelper do
 
       allow(@partializer_utils).to receive(:stamp_source_filepaths)
       allow(@partializer_utils).to receive(:format_line_number_list).and_return([])
+      allow(@partializer_utils).to receive(:locate_functions_in_source).and_return([])
+      allow(@partializer_utils).to receive(:locate_functions_via_preprocessed).and_return([])
     end
 
     it "calls stamp_source_filepaths for empty funcs with fallback: false" do
@@ -300,13 +303,6 @@ describe PartializerHelper do
       @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath, fallback: true)
     end
 
-    it "makes no locate calls when funcs is empty" do
-      expect(@partializer_utils).not_to receive(:locate_function_in_source)
-      expect(@partializer_utils).not_to receive(:locate_function_via_preprocessed)
-
-      @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath, fallback: false)
-    end
-
     it "constructs preprocessed filepath from name and filepath" do
       expect(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
         .with(@filepath, @name)
@@ -315,16 +311,14 @@ describe PartializerHelper do
       @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath, fallback: false)
     end
 
-    it "uses locate_function_in_source for each func when fallback: true" do
+    # The file is read once for all of its functions
+    it "locates every function in the source with one call when fallback: true" do
       func1 = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
       func2 = OpenStruct.new(code_block: 'int bar(int x) {}', line_num: nil)
 
-      expect(@partializer_utils).to receive(:locate_function_in_source)
-        .with(code_block: func1.code_block, filepath: @filepath)
-        .and_return(10)
-      expect(@partializer_utils).to receive(:locate_function_in_source)
-        .with(code_block: func2.code_block, filepath: @filepath)
-        .and_return(25)
+      expect(@partializer_utils).to receive(:locate_functions_in_source)
+        .with(code_blocks: [func1.code_block, func2.code_block], filepath: @filepath).once
+        .and_return([10, 25])
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2], filepath: @filepath, fallback: true)
 
@@ -332,16 +326,13 @@ describe PartializerHelper do
       expect(func2.line_num).to eq(25)
     end
 
-    it "uses locate_function_via_preprocessed for each func when fallback: false" do
+    it "locates every function in the preprocessed copy with one call when fallback: false" do
       func1 = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
       func2 = OpenStruct.new(code_block: 'int bar(int x) {}', line_num: nil)
 
-      expect(@partializer_utils).to receive(:locate_function_via_preprocessed)
-        .with(code_block: func1.code_block, filepath: @filepath, preprocessed_filepath: @preprocessed_filepath)
-        .and_return(10)
-      expect(@partializer_utils).to receive(:locate_function_via_preprocessed)
-        .with(code_block: func2.code_block, filepath: @filepath, preprocessed_filepath: @preprocessed_filepath)
-        .and_return(25)
+      expect(@partializer_utils).to receive(:locate_functions_via_preprocessed)
+        .with(code_blocks: [func1.code_block, func2.code_block], filepath: @filepath, preprocessed_filepath: @preprocessed_filepath).once
+        .and_return([10, 25])
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2], filepath: @filepath, fallback: false)
 
@@ -349,30 +340,30 @@ describe PartializerHelper do
       expect(func2.line_num).to eq(25)
     end
 
-    it "sets line_num to nil when locate_function_via_preprocessed returns nil" do
+    it "sets line_num to nil for a function that isn't found" do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
 
-      allow(@partializer_utils).to receive(:locate_function_via_preprocessed).and_return(nil)
+      allow(@partializer_utils).to receive(:locate_functions_via_preprocessed).and_return([nil])
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
 
       expect(func.line_num).to be_nil
     end
 
-    it "does not call locate_function_via_preprocessed when fallback: true" do
+    it "does not search the preprocessed copy when fallback: true" do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
 
-      expect(@partializer_utils).not_to receive(:locate_function_via_preprocessed)
-      allow(@partializer_utils).to receive(:locate_function_in_source).and_return(1)
+      expect(@partializer_utils).not_to receive(:locate_functions_via_preprocessed)
+      allow(@partializer_utils).to receive(:locate_functions_in_source).and_return([1])
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: true)
     end
 
-    it "does not call locate_function_in_source when fallback: false" do
+    it "does not search the source alone when fallback: false" do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
 
-      expect(@partializer_utils).not_to receive(:locate_function_in_source)
-      allow(@partializer_utils).to receive(:locate_function_via_preprocessed).and_return(1)
+      expect(@partializer_utils).not_to receive(:locate_functions_in_source)
+      allow(@partializer_utils).to receive(:locate_functions_via_preprocessed).and_return([1])
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
     end
@@ -380,14 +371,14 @@ describe PartializerHelper do
     it "calls format_line_number_list with funcs and passes result to loginator" do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil, name: 'foo')
 
-      allow(@partializer_utils).to receive(:locate_function_via_preprocessed).and_return(5)
+      allow(@partializer_utils).to receive(:locate_functions_via_preprocessed).and_return([5])
 
       expect(@partializer_utils).to receive(:format_line_number_list).with([func]).and_return(["foo(): 5"])
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
     end
 
-    it "forwards the constructed preprocessed_filepath to locate_function_via_preprocessed" do
+    it "forwards the constructed preprocessed_filepath to locate_functions_via_preprocessed" do
       func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
 
       custom_preproc = '/custom/preproc/output.i'
@@ -395,9 +386,9 @@ describe PartializerHelper do
         .with(@filepath, @name)
         .and_return(custom_preproc)
 
-      expect(@partializer_utils).to receive(:locate_function_via_preprocessed)
+      expect(@partializer_utils).to receive(:locate_functions_via_preprocessed)
         .with(hash_including(preprocessed_filepath: custom_preproc))
-        .and_return(nil)
+        .and_return([nil])
 
       @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
     end
@@ -986,8 +977,18 @@ describe PartializerHelper do
   context "#update_signatures_from_full_expansion" do
     require 'ceedling/c_extractor/c_extractor_types'
 
-    def make_expanded_func(name:, signature:, decorators:, signature_stripped:)
+    def make_expanded_func(name:, signature:, decorators:, signature_stripped:, body: nil)
       CExtractorTypes::CFunctionDefinition.new(
+        name:               name,
+        signature:          signature,
+        decorators:         decorators,
+        signature_stripped: signature_stripped,
+        body:               body
+      )
+    end
+
+    def make_decl(name:, signature:, decorators:, signature_stripped:)
+      CExtractorTypes::CFunctionDeclaration.new(
         name:               name,
         signature:          signature,
         decorators:         decorators,
@@ -1005,6 +1006,7 @@ describe PartializerHelper do
       allow(func).to receive(:signature=)
       allow(func).to receive(:decorators=)
       allow(func).to receive(:signature_stripped=)
+      allow(func).to receive(:expanded_body=)
 
       expanded_func = make_expanded_func(
         name:               'helper',
@@ -1066,6 +1068,7 @@ describe PartializerHelper do
       allow(func_match).to receive(:signature=)
       allow(func_match).to receive(:decorators=)
       allow(func_match).to receive(:signature_stripped=)
+      allow(func_match).to receive(:expanded_body=)
 
       func_no_match = double('unmatched', name: 'orphan')
 
@@ -1108,6 +1111,249 @@ describe PartializerHelper do
           file_type:               'source'
         )
       }.not_to raise_error
+    end
+
+    # The helper scan reads calls a macro hid, so it needs the body as the compiler sees it
+    it "keeps each matched definition's expanded body" do
+      func = CExtractorTypes::CFunctionDefinition.new(name: 'get', signature: 'int get(int v)', body: '{ return CLAMP(v); }')
+      expanded = make_expanded_func(
+        name: 'get', signature: 'int get(int v)', decorators: [], signature_stripped: 'int get(int v)',
+        body: '{ return clamp(v); }'
+      )
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_definitions: [expanded]))
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [func], full_expansion_filepath: '/build/full_expansion/mod.c',
+        name: 'TestMod', module_name: 'mod', file_type: 'source'
+      )
+
+      expect(func.expanded_body).to eq('{ return clamp(v); }')
+      expect(func.body).to eq('{ return CLAMP(v); }')
+    end
+
+    # A carried prototype is written as the user spelled it, so only what the rules read changes
+    it "reconciles a declaration's decorators and stripped signature but keeps its written signature" do
+      decl = make_decl(name: 'hidden', signature: 'PRIVATE int hidden(void);', decorators: [], signature_stripped: 'PRIVATE int hidden(void);')
+      expanded = make_decl(name: 'hidden', signature: 'static int hidden(void);', decorators: ['static'], signature_stripped: 'int hidden(void);')
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [expanded]))
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [decl], full_expansion_filepath: '/build/full_expansion/mod.h',
+        name: 'TestMod', module_name: 'mod', file_type: 'header'
+      )
+
+      expect(decl.decorators).to eq(['static'])
+      expect(decl.signature_stripped).to eq('int hidden(void);')
+      expect(decl.signature).to eq('PRIVATE int hidden(void);')
+    end
+
+    it "matches declarations that share a name in the order they appear" do
+      first  = make_decl(name: 'tick', signature: 'API int tick(void);', decorators: [], signature_stripped: 'API int tick(void);')
+      second = make_decl(name: 'tick', signature: 'LOCAL int tick(void);', decorators: [], signature_stripped: 'LOCAL int tick(void);')
+      expanded = [
+        make_decl(name: 'tick', signature: 'extern int tick(void);', decorators: ['extern'], signature_stripped: 'int tick(void);'),
+        make_decl(name: 'tick', signature: 'static int tick(void);', decorators: ['static'], signature_stripped: 'int tick(void);')
+      ]
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: expanded))
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [first, second], full_expansion_filepath: '/build/full_expansion/mod.c',
+        name: 'TestMod', module_name: 'mod', file_type: 'source'
+      )
+
+      expect(first.decorators).to eq(['extern'])
+      expect(second.decorators).to eq(['static'])
+    end
+
+    it "leaves a declaration unchanged when the expanded copy lacks it" do
+      decl = make_decl(name: 'gone', signature: 'int gone(void);', decorators: [], signature_stripped: 'int gone(void);')
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new)
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [decl], full_expansion_filepath: '/build/full_expansion/mod.c',
+        name: 'TestMod', module_name: 'mod', file_type: 'source'
+      )
+
+      expect(decl.decorators).to eq([])
+      expect(decl.signature_stripped).to eq('int gone(void);')
+    end
+
+    it "lists a declaration whose decorators changed, marked as a declaration" do
+      decl = make_decl(name: 'hidden', signature: 'PRIVATE int hidden(void);', decorators: [], signature_stripped: 'PRIVATE int hidden(void);')
+      same = make_decl(name: 'plain', signature: 'int plain(void);', decorators: [], signature_stripped: 'int plain(void);')
+      expanded = [
+        make_decl(name: 'hidden', signature: 'static int hidden(void);', decorators: ['static'], signature_stripped: 'int hidden(void);'),
+        make_decl(name: 'plain', signature: 'int plain(void);', decorators: [], signature_stripped: 'int plain(void);')
+      ]
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: expanded))
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`hidden` (declaration)'],
+        'Updated signatures from full expansion for Partial TestMod::mod header:',
+        Verbosity::DEBUG
+      )
+
+      @helper.update_signatures_from_full_expansion(
+        funcs: [], decls: [decl, same], full_expansion_filepath: '/build/full_expansion/mod.h',
+        name: 'TestMod', module_name: 'mod', file_type: 'header'
+      )
+    end
+  end
+
+  context "#mark_inline_elsewhere" do
+    require 'ceedling/c_extractor/c_extractor_types'
+
+    def decl(signature)
+      CExtractorTypes::CFunctionDeclaration.new(
+        name: signature[/(\w+)\s*\(/, 1], signature: signature, decorators: signature.start_with?( 'static' ) ? ['static'] : []
+      )
+    end
+
+    # Under C99 the declaring file then holds the external definition
+    it "marks a declaration whose function an included header defines inline" do
+      twice = decl( 'int engine_get_twice(void);' )
+      tick  = decl( 'int board_tick(void);' )
+      text  = "# 1 \"src/engine_api.h\" 1\nint engine_get(void);\ninline int engine_get_twice(void)\n{\n  return 2;\n}\n" \
+              "# 2 \"src/engine.c\" 2\nint engine_get_twice(void);\nint board_tick(void);\n"
+
+      @helper.mark_inline_elsewhere( decls: [twice, tick], text: text )
+
+      expect( twice.inline_elsewhere ).to be(true)
+      expect( tick.inline_elsewhere ).to be(false)
+    end
+
+    it "marks no declaration of a function a header defines static inline" do
+      clamp = decl( 'int clamp(int v);' )
+
+      @helper.mark_inline_elsewhere( decls: [clamp], text: "static inline int clamp(int v) { return v; }\nint clamp(int v);\n" )
+
+      expect( clamp.inline_elsewhere ).to be(false)
+    end
+
+    it "marks no static declaration" do
+      local = decl( 'static int local(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [local], text: "inline int local(void) { return 1; }\n" )
+
+      expect( local.inline_elsewhere ).to be(false)
+    end
+
+    it "marks no declaration of a function a header defines without inline" do
+      plain = decl( 'int plain(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [plain], text: "int plain(void) { return 1; }\nint plain(void);\n" )
+
+      expect( plain.inline_elsewhere ).to be(false)
+    end
+
+    # A directive line between definitions holds no specifier of the definition after it
+    it "reads past a directive line naming static" do
+      twice = decl( 'int twice(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: "int a;\n#define LOCAL static\ninline int twice(void) { return 2; }\n" )
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
+    # A raw copy holds every header the file includes, so the scan has to stay linear in its size.
+    # A long stretch with no statement break ahead of the definition is the costly shape.
+    it "scans a long stretch with no statement break in linear time" do
+      twice = decl( 'int twice(void);' )
+      text  = ("#define LIMIT 1\n" * 20_000) + ";\ninline int twice(void) { return 2; }\n"
+
+      Timeout.timeout( 5 ) { @helper.mark_inline_elsewhere( decls: [twice], text: text ) }
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
+    it "marks each of several declarations from one call" do
+      twice = decl( 'int twice(void);' )
+      clamp = decl( 'int clamp(int v);' )
+      plain = decl( 'int plain(void);' )
+      tick  = decl( 'int tick(void);' )
+      text  = "inline int twice(void) { return 2; }\nstatic inline int clamp(int v) { return v; }\n" \
+              "int plain(void) { return 1; }\n__inline__ int tick(void)\n{\n  return twice();\n}\n"
+
+      @helper.mark_inline_elsewhere( decls: [twice, clamp, plain, tick], text: text )
+
+      expect( [twice, clamp, plain, tick].map( &:inline_elsewhere ) ).to eq( [true, false, false, true] )
+    end
+
+    # A header-only Partial of a large API header asks about every function it declares
+    it "marks many declarations in time linear in the text, not in the number of declarations" do
+      decls = (1..5_000).map { |n| decl( "int api_#{n}(void);" ) }
+      text  = ("#define API_LIMIT 1\n" * 250_000) + ";\ninline int api_77(void) { return 77; }\n"
+
+      Timeout.timeout( 1 ) { @helper.mark_inline_elsewhere( decls: decls, text: text ) }
+
+      expect( decls.select( &:inline_elsewhere ).map( &:name ) ).to eq( ['api_77'] )
+    end
+
+    # A block of macros holds no `;` or brace, so the whole block and the definition after it are
+    # one stretch of text. Each mention of the name in it is judged by every word ahead of it.
+    it "judges many mentions of a name in one stretch of text in linear time" do
+      twice = decl( 'int twice(void);' )
+      text  = (1..16_000).map { |n| "#define WRAP_#{n}(v) twice(v)\n" }.join + "inline int twice(void) { return 2; }\n"
+
+      Timeout.timeout( 2 ) { @helper.mark_inline_elsewhere( decls: [twice], text: text ) }
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
+    # Text read as characters rather than bytes must mark the same
+    it "marks from text holding a multibyte character ahead of the definition" do
+      twice = decl( 'int twice(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: "/* é */ inline int twice(void) { return 2; }\n" )
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
+    it "does not take a longer name's inline definition for the declared function's" do
+      twice = decl( 'int twice(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: "inline int get_twice(void) { return 2; }\n" )
+
+      expect( twice.inline_elsewhere ).to be(false)
+    end
+
+    # A raw copy is read as bytes, and a vendor header's comments may hold any byte at all
+    it "marks from a raw copy read as bytes, whatever bytes its comments hold" do
+      twice = decl( 'int twice(void);' )
+      text  = "/* 10 \xB5s tick \xFF */\ninline int twice(void) { return 2; }\n".b
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: text )
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+  end
+
+  context "#associate_declaration_line_numbers" do
+    require 'ceedling/c_extractor/c_extractor_types'
+
+    # One call locates every declaration from the file
+    it "records each declaration's file and its line in that file's own text" do
+      tick = CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);', line_num: 1)
+      tock = CExtractorTypes::CFunctionDeclaration.new(name: 'tock', signature: 'int tock(void);', line_num: 1)
+      text = "#include \"x.h\"\nint tick(void);\nint tock(void);\n"
+      expect(@partializer_utils).to receive(:locate_declarations_in_text)
+        .with(signatures: ['int tick(void);', 'int tock(void);'], text: text).once.and_return([2, 3])
+
+      @helper.associate_declaration_line_numbers(decls: [tick, tock], filepath: 'src/mod.c', text: text)
+
+      expect([tick, tock].map(&:source_filepath)).to eq(['src/mod.c', 'src/mod.c'])
+      expect([tick, tock].map(&:line_num)).to eq([2, 3])
+    end
+
+    # Without a location the declaration is written without a #line, so nothing is reported
+    it "leaves the line unset when the declaration is not found" do
+      decl = CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);', line_num: 1)
+      allow(@partializer_utils).to receive(:locate_declarations_in_text).and_return([nil])
+
+      @helper.associate_declaration_line_numbers(decls: [decl], filepath: 'src/mod.c', text: '')
+
+      expect(decl.source_filepath).to eq('src/mod.c')
+      expect(decl.line_num).to be_nil
     end
   end
 

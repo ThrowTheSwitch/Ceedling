@@ -592,6 +592,7 @@ partials_manager:
     - generator
     - dependinator
     - file_path_utils
+    - file_wrapper
 
 release_invoker:
   compose:

@@ -41,11 +41,12 @@ class ConsoleReportinator < GcovReportinator
       # reported under is gcov's own where it could be parsed -- for a Partial that is the
       # original module, which #line directives remap it to -- and the queried source
       # otherwise.
-      reports = remap_partial_sources( sources ).filter_map do |source|
+      replaced = partial_replacements( sources )
+      reports  = remap_partial_sources( sources ).filter_map do |source|
         results = run_gcov_summary( test, source, opts )
         next if results.nil?
 
-        gcov_source = extract_gcov_source_path( results, test, source )
+        gcov_source = extract_gcov_source_path( results, test, source, original: replaced[source]&.first )
 
         { source: source, results: results, gcov_source: gcov_source }
       end
@@ -124,26 +125,27 @@ class ConsoleReportinator < GcovReportinator
   # drop every same-named module, and one nobody Partialized would lose its coverage
   # report entirely.
   def remap_partial_sources(sources)
-    partials = sources.select { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
-    return sources if partials.empty?
+    return sources - partial_replacements( sources ).values.flatten
+  end
 
-    originals = sources.reject { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
-    replaced  = []
+  # Each Partial among the sources, keyed to the original sources it replaces
+  def partial_replacements(sources)
+    partials, originals = sources.partition { |s| File.basename(s).match?(PATTERNS::PARTIAL_IMPL_FILENAME) }
 
-    partials.each do |partial|
-      query = partial_module_segments( partial )
+    return partials.to_h { |partial| [partial, replaced_sources( partial, originals )] }
+  end
 
-      scored = originals.map { |source| [source, common_suffix_length( query, source_segments( source ) )] }
-                        .reject { |_source, length| length.zero? }
+  def replaced_sources(partial, originals)
+    query = partial_module_segments( partial )
 
-      next if scored.empty?
+    scored = originals.map { |source| [source, common_suffix_length( query, source_segments( source ) )] }
+                      .reject { |_source, length| length.zero? }
 
-      best = scored.map { |_source, length| length }.max
+    return [] if scored.empty?
 
-      replaced += scored.select { |_source, length| length == best }.map(&:first)
-    end
+    best = scored.map { |_source, length| length }.max
 
-    return sources - replaced
+    return scored.select { |_source, length| length == best }.map(&:first)
   end
 
   # The module a generated Partial replaces, as path segments. The reversal itself belongs
@@ -217,13 +219,17 @@ class ConsoleReportinator < GcovReportinator
     results
   end
 
-  def extract_gcov_source_path(results, test, source)
-    filename_no_ext = File.basename(source, '.*')
+  # A Partial's #line directives attribute its coverage to every file its code came from. That
+  # includes the module source it replaces and any header whose helpers or inline function
+  # bodies it carries. The module source is the one to report, so a Partial matches on the
+  # exact filename of the original it replaces.
+  def extract_gcov_source_path(results, test, source, original: nil)
+    matches = results.match(/File\s+'((?:[^']*[\/\\])?#{Regexp.escape(File.basename(original))})'/) if original
 
     # Prefer the File header that specifically matches the queried source filename.
     # gcov may list instrumented system headers (e.g. _stdio.h pulled in via FILE*)
     # before the actual source file, so the first File entry is not always correct.
-    matches = results.match(/File\s+'([^']*#{Regexp.escape(filename_no_ext)}[^']*)'/)
+    matches ||= results.match(/File\s+'([^']*#{Regexp.escape(File.basename(source, '.*'))}[^']*)'/)
 
     # Fall back to the first File header for Partial implementations: their #line
     # directives remap gcov output to the original module name, so the Partial

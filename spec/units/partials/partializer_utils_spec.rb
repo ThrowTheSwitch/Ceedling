@@ -143,6 +143,16 @@ describe PartializerUtils do
     end
 
     context "when output_type is :impl" do
+      # A selected function's callers rely on it never returning
+      it "keeps _Noreturn on a testable function" do
+        func = double('function', name: 'die', decorators: ['static'], source_filepath: 'src/m.c', line_num: 3,
+                      code_block: "static _Noreturn void die(void) { for (;;) {} }")
+
+        result = @utils.transform_function(func, '_Noreturn void die(void)', :impl)
+
+        expect(result.code_block).to eq("_Noreturn void die(void) { for (;;) {} }")
+      end
+
       it "returns a FunctionDefinition with source filepath, line number, signature, and code block" do
         signature = 'void testFunc(int x)'
 
@@ -165,6 +175,27 @@ describe PartializerUtils do
         expect(result).to be_a(Partials::FunctionDeclaration)
         expect(result.signature).to eq(signature)
         expect(result).not_to respond_to(:code_block)
+      end
+
+      # A mock always returns, so a mock declared never to return would contradict itself
+      it "drops _Noreturn from a mockable signature" do
+        result = @utils.transform_function(mock_func, '_Noreturn void testFunc(int x);', :interface)
+
+        expect(result.signature).to eq('void testFunc(int x)')
+      end
+
+      it "drops the GNU and C23 noreturn attributes from a mockable signature" do
+        gnu = @utils.transform_function(mock_func, '__attribute__((noreturn)) void testFunc(int x);', :interface)
+        c23 = @utils.transform_function(mock_func, '[[noreturn]] void testFunc(int x);', :interface)
+
+        expect(gnu.signature).to eq('void testFunc(int x)')
+        expect(c23.signature).to eq('void testFunc(int x)')
+      end
+
+      it "keeps an attribute that says something else" do
+        result = @utils.transform_function(mock_func, '__attribute__((warn_unused_result)) int testFunc(int x);', :interface)
+
+        expect(result.signature).to eq('__attribute__((warn_unused_result)) int testFunc(int x)')
       end
 
       it "strips a trailing semicolon from a declaration-sourced signature" do
@@ -192,17 +223,17 @@ describe PartializerUtils do
 
   # Test private method for code block manipulation used by `transform_function()`
   context "#extract_code_block" do
-    it "strips a single inline decorator and returns 0 leading newlines" do
+    it "strips a decorator on the signature's own line and counts no newlines" do
       code_block = "static void foo(void) {\n  return;\n}"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
       expect(result).to eq("void foo(void) {\n  return;\n}")
       expect(newlines).to eq(0)
     end
 
-    it "strips multiple inline decorators and returns 0 leading newlines" do
-      code_block = "__pragma__ static void foo(void) { return; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['__pragma__', 'static'])
+    it "strips several decorators on the signature's own line and counts no newlines" do
+      code_block = "static inline void foo(void) { return; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static', 'inline'], 'foo')
 
       expect(result).to eq("void foo(void) { return; }")
       expect(newlines).to eq(0)
@@ -210,7 +241,7 @@ describe PartializerUtils do
 
     it "handles empty decorators array — no stripping, 0 leading newlines" do
       code_block = "void foo(void) { return; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, [])
+      result, newlines = @utils.send(:extract_code_block, code_block, [], 'foo')
 
       expect(result).to eq(code_block)
       expect(newlines).to eq(0)
@@ -218,7 +249,7 @@ describe PartializerUtils do
 
     it "counts 1 leading newline when decorator occupies its own line" do
       code_block = "static\nint foo(void) { return 0; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
       expect(result).to eq("int foo(void) { return 0; }")
       expect(newlines).to eq(1)
@@ -226,7 +257,7 @@ describe PartializerUtils do
 
     it "counts 2 leading newlines when two decorators each occupy their own line" do
       code_block = "static\ninline\nint foo(void) { return 0; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static', 'inline'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static', 'inline'], 'foo')
 
       expect(result).to eq("int foo(void) { return 0; }")
       expect(newlines).to eq(2)
@@ -234,7 +265,7 @@ describe PartializerUtils do
 
     it "preserves body indentation and internal newlines" do
       code_block = "static void indented(void) {\n    int x = 1;\n    return x;\n}"
-      result, _ = @utils.send(:extract_code_block, code_block, ['static'])
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'indented')
 
       expect(result).to include("    int x = 1;")
       expect(result.count("\n")).to eq(3)
@@ -242,7 +273,7 @@ describe PartializerUtils do
 
     it "handles multi-line parameter list without relying on signature substring match" do
       code_block = "static int multiline(\n    int a,\n    int b) {\n  return a + b;\n}"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'multiline')
 
       expect(result).to eq("int multiline(\n    int a,\n    int b) {\n  return a + b;\n}")
       expect(result).not_to include("static")
@@ -251,27 +282,76 @@ describe PartializerUtils do
 
     it "is a no-op when decorator is not present in code_block" do
       code_block = "void foo(void) { }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['extern'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['extern'], 'foo')
 
       expect(result).to eq(code_block)
       expect(newlines).to eq(0)
     end
 
-    it "removes only the first occurrence of a decorator that appears in the body too" do
+    it "leaves a decorator word in the body alone" do
       # 'static' in the body (e.g., a local static var) must not be touched
       code_block = "static int foo(void) {\n  static int x = 0;\n  return x;\n}"
-      result, _ = @utils.send(:extract_code_block, code_block, ['static'])
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'foo')
 
       expect(result).to start_with("int foo(void)")
       expect(result).to include("static int x = 0;")
     end
 
+    # Only the text before the name is searched, so a body's own static stays when a macro
+    # hides the signature's
+    it "leaves a body's decorator word alone when the signature spells its decorator as a macro" do
+      code_block = "PRIVATE int hidden(void) { static int n; return n; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'hidden')
+
+      expect(result).to eq(code_block)
+      expect(newlines).to eq(0)
+    end
+
     it "strips multiple decorators and counts newlines for inline+multiline mix" do
       code_block = "extern\nstatic int bar(int x) { return x; }"
-      result, newlines = @utils.send(:extract_code_block, code_block, ['extern', 'static'])
+      result, newlines = @utils.send(:extract_code_block, code_block, ['extern', 'static'], 'bar')
 
       expect(result).to eq("int bar(int x) { return x; }")
       expect(newlines).to eq(1)
+    end
+
+    # Only storage-class and inline keywords are stripped. A qualifier belongs to the return type.
+    it "keeps a const return type when stripping static" do
+      code_block = "static const char *name(void) { return \"n\"; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'name')
+
+      expect(result).to eq("const char *name(void) { return \"n\"; }")
+      expect(newlines).to eq(0)
+    end
+
+    it "strips a storage class written after a qualifier" do
+      code_block = "const static int *table(void) { return 0; }"
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'table')
+
+      expect(result).to eq("const int *table(void) { return 0; }")
+    end
+
+    # A decorator word inside the name or body is not a decorator
+    it "leaves a decorator word that appears inside the function name" do
+      code_block = "PRIVATE int is_static(void) { return 1; }"
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'is_static')
+
+      expect(result).to eq(code_block)
+    end
+
+    it "strips the decorator itself when an attribute string ahead of it holds the same word" do
+      code_block = '__attribute__((section(".text.static"))) static int g(void) { return 0; }'
+      result, _ = @utils.send(:extract_code_block, code_block, ['static'], 'g')
+
+      expect(result).to eq('__attribute__((section(".text.static"))) int g(void) { return 0; }')
+    end
+
+    it "leaves the text alone when a decorator from the expanded copy is absent" do
+      code_block = "PRIVATE int hidden(void) { return 0; }"
+      result, newlines = @utils.send(:extract_code_block, code_block, ['static'], 'hidden')
+
+      expect(result).to eq(code_block)
+      expect(newlines).to eq(0)
     end
   end
 
@@ -479,88 +559,92 @@ describe PartializerUtils do
     end
   end
 
-  context "#locate_function_in_source" do
-    it "returns the line number when function is found" do
-      expect(@code_finder).to receive(:find_in_c_file)
-        .with('/path/to/file.c', 'void foo(void) {}')
-        .and_return(42)
+  context "#locate_functions_in_source" do
+    it "returns each function's line from one search of the source" do
+      expect(@code_finder).to receive(:find_all_in_c_file)
+        .with('/path/to/file.c', ['void foo(void) {}', 'void missing(void) {}']).once
+        .and_return([42, nil])
 
-      result = @utils.locate_function_in_source(code_block: 'void foo(void) {}', filepath: '/path/to/file.c')
-      expect(result).to eq(42)
-    end
-
-    it "returns nil when function is not found" do
-      allow(@code_finder).to receive(:find_in_c_file).and_return(nil)
-
-      result = @utils.locate_function_in_source(code_block: 'void missing(void) {}', filepath: '/path/to/file.c')
-      expect(result).to be_nil
-    end
-
-    it "forwards exact arguments to code_finder" do
-      expect(@code_finder).to receive(:find_in_c_file)
-        .with('/exact/path.c', 'exact code block')
-        .and_return(nil)
-
-      @utils.locate_function_in_source(code_block: 'exact code block', filepath: '/exact/path.c')
+      result = @utils.locate_functions_in_source(code_blocks: ['void foo(void) {}', 'void missing(void) {}'], filepath: '/path/to/file.c')
+      expect(result).to eq([42, nil])
     end
   end
 
-  context "#locate_function_via_preprocessed" do
+  context "#locate_declarations_in_text" do
+    it "returns the line where each declaration appears in the text, in order" do
+      text = "int a;\nint tick(void);\nint tock(void);\n"
+      expect(@code_finder).to receive(:find_in_c_string).with(text, 'int tock(void);').and_return(3)
+      expect(@code_finder).to receive(:find_in_c_string).with(text, 'int tick(void);').and_return(2)
+
+      expect(@utils.locate_declarations_in_text(signatures: ['int tock(void);', 'int tick(void);'], text: text)).to eq([3, 2])
+    end
+
+    it "returns nil for a declaration not in the text" do
+      allow(@code_finder).to receive(:find_in_c_string).and_return(nil)
+
+      expect(@utils.locate_declarations_in_text(signatures: ['int tick(void);'], text: '')).to eq([nil])
+    end
+
+    # Blanking costs a pass over the whole file, so one blanked copy serves every declaration
+    it "searches every declaration in one blanked copy of the text" do
+      searched = []
+      allow(@code_finder).to receive(:find_in_c_string) { |text, _signature| searched << text; nil }
+
+      @utils.locate_declarations_in_text(signatures: ['int tick(void);', 'int tock(void);'], text: "/* c */\nint tick(void);\n")
+
+      expect(searched.size).to eq(2)
+      expect(searched.map(&:object_id).uniq.size).to eq(1)
+    end
+
+    # A commented-out copy of the declaration would otherwise be found first
+    it "searches the text with its comments blanked and its lines kept" do
+      line_comment  = '// int tick(void);'
+      block_comment = '/* int tick(void); */'
+      expect(@code_finder).to receive(:find_in_c_string)
+        .with("#{' ' * line_comment.length}\n#{' ' * block_comment.length}\nint tick(void);\n", 'int tick(void);')
+        .and_return(3)
+
+      @utils.locate_declarations_in_text(signatures: ['int tick(void);'], text: "#{line_comment}\n#{block_comment}\nint tick(void);\n")
+    end
+
+    it "keeps a comment marker inside a string literal" do
+      text = "int open(const char *url) __attribute__((deprecated(\"see http://x\")));\n"
+      expect(@code_finder).to receive(:find_in_c_string).with(text, 'int open(void);').and_return(nil)
+
+      @utils.locate_declarations_in_text(signatures: ['int open(void);'], text: text)
+    end
+  end
+
+  context "#locate_functions_via_preprocessed" do
     let(:filepath)              { '/path/to/source.c' }
     let(:preprocessed_filepath) { '/build/preproc/source.i' }
-    let(:code_block)            { 'void foo(void) {}' }
+    let(:blocks)                { ['void foo(void) {}', 'void bar(void) {}', 'void baz(void) {}'] }
 
-    it "returns line number from preprocessed file when found there" do
-      expect(@code_finder).to receive(:find_in_preprocessed_file)
-        .with(preprocessed_filepath, code_block)
-        .and_return(10)
-      expect(@code_finder).not_to receive(:find_in_c_file)
+    it "returns each function's line from the preprocessed file when found there" do
+      expect(@code_finder).to receive(:find_all_in_preprocessed_file).with(preprocessed_filepath, blocks).once.and_return([10, 20, 30])
+      expect(@code_finder).not_to receive(:find_all_in_c_file)
 
-      result = @utils.locate_function_via_preprocessed(
-        code_block:            code_block,
-        filepath:              filepath,
-        preprocessed_filepath: preprocessed_filepath
-      )
-      expect(result).to eq(10)
+      result = @utils.locate_functions_via_preprocessed(code_blocks: blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath)
+      expect(result).to eq([10, 20, 30])
     end
 
-    it "falls back to C source when not found in preprocessed file" do
-      allow(@code_finder).to receive(:find_in_preprocessed_file).and_return(nil)
-      expect(@code_finder).to receive(:find_in_c_file).with(filepath, code_block).and_return(25)
+    # The source is searched once, and only for what the preprocessed file lacks
+    it "falls back to the C source for just the functions the preprocessed file lacks" do
+      allow(@code_finder).to receive(:find_all_in_preprocessed_file).and_return([nil, 20, nil])
+      expect(@code_finder).to receive(:find_all_in_c_file).with(filepath, [blocks[0], blocks[2]]).once.and_return([25, nil])
 
-      result = @utils.locate_function_via_preprocessed(
-        code_block:            code_block,
-        filepath:              filepath,
-        preprocessed_filepath: preprocessed_filepath
-      )
-      expect(result).to eq(25)
+      result = @utils.locate_functions_via_preprocessed(code_blocks: blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath)
+      expect(result).to eq([25, 20, nil])
     end
 
-    it "returns nil when found in neither preprocessed nor C source" do
-      allow(@code_finder).to receive(:find_in_preprocessed_file).and_return(nil)
-      allow(@code_finder).to receive(:find_in_c_file).and_return(nil)
+    it "logs the fallback search once for each function that needs it" do
+      allow(@code_finder).to receive(:find_all_in_preprocessed_file).and_return([10, nil, nil])
+      allow(@code_finder).to receive(:find_all_in_c_file).and_return([25, nil])
 
-      result = @utils.locate_function_via_preprocessed(
-        code_block:            code_block,
-        filepath:              filepath,
-        preprocessed_filepath: preprocessed_filepath
-      )
-      expect(result).to be_nil
-    end
+      expect(@loginator).to receive(:log)
+        .with("Using fallback C function location search for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::WARNING).twice
 
-    it "forwards correct arguments to both code_finder methods" do
-      expect(@code_finder).to receive(:find_in_preprocessed_file)
-        .with('/exact/preproc.i', 'exact block')
-        .and_return(nil)
-      expect(@code_finder).to receive(:find_in_c_file)
-        .with('/exact/source.c', 'exact block')
-        .and_return(nil)
-
-      @utils.locate_function_via_preprocessed(
-        code_block:            'exact block',
-        filepath:              '/exact/source.c',
-        preprocessed_filepath: '/exact/preproc.i'
-      )
+      @utils.locate_functions_via_preprocessed(code_blocks: blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath)
     end
   end
 

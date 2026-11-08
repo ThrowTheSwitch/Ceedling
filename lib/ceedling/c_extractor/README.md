@@ -30,7 +30,7 @@ Other methods in this toolkit skip a string or character literal safely, honorin
 
 The extractor walks forward from a candidate starting point, tracking how deep it is inside parentheses. It also watches for a few signs that what it is looking at is not actually a function. A leading `(*name)` pattern signals a function-pointer variable, not a function. A `[` appearing before any `(` signals an array variable. An `=` appearing outside any parentheses signals a variable with an initializer. Once these possibilities are ruled out, the extractor knows it has found a genuine function signature.
 
-For a definition, the extractor calls on `collect_balanced` to pull the complete function body, including every nested brace inside it. For a declaration, it confirms the signature is immediately followed by a semicolon. Either way, the function's name is pulled out with a small regex, and any leading `static` or `inline` keywords are split off separately so a caller can ask about visibility without re-parsing the signature.
+For a definition, the extractor calls on `collect_balanced` to pull the complete function body, including every nested brace inside it. For a declaration, it confirms the signature is immediately followed by a semicolon. Either way, the function's name is pulled out with a small regex. Any storage-class or inline keyword before the name, such as `static`, `extern` or `inline`, is split off separately, so a caller can ask about visibility without re-parsing the signature. Every other word keeps its place, `const` and `_Noreturn` included.
 
 ## Recognizing Variables
 
