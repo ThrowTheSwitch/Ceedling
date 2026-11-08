@@ -114,9 +114,12 @@ class PartialsManager
       #  - The test's selection, which decides what each generated file holds.
       #  - The real header's guard, spoofed deliberately in every generated file.
       #  - Each generated file's includes, which depend on the test's other Partial modules
-      #    and how each is selected.
+      #    and how each is selected. The record's lists leave out the types header, since the
+      #    module files the record holds decide whether one exists.
       antecedent_files     = partial_antecedent_files( config )
       module_include_guard = @partializer.extract_module_include_guard( config.header.filepath )
+      # Generation's lists are the ones logged, so the record's are computed without a test name
+      record_includes      = remap_partial_includes( config, testable.partials.configs, nil, nil )
       includes             = remap_partial_includes( config, testable.partials.configs, types_header, name )
 
       antecedent_meta  = {
@@ -129,16 +132,19 @@ class PartialsManager
         partials:     @configurator.get_partials_config,
         selection:    { tests: config.tests.to_h, mocks: config.mocks.to_h },
         include_guard: module_include_guard,
-        types_includes:       includes[:types].map( &:to_s ),
-        impl_header_includes: includes[:impl_header].map( &:to_s ),
-        impl_source_includes: includes[:impl_source].map( &:to_s ),
-        interface_includes:   includes[:interface].map( &:to_s )
+        types_includes:       record_includes[:types].map( &:to_s ),
+        impl_header_includes: record_includes[:impl_header].map( &:to_s ),
+        impl_source_includes: record_includes[:impl_source].map( &:to_s ),
+        interface_includes:   record_includes[:interface].map( &:to_s )
       }
 
       record = { files: antecedent_files, meta: antecedent_meta, name: name, partial: config.module }
 
+      # The implementation and interface include the types header, so each vouches for it
+      types_target = types_header && File.join( testable.paths[:partials], types_header )
+
       if types_header
-        skipped = generate_when_stale( target: File.join( testable.paths[:partials], types_header ), kind: 'types', **record ) do
+        skipped = generate_when_stale( target: types_target, kind: 'types', **record ) do
           @generator.generate_partial_types(
             name:          name,
             partial:       config.module,
@@ -179,7 +185,7 @@ class PartialsManager
         target        = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_source_filename( config.module ) )
         header_target = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_header_filename( config.module ) )
 
-        skipped = generate_when_stale( target: target, outputs: [header_target], kind: 'implementation', **record ) do
+        skipped = generate_when_stale( target: target, outputs: [header_target, types_target].compact, kind: 'implementation', **record ) do
           # What the implementation source carries beyond the selection. Planned only when the
           # source regenerates, so its notices appear with that build.
           carry = @partializer.plan_carry(
@@ -218,7 +224,7 @@ class PartialsManager
       unless interface.nil?
         target = File.join( testable.paths[:partials], @file_path_utils.form_partial_interface_header_filename( config.module ) )
 
-        skipped = generate_when_stale( target: target, kind: 'interface', **record ) do
+        skipped = generate_when_stale( target: target, outputs: [types_target].compact, kind: 'interface', **record ) do
           @generator.generate_partial_interface(
             test:                  name,
             partial:               config.module,

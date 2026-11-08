@@ -508,6 +508,45 @@ describe PartialsManager do
       )
     end
 
+    # Both include the types header, so each vouches for it
+    it "registers the types header as an output of both the implementation and the interface" do
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      @manager.stage_generate_partials( @state )
+
+      types = 'build/test/partials/a_test/ceedling_partial_Foo_types.h'
+      expect(@dependinator).to have_received(:register).with(
+        'build/test/partials/a_test/ceedling_partial_Foo_impl.c',
+        hash_including( outputs: ['build/test/partials/a_test/ceedling_partial_Foo_impl.h', types] )
+      )
+      expect(@dependinator).to have_received(:register).with(
+        'build/test/partials/a_test/ceedling_partial_Foo_interface.h', hash_including( outputs: [types] )
+      )
+    end
+
+    # Whether a types header exists follows from the module files the record already holds, so
+    # the record can be known before extraction while generation still includes the header
+    it "records include lists without the types header and still generates with it" do
+      types_include = UserInclude.new( 'ceedling_partial_Foo_types.h' )
+      allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      [:remap_implementation_header_includes, :remap_interface_header_includes].each do |remap|
+        allow(@partializer).to receive(remap) { |types_header: nil, **| [types_header && types_include, UserInclude.new( 'dep.h' )].compact }
+      end
+
+      metas = []
+      allow(@dependinator).to receive(:register) { |_target, meta: {}, **| metas << meta }
+      expect(@generator).to receive(:generate_partial_implementation).with( hash_including( header_includes: [types_include, UserInclude.new( 'dep.h' )] ) )
+      expect(@generator).to receive(:generate_partial_interface).with( hash_including( includes: [types_include, UserInclude.new( 'dep.h' )] ) )
+
+      @manager.stage_generate_partials( @state )
+
+      expect( metas.map { |meta| meta.values_at( :impl_header_includes, :interface_includes ) }.uniq ).to eq( [[['#include "dep.h"'], ['#include "dep.h"']]] )
+    end
+
     it "registers the whole :partials config as meta, and an empty tools list since this stage runs no shell tool" do
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
@@ -597,21 +636,34 @@ describe PartialsManager do
       @manager.stage_generate_partials( @state )
     end
 
-    it "computes each include list once and hands that same list to generation" do
+    # Remapping logs each list it computes for a named test, so generation's lists are the only ones named
+    it "computes generation's include lists once, logged under the test's name, and hands them to generation" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
       impl_h    = [UserInclude.new('impl_h_dep.h')]
       impl_c    = [UserInclude.new('impl_c_dep.h')]
       interface = [UserInclude.new('interface_dep.h')]
-      expect(@partializer).to receive(:remap_implementation_header_includes).once.and_return( impl_h )
-      expect(@partializer).to receive(:remap_implementation_source_includes).once.and_return( impl_c )
-      expect(@partializer).to receive(:remap_interface_header_includes).once.and_return( interface )
+      expect(@partializer).to receive(:remap_implementation_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( impl_h )
+      expect(@partializer).to receive(:remap_implementation_source_includes).with( hash_including( test: 'a_test' ) ).once.and_return( impl_c )
+      expect(@partializer).to receive(:remap_interface_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( interface )
+      expect(@partializer).to receive(:remap_types_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( [] )
 
       expect(@generator).to receive(:generate_partial_implementation).with(
         hash_including( header_includes: impl_h, source_includes: impl_c )
       )
       expect(@generator).to receive(:generate_partial_interface).with( hash_including( includes: interface ) )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "computes the record's include lists without a test name, so nothing logs them" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      %i[remap_types_header_includes remap_implementation_header_includes remap_implementation_source_includes remap_interface_header_includes].each do |remap|
+        expect(@partializer).to receive(remap).with( hash_including( test: nil ) ).once.and_return( [] )
+      end
 
       @manager.stage_generate_partials( @state )
     end
