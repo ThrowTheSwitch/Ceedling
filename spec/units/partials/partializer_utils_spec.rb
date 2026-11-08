@@ -143,6 +143,16 @@ describe PartializerUtils do
     end
 
     context "when output_type is :impl" do
+      # A selected function's callers rely on it never returning
+      it "keeps _Noreturn on a testable function" do
+        func = double('function', name: 'die', decorators: ['static'], source_filepath: 'src/m.c', line_num: 3,
+                      code_block: "static _Noreturn void die(void) { for (;;) {} }")
+
+        result = @utils.transform_function(func, '_Noreturn void die(void)', :impl)
+
+        expect(result.code_block).to eq("_Noreturn void die(void) { for (;;) {} }")
+      end
+
       it "returns a FunctionDefinition with source filepath, line number, signature, and code block" do
         signature = 'void testFunc(int x)'
 
@@ -167,11 +177,25 @@ describe PartializerUtils do
         expect(result).not_to respond_to(:code_block)
       end
 
-      # A mock always returns, so a mock declared _Noreturn would contradict itself
+      # A mock always returns, so a mock declared never to return would contradict itself
       it "drops _Noreturn from a mockable signature" do
         result = @utils.transform_function(mock_func, '_Noreturn void testFunc(int x);', :interface)
 
         expect(result.signature).to eq('void testFunc(int x)')
+      end
+
+      it "drops the GNU and C23 noreturn attributes from a mockable signature" do
+        gnu = @utils.transform_function(mock_func, '__attribute__((noreturn)) void testFunc(int x);', :interface)
+        c23 = @utils.transform_function(mock_func, '[[noreturn]] void testFunc(int x);', :interface)
+
+        expect(gnu.signature).to eq('void testFunc(int x)')
+        expect(c23.signature).to eq('void testFunc(int x)')
+      end
+
+      it "keeps an attribute that says something else" do
+        result = @utils.transform_function(mock_func, '__attribute__((warn_unused_result)) int testFunc(int x);', :interface)
+
+        expect(result.signature).to eq('__attribute__((warn_unused_result)) int testFunc(int x)')
       end
 
       it "strips a trailing semicolon from a declaration-sourced signature" do

@@ -285,8 +285,8 @@ class ConfiguratorSetup
   # signature, and catches `1000` written to mean 1000 characters.
   #
   # `:suppress_redundant_decls` decides whether generated code carries GCC pragmas, so a
-  # misspelled value is caught here rather than read as truthy. `:extern_variables` names one
-  # of two behaviors, checked the same way.
+  # misspelled value is caught here rather than read as truthy. `:extern_variables` must name
+  # one of its two behaviors.
   def validate_partials(config)
     max_extraction_length = config[:partials][:max_extraction_length]
     walk = @reportinator.generate_config_walk( [:partials, :max_extraction_length] )
@@ -300,17 +300,7 @@ class ConfiguratorSetup
       return log_invalid( "#{walk} is '#{suppress}' but must be TRUE or FALSE" )
     end
 
-    return validate_partials_extern_variables( config )
-  end
-
-  # Decides what a Partial writes for a variable its module only declares `extern`
-  def validate_partials_extern_variables(config)
-    value   = config[:partials][:extern_variables]
-    options = [:weak, :test]
-    return true if options.include?( value )
-
-    walk = @reportinator.generate_config_walk( [:partials, :extern_variables] )
-    return log_invalid( "#{walk} is ':#{value}' but must be one of {#{options.map { |option| ":#{option}" }.join( ', ' )}}" )
+    return validate_option( config, :extern_variables, [:weak, :test], section: :partials )
   end
 
   # Discovery records a path beneath :plugins for each enabled plugin it found, whatever
@@ -485,12 +475,18 @@ class ConfiguratorSetup
     @loginator.log( "Preprocessing configured at #{walk} is only supported in the :test context", Verbosity::ERRORS, LogLabels::WARNING )
   end
 
-  def validate_option(config, key, options)
-    value = config[:project][key]
+  def validate_option(config, key, options, section: :project)
+    value = config[section][key]
     return true if options.include?( value )
 
-    walk = @reportinator.generate_config_walk( [:project, key] )
-    return log_invalid( "#{walk} is ':#{value}' but must be one of {#{options.map { |option| ":#{option}" }.join( ', ' )}}" )
+    walk = @reportinator.generate_config_walk( [section, key] )
+    return log_invalid( "#{walk} is #{option_value( value )} but must be one of {#{options.map { |option| ":#{option}" }.join( ', ' )}}" )
+  end
+
+  # A Symbol reads as YAML writes it. Anything else reads as itself, so a string missing its
+  # leading colon can't pass for the symbol it resembles.
+  def option_value(value)
+    return value.is_a?( Symbol ) ? "':#{value}'" : value.inspect
   end
 
   def validate_thread_count(config, key)

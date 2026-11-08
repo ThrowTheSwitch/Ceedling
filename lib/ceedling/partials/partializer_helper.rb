@@ -49,7 +49,7 @@ class PartializerHelper
   C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_]\w*/ unless const_defined?(:C_MEMBER_ACCESS, false)
 
   # The names a carry plan decides by, grouped once per module
-  CarryFacts = Struct.new( :selected, :defined, :declared, keyword_init: true ) unless const_defined?(:CarryFacts, false)
+  CarryFacts = Struct.new( :selected, :defined, :declared, :helpers, keyword_init: true ) unless const_defined?(:CarryFacts, false)
 
   # What the helper scan shares while it walks: the plan it fills and the facts that gate it
   CarryScan = Struct.new( :plan, :declared, :fallback, :header_guarded, keyword_init: true ) unless const_defined?(:CarryScan, false)
@@ -376,28 +376,37 @@ class PartializerHelper
   # @param file_type [String] "source" or "header", used in log messages.
   # @param decls [Array<CFunctionDeclaration>] Declarations to update in place.
   def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:, decls: [])
-    expanded_module  = @c_extractor.from_file( full_expansion_filepath )
-    expanded_by_name = expanded_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
-
-    updated = []
-    funcs.each do |func|
-      expanded = expanded_by_name[func.name]
-      next unless expanded
-
-      func.signature          = expanded.signature
-      func.decorators         = expanded.decorators
-      func.signature_stripped = expanded.signature_stripped
-      func.expanded_body      = expanded.body
-      updated << func.name
-    end
-
-    entries = updated.map { |n| "`#{n}`" } + _reconcile_declarations( decls, expanded_module )
+    expanded_module = @c_extractor.from_file( full_expansion_filepath )
+    entries         = _reconcile_definitions( funcs, expanded_module ) + _reconcile_declarations( decls, expanded_module )
 
     @loginator.log_list(
       entries,
       "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
       Verbosity::DEBUG
     ) unless entries.empty?
+  end
+
+  # Updates each definition from the expanded definition of the same name. Returns log entries
+  # for those it found.
+  def _reconcile_definitions(funcs, expanded_module)
+    expanded_by_name = expanded_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
+
+    return funcs.filter_map do |func|
+      expanded = expanded_by_name[func.name]
+      next unless expanded
+
+      _take_expanded( func, expanded )
+      "`#{func.name}`"
+    end
+  end
+
+  # Everything about a definition that a macro can hide. Its code block stays as written, so
+  # line mapping still holds.
+  def _take_expanded(func, expanded)
+    func.signature          = expanded.signature
+    func.decorators         = expanded.decorators
+    func.signature_stripped = expanded.signature_stripped
+    func.expanded_body      = expanded.body
   end
 
   # Matches each declaration to the expanded declaration of the same name, in order, since
@@ -444,9 +453,8 @@ class PartializerHelper
     facts = _carry_facts( c_module, impl, interface )
     plan  = Partials::CarryPlan.new
 
-    helpers    = facts.defined.select { |name, defs| !facts.selected.include?( name ) and _helper?( defs ) }
     scan       = CarryScan.new( plan: plan, declared: facts.declared, fallback: fallback, header_guarded: header_guarded )
-    references = _plan_helpers( scan, c_module, impl, helpers )
+    references = _plan_helpers( scan, c_module, impl, facts.helpers )
 
     _plan_all_prototypes( plan, facts, fallback, references )
 
@@ -463,20 +471,23 @@ class PartializerHelper
     end
   end
 
-  # The names a plan decides by: which the test selected, which have bodies, which have prototypes
+  # The names a plan decides by: which the test selected, which have bodies, which have
+  # prototypes, and which unselected bodies are header helpers
   def _carry_facts(c_module, impl, interface)
+    selected = Set.new( Array( impl ).map( &:name ) + Array( interface ).map( &:name ) )
+    defined  = c_module.function_definitions.group_by( &:name )
+
     return CarryFacts.new(
-      selected: Set.new( Array( impl ).map( &:name ) + Array( interface ).map( &:name ) ),
-      defined:  c_module.function_definitions.group_by( &:name ),
-      declared: c_module.function_declarations.group_by( &:name )
+      selected: selected,
+      defined:  defined,
+      declared: c_module.function_declarations.group_by( &:name ),
+      helpers:  defined.select { |name, defs| !selected.include?( name ) and _helper?( defs ) }
     )
   end
 
-  # A selected name is written as before, and a helper's prototypes travel with its body
+  # A selected function is written as selected, and a helper's prototypes travel with its body
   def _prototype_candidate?(facts, name)
-    return false if facts.selected.include?( name )
-
-    return !(facts.defined.key?( name ) and _helper?( facts.defined[name] ))
+    return !(facts.selected.include?( name ) or facts.helpers.key?( name ))
   end
 
   def _plan_prototypes(plan, name, decls, has_body:, fallback:, referenced:)
@@ -497,9 +508,9 @@ class PartializerHelper
   # isn't there. A prototype comes along when kept code uses the name, except an inline one for a
   # body elsewhere: that prototype is what makes this file hold the external definition, used or not.
   def _carryable_prototypes(decls, has_body, referenced)
-    keep = decls.reject { |d| _static?( d.decorators ) or (has_body and _inline?( d.decorators )) }
-    keep = keep.select { |d| _inline?( d.decorators ) } unless referenced
-    return keep.uniq { |d| _normalized( d.signature ) }
+    keep = decls.reject { |d| Partials.static?( d.decorators ) or (has_body and Partials.inline?( d.decorators )) }
+    keep = keep.select { |d| Partials.inline?( d.decorators ) } unless referenced
+    return _distinct( keep )
   end
 
   # Scans kept code for helper names, then each carried helper in turn, until nothing new is found.
@@ -536,7 +547,7 @@ class PartializerHelper
 
     helper = defs.first
     scan.plan.add_helper( _as_written( helper ), "helper: referenced by `#{referrer}`" )
-    scan.declared.fetch( name, [] ).uniq { |d| _normalized( d.signature ) }.each do |d|
+    _distinct( scan.declared.fetch( name, [] ) ).each do |d|
       scan.plan.add_prototype( d, "prototype of helper `#{name}`" )
     end
 
@@ -618,16 +629,13 @@ class PartializerHelper
 
   def _helper?(definitions)
     return definitions.all? do |f|
-      f.origin == :header and (_static?( f.decorators ) or _inline?( f.decorators ))
+      f.origin == :header and (Partials.static?( f.decorators ) or Partials.inline?( f.decorators ))
     end
   end
 
-  def _static?(decorators)
-    return decorators.include?( 'static' )
-  end
-
-  def _inline?(decorators)
-    return decorators.any? { |d| d != 'static' and CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
+  # One of each prototype, comparing text with whitespace collapsed
+  def _distinct(decls)
+    return decls.uniq { |d| _normalized( d.signature ) }
   end
 
   def _normalized(text)

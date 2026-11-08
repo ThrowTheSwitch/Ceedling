@@ -417,26 +417,7 @@ class Partializer
       Verbosity::DEBUG
     )
 
-    # A mock interface only ever needs a signature, never a body, so a declaration-only
-    # function (no body found anywhere in this module's merged content) is just as valid a
-    # candidate as one with a definition -- unlike extract_implementation_functions, which
-    # needs real code to inject and so stays definitions-only. A function named in both
-    # (declared in the header, defined in the paired source) is only counted once.
-    declaration_only = declarations.reject { |d| definitions.any? { |f| f.name == d.name } }
-
-    # An inline function the module only declares has its body in a header it includes. A mock
-    # can never replace that body, so mocking it would only define the function twice. Left out
-    # here, it becomes an external prototype the implementation source carries.
-    foreign_inline = declaration_only.select { |d| _inline_declaration?( d ) }.map( &:name ).uniq
-    unless foreign_inline.empty?
-      @loginator.log_list(
-        foreign_inline.map { |n| "`#{n}`" },
-        "Not mockable for Partial #{test}::#{partial} (inline, body outside module):",
-        Verbosity::DEBUG
-      )
-    end
-
-    candidates = definitions + declaration_only.reject { |d| foreign_inline.include?( d.name ) }
+    candidates = _mock_candidates( test, partial, definitions, declarations )
 
     # Build initial list by visibility; ACCUMULATE yields []
     funcs = @helper.filter_and_transform_funcs(candidates, pf.type, :interface)
@@ -523,6 +504,34 @@ class Partializer
     c_module.element_sequence.concat(promoted) unless promoted.empty?
   end
 
+  # A mock interface only ever needs a signature, never a body, so a declaration-only
+  # function (no body found anywhere in this module's merged content) is just as valid a
+  # candidate as one with a definition -- unlike extract_implementation_functions, which
+  # needs real code to inject and so stays definitions-only. A function named in both
+  # (declared in the header, defined in the paired source) is only counted once.
+  #
+  # An inline function the module only declares has its body in a header it includes. A mock
+  # can never replace that body, so mocking it would only define the function twice. It stays
+  # out, and the implementation source carries its prototype when the module is also tested.
+  def _mock_candidates(test, partial, definitions, declarations)
+    defined          = Set.new( definitions.map( &:name ) )
+    declaration_only = declarations.reject { |d| defined.include?( d.name ) }
+    foreign_inline   = Set.new( declaration_only.select { |d| Partials.inline?( d.decorators ) }.map( &:name ) )
+
+    _log_not_mockable( test, partial, foreign_inline )
+    return definitions + declaration_only.reject { |d| foreign_inline.include?( d.name ) }
+  end
+
+  def _log_not_mockable(test, partial, names)
+    return if names.empty?
+
+    @loginator.log_list(
+      names.map { |n| "`#{n}`" },
+      "Not mockable for Partial #{test}::#{partial} (inline, body outside module):",
+      Verbosity::DEBUG
+    )
+  end
+
   # A carried prototype is written behind a #line naming its own file and line. Each is found in
   # its original file's own text, where no included header's lines can be mistaken for it. Only
   # carried prototypes are located, since each costs a search of the file.
@@ -535,10 +544,6 @@ class Partializer
         decls: decls, filepath: filepath, text: @file_wrapper.read( filepath ).clean_encoding
       )
     end
-  end
-
-  def _inline_declaration?(decl)
-    return decl.decorators.any? { |d| d != 'static' and CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
   end
 
   # Lists what a Partial carries and why, so a user can trace what its implementation holds

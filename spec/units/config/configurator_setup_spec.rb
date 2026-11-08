@@ -108,6 +108,13 @@ describe ConfiguratorSetup do
       end
     end
 
+    it "shows a string :extern_variables as a string" do
+      config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: true, extern_variables: 'weak' } }
+      expect(@loginator).to receive(:log)
+        .with(/:partials ↳ :extern_variables is "weak" but must be one of \{:weak, :test\}/, Verbosity::ERRORS)
+      expect(@setup.validate_partials(config)).to be false
+    end
+
     it "rejects any other :extern_variables" do
       config = { partials: { max_extraction_length: 5000, suppress_redundant_decls: true, extern_variables: :strong } }
       expect(@loginator).to receive(:log)
@@ -602,7 +609,7 @@ describe ConfiguratorSetup do
 
       it "names the backtrace options when rejecting another value" do
         expect(@setup.validate_backtrace( { project: { use_backtrace: true } } )).to be false
-        logged(/:project ↳ :use_backtrace is ':true' but must be one of \{:none, :simple, :gdb\}/)
+        logged(/:project ↳ :use_backtrace is true but must be one of \{:none, :simple, :gdb\}/)
       end
     end
 
@@ -615,11 +622,17 @@ describe ConfiguratorSetup do
         end
       end
 
-      [260, true, :long].each do |value|
+      { 260 => '260', true => 'true', :long => "':long'" }.each do |value, shown|
         it "names the options when rejecting #{value.inspect}" do
           expect(@setup.validate_win_path_limit( { project: { win_path_limit: value } } )).to be false
-          logged(/:project ↳ :win_path_limit is ':#{value}' but must be one of \{:classic, :long_paths, :auto\}/)
+          logged(/:project ↳ :win_path_limit is #{Regexp.escape( shown )} but must be one of \{:classic, :long_paths, :auto\}/)
         end
+      end
+
+      # A string written without its colon would otherwise print as the symbol it resembles
+      it "shows a string value as a string" do
+        expect(@setup.validate_win_path_limit( { project: { win_path_limit: 'auto' } } )).to be false
+        logged(/:project ↳ :win_path_limit is "auto" but must be one of/)
       end
 
       it "runs among the final validations" do

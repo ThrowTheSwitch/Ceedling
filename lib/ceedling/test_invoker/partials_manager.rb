@@ -135,12 +135,10 @@ class PartialsManager
         interface_includes:   includes[:interface].map( &:to_s )
       }
 
+      record = { files: antecedent_files, meta: antecedent_meta, name: name, partial: config.module }
+
       if types_header
-        target = File.join( testable.paths[:partials], types_header )
-
-        @dependinator.register( target, files: antecedent_files, meta: antecedent_meta )
-
-        if @dependinator.stale?( target )
+        skipped = generate_when_stale( target: File.join( testable.paths[:partials], types_header ), kind: 'types', **record ) do
           @generator.generate_partial_types(
             name:          name,
             partial:       config.module,
@@ -149,16 +147,8 @@ class PartialsManager
             includes:      includes[:types],
             include_guard: module_include_guard
           )
-          @dependinator.mark_fresh( target )
-        else
-          msg = @reportinator.generate_module_progress(
-            operation:   'Skipping Partial types generation for',
-            module_name: name,
-            filename:    config.module
-          )
-          @loginator.log( msg, Verbosity::OBNOXIOUS )
-          state.lock.synchronize { skipped_types += 1 }
         end
+        state.lock.synchronize { skipped_types += 1 } if skipped
       end
 
       implementation = @partializer.extract_implementation_functions(
@@ -200,73 +190,53 @@ class PartialsManager
         )
       end
 
-      arg_hash = {
-        test:                     name,
-        partial:                  config.module,
-        function_definitions:     implementation,
-        c_module:                 module_contents,
-        header_includes:          includes[:impl_header],
-        source_includes:          includes[:impl_source],
-        output_path:              testable.paths[:partials],
-        include_guard:            module_include_guard,
-        carry:                    carry,
-        suppress_redundant_decls: @configurator.partials_suppress_redundant_decls,
-        extern_variables:         @configurator.partials_extern_variables
-      }
-
       unless implementation.nil?
         # The same call writes a header alongside the source, so the source vouches for it
         # as an output. A modified or deleted header then regenerates both.
         target        = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_source_filename( config.module ) )
         header_target = File.join( testable.paths[:partials], @file_path_utils.form_partial_implementation_header_filename( config.module ) )
 
-        @dependinator.register( target, files: antecedent_files, meta: antecedent_meta, outputs: [header_target] )
-
-        if @dependinator.stale?( target )
-          @generator.generate_partial_implementation( **arg_hash )
-          @dependinator.mark_fresh( target )
-        else
-          msg = @reportinator.generate_module_progress(
-            operation:   'Skipping Partial implementation generation for',
-            module_name: name,
-            filename:    config.module
+        skipped = generate_when_stale( target: target, outputs: [header_target], kind: 'implementation', **record ) do
+          @generator.generate_partial_implementation(
+            test:                     name,
+            partial:                  config.module,
+            function_definitions:     implementation,
+            c_module:                 module_contents,
+            header_includes:          includes[:impl_header],
+            source_includes:          includes[:impl_source],
+            output_path:              testable.paths[:partials],
+            include_guard:            module_include_guard,
+            carry:                    carry,
+            suppress_redundant_decls: @configurator.partials_suppress_redundant_decls,
+            extern_variables:         @configurator.partials_extern_variables
           )
-          @loginator.log( msg, Verbosity::OBNOXIOUS )
-          state.lock.synchronize { skipped_impl += 1 }
         end
 
-        state.lock.synchronize { testable.partials.tests << config.module }
+        state.lock.synchronize do
+          skipped_impl += 1 if skipped
+          testable.partials.tests << config.module
+        end
       end
-
-      arg_hash = {
-        test:                  name,
-        partial:               config.module,
-        function_declarations: interface,
-        includes:              includes[:interface],
-        c_module:              module_contents,
-        output_path:           testable.paths[:partials],
-        include_guard:         module_include_guard
-      }
 
       unless interface.nil?
         target = File.join( testable.paths[:partials], @file_path_utils.form_partial_interface_header_filename( config.module ) )
 
-        @dependinator.register( target, files: antecedent_files, meta: antecedent_meta )
-
-        if @dependinator.stale?( target )
-          @generator.generate_partial_interface( **arg_hash )
-          @dependinator.mark_fresh( target )
-        else
-          msg = @reportinator.generate_module_progress(
-            operation:   'Skipping Partial interface generation for',
-            module_name: name,
-            filename:    config.module
+        skipped = generate_when_stale( target: target, kind: 'interface', **record ) do
+          @generator.generate_partial_interface(
+            test:                  name,
+            partial:               config.module,
+            function_declarations: interface,
+            includes:              includes[:interface],
+            c_module:              module_contents,
+            output_path:           testable.paths[:partials],
+            include_guard:         module_include_guard
           )
-          @loginator.log( msg, Verbosity::OBNOXIOUS )
-          state.lock.synchronize { skipped_interface += 1 }
         end
 
-        state.lock.synchronize { testable.partials.mocks << config.module }
+        state.lock.synchronize do
+          skipped_interface += 1 if skipped
+          testable.partials.mocks << config.module
+        end
       end
     end
 
@@ -278,6 +248,24 @@ class PartialsManager
   end
 
   private
+
+  # Generates one Partial file when its record says it's stale, and logs the skip otherwise.
+  # Returns true when generation was skipped, for the stage's summary.
+  def generate_when_stale(target:, files:, meta:, kind:, name:, partial:, outputs: [])
+    @dependinator.register( target, files: files, meta: meta, outputs: outputs )
+
+    if @dependinator.stale?( target )
+      yield
+      @dependinator.mark_fresh( target )
+      return false
+    end
+
+    msg = @reportinator.generate_module_progress(
+      operation: "Skipping Partial #{kind} generation for", module_name: name, filename: partial
+    )
+    @loginator.log( msg, Verbosity::OBNOXIOUS )
+    return true
+  end
 
   # A Partial's original header and source, and the preprocessed copies of each that extraction
   # parses. A declaration-only Partial (a prototype with no matching definition) has no source

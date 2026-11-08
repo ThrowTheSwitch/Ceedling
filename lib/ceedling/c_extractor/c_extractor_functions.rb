@@ -77,6 +77,12 @@ class CExtractorFunctions
     return [true, func]
   end
 
+  # Where a function's name starts in text that begins with its signature, or nil. The name must
+  # be a whole word followed by its parameter list, so `f` is never found inside `float`.
+  def self.name_position(text, name)
+    return text.match( /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ )&.begin(0)
+  end
+
   # Removes each listed token once, matching whole whitespace-separated tokens only, so the
   # same word inside an attribute string or a longer name stays. Spaces after a removed token
   # go with it. A newline stays, because a caller may count the lines a decorator occupied.
@@ -324,12 +330,11 @@ class CExtractorFunctions
   def parse_decorators_and_strip(signature, name)
     return [[], signature] if name.nil?
 
-    # The name as a whole word followed by its parameter list, so `f` is never found inside `float`
-    match = signature.match( /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ )
-    return [[], signature] if match.nil?
+    cut = self.class.name_position( signature, name )
+    return [[], signature] if cut.nil?
 
-    prefix    = signature[0...match.begin(0)]
-    remainder = signature[match.begin(0)..]
+    prefix    = signature[0...cut]
+    remainder = signature[cut..]
 
     decorators = prefix.split( /\s+/ ).select { |token| FUNCTION_DECORATOR_KEYWORDS.include?( token ) }
     return [[], signature] if decorators.empty?

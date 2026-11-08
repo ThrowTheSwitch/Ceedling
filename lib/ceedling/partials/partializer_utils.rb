@@ -12,6 +12,9 @@ require 'ceedling/c_extractor/c_extractor_functions'
 
 class PartializerUtils
 
+  # The C11 specifier and the GNU and C23 attributes that each say a function never returns
+  NORETURN_MARKINGS = /(?<!\w)_Noreturn(?!\w)|__attribute__\s*\(\(\s*(?:__noreturn__|noreturn)\s*\)\)|\[\[\s*(?:_Noreturn|noreturn)\s*\]\]/ unless const_defined?(:NORETURN_MARKINGS, false)
+
   include Partials
 
   constructor :preprocessinator_code_finder, :loginator
@@ -36,31 +39,42 @@ class PartializerUtils
   # Transform function to appropriate output format `FunctionDefinition` or `FunctionDeclaration`
   def transform_function(func, signature, output_type)
     case output_type
-    when :impl
-      # Strip decorators from the front of code_block and count how many newlines were removed.
-      # Adjust line_num upward so that emitted #line directives remain accurate.
-      new_code_block, stripped_newlines = extract_code_block(func.code_block, func.decorators, func.name)
-      Partials.manufacture_function_definition(
-        name:            func.name,
-        signature:       signature,
-        source_filepath: func.source_filepath,
-        line_num:        adjust_line_num(func.line_num, stripped_newlines),
-        code_block:      new_code_block
-      )
-    when :interface
-      # A signature sourced from a CFunctionDefinition never carries a trailing semicolon
-      # (it's followed by a body, not one), but a signature sourced from a
-      # CFunctionDeclaration always does (it's a bare prototype). Strip it here so
-      # callers can render "#{signature};" uniformly regardless of which kind of
-      # function this interface entry came from. A mock always returns, so a mock
-      # declared `_Noreturn` would contradict itself; the specifier stays behind.
-      Partials.manufacture_function_declaration(
-        name: func.name,
-        signature: CExtractorFunctions.remove_tokens( signature, ['_Noreturn'] ).strip.sub(/;\s*\z/, '')
-      )
-    else
-      PartializerRuntime.raise_on_option(output_type)
+    when :impl      then return testable_definition( func, signature )
+    when :interface then return mockable_declaration( func, signature )
     end
+
+    PartializerRuntime.raise_on_option(output_type)
+  end
+
+  # Strip decorators from the front of code_block and count how many newlines were removed.
+  # Adjust line_num upward so that emitted #line directives remain accurate.
+  def testable_definition(func, signature)
+    new_code_block, stripped_newlines = extract_code_block(func.code_block, func.decorators, func.name)
+
+    return Partials.manufacture_function_definition(
+      name:            func.name,
+      signature:       signature,
+      source_filepath: func.source_filepath,
+      line_num:        adjust_line_num(func.line_num, stripped_newlines),
+      code_block:      new_code_block
+    )
+  end
+
+  # A signature sourced from a CFunctionDefinition never carries a trailing semicolon (it's
+  # followed by a body, not one), but a signature sourced from a CFunctionDeclaration always does
+  # (it's a bare prototype). Strip it here so callers can render "#{signature};" uniformly
+  # regardless of which kind of function this interface entry came from. A mock always returns,
+  # so a mock declared never to return would contradict itself. Every noreturn marking stays behind.
+  def mockable_declaration(func, signature)
+    return Partials.manufacture_function_declaration(
+      name:      func.name,
+      signature: without_noreturn( signature ).strip.sub(/;\s*\z/, '')
+    )
+  end
+
+  def without_noreturn(signature)
+    stripped = signature.gsub( NORETURN_MARKINGS, '' )
+    return stripped == signature ? signature : stripped.squeeze( ' ' )
   end
 
   # Replace a C variable declaration in a text block with a no-op expression.
@@ -221,8 +235,7 @@ class PartializerUtils
   # @param name        [String]        Function name, which ends the decorator region
   # @return [Array(String, Integer)]   [trimmed_code_block, leading_newline_count]
   def extract_code_block(code_block, decorators, name)
-    match  = code_block.match( /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ )
-    cut    = match ? match.begin(0) : 0
+    cut      = CExtractorFunctions.name_position( code_block, name ) || 0
     stripped = CExtractorFunctions.remove_tokens( code_block[0...cut], decorators ) + code_block[cut..]
     leading  = stripped[/\A\s*/]
     stripped = stripped.lstrip

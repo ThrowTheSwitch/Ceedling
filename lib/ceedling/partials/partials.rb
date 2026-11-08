@@ -5,6 +5,8 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractor/c_extractor_constants'
+
 module Partials
   # Constants
   PUBLIC     = :public     unless const_defined?(:PUBLIC)
@@ -108,6 +110,16 @@ module Partials
       skipped << CarriedItem.new( item: name, kind: kind )
     end
   end unless const_defined?(:CarryPlan, false)
+
+  # A `static` function is private to its file
+  def self.static?(decorators)
+    return decorators.include?( 'static' )
+  end
+
+  # Any inline specifier. `static` only narrows linkage, so it doesn't count.
+  def self.inline?(decorators)
+    return decorators.any? { |d| d != 'static' and CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
+  end
 
   def self.manufacture_function_declaration(line_num: nil, source_filepath: nil, name:, signature:)
     return FunctionDeclaration.new(
