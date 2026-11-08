@@ -2579,7 +2579,9 @@ describe CExtractorFunctions do
         ['int (__cdecl *ticker_cdecl(void))(int);',              'ticker_cdecl'],
         ['int (*ticker_row(void))[4];',                          'ticker_row'],
         ['int (*f(int (*g)(int)))(int);',                        'f'],
-        ['void (*signal(int sig, void (*func)(int)))(int);',     'signal']
+        ['void (*signal(int sig, void (*func)(int)))(int);',     'signal'],
+        ['void (* _Nullable sigset(int, void (* _Nullable)(int)))(int);', 'sigset'],
+        ['DECLARE_THING(*p, b);',                                'DECLARE_THING']
       ].each do |content, name|
         it "reads `#{content}` as a declaration of #{name}()" do
           success, decl, pos, _ = try_extract_decl.call(content)
@@ -2597,6 +2599,7 @@ describe CExtractorFunctions do
         'int (* volatile v_hook)(int);',
         'int (__cdecl *on_tick)(int);',
         'int (* __attribute__((unused)) u_hook)(int);',
+        'int (* _Nullable n_hook)(int);',
         'void (__attribute__((stdcall)) *s_hook)(int);',
         'handler_t (*table[4])(void);',
         'int (*g_row)[4];'

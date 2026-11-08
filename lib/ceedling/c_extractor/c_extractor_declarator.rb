@@ -21,26 +21,29 @@ module CExtractorDeclarator
   # or nil. `base_type` is the text ahead of the group, and `declarator` the group onward.
   Parenthesized = Struct.new( :name, :follows, :base_type, :declarator, keyword_init: true ) unless const_defined?(:Parenthesized, false)
 
-  # Words that may sit among a group's pointer stars, ahead of the name
-  GROUP_WORDS = (
-    CExtractorConstants::TYPE_QUALIFIER_KEYWORDS + %w[__restrict __restrict__] + CExtractorConstants::MSVC_CALLING_CONVENTIONS
-  ).freeze unless const_defined?(:GROUP_WORDS, false)
-
   # A '(' opening a declarator, perhaps through redundant parentheses and a calling convention
   POINTER_GROUP = /\([\s(]*(?:(?:#{CExtractorConstants::MSVC_CALLING_CONVENTIONS.join( '|' )})\b\s*)*\*/ unless const_defined?(:POINTER_GROUP, false)
-  GROUP_PREFIX  = /\((?:[\s(*]|(?:#{GROUP_WORDS.join( '|' )})\b)*/ unless const_defined?(:GROUP_PREFIX, false)
+
+  # What may follow a declarator's name. That is the group's own ')', a parameter list or an array size.
+  NAME_ENDS = [')', '(', '['].freeze unless const_defined?(:NAME_ENDS, false)
+
+  # How each delimiter changes the nesting depth
+  DEPTH_CHANGE = { '(' => 1, '[' => 1, '{' => 1, ')' => -1, ']' => -1, '}' => -1 }.freeze unless const_defined?(:DEPTH_CHANGE, false)
 
   # The declaration's parenthesized declarator, or nil when it has none. The text has no
   # initializer (see without_initializer). Words and attributes ahead of the group are passed
-  # over like the type, and end up in the base type.
+  # over like the type, and end up in the base type. A group whose name ends any other way,
+  # such as at the ',' of a macro's arguments, is no declarator.
   def self.parenthesized(text)
     text  = text.sub( /\s*;\s*\z/, '' )
     start = _group_start( text )
     return nil if start.nil?
 
-    name, follows = _name_in( text, start )
+    name, ending = _name_in( text, start )
+    return nil unless NAME_ENDS.include?( ending )
+
     return Parenthesized.new(
-      name: name, follows: follows,
+      name: name, follows: (ending == ')' ? nil : ending),
       base_type: text.byteslice( 0, start ).strip, declarator: text.byteslice( start, text.bytesize - start ).strip
     )
   end
@@ -51,7 +54,7 @@ module CExtractorDeclarator
     scanner = StringScanner.new( text )
     depth   = 0
     while scanner.skip_until( /[=()\[\]{}]/ )
-      depth += { '(' => 1, '[' => 1, '{' => 1, ')' => -1, ']' => -1, '}' => -1 }.fetch( scanner.matched, 0 )
+      depth += DEPTH_CHANGE.fetch( scanner.matched, 0 )
       return text.byteslice( 0, scanner.pos - 1 ).rstrip if scanner.matched == '=' and depth.zero?
     end
 
@@ -85,19 +88,30 @@ module CExtractorDeclarator
     return false
   end
 
-  # The name inside the group at `start`, past the parentheses, stars and qualifiers ahead of it,
-  # with the '(' or '[' that follows it
+  # The name inside the group at `start`, with the character that ends it. The name is the last
+  # word ahead of that end. Stars and qualifiers come before it, including ones a compiler adds,
+  # such as `_Nullable` or `__far`. A '(' that opens a nested pointer group is passed through, so
+  # only a parameter list ends the name.
   def self._name_in(text, start)
     scanner = StringScanner.new( text )
-    scanner.pos = start
-    scanner.skip( GROUP_PREFIX )
+    scanner.pos = start + 1
+    name = nil
 
-    name = scanner.scan( /[A-Za-z_]\w*/ )
-    return [nil, nil] if name.nil?
+    while (step = _next_in_group( scanner ))
+      name = step unless step == :group
+    end
 
-    scanner.skip( /\s*/ )
-    follows = scanner.peek( 1 )
-    return [name, ['(', '['].include?( follows ) ? follows : nil]
+    return [name, scanner.peek( 1 )]
+  end
+
+  # Moves the scanner past any stars and then one word or the '(' of a nested pointer group. It
+  # returns the word, :group for a nested group, or nil when neither comes next.
+  def self._next_in_group(scanner)
+    scanner.skip( /[\s*]*/ )
+    return scanner.scan( /[A-Za-z_]\w*/ ) unless scanner.match?( POINTER_GROUP )
+
+    scanner.pos += 1
+    return :group
   end
 
 end

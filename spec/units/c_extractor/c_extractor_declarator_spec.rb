@@ -45,6 +45,19 @@ describe CExtractorDeclarator do
 
     it "reads through a nested group" do
       expect( read( 'char (*(*fpp)(int))(long)' ) ).to include( name: 'fpp', follows: nil, base_type: 'char' )
+      expect( read( 'char (* const (*fpp)(int))(long)' ) ).to include( name: 'fpp', follows: nil, base_type: 'char' )
+    end
+
+    # A compiler may add its own qualifiers, and the name is the last word ahead of what ends it
+    it "reads past a qualifier a compiler adds" do
+      expect( read( 'int (* _Nullable np)(int)' ) ).to include( name: 'np', follows: nil )
+      expect( read( 'void (* __far fp)(void)' ) ).to include( name: 'fp', follows: nil )
+      expect( read( 'void (* _Nullable sigset(int, void (* _Nullable)(int)))(int)' ) ).to include( name: 'sigset', follows: '(' )
+    end
+
+    # A name in a declarator ends at the group's ')', a parameter list or an array size
+    it "finds nothing in a macro's arguments that open with a pointer" do
+      expect( read( 'DECLARE_THING(*p, b)' ) ).to be_nil
     end
 
     it "reads past a calling convention" do
