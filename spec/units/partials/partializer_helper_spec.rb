@@ -1276,6 +1276,49 @@ describe PartializerHelper do
       expect( twice.inline_elsewhere ).to be(true)
     end
 
+    it "marks each of several declarations from one call" do
+      twice = decl( 'int twice(void);' )
+      clamp = decl( 'int clamp(int v);' )
+      plain = decl( 'int plain(void);' )
+      tick  = decl( 'int tick(void);' )
+      text  = "inline int twice(void) { return 2; }\nstatic inline int clamp(int v) { return v; }\n" \
+              "int plain(void) { return 1; }\n__inline__ int tick(void)\n{\n  return twice();\n}\n"
+
+      @helper.mark_inline_elsewhere( decls: [twice, clamp, plain, tick], text: text )
+
+      expect( [twice, clamp, plain, tick].map( &:inline_elsewhere ) ).to eq( [true, false, false, true] )
+    end
+
+    # A header-only Partial of a large API header asks about every function it declares
+    it "marks many declarations in time linear in the text, not in the number of declarations" do
+      decls = (1..5_000).map { |n| decl( "int api_#{n}(void);" ) }
+      text  = ("#define API_LIMIT 1\n" * 250_000) + ";\ninline int api_77(void) { return 77; }\n"
+
+      Timeout.timeout( 1 ) { @helper.mark_inline_elsewhere( decls: decls, text: text ) }
+
+      expect( decls.select( &:inline_elsewhere ).map( &:name ) ).to eq( ['api_77'] )
+    end
+
+    # A block of macros holds no `;` or brace, so the whole block and the definition after it are
+    # one stretch of text. Each mention of the name in it is judged by every word ahead of it.
+    it "judges many mentions of a name in one stretch of text in linear time" do
+      twice = decl( 'int twice(void);' )
+      text  = (1..16_000).map { |n| "#define WRAP_#{n}(v) twice(v)\n" }.join + "inline int twice(void) { return 2; }\n"
+
+      Timeout.timeout( 2 ) { @helper.mark_inline_elsewhere( decls: [twice], text: text ) }
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
+    # Text read as characters rather than bytes must mark the same
+    it "marks from text holding a multibyte character ahead of the definition" do
+      twice = decl( 'int twice(void);' )
+
+      @helper.mark_inline_elsewhere( decls: [twice], text: "/* é */ inline int twice(void) { return 2; }\n" )
+
+      expect( twice.inline_elsewhere ).to be(true)
+    end
+
     it "does not take a longer name's inline definition for the declared function's" do
       twice = decl( 'int twice(void);' )
 

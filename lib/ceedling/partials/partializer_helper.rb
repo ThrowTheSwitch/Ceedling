@@ -51,6 +51,13 @@ class PartializerHelper
   C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_]\w*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_]\w*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
   C_STATEMENT_KEYWORDS = %w[return goto case default else do sizeof typedef break continue].freeze unless const_defined?(:C_STATEMENT_KEYWORDS, false)
 
+  # A preprocessor directive line, matched from the line's start past any leading whitespace
+  DIRECTIVE_START = /[\t\v\f\r ]*#/ unless const_defined?(:DIRECTIVE_START, false)
+
+  # What one walk of a run has seen so far. Words on a directive line never set a specifier.
+  DefinitionWalk = Struct.new( :directive, :inline, :static, keyword_init: true ) unless const_defined?(:DefinitionWalk, false)
+  OPEN_BRACE      = '{'.ord unless const_defined?(:OPEN_BRACE, false)
+
   # The names a carry plan decides by, grouped once per module
   CarryFacts = Struct.new( :selected, :defined, :declared, :helpers, keyword_init: true ) unless const_defined?(:CarryFacts, false)
 
@@ -439,8 +446,10 @@ class PartializerHelper
   # @param decls [Array<CExtractorTypes::CFunctionDeclaration>] The file's declarations of functions the module never defines, decorators reconciled
   # @param text  [String] The file's raw directives-only copy, read as bytes
   def mark_inline_elsewhere(decls:, text:)
+    defined = _inline_definitions( text, Set.new( decls.map( &:name ) ) )
+
     decls.each do |decl|
-      decl.inline_elsewhere = (!Partials.static?( decl.decorators ) and _inline_definition?( text, decl.name ))
+      decl.inline_elsewhere = (!Partials.static?( decl.decorators ) and defined.include?( decl.name ))
     end
   end
 
@@ -668,33 +677,60 @@ class PartializerHelper
     return text.gsub( Partials::LITERAL_OR_COMMENT ) { |blanked| blanked.gsub( /[^\n]/, ' ' ) }
   end
 
-  # Whether the text defines the function inline with external linkage. Each place the name
-  # opens a parameter list is a definition when a body follows. The words ahead of the name
-  # run back to the previous `;` or brace, directive lines aside. Searching for the name first
-  # keeps the scan linear in a raw copy that holds every header the file includes.
-  def _inline_definition?(text, name)
+  # The wanted names the text defines inline with external linkage, found in one pass. The text
+  # breaks into runs at each `;` and brace. A run that ends in a parameter list just before a `{`
+  # opens a definition. Each wanted name opening a parameter list there is judged by the words
+  # ahead of it. One pass keeps the cost linear in a raw copy that holds every header the file
+  # includes, however many names are wanted.
+  def _inline_definitions(text, wanted)
+    found   = Set.new
     scanner = StringScanner.new( text )
-    pattern = /(?<!\w)#{Regexp.escape( name )}\s*\(/
+    start   = 0
 
-    while scanner.skip_until( pattern )
-      start = scanner.pos - scanner.matched_size
-      next unless scanner.match?( /[^;{}]*\)\s*\{/ )
-
-      return true if _inline_words?( _words_before( text, start ) )
+    # Scanner positions count bytes, so each run is cut out by bytes
+    while scanner.skip_until( /[;{}]/ )
+      _definition_names( text.byteslice( start...(scanner.pos - 1) ), wanted, found ) if text.getbyte( scanner.pos - 1 ) == OPEN_BRACE
+      start = scanner.pos
     end
 
-    return false
+    return found
   end
 
-  def _words_before(text, position)
-    boundary = position.zero? ? nil : text.rindex( /[;{}]/, position - 1 )
-    prefix   = text[(boundary ? boundary + 1 : 0)...position]
+  # Adds each wanted name the run defines inline with external linkage. A name counts when the
+  # words ahead of it in the run hold an inline specifier and no `static`. Words on a directive
+  # line never count. One walk carries what the words so far have said, so a run that mentions
+  # many names stays linear.
+  def _definition_names(run, wanted, found)
+    # Every inline specifier spells `inline`, so a run without it is passed over
+    return unless run.include?( 'inline' ) and run.match?( /\)\s*\z/ )
 
-    return prefix.lines.reject { |line| line.lstrip.start_with?( '#' ) }.join.split( /\W+/ )
+    scanner = StringScanner.new( run )
+    walk    = DefinitionWalk.new( directive: _directive_line?( scanner ), inline: false, static: false )
+    _walk_word( walk, scanner, wanted, found ) while scanner.skip_until( /\n|\w+/ )
   end
 
-  def _inline_words?(words)
-    return (Partials.inline?( words ) and !Partials.static?( words ))
+  # One word of a run, or the newline that starts its next line
+  def _walk_word(walk, scanner, wanted, found)
+    word = scanner.matched
+    if word == "\n"
+      walk.directive = _directive_line?( scanner )
+      return
+    end
+
+    found << word if _defined_inline?( walk, scanner, wanted, word )
+    return if walk.directive
+
+    walk.inline ||= Partials.inline?( [word] )
+    walk.static ||= Partials.static?( [word] )
+  end
+
+  # A wanted name opening a parameter list, after words that made the definition inline and not static
+  def _defined_inline?(walk, scanner, wanted, word)
+    return (walk.inline and !walk.static and wanted.include?( word ) and scanner.match?( /\s*\(/ ))
+  end
+
+  def _directive_line?(scanner)
+    return !scanner.match?( DIRECTIVE_START ).nil?
   end
 
   def _helper?(definitions)
