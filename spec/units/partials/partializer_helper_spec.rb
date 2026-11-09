@@ -414,7 +414,7 @@ describe PartializerHelper do
           .and_return([false, nil])
 
         expect(@partializer_utils).not_to receive(:replace_declaration_with_noop)
-        expect(@partializer_utils).not_to receive(:rename_c_identifier)
+        expect(@partializer_utils).not_to receive(:rename_c_identifiers)
 
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
@@ -438,7 +438,7 @@ describe PartializerHelper do
           .and_return([true, [non_static_var]], [false, nil])
 
         expect(@partializer_utils).not_to receive(:replace_declaration_with_noop)
-        expect(@partializer_utils).not_to receive(:rename_c_identifier)
+        expect(@partializer_utils).not_to receive(:rename_c_identifiers)
 
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
@@ -466,13 +466,13 @@ describe PartializerHelper do
 
         allow(@partializer_utils).to receive(:replace_declaration_with_noop)
           .and_return(noop_text)
-        allow(@partializer_utils).to receive(:rename_c_identifier)
+        allow(@partializer_utils).to receive(:rename_c_identifiers)
           .and_return('')
 
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
 
         expect(@partializer_utils).to have_received(:replace_declaration_with_noop).exactly(2).times
-        expect(@partializer_utils).to have_received(:rename_c_identifier).exactly(3).times
+        expect(@partializer_utils).to have_received(:rename_c_identifiers).exactly(3).times
         expect(result.first.name).to eq('partial_process_count')
       end
 
@@ -506,7 +506,7 @@ describe PartializerHelper do
 
         allow(@partializer_utils).to receive(:replace_compound_declaration_with_noops)
           .and_return(noops)
-        allow(@partializer_utils).to receive(:rename_c_identifier)
+        allow(@partializer_utils).to receive(:rename_c_identifiers)
           .and_return('')
 
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
@@ -514,7 +514,8 @@ describe PartializerHelper do
         expect(@partializer_utils).to have_received(:replace_compound_declaration_with_noops)
           .with(anything, shared_original, placeholder, 2)
           .exactly(2).times
-        expect(@partializer_utils).to have_received(:rename_c_identifier).exactly(6).times
+        # One pass renames each variable's text, then the function's code block and body
+        expect(@partializer_utils).to have_received(:rename_c_identifiers).exactly(4).times
         expect(result.map(&:name)).to contain_exactly('partial_calc_a', 'partial_calc_b')
       end
     end
@@ -685,6 +686,89 @@ describe PartializerHelper do
 
         # Replacement no-op with (incomplete) comment
         expect(func.code_block).to include('(void)0; (void)0; /* `static int a, b;` replaced with no-op')
+      end
+
+      it "promotes each variable of a compound static whose first one has an initializer" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static int x = 0, y;\n  y++;\n  return x + y;\n}",
+          code_block: "int calc(void) {\n  static int x = 0, y;\n  y++;\n  return x + y;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.text] }).to eq [['partial_calc_x', 'int partial_calc_x = 0;'], ['partial_calc_y', 'int partial_calc_y;']]
+        expect(func.code_block.scan('(void)0;').length).to eq(2)
+        expect(func.code_block).to include('return partial_calc_x + partial_calc_y;')
+      end
+
+      # One declarator's initializer can name another variable of the same statement
+      it "renames every variable of a compound static in each one's text" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static int a = 1, *p = &a;\n  return *p;\n}",
+          code_block: "int calc(void) {\n  static int a = 1, *p = &a;\n  return *p;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.text] }).to eq [['partial_calc_a', 'int partial_calc_a = 1;'], ['partial_calc_p', 'int *partial_calc_p = &partial_calc_a;']]
+      end
+
+      it "renames a promoted static named in another one's array size" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static int n = 4, m[sizeof(n)];\n  return m[0];\n}",
+          code_block: "int calc(void) {\n  static int n = 4, m[sizeof(n)];\n  return m[0];\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.array_suffix] }).to eq [['partial_calc_n', ''], ['partial_calc_m', '[sizeof(partial_calc_n)]']]
+      end
+
+      # A static's initializer can name one an earlier statement declares
+      it "renames a promoted static named by a later statement" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static int a = 1;\n  static int *p = &a;\n  return *p;\n}",
+          code_block: "int calc(void) {\n  static int a = 1;\n  static int *p = &a;\n  return *p;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.text] }).to eq [['partial_calc_a', 'int partial_calc_a = 1;'], ['partial_calc_p', 'int *partial_calc_p = &partial_calc_a;']]
+        expect(func.code_block.scan('(void)0;').length).to eq(2)
+        expect(func.code_block).to include('return *partial_calc_p;')
+      end
+
+      # A tag lives apart from variables, so a static's type keeps a tag another static shares
+      it "leaves a struct tag alone when another promoted static shares its name" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static int node = 0;\n  static struct node *head = 0;\n  return node + (head == 0);\n}",
+          code_block: "int calc(void) {\n  static int node = 0;\n  static struct node *head = 0;\n  return node + (head == 0);\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.type, v.text] }).to eq [
+          ['partial_calc_node', 'int', 'int partial_calc_node = 0;'],
+          ['partial_calc_head', 'struct node *', 'struct node *partial_calc_head = 0;']
+        ]
+      end
+
+      it "leaves a string literal alone when it renames a promoted static" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static const char *a = \"x\", *b = \"a b\";\n  printf(\"a=%s\", a);\n  return b[0];\n}",
+          code_block: "int calc(void) {\n  static const char *a = \"x\", *b = \"a b\";\n  printf(\"a=%s\", a);\n  return b[0];\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:text)).to eq ['char *partial_calc_a = "x";', 'char *partial_calc_b = "a b";']
+        expect(func.code_block).to include('printf("a=%s", partial_calc_a);')
       end
     end
   end

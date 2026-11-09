@@ -701,6 +701,94 @@ describe CExtractorDeclarations do
         expect(pos).to eq(20)
         expect(rest).to eq("")
       end
+
+      # A comma after an initializer separates declarators just as one before it does. A comma
+      # inside brackets, braces or a literal belongs to the initializer.
+      [
+        ['int g_x = 0, g_y;',                  [['g_x', 'int', 'int g_x = 0;'], ['g_y', 'int', 'int g_y;']]],
+        ['int g_p = f(1, 2), g_q, g_r = 3;',   [['g_p', 'int', 'int g_p = f(1, 2);'], ['g_q', 'int', 'int g_q;'], ['g_r', 'int', 'int g_r = 3;']]],
+        ['char *g_s = "a,b", *g_t;',           [['g_s', 'char *', 'char *g_s = "a,b";'], ['g_t', 'char *', 'char *g_t;']]],
+        ["char g_c = ',', g_d;",               [['g_c', 'char', "char g_c = ',';"], ['g_d', 'char', 'char g_d;']]],
+        ['int g_a[2] = {1, 2}, g_b;',          [['g_a', 'int', 'int g_a[2] = {1, 2};'], ['g_b', 'int', 'int g_b;']]],
+        ['struct ops g_o = { 1 }, g_n = { 2 };', [['g_o', 'struct ops', 'struct ops g_o = { 1 };'], ['g_n', 'struct ops', 'struct ops g_n = { 2 };']]],
+        ['int g_m[N == 2 ? 2 : 3] = {0}, g_k;', [['g_m', 'int', 'int g_m[N == 2 ? 2 : 3] = {0};'], ['g_k', 'int', 'int g_k;']]]
+      ].each do |content, expected|
+        it "splits `#{content}` at its top-level commas" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.text] } ).to eq expected
+          expect( variables.map( &:original ).uniq ).to eq [content]
+        end
+      end
+
+      # A later declarator takes the text ahead of the first one's declarator. Stars, qualifiers
+      # after a star, attributes after the name and line breaks belong to the first declarator.
+      [
+        ["int\ng_x = 0, g_y = 1;",                                  ['g_y', 'int', [], 'int g_y = 1;']],
+        ["const unsigned char\n  g_tbl[] = {1, 2}, g_after = 3;",   ['g_after', 'unsigned char', ['const'], 'unsigned char g_after = 3;']],
+        ['int *const g_a = 0, g_b;',                                ['g_b', 'int', [], 'int g_b;']],
+        ['const char *const g_n = "x", *const g_m = "y";',          ['g_m', 'char *const', ['const'], 'char *const g_m = "y";']],
+        ['int *restrict g_a = 0, g_b = 2;',                         ['g_b', 'int', [], 'int g_b = 2;']],
+        ['int g_a __attribute__((aligned(4))) = 1, g_b;',           ['g_b', 'int', [], 'int g_b;']],
+        ['__ALIGNED(4) uint8_t g_buf[16] = {0}, g_buf2[16];',       ['g_buf2', '__ALIGNED(4) uint8_t', [], '__ALIGNED(4) uint8_t g_buf2[16];']],
+        ['__attribute__((section(".x"))) int g_s = 1, g_t;',        ['g_t', 'int', [], '__attribute__((section(".x"))) int g_t;']]
+      ].each do |content, (name, type, decorators, text)|
+        it "gives a later declarator only the base type of `#{content.gsub( "\n", '\n' )}`" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.last.to_h.slice( :name, :type, :decorators, :text ) ).to eq( name: name, type: type, decorators: decorators, text: text )
+        end
+      end
+
+      # Without the first name the base type can't be found, so the declaration stays whole. It
+      # reads as nameless, as a declaration a macro spells does, rather than named by its last.
+      [
+        'int (g_a) = 1, g_b = 2;',
+        'static ARR_OF(int, hits)[3], n;'
+      ].each do |content|
+        it "keeps `#{content}` whole and nameless, since its first name can't be read" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.text] } ).to eq [[nil, nil, content.delete_prefix( 'static ' )]]
+        end
+      end
+
+      # An unexpanded attribute macro after the first name reads as the name, which leaves a base
+      # type no declaration could have. The statement then stays one record, read whole.
+      [
+        "const char g_a KEEP = 'x', g_b = 'y';",
+        'const uint8_t table[] PROGMEM = {1}, t2[] PROGMEM = {2};'
+      ].each do |content|
+        it "keeps `#{content}` one record when a macro after its first name misleads the base type" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map( &:text ) ).to eq [content.delete_prefix( 'const ' )]
+        end
+      end
+
+      it "splits a compound declaration whose first function pointer has an initializer" do
+        success, variables, _pos, _rest = extract_variable.call( "static int (*a)(int) = f, (*b)(int);" )
+
+        expect( success ).to be true
+        expect( variables.map { |v| [v.name, v.type, v.decorators, v.declarator] } ).to eq [
+          ['a', 'int', ['static'], '(*a)(int)'],
+          ['b', 'int', ['static'], '(*b)(int)']
+        ]
+      end
+
+      it "splits a compound declaration after a large initializer table within a time bound" do
+        content = 'static const uint8_t table[] = { ' + ('0x5A, ' * 20_000) + '0 }, after;'
+
+        success, variables = nil
+        Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
+
+        expect( success ).to be true
+        expect( variables.map( &:name ) ).to eq ['table', 'after']
+      end
     end
 
     context "compiler extensions on variable declarations" do

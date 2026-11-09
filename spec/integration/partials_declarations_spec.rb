@@ -161,4 +161,69 @@ describe 'Declarations in a Partial' do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  context 'compound declarations' do
+  # ---------------------------------------------------------------------------
+
+    # Every variable of a compound declaration needs its own extern, wherever the initializers sit
+    it 'declares each variable when the first one has an initializer' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int g_x = 0, g_y;\nint ticker_get(void) { return g_x + g_y; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int g_x;', 'extern int g_y;' )
+      expect_link( @result, ['g_x', 'g_y'] )
+    end
+
+    it 'declares each variable past commas inside initializers' do
+      @result = ticker(
+        header: "struct ops { int a; };\nint ticker_get(void);\n",
+        source: "char *g_s = \"a,b\", *g_t;\nint g_a[2] = {1, 2}, g_b;\nstruct ops g_o = { 1 }, g_n = { 2 };\n" \
+                "int ticker_get(void) { return g_a[1] + g_b + g_o.a + g_n.a + (g_t == g_s); }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int g_b;', 'extern struct ops g_n;' )
+      expect_link( @result, ['g_s', 'g_t', 'g_a', 'g_b', 'g_o', 'g_n'] )
+    end
+
+    # A later variable takes only the base type. A qualifier after a star, an attribute after
+    # the name and a line break belong to the first declarator.
+    it 'gives each later variable only the base type' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int *const g_a = 0, g_b;\nconst unsigned char\n  g_tbl[] = {1, 2}, g_after = 3;\n" \
+                "int g_c __attribute__((aligned(4))) = 1, g_d;\n" \
+                "int ticker_get(void) { g_b++; return g_b + g_after + g_d + (g_a == 0); }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int g_b;', 'extern const unsigned char g_after;', 'extern int g_d;' )
+      expect_link( @result, ['g_a', 'g_b', 'g_tbl', 'g_after', 'g_c', 'g_d'], stubs: "int read_after(void) { return sizeof(g_after) == 1; }\n" )
+    end
+
+    # Partials promote a function's statics to file scope, renamed, so each one needs its own definition
+    it 'promotes each static of a compound statement in a function' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) { static int x = 0, y; static int a = 1, *p = &a; y++; return x + y + *p; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int partial_ticker_get_y;', 'extern int * partial_ticker_get_p;' )
+      expect( @result.impl_c ).to include( 'int *partial_ticker_get_p = &partial_ticker_get_a;' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_x', 'partial_ticker_get_y', 'partial_ticker_get_p'] )
+    end
+
+    it 'promotes statics that name one another across statements and in array sizes' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) { static int n = 4, m[sizeof(n)]; static int *q = &n; " \
+                "static const char *s = \"n and m\"; return m[0] + *q + s[0]; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int partial_ticker_get_m[sizeof(partial_ticker_get_n)];' )
+      expect( @result.impl_c ).to include( 'int *partial_ticker_get_q = &partial_ticker_get_n;', '"n and m"' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_m', 'partial_ticker_get_q', 'partial_ticker_get_s'] )
+    end
+  end
+
 end

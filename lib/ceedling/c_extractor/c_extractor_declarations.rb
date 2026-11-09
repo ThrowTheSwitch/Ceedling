@@ -37,6 +37,17 @@ class CExtractorDeclarations
   # A multiline initializer still matches.
   DECLARATION_SHAPE = /\w+.*[\w\]\)\}"']\s*;$/m unless const_defined?(:DECLARATION_SHAPE, false)
 
+  # A comma, or a bracket or literal whose commas don't split a compound declaration
+  SPLIT_TOKEN = Regexp.union( /,/, CExtractorDeclarator::BALANCE_TOKEN ) unless const_defined?(:SPLIT_TOKEN, false)
+
+  # A bracket, a literal, a star or a word, which locate where a declarator starts
+  DECLARATOR_TOKEN = Regexp.union( CExtractorDeclarator::BALANCE_TOKEN, /\*/, CExtractorDeclarator::WORD ) unless const_defined?(:DECLARATOR_TOKEN, false)
+
+  # A base type no declaration has. An array size follows a name, and a builtin type or a tag
+  # can't be followed by a plain word. Either means a macro after the first name, such as an
+  # attribute, was read as the name.
+  MISREAD_BASE = /[\w$]\s*\[|\b(?:(?:void|char|short|int|long|float|double|signed|unsigned|_Bool|_Complex)|(?:struct|union|enum)\s+[A-Za-z_$][\w$]*)\s+(?!(?:const|volatile|restrict|void|char|short|int|long|float|double|signed|unsigned|_Bool|_Complex)\b)[A-Za-z_$][\w$]*\s*\z/ unless const_defined?(:MISREAD_BASE, false)
+
   # Extracts a complete variable declaration from the scanner, through its terminating ';'.
   #
   # The scan counts parentheses, brackets and braces apart, and the declaration ends at the
@@ -117,7 +128,9 @@ class CExtractorDeclarations
     return text.gsub( CExtractorDeclarator::LITERAL_OR_COMMENT ) { |match| match.start_with?( '/' ) ? ' ' : match }
   end
 
-  # Expand compound declarations and parse each into CVariableDeclaration structs
+  # Expand compound declarations and parse each into CVariableDeclaration structs. A compound
+  # declaration that can't be split stays one record with no name, like any declaration whose
+  # name can't be read.
   #
   # Parameters:
   #   text:     A complete declaration with its comments blanked (e.g., "static int x, y;")
@@ -125,105 +138,83 @@ class CExtractorDeclarations
   #
   # Returns: Array<CVariableDeclaration>
   def expand_and_parse(text, raw_text)
-    expand_compound(text).map { |individual| parse_declaration(individual, raw_text) }
+    pieces = expand_compound(text)
+    return [parse_declaration(text, raw_text).tap { |var| var.name = var.type = var.declarator = nil }] if pieces.nil?
+
+    pieces.map { |individual| parse_declaration(individual, raw_text) }
   end
 
-  # Detect and split compound declarations (e.g., "int x, y;" => ["int x;", "int y;"])
-  #
-  # Splits at depth-0 commas that appear before any initializer (=).
-  # Preserves pointer specifiers (*) from the base type prefix.
+  # Splits a compound declaration into one per variable, as `int x = 0, y;` into `int x = 0;`
+  # and `int y;`. A comma outside parentheses, brackets, braces and literals separates two
+  # declarators, wherever the initializers sit. Each declarator after the first takes the first
+  # one's base type, the text ahead of its declarator. A base type no declaration has means a
+  # macro after the first name was read as the name, so the statement stays whole.
   #
   # Parameters:
-  #   raw_text: Complete declaration string including trailing semicolon
+  #   text: A complete declaration with its comments blanked, its trailing semicolon included
   #
-  # Returns: Array<String> of individual declaration strings
-  def expand_compound(raw_text)
-    # Determine the text before any initializer to look for commas
-    pre_init = raw_text.split('=', 2).first || raw_text
+  # Returns: Array<String> of individual declaration strings, or nil for a compound declaration
+  #   whose first name can't be read, which leaves its base type unknown
+  def expand_compound(text)
+    first, *rest = _top_level_pieces( text.rstrip.chomp( ';' ).strip )
+    return [text] if rest.empty?
 
-    # Combined depth across (), [], {} for comma-splitting — not suitable for collect_balanced()
-    depth = 0
-    comma_positions = []
-    pre_init.each_char.with_index do |ch, i|
-      case ch
-      when '(', '[', '{' then depth += 1
-      when ')', ']', '}' then depth -= 1
-      when ',' then comma_positions << i if depth == 0
-      end
-    end
+    base_type = _base_type( first )
+    return nil if base_type.nil?
+    return [text] if base_type.match?( MISREAD_BASE )
 
-    return [raw_text] if comma_positions.empty?
-
-    # Extract the base type prefix (everything before the first declarator)
-    # The prefix is everything up to the first declarator token after the last type keyword
-    first_comma = comma_positions.first
-    prefix_with_first = raw_text[0...first_comma].strip
-
-    # Determine the type prefix: everything before the last identifier/pointer declarator
-    # Split the pre-comma text to identify the base type
-    base_type = extract_base_type_prefix(prefix_with_first)
-
-    # Collect all declarators: split by depth-0 commas, then handle the last one (before ;)
-    # Build the full raw text without the semicolon
-    text_body = raw_text.rstrip.chomp(';').strip
-
-    declarators = []
-    depth = 0
-    current = ''
-    text_body.each_char do |ch|
-      case ch
-      when '(', '[', '{' then depth += 1; current << ch
-      when ')', ']', '}' then depth -= 1; current << ch
-      when ','
-        if depth == 0
-          declarators << current.strip
-          current = ''
-        else
-          current << ch
-        end
-      else
-        current << ch
-      end
-    end
-    declarators << current.strip unless current.strip.empty?
-
-    # Reconstruct individual declarations
-    declarators.map do |declarator|
-      # Strip leading type tokens from subsequent declarators (they already have the type from base_type)
-      # The first declarator already includes the full type; subsequent ones just have the name/pointer
-      if declarator == declarators.first
-        "#{declarator};"
-      else
-        # Subsequent declarators: prepend base type (without trailing pointer specifiers)
-        clean_base = base_type.gsub(/\*+\s*$/, '').strip
-        # Preserve pointer specifiers on the declarator name itself
-        "#{clean_base} #{declarator};"
-      end
-    end
+    return ["#{first};"] + rest.map { |declarator| "#{base_type} #{declarator};" }
   end
 
-  # Extract the base type prefix from the first declarator in a compound declaration
-  # e.g., "static int *p" => "static int"
-  #       "const char *s1" => "const char"
-  #       "unsigned long x" => "unsigned long"
-  #       "static int (*a)(int)" => "static int"
-  def extract_base_type_prefix(first_declarator_text)
-    # Remove leading/trailing whitespace
-    text = first_declarator_text.strip
+  # The text's pieces between commas outside parentheses, brackets, braces and literals
+  def _top_level_pieces(body)
+    scanner = StringScanner.new( body )
+    depth   = 0
+    cuts    = [0]
+    while scanner.skip_until( SPLIT_TOKEN )
+      depth += CExtractorDeclarator::DEPTH_CHANGE.fetch( scanner.matched, 0 )
+      cuts << scanner.pos if scanner.matched == ',' and depth.zero?
+    end
 
-    # A parenthesized declarator is everything from its group onward
-    grouped = CExtractorDeclarator.parenthesized( text )
+    return _between( body, cuts << (body.bytesize + 1) )
+  end
+
+  # The text between each pair of cuts, stripped and less the comma that ends each piece. An
+  # empty piece is dropped.
+  def _between(body, cuts)
+    return cuts.each_cons( 2 ).map { |from, to| body.byteslice( from, to - from - 1 ).strip }.reject( &:empty? )
+  end
+
+  # The first declarator's base type, or nil when its name can't be read. A star and the
+  # qualifiers after it belong to the declarator, as do an attribute or asm label after the
+  # name, so the base type ends at the first star outside brackets or else at the name. The name
+  # is read as the declaration's own record reads it.
+  def _base_type(first)
+    head    = CExtractorDeclarator.without_initializer( first ).gsub( /\s+/, ' ' )
+    grouped = CExtractorDeclarator.parenthesized( head )
     return grouped.base_type if grouped
 
-    # Remove pointer specifiers and the identifier at the end
-    # The identifier is the last word token; pointers are * before it
-    text_no_ptr = text.gsub(/\*+\s*\w+\s*$/, '').strip
-    if text_no_ptr.empty? || text_no_ptr == text
-      # No pointer -- remove just the trailing identifier
-      text.gsub(/\s*\w+\s*$/, '').strip
-    else
-      text_no_ptr
+    name  = extract_name( @code_text.strip_compiler_extensions( head ) )
+    start = name && _declarator_start( head, name )
+    return start && head.byteslice( 0, start ).strip
+  end
+
+  # Where a declarator starts in the text ahead of any initializer. That is its first star or
+  # its name, whichever comes first, outside brackets. The name is its last appearance there, as
+  # a tag may share it, as in `struct count count`.
+  def _declarator_start(head, name)
+    scanner = StringScanner.new( head )
+    depth   = 0
+    while scanner.skip_until( DECLARATOR_TOKEN )
+      token  = scanner.matched
+      depth += CExtractorDeclarator::DEPTH_CHANGE.fetch( token, 0 )
+      next unless depth.zero?
+
+      star ||= scanner.pos - 1 if token == '*'
+      at     = scanner.pos - name.bytesize if token == name
     end
+
+    return [star, at].compact.min
   end
 
   # Parse a single (non-compound) declaration string into a CVariableDeclaration struct
@@ -316,10 +307,9 @@ class CExtractorDeclarations
   #
   # Returns: String or nil
   def extract_name(clean_text)
-    # Strip only the trailing semicolon (not inner semicolons in e.g. struct bodies)
-    text = clean_text.sub(/\s*;\s*$/, '')
-    # Strip initializer (from first = onward)
-    text = text.sub(/\s*=.*/, '')
+    # Strip the trailing semicolon and any initializer. Only an '=' outside brackets starts one,
+    # so an array size such as `[N == 2 ? 2 : 3]` stays.
+    text = CExtractorDeclarator.without_initializer( clean_text )
     # Strip array subscripts
     text = text.gsub(/\[.*?\]/, '')
     # Strip trailing whitespace and return last word token
@@ -329,7 +319,7 @@ class CExtractorDeclarations
   # Extract array subscript suffix from a clean (decorator/extension-stripped) declaration.
   # Returns the complete subscript string (e.g., "[8]", "[M][N]") or "" for scalars.
   def extract_array_suffix(clean_text)
-    text = clean_text.sub(/\s*;\s*$/, '').sub(/\s*=.*/, '')
+    text = CExtractorDeclarator.without_initializer( clean_text )
     text =~ /\w+(\s*(?:\[[^\]]*\])+)\s*$/ ? $1.strip : ''
   end
 
@@ -339,9 +329,9 @@ class CExtractorDeclarations
   def extract_type(clean_text, name)
     return nil if name.nil?
 
-    # Find last occurrence of name in the text (before ; or [)
-    # Strip only trailing semicolon to avoid matching inner semicolons (e.g., in struct bodies)
-    text = clean_text.sub(/\s*;\s*$/, '').sub(/\s*=.*/, '').gsub(/\[.*?\]/, '').strip
+    # Find last occurrence of name in the text, once its semicolon, initializer and array
+    # subscripts are gone
+    text = CExtractorDeclarator.without_initializer( clean_text ).gsub(/\[.*?\]/, '').strip
 
     # Find the name in the text and take everything before it (including pointer specifiers).
     # A plain rindex(name) would find the last substring occurrence of `name` anywhere in

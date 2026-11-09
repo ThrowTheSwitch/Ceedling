@@ -260,11 +260,8 @@ class PartializerHelper
         end
       end
 
-      # Group declarations by original statement.
-      # Simple declarations (one var per unique original) and 
-      # compound declarations (multiple vars sharing the same original, e.g. `static int a, b;`)
-      # require different strategies to prevent the restored comment text from being found and
-      # corrupted by a subsequent replace call.
+      # Group declarations by statement. The variables of a compound declaration, such as
+      # `static int a, b;`, share one statement, which becomes one no-op per variable.
       groups = _decls.group_by { |var| var.original.strip }
 
       # A static the extractor read no name from, such as one a macro declares, can't be renamed.
@@ -272,38 +269,7 @@ class PartializerHelper
       groups.reject! { |_original, vars| vars.any? { |var| var.name.nil? } }
       _decls = groups.values.flatten
 
-      groups.each do |_original, vars|
-        # Pre-compute old/new names before any mutation of var.name
-        old_names   = vars.map(&:name)
-        new_names   = old_names.map { |n| "partial_#{func.name}_#{n}" }
-
-        # Single placeholder per group — keyed on the first variable's name
-        placeholder = "__CEEDLING_NOOP_#{func.name.upcase}_#{old_names.first.upcase}__"
-
-        # Replace original declaration: one no-op per variable, single comment with placeholder.
-        # Defer placeholder restoration until after ALL renames are complete so that
-        # restored comment text cannot be found and re-processed by a subsequent replace.
-        if vars.size > 1
-          func.code_block = @utils.replace_compound_declaration_with_noops( func.code_block, _original, placeholder, vars.size )
-          func.body       = @utils.replace_compound_declaration_with_noops( func.body,       _original, placeholder, vars.size )
-        else
-          func.code_block = @utils.replace_declaration_with_noop( func.code_block, _original, placeholder )
-          func.body       = @utils.replace_declaration_with_noop( func.body,       _original, placeholder )
-        end
-
-        # Rename all variables' token-bounded references (shared logic for both cases)
-        vars.zip( old_names, new_names ).each do |var, old_name, new_name|
-          var.text        = @utils.rename_c_identifier( var.text,        old_name, new_name )
-          var.declarator  = @utils.rename_c_identifier( var.declarator,  old_name, new_name ) if var.declarator
-          var.name        = new_name
-          func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
-          func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
-        end
-
-        # Restore original declaration text in the single placeholder comment
-        func.code_block = func.code_block.sub(placeholder) { _original }
-        func.body       = func.body.sub(placeholder)       { _original }
-      end
+      _promote_statements( func, groups ) unless groups.empty?
 
       _decls_log = _decls.map { |d| "`#{d.original.strip}`" }
       @loginator.log_list(
@@ -317,6 +283,60 @@ class PartializerHelper
 
     return decls
   end
+
+  # Promotes a function's statics to module scope under new names. Each statement becomes one
+  # no-op per variable, with its text kept in a comment behind a placeholder. Every statement is
+  # replaced before any rename, since a rename would change the text a later statement is found
+  # by. Each variable's text, declarator and array size then take every rename, because one
+  # static's initializer may name another, as in `static int a = 1, *p = &a;`. The placeholders
+  # are restored last, so no rename reaches the restored text.
+  def _promote_statements(func, groups)
+    vars         = groups.values.flatten
+    renames      = vars.to_h { |var| [var.name, "partial_#{func.name}_#{var.name}"] }
+    placeholders = groups.map { |original, group| [original, _replace_statement( func, original, group )] }
+
+    vars.each { |var| _rename_variable( var, renames ) }
+    _rename_in_function( func, renames )
+    placeholders.each { |original, placeholder| _restore_statement( func, original, placeholder ) }
+  end
+
+  # Puts one no-op per variable where the statement stood, followed by a placeholder comment,
+  # and returns the placeholder. It's keyed on the statement's first variable.
+  def _replace_statement(func, original, vars)
+    placeholder     = "__CEEDLING_NOOP_#{func.name.upcase}_#{vars.first.name.upcase}__"
+    func.code_block = _noops( func.code_block, original, placeholder, vars.size )
+    func.body       = _noops( func.body, original, placeholder, vars.size )
+    return placeholder
+  end
+
+  # The text with the statement replaced by `count` no-ops and the placeholder comment
+  def _noops(text, original, placeholder, count)
+    return @utils.replace_declaration_with_noop( text, original, placeholder ) if count == 1
+
+    return @utils.replace_compound_declaration_with_noops( text, original, placeholder, count )
+  end
+
+  # Gives a promoted variable its new name. Its text, declarator and array size take the new
+  # name of every promoted variable they mention.
+  def _rename_variable(var, renames)
+    var.text         = @utils.rename_c_identifiers( var.text, renames )
+    var.declarator   = @utils.rename_c_identifiers( var.declarator, renames ) if var.declarator
+    var.array_suffix = @utils.rename_c_identifiers( var.array_suffix, renames ) if var.array_suffix
+    var.name         = renames[var.name]
+  end
+
+  # Renames each promoted variable throughout the function
+  def _rename_in_function(func, renames)
+    func.code_block = @utils.rename_c_identifiers( func.code_block, renames )
+    func.body       = @utils.rename_c_identifiers( func.body, renames )
+  end
+
+  # Puts the statement's original text back in place of the placeholder in its comment
+  def _restore_statement(func, original, placeholder)
+    func.code_block = func.code_block.sub( placeholder ) { original }
+    func.body       = func.body.sub( placeholder )       { original }
+  end
+
   # Refuses a module whose shape fallback preprocessing cannot resolve.
   #
   # Fallback never runs a compiler. It scans text and tracks a handful of conditional shapes

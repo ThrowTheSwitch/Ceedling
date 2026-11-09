@@ -24,6 +24,20 @@ module Partials
   # first wins, as it does for the compiler.
   LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:LITERAL_OR_COMMENT)
 
+  # How a rename reads text, one token at a time. Only an identifier is renamed, so first come
+  # the tokens that hold one without naming a variable. A member after '.' or '->' and a tag
+  # after struct, union or enum live apart from variables. A number is read whole, since a C23
+  # digit separator, as in `1'000`, would otherwise open a character literal.
+  RENAME_TOKEN = Regexp.union(
+    /(?:\.|->)\s*[A-Za-z_$][\w$]*|(?<![\w$])(?:struct|union|enum)\s+[A-Za-z_$][\w$]*/,
+    /(?<![\w$])\.?\d(?:[\w$.]|[eEpP][+-]|'(?=[\w$]))*/,
+    LITERAL_OR_COMMENT,
+    /[A-Za-z_$][\w$]*/
+  ) unless const_defined?(:RENAME_TOKEN)
+
+  # An asm template's reference to a named operand, as in `%[count]` or `%w[count]`
+  ASM_OPERAND_REFERENCE = /%[A-Za-z]*\[\K[A-Za-z_$][\w$]*(?=\])/ unless const_defined?(:ASM_OPERAND_REFERENCE)
+
   # Data class representing a source or header file to be partialized
   ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
     def initialize(filepath: nil, directives_only_filepath: nil, full_expansion_filepath: nil, includes: [])
@@ -62,6 +76,17 @@ module Partials
   end unless const_defined?(:FunctionDefinition, false)
 
   # A `static` function is private to its file
+  # The text with each identifier `renames` maps replaced, in one pass whatever the number of
+  # names. Literals and comments stay as written. The exception is an asm template's operand
+  # references, which must follow the operand names they refer to.
+  def self.rename_identifiers(text, renames)
+    return text.gsub( RENAME_TOKEN ) do |token|
+      next renames.fetch( token, token ) unless token.start_with?( '"' )
+
+      token.gsub( ASM_OPERAND_REFERENCE ) { |name| renames.fetch( name, name ) }
+    end
+  end
+
   def self.static?(decorators)
     return decorators.include?( 'static' )
   end
