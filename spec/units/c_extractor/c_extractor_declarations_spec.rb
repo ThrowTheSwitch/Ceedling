@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'timeout'
 require 'spec_helper'
 require 'ceedling/c_extractor/c_extractor_declarations'
 require 'ceedling/c_extractor/c_extractor_code_text'
@@ -907,6 +908,159 @@ describe CExtractorDeclarations do
         expect(success).to be true
         check_single(variable, name: 'cb', type: 'void', decorators: ['static'],
                      text: 'void (*cb)(int);', array_suffix: '')
+      end
+    end
+
+    # The name of a function pointer or a pointer to an array sits inside parentheses. The type
+    # is what comes ahead of them, and the declarator keeps the rest a declaration needs.
+    context "parenthesized declarators" do
+      def read_one(content)
+        success, variables, _, _ = extract_variable.call( content )
+        expect( success ).to be true
+        expect( variables.length ).to eq 1
+        variables.first.to_h.slice( :name, :type, :array_suffix, :declarator, :text )
+      end
+
+      it "reads a function pointer's declarator" do
+        expect( read_one( "static void (*cb)(int);" ) ).to eq(
+          name: 'cb', type: 'void', array_suffix: '', declarator: '(*cb)(int)', text: 'void (*cb)(int);'
+        )
+      end
+
+      it "reads an array of function pointers by its name" do
+        expect( read_one( "static int (*s_table[2])(int) = { one, two };" ) ).to eq(
+          name: 's_table', type: 'int', array_suffix: '', declarator: '(*s_table[2])(int)', text: 'int (*s_table[2])(int) = { one, two };'
+        )
+      end
+
+      it "reads a constant function pointer by its name" do
+        expect( read_one( "int (*const k_hook)(int) = bump;" ) ).to include( name: 'k_hook', type: 'int', declarator: '(*const k_hook)(int)' )
+      end
+
+      it "reads a pointer to an array's declarator" do
+        expect( read_one( "int (*ptr)[10];" ) ).to include( name: 'ptr', type: 'int', array_suffix: '', declarator: '(*ptr)[10]' )
+      end
+
+      it "keeps pointer stars ahead of the parentheses in the type" do
+        expect( read_one( "extern char *(*name_of)(int);" ) ).to include( name: 'name_of', type: 'char *', declarator: '(*name_of)(int)' )
+      end
+
+      # The declarator is repeated in an extern, which must agree with the definition
+      it "keeps a calling convention written inside the parentheses" do
+        expect( read_one( "static void (__stdcall *on_tick)(int);" ) ).to eq(
+          name: 'on_tick', type: 'void', array_suffix: '', declarator: '(__stdcall *on_tick)(int)', text: 'void (__stdcall *on_tick)(int);'
+        )
+      end
+
+      it "reads a qualifier a compiler adds past the name" do
+        expect( read_one( "int (* _Nullable np)(int);" ) ).to include( name: 'np', type: 'int', declarator: '(* _Nullable np)(int)' )
+      end
+
+      it "keeps a calling convention ahead of an attribute among the stars" do
+        expect( read_one( "void (__stdcall * __attribute__((unused)) fp)(int);" ) ).to include(
+          name: 'fp', type: 'void', declarator: '(__stdcall * __attribute__((unused)) fp)(int)'
+        )
+      end
+
+      [
+        ['void (*(fp34))(void) = 0;',          'fp34',      '(*(fp34))(void)'],
+        ['static int (*hook$1)(int) = 0;',     'hook$1',    '(*hook$1)(int)'],
+        ['int (*s_hook /* callback */)(int);', 's_hook',    '(*s_hook /* callback */)(int)']
+      ].each do |content, name, declarator|
+        it "reads `#{content}` by its name #{name}" do
+          expect( read_one( content ) ).to include( name: name, declarator: declarator )
+        end
+      end
+
+      # An extern repeats the declarator. An attribute after it would draw a warning there, while
+      # an asm label names the symbol and must stay.
+      it "leaves a trailing attribute out of the declarator and keeps an asm label" do
+        expect( read_one( "void (* const vec[])(void) __attribute__ ((used)) = { 0 };" ) ).to include( name: 'vec', declarator: '(* const vec[])(void)' )
+        expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int) __asm__("fp_label")' )
+        expect( read_one( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ) ).to include( name: 'g', declarator: '(*g)(int) __asm__("sym")' )
+        expect( read_one( 'int (*g_u)(int) MY_USED = f;' ) ).to include( name: 'g_u', declarator: '(*g_u)(int)' )
+      end
+
+      # Fallback preprocessing leaves comments in place, and a bracket in one doesn't count
+      it "finds the initializer past a comment holding a bracket" do
+        expect( read_one( 'int (*g_cb)(int) /* 1) */ = ticker_bump;' ) ).to include( name: 'g_cb', declarator: '(*g_cb)(int)' )
+      end
+
+      # The written text may open a different group than the stripped text does, as an attribute
+      # whose argument opens with a star can. Then the stripped declarator stands.
+      it "keeps the stripped declarator when the written text opens a different group" do
+        expect( read_one( "void __attribute__((*odd)) (*fp)(int);" ) ).to include( name: 'fp', declarator: '(*fp)(int)' )
+      end
+
+      [
+        ['int x, (*fp)(int);',                [['x', 'int', nil], ['fp', 'int', '(*fp)(int)']]],
+        ['int (*fp)(int), x;',                [['fp', 'int', '(*fp)(int)'], ['x', 'int', nil]]],
+        ['void (__cdecl *a)(int), (*b)(int);', [['a', 'void', '(__cdecl *a)(int)'], ['b', 'void', '(*b)(int)']]]
+      ].each do |content, expected|
+        it "splits the compound `#{content}` by declarator" do
+          success, variables, _, _ = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.declarator] } ).to eq expected
+        end
+      end
+
+      it "gives a plain declaration no declarator" do
+        expect( read_one( "static uint8_t buf[16];" ) ).to include( name: 'buf', declarator: nil )
+      end
+
+      # A macro's arguments ahead of the type are no declarator
+      it "reads a declaration whose type a function-like macro precedes by its last word" do
+        expect( read_one( "__ALIGNED(8) uint32_t x;" ) ).to include( name: 'x', declarator: nil )
+      end
+
+      # A pointer in a size, an initializer or a string is no declarator
+      [
+        ['size_t n = sizeof(*p);',   'n', ''],
+        ['int a[sizeof(*p)];',       'a', '[sizeof(*p)]'],
+        ['char *s = "(*x)";',        's', ''],
+        ['int x[] = { (*a) };',      'x', '[]']
+      ].each do |content, name, suffix|
+        it "reads `#{content}` as a plain declaration of #{name}" do
+          expect( read_one( content ) ).to include( name: name, array_suffix: suffix, declarator: nil )
+        end
+      end
+
+      # A struct's function-pointer members belong to the struct, not to its variables
+      it "reads a struct variable whose body declares a function pointer by the variable's name" do
+        expect( read_one( "static struct ops { int (*open)(void); } s_ops;" ) ).to include( name: 's_ops', declarator: nil )
+      end
+
+      it "splits a compound declaration of struct variables whose body declares a function pointer" do
+        success, variables, _, _ = extract_variable.call( "static struct ops { int (*open)(void); } s_ops, s_ops2;" )
+
+        expect( success ).to be true
+        expect( variables.map { |v| [v.name, v.text] } ).to eq [
+          ['s_ops',  'struct ops { int (*open)(void); } s_ops;'],
+          ['s_ops2', 'struct ops { int (*open)(void); } s_ops2;']
+        ]
+      end
+
+      # A lookup table may run to many kilobytes, and its declaration must still read quickly. A
+      # scan quadratic in its length would take minutes on this one.
+      it "reads a declaration with a large initializer table within a time bound" do
+        content = 'static const uint8_t table[] = { ' + ('0x5A, ' * 20_000) + '0 };'
+
+        success, variables = nil
+        Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
+
+        expect( success ).to be true
+        expect( variables.first.name ).to eq( 'table' )
+      end
+
+      it "splits a compound declaration of function pointers into each one" do
+        success, variables, _, _ = extract_variable.call( "static int (*a)(int), (*b)(int);" )
+
+        expect( success ).to be true
+        expect( variables.map { |v| [v.name, v.type, v.declarator, v.text] } ).to eq [
+          ['a', 'int', '(*a)(int)', 'int (*a)(int);'],
+          ['b', 'int', '(*b)(int)', 'int (*b)(int);']
+        ]
       end
     end
 

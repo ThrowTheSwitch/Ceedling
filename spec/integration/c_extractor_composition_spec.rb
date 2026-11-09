@@ -1204,6 +1204,42 @@ describe CExtractor do
       end
     end
 
+    # A function pointer's name sits inside parentheses, which a bare macro invocation's shape
+    # also starts with. Each declaration must arrive whole, as one element.
+    context "with function-pointer declarators" do
+      def sequence_of(content)
+        extract_from.call( content ).element_sequence.map { |element| [element.class.name.split( '::' ).last, element.respond_to?( :text ) ? element.text : element.signature] }
+      end
+
+      it "extracts a function-pointer variable as one variable" do
+        expect( sequence_of( "int (*g_hook)(int);\n" ) ).to eq [['CVariableDeclaration', 'int (*g_hook)(int);']]
+      end
+
+      it "extracts an initialized function-pointer variable as one variable" do
+        expect( sequence_of( "int (*g_hook)(int) = 0;\n" ) ).to eq [['CVariableDeclaration', 'int (*g_hook)(int) = 0;']]
+      end
+
+      it "extracts a function-pointer variable whose base type is a typedef as one variable" do
+        expect( sequence_of( "result_t (*on_done)(int);\n" ) ).to eq [['CVariableDeclaration', 'result_t (*on_done)(int);']]
+      end
+
+      it "extracts a constant function-pointer variable as one variable" do
+        expect( sequence_of( "int (*const k_hook)(int) = bump;\n" ) ).to eq [['CVariableDeclaration', 'int (*const k_hook)(int) = bump;']]
+      end
+
+      it "extracts an initialized pointer to an array as one variable" do
+        expect( sequence_of( "int (*g_row)[4] = 0;\n" ) ).to eq [['CVariableDeclaration', 'int (*g_row)[4] = 0;']]
+      end
+
+      it "extracts a declaration of a function returning a function pointer as one declaration" do
+        expect( sequence_of( "int (*ticker_get(void))(int);\n" ) ).to eq [['CFunctionDeclaration', 'int (*ticker_get(void))(int);']]
+      end
+
+      it "extracts a definition of a function returning a function pointer as one definition" do
+        expect( sequence_of( "int (*ticker_get(void))(int) { return bump; }\n" ) ).to eq [['CFunctionDefinition', 'int (*ticker_get(void))(int)']]
+      end
+    end
+
   end
 
 end

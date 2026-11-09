@@ -64,6 +64,15 @@ class PartializerHelper
   # What the helper scan shares while it walks. That is the plan it fills and the facts that gate it.
   CarryScan = Struct.new( :plan, :declared, :fallback, :header_guarded, keyword_init: true ) unless const_defined?(:CarryScan, false)
 
+  # Names a definition the extractor read no function name from, and how to spell it plainly
+  UNREADABLE_NAME_ERROR = <<~ERROR.chomp unless const_defined?(:UNREADABLE_NAME_ERROR, false)
+    Partial %<partial>s ⏩️ Cannot read the name of the function declared by `%<declaration>s`.
+
+    OPTIONS:
+      1. If it returns or takes a function pointer, give that type a name with a typedef and use the name in this declaration.
+      2. If a macro generates the declaration, declare the function directly.
+  ERROR
+
 
   include Partials
 
@@ -258,6 +267,11 @@ class PartializerHelper
       # corrupted by a subsequent replace call.
       groups = _decls.group_by { |var| var.original.strip }
 
+      # A static the extractor read no name from, such as one a macro declares, can't be renamed.
+      # Its whole statement stays in the body, still a valid local, and nothing of it is promoted.
+      groups.reject! { |_original, vars| vars.any? { |var| var.name.nil? } }
+      _decls = groups.values.flatten
+
       groups.each do |_original, vars|
         # Pre-compute old/new names before any mutation of var.name
         old_names   = vars.map(&:name)
@@ -280,6 +294,7 @@ class PartializerHelper
         # Rename all variables' token-bounded references (shared logic for both cases)
         vars.zip( old_names, new_names ).each do |var, old_name, new_name|
           var.text        = @utils.rename_c_identifier( var.text,        old_name, new_name )
+          var.declarator  = @utils.rename_c_identifier( var.declarator,  old_name, new_name ) if var.declarator
           var.name        = new_name
           func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
           func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
@@ -742,6 +757,17 @@ class PartializerHelper
 
   def _normalized(text)
     return text.to_s.gsub( /\s+/, ' ' ).strip
+  end
+
+  # Stops the build on a definition the extractor read no name from. Every later step finds a
+  # definition by its name. A declaration needs none, since it is written word for word and CMock
+  # reads its own. Extraction reads raw bytes, so the signature is made printable first.
+  def validate_function_names_readable(c_module, name, module_name)
+    unnamed = c_module.function_definitions.find { |func| func.name.nil? }
+    return if unnamed.nil?
+
+    signature = _normalized( unnamed.signature ).dup.force_encoding( Encoding::UTF_8 ).scrub( '?' )
+    raise CeedlingException.new( format( UNREADABLE_NAME_ERROR, partial: "#{name}::#{module_name}", declaration: signature ) )
   end
 
   # Validate that every function name in additions and subtractions exists in c_module.

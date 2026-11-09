@@ -1084,8 +1084,26 @@ describe CExtractorFunctions do
       it "extracts name from function with array of function pointers" do
         signature = "void dispatch(void (*handlers[])(int))"
         name = parse_name.call(signature)
-        
+
         expect(name).to eq("dispatch")
+      end
+
+      # Qualifiers, calling conventions and attributes may sit among the stars ahead of the name
+      it "extracts name from function returning a function pointer through decorated stars" do
+        expect(parse_name.call("int (* const getConst(void))(int)")).to eq("getConst")
+        expect(parse_name.call("int (__cdecl *getCdecl(void))(int)")).to eq("getCdecl")
+        expect(parse_name.call("int (* __attribute__((unused)) getUnused(void))(int)")).to eq("getUnused")
+      end
+
+      it "extracts name from function returning a function pointer with its name in parentheses" do
+        expect(parse_name.call("int (*(getWrapped)(void))(int)")).to eq("getWrapped")
+      end
+
+      it "extracts name from function returning a pointer to an array" do
+        signature = "int (*getRow(void))[4]"
+        name = parse_name.call(signature)
+
+        expect(name).to eq("getRow")
       end
     end
 
@@ -2550,6 +2568,67 @@ describe CExtractorFunctions do
         functions.setup()
         success, decl = functions.try_extract_function_declaration(scanner)
         return [success, decl, scanner.pos, scanner.rest]
+      end
+    end
+
+    # A declaration is a function's when a parameter list follows its name. A pointer to a
+    # function inside the parameters declares a parameter.
+    context "declarations involving function pointers" do
+      [
+        ['void ticker_register(int (*cb)(int));',                'ticker_register'],
+        ['void ticker_register_any(int (*)(int));',              'ticker_register_any'],
+        ['int board_apply(int (*fn)(int), int n);',              'board_apply'],
+        ['int (*ticker_get(void))(int);',                        'ticker_get'],
+        ['int (* const ticker_const(void))(int);',               'ticker_const'],
+        ['int (__cdecl *ticker_cdecl(void))(int);',              'ticker_cdecl'],
+        ['int (*ticker_row(void))[4];',                          'ticker_row'],
+        ['int (*f(int (*g)(int)))(int);',                        'f'],
+        ['void (*signal(int sig, void (*func)(int)))(int);',     'signal'],
+        ['void (* _Nullable sigset(int, void (* _Nullable)(int)))(int);', 'sigset'],
+        ['int (*(ticker_paren(void)))(int);',                    'ticker_paren'],
+        ['int (*(ticker_wrap)(void))(int);',                     'ticker_wrap'],
+        ['DECLARE_THING(*p, b);',                                'DECLARE_THING']
+      ].each do |content, name|
+        it "reads `#{content}` as a declaration of #{name}()" do
+          success, decl, pos, _ = try_extract_decl.call(content)
+
+          expect(success).to be true
+          expect(decl.name).to eq(name)
+          expect(decl.signature).to eq(content)
+          expect(pos).to eq(content.length)
+        end
+      end
+
+      [
+        'int (*g_hook)(int);',
+        'int (*const k_hook)(int);',
+        'int (* volatile v_hook)(int);',
+        'int (__cdecl *on_tick)(int);',
+        'int (* __attribute__((unused)) u_hook)(int);',
+        'int (* _Nullable n_hook)(int);',
+        'int (*(r_hook))(int);',
+        'char (*(r_row))[4];',
+        'int (*hook$x)(int);',
+        'void (__attribute__((stdcall)) *s_hook)(int);',
+        'handler_t (*table[4])(void);',
+        'int (*g_row)[4];'
+      ].each do |content|
+        it "leaves the variable `#{content}` to the declaration extractors" do
+          success, decl, pos, _ = try_extract_decl.call(content)
+
+          expect(success).to be false
+          expect(decl).to be_nil
+          expect(pos).to eq(0)
+        end
+      end
+
+      it "separates the decorators of a declaration taking a function pointer" do
+        success, decl, _, _ = try_extract_decl.call('extern void ticker_on(void (*cb)(void));')
+
+        expect(success).to be true
+        expect(decl.name).to eq('ticker_on')
+        expect(decl.decorators).to eq(['extern'])
+        expect(decl.signature_stripped).to eq('void ticker_on(void (*cb)(void));')
       end
     end
 

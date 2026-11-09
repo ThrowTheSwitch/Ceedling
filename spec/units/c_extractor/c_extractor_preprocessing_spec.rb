@@ -800,6 +800,26 @@ describe CExtractorPreprocessing do
       expect(pos).to eq 0
     end
 
+    # A declarator in parentheses goes on past its group, which no bare invocation does
+    [
+      ['a parameter list', 'int (*g_hook)(int) = 0;'],
+      ['an array suffix',  'int (*g_row)[4];'],
+      ['an initializer',   'int (*p) = 0;'],
+      ['another declarator', 'int (*a), (*b);']
+    ].each do |continuation, text|
+      it "leaves a parenthesized declarator followed by #{continuation} to the declaration extractors" do
+        result, pos = try_bare_invocation(text)
+        expect(result).to eq [false, nil]
+        expect(pos).to eq 0
+      end
+    end
+
+    it "leaves a function returning a function pointer to the function extractors" do
+      result, pos = try_bare_invocation('int (*ticker_get(void))(int);')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
     it "defers to the function-definition path when followed by '{'" do
       result, pos = try_bare_invocation('FOO(0){}')
       expect(result).to eq [false, nil]

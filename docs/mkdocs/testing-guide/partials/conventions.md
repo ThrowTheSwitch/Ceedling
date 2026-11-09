@@ -217,4 +217,30 @@ carries neither copy. When it generates the Partial, it logs a notice naming the
 function. For a helper, the notice suggests selecting it with `+name`, which
 selects the first copy.
 
+## Function Pointers
+
+A Partial reads function pointers in each common spelling, with or without a
+typedef for their type. A function may take or return one. A module may hold
+one, an array of them, or a pointer to an array. A Partial declares each such
+variable with its whole type, so a test can assign it and call through it.
+
+```c
+void ticker_register(int (*cb)(int));   // a function taking a function pointer
+int (*ticker_get(void))(int);           // a function returning one
+static int (*s_hook)(int);              // a variable holding one
+static int (*s_table[2])(int);          // an array of them
+```
+
+A table whose entries name `static` functions in your module's source needs
+those functions selected too. Add them with `+name`, as for a selected function
+that calls them.
+
+A Partial reads each declaration as written, before macros expand. A macro that
+spells part of a declarator can hide what the declaration names, as `WINAPI`
+does in `void (WINAPI *fp)(int);`. For a function pointer, give its type a name
+with a typedef and use the name in the declaration. For a function a macro
+declares, declare the function directly. When a Partial finds no name at all
+for a function your module defines, it stops the build with a message naming
+the definition.
+
 <br/><br/>

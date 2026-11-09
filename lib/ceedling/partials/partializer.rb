@@ -459,6 +459,7 @@ class Partializer
   # Extracts one of a module's files, a header or a source, ready to merge with the other.
   def _extract_file_contents(name, config, c_file, file_type, fallback)
     c_module = @c_extractor.from_file( c_file.directives_only_filepath )
+    @helper.validate_function_names_readable( c_module, name, config.module )
 
     _log_module_contents(name, config.module, file_type, c_module)
 
@@ -574,10 +575,12 @@ class Partializer
     return Set.new( candidates.filter_map { |var, tag| var.name unless _completed?( tag, texts ) } )
   end
 
-  # Each extern variable whose type names a struct or union by value, paired with its tag
+  # Each extern variable whose type names a struct or union by value, paired with its tag. A
+  # declarator in parentheses makes a pointer, which holds no struct by value.
   def _extern_aggregates(c_module)
-    tags = _aggregate_tags( c_module )
-    return c_module.variable_declarations.filter_map { |v| [v, tags[v.type.to_s]] if v.extern? and tags.key?( v.type.to_s ) }
+    tags  = _aggregate_tags( c_module )
+    plain = c_module.variable_declarations.select { |v| v.extern? and v.declarator.nil? }
+    return plain.filter_map { |v| [v, tags[v.type.to_s]] if tags.key?( v.type.to_s ) }
   end
 
   # Each type a variable may name by value that is a struct or union tag, keyed to its tag. A
