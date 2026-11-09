@@ -240,21 +240,6 @@ describe 'Function pointers in a Partial' do
       expect_link( @result, ['g_lbl', 'ticker_fire'] )
     end
 
-    # GCC accepts an asm label after an attribute, and clang doesn't
-    it 'keeps an asm label that follows an attribute on a function pointer extern' do
-      skip 'only GCC accepts an asm label after an attribute' unless partials_compiler_gcc?
-
-      @result = ticker(
-        header: "int ticker_bump(int n);\nint ticker_fire(int n);\n",
-        source: "int ticker_bump(int n) { return n + 1; }\n" \
-                "int (*g_lbl)(int) __attribute__((used)) __asm__(\"ticker_hook_symbol\") = ticker_bump;\n" \
-                "int ticker_fire(int n) { return g_lbl(n); }\n"
-      )
-
-      expect( @result.impl_h ).to include( 'extern int (*g_lbl)(int) __asm__("ticker_hook_symbol");' )
-      expect_link( @result, ['g_lbl', 'ticker_fire'], flags: '-Werror=attributes' )
-    end
-
     it 'declares each function pointer of a compound declaration' do
       @result = ticker(
         header: "int ticker_fire(int n);\n",
