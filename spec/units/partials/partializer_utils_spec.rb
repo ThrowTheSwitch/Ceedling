@@ -465,6 +465,32 @@ describe PartializerUtils do
       expect(result).to include("`TOKEN_1`")
       expect(result).not_to include("static int val1, val2;")
     end
+
+    # The statement comes from a function's body, whose comments are blanked to spaces, while a
+    # code block under fallback preprocessing keeps them
+    it "finds a statement whose code block copy holds a block comment" do
+      text   = "int f(void) { static int x /* count */ = 0; return x; }"
+      result = @utils.replace_compound_declaration_with_noops(text, "static int x   = 0;", "PH_X", 1)
+
+      expect(result).to eq("int f(void) { (void)0; /* `PH_X` replaced with no-op plus variable renamed & promoted to module-scope */ return x; }")
+    end
+
+    it "finds a compound statement whose code block copy holds a line comment" do
+      text   = "int f(void) {\n  static int a, // first\n    b;\n  return a + b;\n}"
+      result = @utils.replace_compound_declaration_with_noops(text, "static int a,  b;", "PH_A", 2)
+
+      expect(result.scan("(void)0;").length).to eq(2)
+      expect(result).not_to include("static int a,")
+      expect(result).to include("return a + b;")
+    end
+
+    it "finds a statement whose code block copy holds comments after earlier no-op comments" do
+      text   = "int f(void) { (void)0; /* `PH_A` replaced */ static int x /* count */ = 0; return x; }"
+      result = @utils.replace_compound_declaration_with_noops(text, "static int x   = 0;", "PH_X", 1)
+
+      expect(result).to include("/* `PH_A` replaced */ (void)0; /* `PH_X`")
+      expect(result).not_to include("static int x")
+    end
   end
 
   context "#rename_c_identifiers" do

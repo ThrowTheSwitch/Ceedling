@@ -38,6 +38,10 @@ module Partials
   # An asm template's reference to a named operand, as in `%[count]` or `%w[count]`
   ASM_OPERAND_REFERENCE = /%[A-Za-z]*\[\K[A-Za-z_$][\w$]*(?=\])/ unless const_defined?(:ASM_OPERAND_REFERENCE)
 
+  # Space between a statement's tokens in a function's code block. Under fallback preprocessing
+  # it may hold a comment where the function's comment-blanked body holds a space.
+  STATEMENT_GAP = %r{(?:\s|/\*.*?\*/|//[^\n]*)+}m unless const_defined?(:STATEMENT_GAP)
+
   # Data class representing a source or header file to be partialized
   ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
     def initialize(filepath: nil, directives_only_filepath: nil, full_expansion_filepath: nil, includes: [])
@@ -85,6 +89,24 @@ module Partials
 
       token.gsub( ASM_OPERAND_REFERENCE ) { |name| renames.fetch( name, name ) }
     end
+  end
+
+  # The text with its first copy of `statement` replaced by what the block returns, or the text
+  # as it was. The statement is read from a function's body, whose comments are blanked to
+  # spaces. The text usually holds it exactly, and a plain search finds that copy fastest. Under
+  # fallback preprocessing the text may keep a comment inside the statement, so then each gap
+  # between its tokens matches whitespace and comments alike.
+  def self.replace_statement(text, statement, &replacement)
+    return text.sub( statement, &replacement ) if text.include?( statement )
+
+    found = _statement_pattern( statement ).match( text )
+    return found ? found.pre_match + yield + found.post_match : text
+  end
+
+  # The statement with any whitespace or comments between its tokens
+  def self._statement_pattern(statement)
+    tokens = statement.strip.split( /\s+/ ).map { |part| Regexp.escape( part ) }
+    return Regexp.new( tokens.join( STATEMENT_GAP.source ), Regexp::MULTILINE )
   end
 
   def self.static?(decorators)

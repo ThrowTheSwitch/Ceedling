@@ -104,8 +104,8 @@ class PartializerUtils
   # and a single unique `placeholder` token. After all variable renames are complete, the
   # caller restores `original_decl` by replacing the placeholder with the original text.
   #
-  # Block form of `sub` is used so that `\` and `&` in the declaration are not interpreted
-  # as regex replacement backreferences.
+  # The declaration comes from a function's body, where comments are blanked, so the text's
+  # copy may hold comments between its tokens. See Partials.replace_statement.
   #
   # @param text          [String] Code text to modify (e.g., a function code_block or body)
   # @param original_decl [String] Declaration text to replace (should be stripped of surrounding whitespace)
@@ -115,7 +115,7 @@ class PartializerUtils
   def replace_compound_declaration_with_noops(text, original_decl, placeholder, count)
     noops   = "(void)0; " * (count - 1)
     comment = "(void)0; /* `#{placeholder}` replaced with no-op plus variable renamed & promoted to module-scope */"
-    text.sub(original_decl) { noops + comment }
+    Partials.replace_statement( text, original_decl ) { noops + comment }
   end
 
   # Rename C identifiers throughout a text block, each as a whole token.

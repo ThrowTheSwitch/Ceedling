@@ -742,6 +742,22 @@ describe PartializerHelper do
         expect(func.code_block).to include('return *partial_calc_p;')
       end
 
+      # Under fallback preprocessing a code block keeps its comments, while the body blanks them
+      it "promotes a static whose statement holds comments" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static int x   = 0;\n  static int a,  b;\n  return x + a + b;\n}",
+          code_block: "int calc(void) {\n  static int x /* count */ = 0;\n  static int a, // first\n    b;\n  return x + a + b;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:name)).to eq ['partial_calc_x', 'partial_calc_a', 'partial_calc_b']
+        expect(func.code_block.scan('(void)0;').length).to eq(3)
+        expect(func.code_block).not_to match(/^\s*static int/)
+        expect(func.code_block).to include('return partial_calc_x + partial_calc_a + partial_calc_b;')
+      end
+
       # A tag lives apart from variables, so a static's type keeps a tag another static shares
       it "leaves a struct tag alone when another promoted static shares its name" do
         func = OpenStruct.new(

@@ -139,6 +139,19 @@ describe 'Partial fallback preprocessing' do
       expect( @result.impl_h ).to include( 'extern int g_c1;', 'extern int g_c2;' )
       expect_link( @result, ['g_c1', 'g_c2'] )
     end
+
+    # A promoted static must leave the function, or the function keeps a local copy of its own
+    # while the test's extern reaches the module's
+    it 'promotes a function-scope static whose statement holds comments' do
+      @result = gauge(
+        "int gauge_count(void) {\n  static int x /* count */ = 0;\n  static int a, // first\n    b;\n  x++;\n  return x + a + b;\n}\n",
+        header: "int gauge_count(void);\n"
+      )
+
+      expect( @result.impl_c ).not_to match( /^\s*static int/ )
+      expect( @result.impl_h ).to include( 'extern int partial_gauge_count_x;', 'extern int partial_gauge_count_b;' )
+      expect_link( @result, ['gauge_count', 'partial_gauge_count_x', 'partial_gauge_count_a', 'partial_gauge_count_b'] )
+    end
   end
 
   # ---------------------------------------------------------------------------
