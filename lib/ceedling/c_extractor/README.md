@@ -28,7 +28,7 @@ Other methods in this toolkit skip a string or character literal safely, honorin
 
 `CExtractorFunctions` finds function declarations and function definitions. A declaration is a bare prototype ending in a semicolon. A definition carries a full body in braces.
 
-The extractor walks forward from a candidate starting point, tracking how deep it is inside parentheses. It also watches for a few signs that what it is looking at is not actually a function. A leading `(*name)` pattern signals a function-pointer variable, not a function. A `[` appearing before any `(` signals an array variable. An `=` appearing outside any parentheses signals a variable with an initializer. Once these possibilities are ruled out, the extractor knows it has found a genuine function signature.
+The extractor walks forward from a candidate starting point, tracking how deep it is inside parentheses. It also watches for a few signs that what it is looking at is not actually a function. A name inside parentheses, as in `int (*hook)(int)`, declares a function only when a parameter list follows it, as in `int (*get(void))(int)`. Otherwise it signals a variable, such as a function pointer. A pointer inside the parameter list only declares a parameter. A `[` appearing before any `(` signals an array variable. An `=` appearing outside any parentheses signals a variable with an initializer. Once these possibilities are ruled out, the extractor knows it has found a genuine function signature.
 
 For a definition, the extractor calls on `collect_balanced` to pull the complete function body, including every nested brace inside it. For a declaration, it confirms the signature is immediately followed by a semicolon. Either way, the function's name is pulled out with a small regex. Any storage-class or inline keyword before the name, such as `static`, `extern` or `inline`, is split off separately, so a caller can ask about visibility without re-parsing the signature. Every other word keeps its place, `const` and `_Noreturn` included.
 
@@ -39,6 +39,8 @@ For a definition, the extractor calls on `collect_balanced` to pull the complete
 The extractor tracks three independent counts at the same time: parentheses, square brackets, and braces. Parentheses matter for function-pointer variables. Square brackets matter for arrays. Braces matter for initializer lists, such as `int values[] = {1, 2, 3};`. The extractor only considers the declaration finished when all three counts return to zero at a semicolon.
 
 Once the raw declaration text is captured, it is split at any top-level commas into one record per variable. Each variable's name, base type, array suffix, and any decorating keywords are then pulled out with straightforward regex matching against the now-isolated text.
+
+A function pointer or a pointer to an array names its variable inside parentheses, past any stars and qualifiers. `CExtractorDeclarator` reads that group for the function and variable extractors alike. A variable keeps the group as its `declarator`, so generated code can declare it whole, as in `extern int (*hook)(int);`.
 
 ## Recognizing Types and Directives
 

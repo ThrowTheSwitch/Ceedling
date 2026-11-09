@@ -768,6 +768,48 @@ describe GeneratorPartials do
       expect(buf.string).not_to include('lut[];')
     end
 
+    # A function pointer's type wraps its name, so the extern needs the whole declarator
+    it "should write a function pointer's extern declaration with its whole declarator" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: 's_hook', type: 'int', declarator: '(*s_hook)(int)', text: 'int (*s_hook)(int);', decorators: ['static'])
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern int (*s_hook)(int);')
+    end
+
+    it "should take a function-pointer array's declarator from its definition" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: 'table', type: 'int', declarator: '(*table[])(int)', text: 'int (*table[])(int);', decorators: ['extern']),
+        CExtractorTypes::CVariableDeclaration.new(name: 'table', type: 'int', declarator: '(*table[2])(int)', text: 'int (*table[2])(int) = { one, two };')
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern int (*table[2])(int);')
+      expect(buf.string).not_to include('table[])')
+    end
+
+    # A macro may spell a whole declaration, and the extractor then reads no name from it
+    it "should write no extern declaration for a variable without a name" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: nil, text: 'DEFINE_VAR(int, g_x) = 5;'),
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_y', type: 'int', text: 'int g_y;')
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern int g_y;')
+      expect(buf.string.scan('extern').size).to eq(1)
+    end
+
+    it "should reapply a leading qualifier ahead of a declarator" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: 'pick', type: 'char', declarator: '(*pick)(int)', text: 'char (*pick)(int);', decorators: ['const'])
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern const char (*pick)(int);')
+    end
+
     it "should not reapply a qualifier already embedded in a pointer-level declarator" do
       c_module = make_module(
         make_var(name: 'lookup_table', type: 'uint8_t* const', text: 'uint8_t* const lookup_table;', decorators: ['static', 'const'])

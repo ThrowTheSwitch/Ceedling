@@ -8,6 +8,7 @@
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
+require 'ceedling/c_extractor/c_extractor_declarator'
 
 class CExtractorDeclarations
 
@@ -271,9 +272,14 @@ class CExtractorDeclarations
   # e.g., "static int *p" => "static int"
   #       "const char *s1" => "const char"
   #       "unsigned long x" => "unsigned long"
+  #       "static int (*a)(int)" => "static int"
   def extract_base_type_prefix(first_declarator_text)
     # Remove leading/trailing whitespace
     text = first_declarator_text.strip
+
+    # A parenthesized declarator is everything from its group onward
+    grouped = CExtractorDeclarator.parenthesized( text )
+    return grouped.base_type if grouped
 
     # Remove pointer specifiers and the identifier at the end
     # The identifier is the last word token; pointers are * before it
@@ -299,18 +305,32 @@ class CExtractorDeclarations
     # Strip compiler extensions for name/type/array_suffix extraction only;
     # clean_text (stored as .text) retains attributes for correct compilation.
     extraction_text = @code_text.strip_compiler_extensions(clean_text)
-    name            = extract_name(extraction_text)
-    type            = extract_type(extraction_text, name)
-    array_suffix    = extract_array_suffix(extraction_text)
+    # A function pointer or a pointer to an array names its variable inside parentheses
+    grouped         = CExtractorDeclarator.parenthesized( CExtractorDeclarator.without_initializer( extraction_text ) )
+    name            = grouped ? grouped.name : extract_name(extraction_text)
 
     CVariableDeclaration.new(
       original:     original_text,
       name:         name,
-      type:         type,
-      array_suffix: array_suffix,
+      type:         grouped ? grouped.base_type : extract_type(extraction_text, name),
+      array_suffix: grouped ? '' : extract_array_suffix(extraction_text),
       decorators:   decorators,
-      text:         clean_text
+      text:         clean_text,
+      declarator:   written_declarator(clean_text, grouped)
     )
+  end
+
+  # The declarator as written. An extern repeats it, so a calling convention or attribute among
+  # its stars and an asm label after it must stay to agree with the definition. Stripping
+  # extensions removes them. The written text stands only when it opens the same group, which
+  # the text ahead of each group shows once extensions are stripped. Otherwise the stripped
+  # declarator stands.
+  def written_declarator(clean_text, grouped)
+    return nil if grouped.nil?
+
+    written = CExtractorDeclarator.parenthesized( CExtractorDeclarator.without_initializer( clean_text ) )
+    same    = (written and @code_text.strip_compiler_extensions( written.base_type ) == grouped.base_type)
+    return same ? written.declarator : grouped.declarator
   end
 
   # Storage-class specifiers and base-type qualifiers precede a C declaration's type as a
@@ -362,11 +382,6 @@ class CExtractorDeclarations
   #
   # Returns: String or nil
   def extract_name(clean_text)
-    # Function pointers: void (*callback)(int);
-    if clean_text =~ /\(\s*\*(\w+)\s*\)/
-      return $1
-    end
-
     # Strip only the trailing semicolon (not inner semicolons in e.g. struct bodies)
     text = clean_text.sub(/\s*;\s*$/, '')
     # Strip initializer (from first = onward)
@@ -381,9 +396,6 @@ class CExtractorDeclarations
   # Returns the complete subscript string (e.g., "[8]", "[M][N]") or "" for scalars.
   def extract_array_suffix(clean_text)
     text = clean_text.sub(/\s*;\s*$/, '').sub(/\s*=.*/, '')
-    # `match?` leaves $~ alone, which is safe because the line below sets it
-    # with its own match before reading $1.
-    return '' if text.match?(/\(\s*\*/)                    # function pointer -- no array suffix
     text =~ /\w+(\s*(?:\[[^\]]*\])+)\s*$/ ? $1.strip : ''
   end
 
@@ -396,11 +408,6 @@ class CExtractorDeclarations
     # Find last occurrence of name in the text (before ; or [)
     # Strip only trailing semicolon to avoid matching inner semicolons (e.g., in struct bodies)
     text = clean_text.sub(/\s*;\s*$/, '').sub(/\s*=.*/, '').gsub(/\[.*?\]/, '').strip
-
-    # For function pointers like "void (*callback)(int)", type is everything before (*name)
-    if text =~ /^(.*?)\(\s*\*#{Regexp.escape(name)}\s*\)/
-      return $1.strip
-    end
 
     # Find the name in the text and take everything before it (including pointer specifiers).
     # A plain rindex(name) would find the last substring occurrence of `name` anywhere in

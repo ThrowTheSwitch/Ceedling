@@ -565,6 +565,78 @@ describe PartializerHelper do
         expect(func.code_block).to include('static int count')
       end
 
+      # A function pointer's declarator wraps its name, so the new name has to reach it too
+      it "promotes a function-scope static function pointer under its new name, declarator and all" do
+        func = OpenStruct.new(
+          name:       'fire',
+          body:       "{\n  static int (*cache)(int) = 0;\n  return cache(1);\n}",
+          code_block: "int fire(void) {\n  static int (*cache)(int) = 0;\n  return cache(1);\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.type, v.declarator] }).to eq [['partial_fire_cache', 'int', '(*partial_fire_cache)(int)']]
+        expect(result.first.text).to include('(*partial_fire_cache)(int)')
+        expect(func.code_block).to include('return partial_fire_cache(1);')
+      end
+
+      it "promotes a function-scope static function pointer whose name sits in redundant parentheses" do
+        func = OpenStruct.new(
+          name:       'fire',
+          body:       "{\n  static int (*(cache))(int) = 0;\n  return cache(1);\n}",
+          code_block: "int fire(void) {\n  static int (*(cache))(int) = 0;\n  return cache(1);\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.declarator] }).to eq [['partial_fire_cache', '(*(partial_fire_cache))(int)']]
+      end
+
+      # A macro may declare a static whole, and one the extractor reads no name from stays in place
+      it "leaves a function-scope static it can't name in the body" do
+        func = OpenStruct.new(
+          name:       'tally',
+          body:       "{\n  static ARR_OF(int, hits)[3];\n  static int n;\n  return n;\n}",
+          code_block: "int tally(void) {\n  static ARR_OF(int, hits)[3];\n  static int n;\n  return n;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:name)).to eq ['partial_tally_n']
+        expect(func.code_block).to include('static ARR_OF(int, hits)[3];')
+      end
+
+      # Renaming part of a statement would leave the rest of it unpromoted, so the whole one stays
+      it "leaves a compound static whole when it can't name one of its variables" do
+        func = OpenStruct.new(
+          name:       'tally',
+          body:       "{\n  static ARR_OF(int, hits)[3], n;\n  static int m;\n  return n + m;\n}",
+          code_block: "int tally(void) {\n  static ARR_OF(int, hits)[3], n;\n  static int m;\n  return n + m;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:name)).to eq ['partial_tally_m']
+        expect(func.code_block).to include('static ARR_OF(int, hits)[3], n;', 'return n + partial_tally_m;')
+      end
+
+      it "promotes each function pointer of a compound static and an array of them" do
+        func = OpenStruct.new(
+          name:       'fire',
+          body:       "{\n  static int (*a)(int), (*b)(int);\n  static int (*t[2])(int) = { 0 };\n  return a(1) + b(2) + t[0](3);\n}",
+          code_block: "int fire(void) {\n  static int (*a)(int), (*b)(int);\n  static int (*t[2])(int) = { 0 };\n  return a(1) + b(2) + t[0](3);\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.declarator] }).to eq [
+          ['partial_fire_a', '(*partial_fire_a)(int)'],
+          ['partial_fire_b', '(*partial_fire_b)(int)'],
+          ['partial_fire_t', '(*partial_fire_t[2])(int)']
+        ]
+        expect(func.code_block).to include('return partial_fire_a(1) + partial_fire_b(2) + partial_fire_t[0](3);')
+      end
+
       it "does not modify code_block when function body has only non-static variables" do
         original_code_block = "void simple(void) {\n  int x = 0;\n  return x;\n}"
 
@@ -635,6 +707,68 @@ describe PartializerHelper do
 
   def make_config(mod, tests:, mocks:)
     OpenStruct.new(module: mod, tests: tests, mocks: mocks)
+  end
+
+  ###
+  ### validate_function_names_readable()
+  ###
+
+  context "#validate_function_names_readable" do
+    def defined(name, signature)
+      CExtractorTypes::CFunctionDefinition.new( name: name, signature: signature )
+    end
+
+    it "does not raise when every definition has a name" do
+      c_module = CExtractorTypes::CModule.new(
+        function_definitions:  [defined( 'ticker_get', 'int (*ticker_get(void))(int)' )],
+        function_declarations: [CExtractorTypes::CFunctionDeclaration.new( name: 'ticker_count', signature: 'int ticker_count(void);' )]
+      )
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }.not_to raise_error
+    end
+
+    it "names the test, the module and the signature of a definition without a name" do
+      c_module = CExtractorTypes::CModule.new(
+        function_definitions: [defined( 'ticker_count', 'int ticker_count(void)' ), defined( nil, 'int (*ticker_get(void))(int)' )]
+      )
+
+      message = <<~MESSAGE.chomp
+        Partial test_ticker::ticker ⏩️ Cannot read the name of the function declared by `int (*ticker_get(void))(int)`.
+
+        OPTIONS:
+          1. If it returns or takes a function pointer, give that type a name with a typedef and use the name in this declaration.
+          2. If a macro generates the declaration, declare the function directly.
+      MESSAGE
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
+        .to raise_error( CeedlingException ) { |error| expect( error.message ).to eq( message ) }
+    end
+
+    # A prototype is written word for word and CMock reads its own name, so neither needs one
+    it "leaves a declaration without a name alone" do
+      c_module = CExtractorTypes::CModule.new(
+        function_declarations: [CExtractorTypes::CFunctionDeclaration.new( name: nil, signature: 'int count$all(void);' )]
+      )
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }.not_to raise_error
+    end
+
+    it "collapses whitespace in the signature it shows" do
+      c_module = CExtractorTypes::CModule.new( function_definitions: [defined( nil, "int  count$all(\n  void )" )] )
+
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
+        .to raise_error( CeedlingException, /declared by `int count\$all\( void \)`\./ )
+    end
+
+    # Extraction reads raw bytes, which may hold any character
+    it "shows a signature read as raw bytes" do
+      signature = "int caf\xC3\xA9$x(void)".b
+      c_module  = CExtractorTypes::CModule.new( function_definitions: [defined( nil, signature )] )
+
+      expect( signature.encoding ).to eq( Encoding::BINARY )
+      expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
+        .to raise_error( CeedlingException, /declared by `int café\$x\(void\)`\./ )
+    end
   end
 
   ###
