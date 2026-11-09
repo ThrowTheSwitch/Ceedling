@@ -167,8 +167,12 @@ class CExtractorCodeText
   # This method repeatedly scans for and skips these elements until no more are found,
   # ensuring all consecutive deadspace is consumed in a single call.
   #
+  # Ahead of a statement, a stray ';' declares nothing. With `semicolons`, it counts as
+  # deadspace too.
+  #
   # Parameters:
-  #   scanner: StringScanner positioned at potential deadspace
+  #   scanner:    StringScanner positioned at potential deadspace
+  #   semicolons: Whether a stray ';' counts as deadspace
   #
   # Returns: Number of bytes skipped
   #
@@ -178,14 +182,14 @@ class CExtractorCodeText
   #   "   \n// comment\ncode" -> skips to "code"
   #   "/* block */  \t\ncode" -> skips to "code"
   #   "code"                  -> skips 0 bytes (no deadspace)
-  def skip_deadspace(scanner)
+  def skip_deadspace(scanner, semicolons: false)
     start_pos = scanner.pos
 
     loop do
       initial = scanner.pos
 
-      # Skip whitespace
-      scanner.skip(/\s+/)
+      # Skip whitespace, and any stray ';' when asked
+      scanner.skip(semicolons ? /[\s;]+/ : /\s+/)
 
       # Skip comments
       skip_comment(scanner) if scanner.check(%r{/[/*]})

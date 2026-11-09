@@ -867,6 +867,20 @@ describe CExtractorCodeText do
       end
     end
 
+    # A stray ';' declares nothing, so ahead of a statement it can count as space
+    context "stray semicolons" do
+      it "stops at a ';' by default" do
+        _bytes, _pos, rest = skip_deadspace.call( " ; int x;" )
+        expect( rest ).to eq( "; int x;" )
+      end
+
+      it "skips each ';' among the space when asked" do
+        scanner = StringScanner.new( " ;; /* c */ ;\n int x;" )
+        CExtractorCodeText.new().skip_deadspace( scanner, semicolons: true )
+        expect( scanner.rest ).to eq( "int x;" )
+      end
+    end
+
     context "whitespace handling" do
       it "skips spaces" do
         content = "     code"
