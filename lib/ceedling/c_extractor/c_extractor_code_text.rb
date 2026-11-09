@@ -126,6 +126,9 @@ class CExtractorCodeText
   #   3. If found, consumes it and continues
   #   4. If not found, restores position and exits
   #
+  # Deadspace that reaches the end of the text is left in place too. The text may be a buffer
+  # that ends early, inside a comment, so the next read must see that deadspace whole.
+  #
   # Parameters:
   #   scanner: StringScanner positioned at potential semicolons/deadspace
   #
@@ -140,19 +143,14 @@ class CExtractorCodeText
   #   "; code"            -> skips first semicolon, stops at "code"
   #   "code"              -> skips nothing
   def skip_semicolons(scanner)
-    while !scanner.eos?
+    until scanner.eos?
       start_pos = scanner.pos
       skip_deadspace(scanner)
-      break if scanner.eos?
-      
-      # If we find a semicolon, consume it and continue
-      if scanner.scan(/;/)
-        next
-      else
-        # Not a semicolon, restore position and break
-        scanner.pos = start_pos
-        break
-      end
+      next if scanner.scan(/;/)
+
+      # Not a semicolon, or the text's end: restore position and stop
+      scanner.pos = start_pos
+      break
     end
   end
 

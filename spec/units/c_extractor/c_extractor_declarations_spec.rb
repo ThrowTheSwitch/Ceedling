@@ -965,7 +965,7 @@ describe CExtractorDeclarations do
       [
         ['void (*(fp34))(void) = 0;',          'fp34',      '(*(fp34))(void)'],
         ['static int (*hook$1)(int) = 0;',     'hook$1',    '(*hook$1)(int)'],
-        ['int (*s_hook /* callback */)(int);', 's_hook',    '(*s_hook /* callback */)(int)']
+        ['int (*s_hook /* callback */)(int);', 's_hook',    '(*s_hook )(int)']
       ].each do |content, name, declarator|
         it "reads `#{content}` by its name #{name}" do
           expect( read_one( content ) ).to include( name: name, declarator: declarator )
@@ -1061,6 +1061,58 @@ describe CExtractorDeclarations do
           ['a', 'int', '(*a)(int)', 'int (*a)(int);'],
           ['b', 'int', '(*b)(int)', 'int (*b)(int);']
         ]
+      end
+    end
+
+    # Fallback preprocessing leaves comments in place, and a declaration's lines are joined into
+    # one. A comment must not swallow what follows it on the joined line.
+    context "comments inside a declaration" do
+      def read(content)
+        success, variables, pos, _rest = extract_variable.call( content )
+        expect( success ).to be(true), "expected a declaration in #{content.inspect}"
+        expect( pos ).to eq( content.length )
+        return variables
+      end
+
+      it "reads past a line comment before the initializer" do
+        content = "int g_n // count\n    = 3;"
+        variable = read( content ).first
+        expect( [variable.name, variable.type, variable.text] ).to eq ['g_n', 'int', 'int g_n = 3;']
+        expect( variable.original ).to eq content
+      end
+
+      it "reads a declaration that ends in a block comment" do
+        expect( read( "int g_m /* count */;" ).map { |v| [v.name, v.type] } ).to eq [['g_m', 'int']]
+      end
+
+      it "reads a function pointer with a line comment before its initializer" do
+        variable = read( "int (*g_fp)(int) // cb\n    = 0;" ).first
+        expect( [variable.name, variable.declarator, variable.text] ).to eq ['g_fp', '(*g_fp)(int)', 'int (*g_fp)(int) = 0;']
+      end
+
+      it "splits a compound declaration only at commas outside its comments" do
+        expect( read( "int g_c1, // first, of two\n    g_c2;" ).map { |v| [v.name, v.text] } ).to eq [['g_c1', 'int g_c1;'], ['g_c2', 'int g_c2;']]
+      end
+
+      it "keeps what looks like a comment inside a literal" do
+        expect( read( "char *g_lit = \"a // b /* c */\";" ).first.text ).to eq 'char *g_lit = "a // b /* c */";'
+        expect( read( "char g_ch = '/';" ).first.text ).to eq "char g_ch = '/';"
+      end
+
+      # The buffer may end inside the comment, so the scan fails and the caller grows the buffer
+      it "fails at a block comment that never closes" do
+        success, variables, pos, _rest = extract_variable.call( "int x /* never closed; int y;" )
+        expect( [success, variables, pos] ).to eq [false, nil, 0]
+      end
+
+      it "reads a declaration with a commented initializer table within a time bound" do
+        content = 'static const uint8_t table[] = { ' + ('0x5A, /* v */ ' * 20_000) + '0 };'
+
+        success, variables = nil
+        Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
+
+        expect( success ).to be true
+        expect( variables.first.name ).to eq( 'table' )
       end
     end
 

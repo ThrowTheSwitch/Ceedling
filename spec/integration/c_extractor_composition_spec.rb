@@ -1285,6 +1285,25 @@ describe CExtractor do
       end
     end
 
+    # Fallback preprocessing leaves comments in place, inside declarations too
+    context "with comments inside declarations" do
+      it "reads on past a declaration that ends in a comment" do
+        expect( sequence_of( "int g_m /* count */;\nint after_fn(void) { return 7; }\n" ) ).to eq [['CVariableDeclaration', 'int g_m ;'], ['CFunctionDefinition', 'int after_fn(void)']]
+      end
+
+      it "reads a declaration whose initializer follows a line comment" do
+        expect( sequence_of( "int g_n // count\n    = 3;\nint after;\n" ) ).to eq [['CVariableDeclaration', 'int g_n = 3;'], ['CVariableDeclaration', 'int after;']]
+      end
+
+      # A comment after a feature can run past the buffer's end, so it must be read again whole
+      (1..24).each do |chunk_size|
+        it "reads past a comment after a declaration with #{chunk_size}-byte chunks" do
+          expect( sequence_of( "int g_last; // trailing; comment\nint after;\n", chunk_size: chunk_size ) ).to eq [['CVariableDeclaration', 'int g_last;'], ['CVariableDeclaration', 'int after;']]
+          expect( sequence_of( "int g_last; /* trailing; comment */\nint after;\n", chunk_size: chunk_size ) ).to eq [['CVariableDeclaration', 'int g_last;'], ['CVariableDeclaration', 'int after;']]
+        end
+      end
+    end
+
   end
 
 end

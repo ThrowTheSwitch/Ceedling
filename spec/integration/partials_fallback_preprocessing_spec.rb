@@ -90,6 +90,58 @@ describe 'Partial fallback preprocessing' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'declarations holding comments' do
+  # ---------------------------------------------------------------------------
+
+    # The text scan leaves comments in place, and a Partial writes each declaration on one line.
+    # A comment inside one must not swallow the rest of it there.
+    def gauge(source, header: '')
+      generate_partial(
+        mode: :fallback,
+        module_name: 'gauge',
+        header: "#ifndef GAUGE_H\n#define GAUGE_H\nint gauge_read(void);\n#{header}#endif\n",
+        source: "#include \"gauge.h\"\n#{source}int gauge_read(void) { return 0; }\n",
+        source_includes: ['gauge.h'],
+        tests_expose: PartializerConfig::PUBLIC
+      )
+    end
+
+    def expect_link(result, references)
+      link = link_partial( result, references: references )
+      expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_diagnostic}"
+    end
+
+    it 'defines a variable whose initializer follows a line comment' do
+      @result = gauge( "int g_n // count\n    = 3;\n" )
+
+      expect( @result.impl_h ).to include( 'extern int g_n;' )
+      expect( @result.impl_c ).to include( 'int g_n = 3;' )
+      expect_link( @result, ['g_n'] )
+    end
+
+    it 'reads on past a declaration that ends in a block comment' do
+      @result = gauge( "int g_m /* count */;\nint gauge_after(void) { return 7; }\n", header: "int gauge_after(void);\n" )
+
+      expect( @result.impl_h ).to include( 'extern int g_m;', 'int gauge_after(void);' )
+      expect_link( @result, ['g_m', 'gauge_after'] )
+    end
+
+    it 'defines a function pointer whose initializer follows a line comment' do
+      @result = gauge( "int (*g_fp)(int) // callback\n    = 0;\n" )
+
+      expect( @result.impl_h ).to include( 'extern int (*g_fp)(int);' )
+      expect_link( @result, ['g_fp'] )
+    end
+
+    it 'splits a compound declaration only at commas outside its comments' do
+      @result = gauge( "int g_c1, // first, of two\n    g_c2;\n" )
+
+      expect( @result.impl_h ).to include( 'extern int g_c1;', 'extern int g_c2;' )
+      expect_link( @result, ['g_c1', 'g_c2'] )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   context 'conditionals the text scan evaluates' do
   # ---------------------------------------------------------------------------
 

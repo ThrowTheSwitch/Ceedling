@@ -41,8 +41,13 @@ module CExtractorDeclarator
   # Space between a group's tokens. Fallback preprocessing leaves comments in place.
   GAP = %r{(?:\s|/\*.*?\*/|//[^\n]*)*}m unless const_defined?(:GAP, false)
 
+  # A string or character literal, or a comment. What looks like code inside one isn't. A literal
+  # may run past a line's end here, as CExtractorCodeText#skip_c_string reads one, so blanking
+  # comments and passing literals agree on where each ends.
+  LITERAL_OR_COMMENT = %r{"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:LITERAL_OR_COMMENT, false)
+
   # A bracket, or a literal or comment whose brackets don't count toward a group's balance
-  BALANCE_TOKEN = %r{[()\[\]{}]|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:BALANCE_TOKEN, false)
+  BALANCE_TOKEN = Regexp.union( /[()\[\]{}]/, LITERAL_OR_COMMENT ) unless const_defined?(:BALANCE_TOKEN, false)
 
   # A balance token, or the '=' that may start an initializer
   INITIALIZER_TOKEN = Regexp.union( /=/, BALANCE_TOKEN ) unless const_defined?(:INITIALIZER_TOKEN, false)

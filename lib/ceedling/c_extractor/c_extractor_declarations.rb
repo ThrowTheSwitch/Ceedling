@@ -22,27 +22,30 @@ class CExtractorDeclarations
     @code_text = @c_extractor_code_text
   end
 
-  # Attempts to extract a complete variable declaration from the scanner
+  # Text without a quote, a '/', a delimiter or a ';', which the scan passes in one step. A run
+  # stops at every '/', since one may start a comment.
+  PLAIN_RUN = %r{[^"'/()\[\]{};]+} unless const_defined?(:PLAIN_RUN, false)
+
+  # Each delimiter's own kind of depth, and how the delimiter changes it
+  DELIMITER_DEPTH = {
+    '(' => [:paren, 1], ')' => [:paren, -1], '[' => [:bracket, 1], ']' => [:bracket, -1],
+    '{' => [:brace, 1], '}' => [:brace, -1]
+  }.freeze unless const_defined?(:DELIMITER_DEPTH, false)
+
+  # How a declaration's text looks once its comments are blanked. A type and a name come first,
+  # and the last character before the ';' closes a name, a suffix, an initializer or a literal.
+  # A multiline initializer still matches.
+  DECLARATION_SHAPE = /\w+.*[\w\]\)\}"']\s*;$/m unless const_defined?(:DECLARATION_SHAPE, false)
+
+  # Extracts a complete variable declaration from the scanner, through its terminating ';'.
   #
-  # Scans forward from the current scanner position looking for a complete C variable
-  # declaration terminated by a semicolon. Handles complex declaration syntax including:
-  #   - Simple variables: `int x;`
-  #   - Pointers: `char* ptr;`, `int** buffer;`
-  #   - Arrays: `int arr[10];`, `char matrix[3][4];`
-  #   - Initializers: `int x = 5;`, `int arr[] = {1, 2, 3};`
-  #   - String literals: `char* str = "hello";`
-  #   - Qualifiers: `const int MAX;`, `static volatile int flag;`
-  #   - Function pointers: `void (*callback)(int);`
-  #   - Complex nested structures with balanced parentheses, brackets, and braces
-  #   - Compound declarations: `int x, y;` expanded to one struct per variable
+  # The scan counts parentheses, brackets and braces apart, and the declaration ends at the
+  # first ';' outside all three. Literals and comments are passed whole, so nothing inside one
+  # counts. A compound declaration, such as `int x, y;`, yields one record per variable.
   #
-  # The extraction process:
-  #   1. Tracks nesting depth of (), [], and {} to handle complex declarations
-  #   2. Properly handles string literals (both " and ') including escape sequences
-  #   3. Skips comments (both // line comments and /* block comments */)
-  #   4. Stops at the first semicolon found at depth 0 (outside all nesting)
-  #   5. Validates the extracted text looks like a valid declaration
-  #   6. Expands compound declarations and parses each into a CVariableDeclaration struct
+  # Fallback preprocessing leaves comments in place. So each comment is blanked to a space
+  # before the text is checked, split and parsed, and a `//` can't swallow the rest of a joined
+  # line. Each record's `original` keeps the text as the scan read it.
   #
   # Parameters:
   #   scanner: StringScanner positioned at potential start of variable declaration
@@ -56,142 +59,73 @@ class CExtractorDeclarations
   #   On failure: Resets scanner position to starting position
   #
   # Safety:
-  #   A declaration with no terminating semicolon runs the scan to the end of
-  #   whatever buffer the caller (CExtractor#extract_next_feature) has grown so
-  #   far; that caller is the one place enforcing an overall length ceiling,
-  #   since only it knows how much more of the file remains to try growing into.
+  #   A declaration with no terminating ';', or with a block comment that never closes, runs
+  #   the scan to the end of the buffer. The caller, CExtractor#extract_next_feature, grows the
+  #   buffer and alone enforces the overall length ceiling, since only it knows how much of the
+  #   file remains.
   def try_extract_variable(scanner)
     start_pos = scanner.pos
+    depths    = Hash.new( 0 )
 
-    # Tracks paren, bracket, and brace depth simultaneously with an inline string state machine — not suitable for collect_balanced()
-    paren_depth = 0
-    bracket_depth = 0
-    brace_depth = 0
-    in_string = false
-    string_char = nil
-
-    # Scan until we find a semicolon at depth 0.
-    # If we reach the end of string scanner, we failed to find something.
     until scanner.eos?
-      char = scanner.peek(1)
-
-      # Handle string literals
-      if in_string
-        if char == '\\'
-          scanner.getch
-          scanner.getch unless scanner.eos?
-          next
-        elsif char == string_char
-          scanner.getch
-          in_string = false
-          string_char = nil
-          next
-        else
-          scanner.getch
-          next
-        end
-      end
-
-      case char
-      when '"', "'"
-        in_string = true
-        string_char = char
-        scanner.getch
-      when '/'
-        # Handle comments -- peek(2) starting with '/' is only ever exactly '//' or '/*'
-        # when it's a comment opener at all; anything else (a lone '/' or '/' followed by
-        # some other character) falls through to the plain-character else below.
-        if scanner.peek(2) == '//'
-          # Line comment -- skip to end of line
-          scanner.scan_until(/\n/) || scanner.terminate
-        elsif scanner.peek(2) == '/*'
-          # Block comment -- skip to closing */
-          scanner.pos += 2
-          scanner.scan_until(%r{\*/})
-        else
-          scanner.getch
-        end
-      when '='
-        # Track assignment for initializer detection
-        scanner.getch
-      when '('
-        paren_depth += 1
-        scanner.getch
-      when ')'
-        paren_depth -= 1
-        scanner.getch
-        # Unbalanced parentheses -- not a valid declaration
-        if paren_depth < 0
-          scanner.pos = start_pos
-          return [false, nil]
-        end
-      when '['
-        bracket_depth += 1
-        scanner.getch
-      when ']'
-        bracket_depth -= 1
-        scanner.getch
-        # Unbalanced brackets -- not a valid declaration
-        if bracket_depth < 0
-          scanner.pos = start_pos
-          return [false, nil]
-        end
-      when '{'
-        # Braces after '=' are initializers, not code blocks
-        brace_depth += 1
-        scanner.getch
-      when '}'
-        brace_depth -= 1
-        scanner.getch
-        # Unbalanced braces -- not a valid declaration
-        if brace_depth < 0
-          scanner.pos = start_pos
-          return [false, nil]
-        end
-      when ';'
-        # Found semicolon - check if it's at depth 0
-        if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0
-          # This is the end of a declaration
-          scanner.getch  # Consume the semicolon
-
-          # Extract the declaration
-          declaration = scanner.string[start_pos...scanner.pos]
-
-          # Verify this looks like a valid declaration
-          # Must have at least a type and identifier
-          # Can end with: word character, ], ), }, or " (for string initializers)
-          # `/m` flag: declaration may span multiple lines (e.g. a multiline brace
-          # initializer), so '.' must match embedded newlines too
-          if declaration.match?(/\w+.*[\w\]\)\}"']\s*;$/m)
-            return [true, expand_and_parse(declaration)]
-          else
-            scanner.pos = start_pos
-            return [false, nil]
-          end
-        else
-          # Semicolon inside parens, brackets, or braces -- keep scanning
-          scanner.getch
-        end
-      else
-        scanner.getch
-      end
+      token = _pass_token( scanner )
+      break unless _track_depth( depths, token )
+      return _variable_found( scanner, start_pos ) if token == ';' and depths.values.all?( &:zero? )
     end
 
-    # Reached end without finding a complete declaration
     scanner.pos = start_pos
-    [false, nil]
+    return [false, nil]
   end
 
   private
 
+  # Moves the scanner past one token. Returns it when it's a delimiter, a ';' or a lone '/', and
+  # nil when it's a literal, a comment or a run of plain text.
+  def _pass_token(scanner)
+    char = scanner.peek( 1 )
+    if char == '"' or char == "'"
+      @code_text.skip_c_string( scanner, char )
+    elsif scanner.check( %r{/[/*]} )
+      @code_text.skip_comment( scanner )
+    elsif !scanner.skip( PLAIN_RUN )
+      return scanner.getch
+    end
+
+    return nil
+  end
+
+  # Counts a delimiter into its own kind's depth. False once any kind closes more than it opened.
+  def _track_depth(depths, token)
+    kind, change = DELIMITER_DEPTH[token]
+    depths[kind] += change if kind
+    return depths.values.none?( &:negative? )
+  end
+
+  # The declaration ending at the scanner, split and parsed, or a failure when its text doesn't
+  # look like a declaration. The check and the parse read the text with its comments blanked.
+  def _variable_found(scanner, start_pos)
+    raw   = scanner.string.byteslice( start_pos, scanner.pos - start_pos )
+    clean = _blank_comments( raw )
+    return [true, expand_and_parse( clean, raw )] if clean.match?( DECLARATION_SHAPE )
+
+    scanner.pos = start_pos
+    return [false, nil]
+  end
+
+  # The text with each comment replaced by a space. A literal stays whole, so `"//"` survives.
+  def _blank_comments(text)
+    return text.gsub( CExtractorDeclarator::LITERAL_OR_COMMENT ) { |match| match.start_with?( '/' ) ? ' ' : match }
+  end
+
   # Expand compound declarations and parse each into CVariableDeclaration structs
   #
   # Parameters:
-  #   raw_text: String containing a complete C declaration (e.g., "static int x, y;")
+  #   text:     A complete declaration with its comments blanked (e.g., "static int x, y;")
+  #   raw_text: The same declaration as written, which each record keeps as its `original`
   #
   # Returns: Array<CVariableDeclaration>
-  def expand_and_parse(raw_text)
-    expand_compound(raw_text).map { |individual| parse_declaration(individual, raw_text) }
+  def expand_and_parse(text, raw_text)
+    expand_compound(text).map { |individual| parse_declaration(individual, raw_text) }
   end
 
   # Detect and split compound declarations (e.g., "int x, y;" => ["int x;", "int y;"])

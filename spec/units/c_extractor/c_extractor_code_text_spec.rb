@@ -784,20 +784,22 @@ describe CExtractorCodeText do
         expect(rest).to eq("")
       end
 
-      it "handles only semicolons and whitespace" do
+      # The text may be a buffer that ends early, so deadspace running to its end may go on past
+      # it. That deadspace stays for the next read, which sees all of it.
+      it "leaves trailing whitespace after the last semicolon" do
         content = "; ; ; "
         pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(6)
-        expect(rest).to eq("")
+
+        expect(pos).to eq(5)
+        expect(rest).to eq(" ")
       end
 
-      it "handles semicolons with unterminated comment" do
+      it "leaves a comment the text cuts short" do
         content = "; /* unterminated"
         pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(17)
-        expect(rest).to eq("")
+
+        expect(pos).to eq(1)
+        expect(rest).to eq(" /* unterminated")
       end
 
     end
