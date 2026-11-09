@@ -316,10 +316,58 @@ describe CExtractorFunctions do
       it "rejects pointer to array declaration" do
         content = "int (*ptr)[10];"
         signature, pos, rest = extract_signature.call(content, :declaration)
-        
+
         expect(signature).to be_nil
         expect(pos).to eq(0)
         expect(rest).to eq("int (*ptr)[10];")
+      end
+
+      # A label's ')' ends the declaration, but it closes no parameter list. A basic asm statement
+      # at file scope is a label alone.
+      it "rejects a variable declaration with an asm label, and a basic asm statement" do
+        ['int g asm("g_sym");', 'int g __asm ("g_sym");', 'int g[2] __asm__("g_sym");', 'int (*fp)(int) asm("fp_sym");', 'asm(".globl top_sym");'].each do |content|
+          signature, pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to be_nil, content
+          expect(pos).to eq(0)
+        end
+      end
+
+      it "accepts a function declaration with an asm label" do
+        signature, pos, rest = extract_signature.call('int f(void) asm("f_sym"); int g;', :declaration)
+
+        expect(signature).to eq('int f(void) asm("f_sym");')
+        expect(pos).to eq(25)
+        expect(rest).to eq(' int g;')
+      end
+
+      # Unexpanded macros may sit around the label. A function's text holds a parameter list, which
+      # is empty or opens with a word, an ellipsis or a C23 attribute. A macro's argument such as
+      # `(4)` and a specifier's argument are no parameter list.
+      it "accepts a function declaration with a macro ahead of its asm label" do
+        ['int f(void) MY_API asm("f_sym");', 'int h(int) DEPRECATED __asm("h_sym");', 'int k(void) MY_API __asm__("k_sym");',
+         'int f(int a, char *b) API asm("f_sym");', 'int f(...) API asm("f_sym");', 'int f() API asm("f_sym");',
+         'int f(typeof(int) *p) API asm("f_sym");', 'int f([[maybe_unused]] int x) API asm("f_sym");',
+         'int f(void) MY_DEPRECATED("use g") API asm("f_sym");', 'int f(void) asm("f_sym") MY_TRAIL;'].each do |content|
+          signature, _pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to eq(content)
+        end
+
+        # A line splice, or a directive fallback preprocessing leaves in place, may open the list
+        ["int f(\\\n  int x) __asm__(\"f_sym\");", "int f(\n#if WIDE\n  long x\n#else\n  int x\n#endif\n) asm(\"f_sym\");"].each do |content|
+          signature, _pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to start_with('int f('), content
+        end
+
+        ['typeof(int) g MY asm("g_sym");', '_Alignas(8) int g asm("g_sym");', 'int MY_ALIGN(4) g __asm__("g_sym");',
+         'int SECTION(".data") g __asm__("g_sym");', 'int __attribute((aligned(4))) g asm("g_sym");', 'int g asm("g"), *h asm("h");',
+         'int g MY_SECTION(".x") asm("g_sym");'].each do |content|
+          signature, _pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to be_nil, content
+        end
       end
     end
 

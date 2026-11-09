@@ -919,6 +919,42 @@ describe CExtractorDeclarations do
       end
     end
 
+    # An asm label names the variable's symbol. The record keeps it apart from the name and type,
+    # and its text keeps it for the definition.
+    context "asm labels" do
+      def read_all(content)
+        success, variables, _, _ = extract_variable.call( content )
+        expect( success ).to be true
+        variables.map { |v| v.to_h.slice( :name, :type, :array_suffix, :declarator, :text, :asm_label ) }
+      end
+
+      it "reads a variable by its name, whichever spelling its label takes" do
+        expect( read_all( 'int g_s __asm__("g_symbol") = 1;' ) ).to eq( [{ name: 'g_s', type: 'int', array_suffix: '', declarator: nil,
+                                                                           text: 'int g_s __asm__("g_symbol") = 1;', asm_label: '__asm__("g_symbol")' }] )
+        expect( read_all( 'int g_b asm("g_b_sym");' ).first ).to include( name: 'g_b', type: 'int', asm_label: 'asm("g_b_sym")' )
+        expect( read_all( 'static char *g_p __asm ("g_p_sym");' ).first ).to include( name: 'g_p', type: 'char *', asm_label: '__asm ("g_p_sym")' )
+      end
+
+      it "reads a label after an array size, an attribute or a declarator group" do
+        expect( read_all( 'int g_a[2] asm("g_a_sym") = { 1, 2 };' ).first ).to include( name: 'g_a', array_suffix: '[2]', asm_label: 'asm("g_a_sym")' )
+        expect( read_all( 'int g_u __attribute__((used)) asm("g_u_sym");' ).first ).to include( name: 'g_u', type: 'int', asm_label: 'asm("g_u_sym")' )
+        expect( read_all( 'int (*fp)(int) __asm__("fp_label");' ).first ).to include( name: 'fp', declarator: '(*fp)(int)', asm_label: '__asm__("fp_label")' )
+        expect( read_all( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ).first ).to include( name: 'g', declarator: '(*g)(int)', asm_label: '__asm__("sym")' )
+      end
+
+      it "reads each label of a compound declaration" do
+        expect( read_all( 'int a asm("a_sym") = 1, *b asm("b_sym"), c;' ).map { |v| v.slice( :name, :type, :asm_label ) } ).to eq( [
+          { name: 'a', type: 'int', asm_label: 'asm("a_sym")' },
+          { name: 'b', type: 'int *', asm_label: 'asm("b_sym")' },
+          { name: 'c', type: 'int', asm_label: nil }
+        ] )
+      end
+
+      it "gives a variable without a label none" do
+        expect( read_all( 'int asm_count = 1;' ).first ).to include( name: 'asm_count', asm_label: nil )
+      end
+    end
+
     context "multiline declarations" do
       it "extracts array declaration whose closing brace and semicolon fall on the final line after multiline data (GH #1182)" do
         content = "static uint8_t arr[10] = {\n    0x00, 0x01, 0x02, 0x03, 0x04,\n    0x05, 0x06, 0x07, 0x08, 0x09\n};"
@@ -1114,12 +1150,12 @@ describe CExtractorDeclarations do
         end
       end
 
-      # An extern repeats the declarator. An attribute after it would draw a warning there, while
-      # an asm label names the symbol and must stay.
-      it "leaves a trailing attribute out of the declarator and keeps an asm label" do
+      # An extern repeats the declarator. An attribute after it would draw a warning there, and an
+      # asm label is kept apart.
+      it "leaves a trailing attribute and an asm label out of the declarator" do
         expect( read_one( "void (* const vec[])(void) __attribute__ ((used)) = { 0 };" ) ).to include( name: 'vec', declarator: '(* const vec[])(void)' )
-        expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int) __asm__("fp_label")' )
-        expect( read_one( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ) ).to include( name: 'g', declarator: '(*g)(int) __asm__("sym")' )
+        expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int)' )
+        expect( read_one( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ) ).to include( name: 'g', declarator: '(*g)(int)' )
         expect( read_one( 'int (*g_u)(int) MY_USED = f;' ) ).to include( name: 'g_u', declarator: '(*g_u)(int)' )
       end
 

@@ -789,6 +789,41 @@ describe GeneratorPartials do
       expect(buf.string).not_to include('table[])')
     end
 
+    # An asm label names the symbol, so the extern must carry it to reach the definition
+    it "should write a variable's asm label after its name, array size or declarator" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_s', type: 'int', asm_label: '__asm__("g_sym")', text: 'int g_s __asm__("g_sym") = 1;'),
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_a', type: 'int', array_suffix: '[2]', asm_label: 'asm("a_sym")', text: 'int g_a[2] asm("a_sym");'),
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_fp', type: 'int', declarator: '(*g_fp)(int)', asm_label: '__asm("fp_sym")', text: 'int (*g_fp)(int) __asm("fp_sym");')
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern int g_s __asm__("g_sym");', 'extern int g_a[2] asm("a_sym");', 'extern int (*g_fp)(int) __asm("fp_sym");')
+    end
+
+    # A compiler applies one declaration's label to the variable's other declarations
+    it "should take an asm label from a header's extern when the definition has none" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_h', type: 'int', asm_label: 'asm("h_sym")', text: 'int g_h asm("h_sym");', decorators: ['extern']),
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_h', type: 'int', text: 'int g_h = 3;')
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern int g_h asm("h_sym");')
+    end
+
+    it "should take an asm label from a later declaration when neither the first nor the definition has one" do
+      c_module = make_module(
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_l', type: 'int', text: 'int g_l;', decorators: ['extern']),
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_l', type: 'int', asm_label: 'asm("l_sym")', text: 'int g_l asm("l_sym");', decorators: ['extern']),
+        CExtractorTypes::CVariableDeclaration.new(name: 'g_l', type: 'int', text: 'int g_l = 1;')
+      )
+      @generator.send(:generate_header, buf, 'mymod', [], [], c_module, include_variables: true)
+
+      expect(buf.string).to include('extern int g_l asm("l_sym");')
+      expect(buf.string.scan('g_l').size).to eq(1)
+    end
+
     # A macro may spell a whole declaration, and the extractor then reads no name from it
     it "should write no extern declaration for a variable without a name" do
       c_module = make_module(

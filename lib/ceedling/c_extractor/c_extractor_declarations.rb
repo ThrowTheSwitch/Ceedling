@@ -199,7 +199,7 @@ class CExtractorDeclarations
   # name, so the base type ends at the first star outside brackets or else at the name. The name
   # is read as the declaration's own record reads it.
   def _base_type(first)
-    head    = CExtractorDeclarator.without_initializer( first ).gsub( /\s+/, ' ' )
+    head    = CExtractorDeclarator::AsmLabel.without( CExtractorDeclarator.without_initializer( first ) ).gsub( /\s+/, ' ' )
     grouped = CExtractorDeclarator.parenthesized( head )
     return grouped.base_type if grouped
 
@@ -235,33 +235,33 @@ class CExtractorDeclarations
   # Returns: CVariableDeclaration
   def parse_declaration(individual_text, original_text)
     decorators, remaining = extract_decorators(individual_text)
-    clean_text      = normalize_declaration_whitespace(remaining)
-    # Strip compiler extensions for name/type/array_suffix extraction only;
-    # clean_text (stored as .text) retains attributes for correct compilation.
-    extraction_text = @code_text.strip_compiler_extensions(clean_text)
-    # A function pointer or a pointer to an array names its variable inside parentheses
-    grouped         = CExtractorDeclarator.parenthesized( CExtractorDeclarator.without_initializer( extraction_text ) )
-    name            = grouped ? grouped.name : extract_name(extraction_text)
+    clean_text = normalize_declaration_whitespace(remaining)
 
-    CVariableDeclaration.new(
-      original:     original_text,
-      name:         name,
-      type:         grouped ? grouped.base_type : extract_type(extraction_text, name),
-      array_suffix: grouped ? '' : extract_array_suffix(extraction_text),
-      decorators:   decorators,
-      text:         clean_text,
-      declarator:   written_declarator(clean_text, grouped)
+    return CVariableDeclaration.new(
+      original: original_text, decorators: decorators, text: clean_text,
+      asm_label: CExtractorDeclarator::AsmLabel.of( clean_text ),
+      **_declared( CExtractorDeclarator::AsmLabel.without( clean_text ) )
     )
   end
 
-  # The declarator as written. An extern repeats it, so a calling convention or attribute among
-  # its stars and an asm label after it must stay to agree with the definition. Stripping
-  # extensions removes them. The written text stands only when it opens the same group, which
-  # the text ahead of each group shows once extensions are stripped. Otherwise the stripped
-  # declarator stands.
-  def written_declarator(clean_text, grouped)
-    return nil if grouped.nil?
+  # The name, type, array size and declarator of a declaration without its decorators and asm
+  # label. They are read with compiler extensions stripped. The record's text keeps the
+  # extensions and the label, so the definition compiles as the module's does.
+  def _declared(unlabeled)
+    extraction_text = @code_text.strip_compiler_extensions( unlabeled )
+    # A function pointer or a pointer to an array names its variable inside parentheses
+    grouped = CExtractorDeclarator.parenthesized( CExtractorDeclarator.without_initializer( extraction_text ) )
+    return { name: grouped.name, type: grouped.base_type, array_suffix: '', declarator: written_declarator( unlabeled, grouped ) } if grouped
 
+    name = extract_name( extraction_text )
+    return { name: name, type: extract_type( extraction_text, name ), array_suffix: extract_array_suffix( extraction_text ) }
+  end
+
+  # The declarator as written. An extern repeats it, so a calling convention or attribute among
+  # its stars must stay to agree with the definition. Stripping extensions removes them. The
+  # written text stands only when it opens the same group, which the text ahead of each group
+  # shows once extensions are stripped. Otherwise the stripped declarator stands.
+  def written_declarator(clean_text, grouped)
     written = CExtractorDeclarator.parenthesized( CExtractorDeclarator.without_initializer( clean_text ) )
     same    = (written and @code_text.strip_compiler_extensions( written.base_type ) == grouped.base_type)
     return same ? written.declarator : grouped.declarator

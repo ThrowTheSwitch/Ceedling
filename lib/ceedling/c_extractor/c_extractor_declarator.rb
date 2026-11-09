@@ -181,12 +181,9 @@ module CExtractorDeclarator
   end
 
   # Where a declarator's text ends. An extern repeats the text, from the group's '(' through its
-  # last suffix, with any asm label after that. An attribute, macro or comment after the last
-  # suffix is left out, since an extern needs none and some draw a warning there.
+  # last suffix. What follows the last suffix is left out. An extern needs no attribute or macro
+  # there, and some draw a warning. An asm label there is read apart (see AsmLabel).
   module Extent
-
-    # An asm label, which names a declarator's symbol and so must match the definition's
-    ASM_LABEL = /(?<![\w$])(?:__asm__|__asm|asm)\s*(?=\()/ unless const_defined?(:ASM_LABEL, false)
 
     # Words, such as a macro, that may sit ahead of an array size among a declarator's suffixes
     SUFFIX_WORDS = /(?:#{WORD}#{GAP})+/ unless const_defined?(:SUFFIX_WORDS, false)
@@ -198,13 +195,12 @@ module CExtractorDeclarator
       return text.byteslice( start, text.bytesize - start ).strip unless CExtractorDeclarator._skip_balanced( scanner )
 
       finish = _suffixes_end( scanner )
-      label  = _asm_label( scanner )
-      return [text.byteslice( start, finish - start ).strip, label].compact.join( ' ' )
+      return text.byteslice( start, finish - start ).strip
     end
 
-    # Moves the scanner past a declarator's parameter lists and array sizes, and says where the
-    # last one ends. A word may sit ahead of an array size, but a word ahead of a '(' makes a
-    # macro call or an attribute, which ends the suffixes.
+    # Where the last of a declarator's parameter lists and array sizes ends, read from the scanner
+    # just past the group. A word may sit ahead of an array size, but a word ahead of a '(' makes
+    # a macro call, an attribute or an asm label, which ends the suffixes.
     def self._suffixes_end(scanner)
       finish = scanner.pos
       loop do
@@ -215,22 +211,73 @@ module CExtractorDeclarator
         finish = scanner.pos
       end
 
-      scanner.pos = finish
       return finish
     end
 
-    # An asm label in what follows a declarator's suffixes, or nil. Attributes, macros and
-    # comments may come ahead of it, and each is passed over.
-    def self._asm_label(scanner)
-      until scanner.eos?
-        scanner.skip( GAP )
-        from = scanner.pos
-        return scanner.string.byteslice( from, scanner.pos - from ) if scanner.skip( ASM_LABEL ) and CExtractorDeclarator._skip_balanced( scanner )
-        next if scanner.skip( WORD )
-        return nil unless scanner.check( /[(\[]/ ) and CExtractorDeclarator._skip_balanced( scanner )
+  end
+
+  # An asm label, as in `int g __asm__("sym") = 1;`, which names the symbol a declaration's
+  # object or function takes. A compiler applies it to the declarations it sees, so a test's own
+  # declaration must carry it too. A record keeps the label apart from the name and type it
+  # reads. Only a label outside brackets and ahead of any initializer counts.
+  module AsmLabel
+
+    # A run of word characters read whole, among which a label's keyword may be, or an
+    # initializer token. A number is read whole too, so no keyword is found inside one.
+    TOKEN = Regexp.union( INITIALIZER_TOKEN, /[\w$]+/ ) unless const_defined?(:TOKEN, false)
+
+    # The keywords that open a label
+    KEYWORDS = %w[asm __asm __asm__].freeze unless const_defined?(:KEYWORDS, false)
+
+    # What follows a label's keyword, up to the '(' of its string
+    OPEN = /#{GAP}\(/ unless const_defined?(:OPEN, false)
+
+    # The first label as written, such as `__asm__("sym")`, or nil
+    def self.of(text)
+      range = _ranges( text ).first
+      return range && text.byteslice( range.begin, range.size )
+    end
+
+    # The declaration without its labels ahead of any initializer. A compound declaration may hold
+    # one per declarator. The space around a label collapses to one, or to none ahead of a
+    # semicolon or comma.
+    def self.without(text)
+      ranges = _ranges( text )
+      return text if ranges.empty?
+
+      cuts = [0, *ranges.flat_map { |range| [range.begin, range.end] }, text.bytesize]
+      return cuts.each_slice( 2 ).map { |from, to| text.byteslice( from, to - from ) }.reduce { |kept, piece| _joined( kept, piece ) }
+    end
+
+    # Two pieces of text a label sat between, with the space between them collapsed
+    def self._joined(before, after)
+      before = before.rstrip
+      after  = after.lstrip
+      return (after.empty? or after.start_with?( ';', ',' )) ? "#{before}#{after}" : "#{before} #{after}"
+    end
+
+    # Where each label sits, from its keyword through its ')'. The walk stops at an initializer.
+    def self._ranges(text)
+      scanner = StringScanner.new( text )
+      depth   = 0
+      ranges  = []
+      while scanner.skip_until( TOKEN ) and !(scanner.matched == '=' and depth.zero?)
+        token  = scanner.matched
+        depth += DEPTH_CHANGE.fetch( token, 0 )
+        from   = scanner.pos - token.bytesize
+        ranges << (from...scanner.pos) if _opens?( scanner, token, depth )
       end
 
-      return nil
+      return ranges
+    end
+
+    # Whether the token just read opens a label outside brackets. On true, the scanner has passed
+    # the label's ')'.
+    def self._opens?(scanner, token, depth)
+      return false unless depth.zero? and KEYWORDS.include?( token ) and scanner.match?( OPEN )
+
+      scanner.skip( GAP )
+      return CExtractorDeclarator._skip_balanced( scanner )
     end
 
   end

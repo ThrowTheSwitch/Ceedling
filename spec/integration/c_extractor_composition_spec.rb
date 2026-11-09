@@ -1301,6 +1301,23 @@ describe CExtractor do
       end
     end
 
+    # An asm label's ')' ends a declaration as a parameter list does. A variable with one must
+    # still arrive as a variable, and a function with one as a function.
+    context "with asm labels" do
+      it "extracts each declaration as the element it declares" do
+        content = "int g_s asm(\"g_sym\");\nint f(void) __asm(\"f_sym\");\nint f2(void) MY_API asm(\"f2_sym\");\n" \
+                  "asm(\".globl top_sym\");\nint after_fn(void) { return 7; }\n"
+
+        expect( sequence_of( content ) ).to eq [
+          ['CVariableDeclaration', 'int g_s asm("g_sym");'],
+          ['CFunctionDeclaration', 'int f(void) __asm("f_sym");'],
+          ['CFunctionDeclaration', 'int f2(void) MY_API asm("f2_sym");'],
+          ['CVariableDeclaration', 'asm(".globl top_sym");'],
+          ['CFunctionDefinition', 'int after_fn(void)']
+        ]
+      end
+    end
+
     # Fallback preprocessing leaves comments in place, inside declarations too
     context "with comments inside declarations" do
       it "reads on past a declaration that ends in a comment" do

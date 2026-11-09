@@ -277,6 +277,57 @@ describe 'Declarations in a Partial' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'asm labels' do
+  # ---------------------------------------------------------------------------
+
+    # An asm label names a variable's symbol, so the test's extern must carry it to reach the definition
+    it 'keeps each spelling of an asm label on a variable extern' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int g_s __asm__(\"ticker_s_symbol\") = 1;\nint g_arr[2] __asm(\"ticker_arr_symbol\");\n" \
+                "int g_b asm(\"ticker_b_symbol\");\nint ticker_get(void) { return g_s + g_arr[1] + g_b; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int g_s __asm__("ticker_s_symbol");', 'extern int g_arr[2] __asm("ticker_arr_symbol");',
+                                           'extern int g_b asm("ticker_b_symbol");' )
+      expect_link( @result, ['g_s', 'g_arr', 'g_b', 'ticker_get'] )
+    end
+
+    # A compiler applies the label of a variable's first declaration to its definition
+    it 'keeps an asm label the module header gives a variable' do
+      @result = ticker(
+        header: "extern int g_h __asm__(\"ticker_h_symbol\");\nint ticker_get(void);\n",
+        source: "int g_h = 3;\nint ticker_get(void) { return g_h; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int g_h __asm__("ticker_h_symbol");' )
+      expect_link( @result, ['g_h', 'ticker_get'] )
+    end
+
+    # A weak definition stands in for a variable the module only declares, under the same symbol
+    it 'keeps an asm label on the weak definition of a variable the module only declares' do
+      @result = ticker(
+        header: "extern int g_w asm(\"ticker_w_symbol\");\nint ticker_get(void);\n",
+        source: "int ticker_get(void) { return g_w; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int g_w asm("ticker_w_symbol");' )
+      expect( @result.impl_c ).to include( 'int g_w asm("ticker_w_symbol");' )
+      expect_link( @result, ['g_w', 'ticker_get'] )
+    end
+
+    it 'keeps an asm label on a promoted static' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) { static int s asm(\"ticker_static_symbol\") = 2; return s; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int partial_ticker_get_s asm("ticker_static_symbol");' )
+      expect_link( @result, ['partial_ticker_get_s', 'ticker_get'] )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   context 'compound declarations' do
   # ---------------------------------------------------------------------------
 

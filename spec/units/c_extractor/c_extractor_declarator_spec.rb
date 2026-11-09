@@ -96,15 +96,15 @@ describe CExtractorDeclarator do
     end
 
     # An extern repeats the declarator. An attribute or macro after its last suffix could draw a
-    # warning there, while an asm label names the symbol and so stays wherever it sits.
-    it "keeps only an asm label from what follows a declarator's last suffix" do
+    # warning there, and an asm label is read apart.
+    it "leaves out what follows a declarator's last suffix" do
       expect( read( 'void (* const vec[])(void) __attribute__ ((used))' ) ).to include( declarator: '(* const vec[])(void)' )
       expect( read( 'int (*g)(int) __attribute((used))' ) ).to include( declarator: '(*g)(int)' )
       expect( read( 'int (*g)(int) MY_USED' ) ).to include( declarator: '(*g)(int)' )
       expect( read( 'int (*g)(int) MY__attribute__(4)' ) ).to include( declarator: '(*g)(int)' )
       expect( read( 'int (*g)(int) /* 1) */' ) ).to include( declarator: '(*g)(int)' )
-      expect( read( 'int (*fp)(int) __asm__("fp_label")' ) ).to include( declarator: '(*fp)(int) __asm__("fp_label")' )
-      expect( read( 'int (*g)(int) __attribute__((used)) MY_SECTION __asm__("sym")' ) ).to include( declarator: '(*g)(int) __asm__("sym")' )
+      expect( read( 'int (*fp)(int) __asm__("fp_label")' ) ).to include( declarator: '(*fp)(int)' )
+      expect( read( 'int (*g)(int) __attribute__((used)) MY_SECTION __asm__("sym")' ) ).to include( declarator: '(*g)(int)' )
     end
 
     # A macro may sit ahead of an array size, but a word ahead of a '(' is a macro call
@@ -195,6 +195,50 @@ describe CExtractorDeclarator do
       Timeout.timeout( 2 ) { result = described_class.without_initializer( text ) }
 
       expect( result ).to eq( 'static const uint8_t table[]' )
+    end
+  end
+
+  context "AsmLabel.of" do
+    it "reads each spelling of a label" do
+      expect( described_class::AsmLabel.of( 'int g asm("g_sym");' ) ).to eq( 'asm("g_sym")' )
+      expect( described_class::AsmLabel.of( 'int g __asm ("g_sym");' ) ).to eq( '__asm ("g_sym")' )
+      expect( described_class::AsmLabel.of( 'int g __asm__("g_sym") = 1;' ) ).to eq( '__asm__("g_sym")' )
+    end
+
+    # GCC's grammar puts the label after the declarator and ahead of attributes and the initializer
+    it "reads a label after an array size, a group or an attribute" do
+      expect( described_class::AsmLabel.of( 'int g[2] asm("arr_sym") = { 1, 2 };' ) ).to eq( 'asm("arr_sym")' )
+      expect( described_class::AsmLabel.of( 'int (*fp)(int) __asm__("fp_sym");' ) ).to eq( '__asm__("fp_sym")' )
+      expect( described_class::AsmLabel.of( 'int g __attribute__((used)) asm("g_sym");' ) ).to eq( 'asm("g_sym")' )
+      expect( described_class::AsmLabel.of( 'int f(void) asm("f_sym")' ) ).to eq( 'asm("f_sym")' )
+    end
+
+    # Fallback preprocessing leaves comments in place
+    it "reads a label whose string follows a comment" do
+      expect( described_class::AsmLabel.of( 'int g asm /* sym */ ("g_sym");' ) ).to eq( 'asm /* sym */ ("g_sym")' )
+    end
+
+    it "finds no label in a longer word, in brackets, in a literal or past the initializer" do
+      expect( described_class::AsmLabel.of( 'int asm_count;' ) ).to be_nil
+      expect( described_class::AsmLabel.of( 'int x$asm MY__asm("x");' ) ).to be_nil
+      expect( described_class::AsmLabel.of( 'int 0asm("x");' ) ).to be_nil
+      expect( described_class::AsmLabel.of( 'int (*fp)(int asm(x));' ) ).to be_nil
+      expect( described_class::AsmLabel.of( 'char *g = "asm(\"x\")";' ) ).to be_nil
+      expect( described_class::AsmLabel.of( 'int g = WRAP(asm("x"));' ) ).to be_nil
+    end
+  end
+
+  context "AsmLabel.without" do
+    it "removes the label with the space ahead of it" do
+      expect( described_class::AsmLabel.without( 'int g asm("g_sym");' ) ).to eq( 'int g;' )
+      expect( described_class::AsmLabel.without( 'int g __asm__("g_sym") = 1;' ) ).to eq( 'int g = 1;' )
+      expect( described_class::AsmLabel.without( 'int g[2] __asm("arr_sym") __attribute__((used));' ) ).to eq( 'int g[2] __attribute__((used));' )
+      expect( described_class::AsmLabel.without( 'int f(void) asm("f_sym")' ) ).to eq( 'int f(void)' )
+      expect( described_class::AsmLabel.without( 'int g asm("g_sym"), *h __asm("h_sym");' ) ).to eq( 'int g, *h;' )
+    end
+
+    it "leaves a declaration without a label whole" do
+      expect( described_class::AsmLabel.without( 'int asm_count = 1;' ) ).to eq( 'int asm_count = 1;' )
     end
   end
 

@@ -88,6 +88,11 @@ class CExtractorFunctions
   # A specifier up to the '(' of its argument
   SPECIFIER_CALL = /(?<![\w$])(?:#{SPECIFIERS_WITH_ARGUMENTS.join( '|' )})\s*(?=\()/ unless const_defined?(:SPECIFIER_CALL, false)
 
+  # What follows a parameter list's '('. A list is empty, or opens with a word, an ellipsis or a
+  # C23 attribute. A line splice may come first, and so may a directive that fallback
+  # preprocessing leaves in place.
+  PARAMETERS_AHEAD = /[\s\\]*(?:\)|[A-Za-z_$#]|\.\.\.|\[\[)/ unless const_defined?(:PARAMETERS_AHEAD, false)
+
   # Where a function's name starts in text that begins with its signature, or nil. The name must
   # be a whole word followed by its parameter list, so `f` is never found inside `float`.
   def self.name_position(text, name)
@@ -135,6 +140,7 @@ class CExtractorFunctions
   #   - Arrays: int arr[10];
   #   - Function pointers: int (*ptr)(int);
   #   - Initialized variables: int x = 42;
+  #   - Variables with an asm label: int x asm("sym");
   #
   # The method handles:
   #   - String literals (both single and double quoted)
@@ -212,76 +218,9 @@ class CExtractorFunctions
           return nil
         end
       when '{'
-        # Found opening brace
-        if type == :declaration
-          scanner.pos = start_pos
-          return nil
-        else # :definition
-          # Check if any of our candidates is valid
-          if signature_candidates.empty?
-            # No balanced parens found before brace - not a function
-            scanner.pos = start_pos
-            return nil
-          end
-
-          # The last candidate (outermost closing paren) should be the function parameter list
-          signature_end_pos = signature_candidates.last
-          
-          # Extract and clean the signature
-          signature = scanner.string[start_pos...signature_end_pos]
-          return clean_signature(signature)
-        end
+        return _definition_end( scanner, start_pos, type, signature_candidates )
       when ';'
-        # Found semicolon - this is a declaration, not a definition
-
-        if type == :declaration
-          # Before accepting this as a function declaration, verify it has parentheses
-          # and doesn't look like a variable declaration
-          unless found_opening_paren
-            # No parentheses found - this is a variable declaration
-            scanner.pos = start_pos
-            return nil
-          end
-          
-          scanner.getch
-          signature = scanner.string[start_pos...scanner.pos]
-
-          # Validate this looks like a function declaration, not a variable
-          # Function declarations should have: type name(...) ;
-          # NOT: type (*name)(...) ; (function pointer variable)
-          # NOT: type name[...] ; (array variable)
-          # NOT: type name = ... ; (variable with initializer)
-          cleaned = clean_declaration(signature)
-
-          # A name inside parentheses declares a function only when a parameter list follows it.
-          # Otherwise the declaration is an object's, such as a pointer to a function or an array.
-          # A pointer inside the parameter list declares a parameter and decides nothing.
-          # Attributes may sit among the stars, so they are stripped first.
-          grouped = CExtractorDeclarator.parenthesized( @code_text.strip_compiler_extensions( cleaned ) )
-          if grouped and grouped.follows != '('
-            scanner.pos = start_pos
-            return nil
-          end
-
-          # A function returning a pointer to an array ends with the array's size, not a ')'
-          return cleaned if grouped
-
-          # Additional check: ensure the pattern is identifier(...); not identifier[...]; or identifier;
-          # Strip compiler extensions (e.g. trailing __attribute__((...)) or __declspec(...)) before
-          # checking the closing paren — otherwise a trailing attribute's ')' fools the check into
-          # accepting a variable declaration like `int x __attribute__((aligned(16)));` as a function.
-          content_before_semicolon = @code_text.strip_compiler_extensions(cleaned.gsub(/\s*;$/, ''))
-          unless content_before_semicolon.end_with?(')')
-            # Doesn't end with closing paren - likely a variable declaration
-            scanner.pos = start_pos
-            return nil
-          end
-          
-          return cleaned
-        else # :definition
-          scanner.pos = start_pos
-          return nil
-        end
+        return _declaration_end( scanner, start_pos, type, found_opening_paren )
       when '['
         # Found opening bracket - this could be an array declaration
         # If we haven't found any opening parenthesis yet, this is likely a variable
@@ -304,6 +243,65 @@ class CExtractorFunctions
     end
     
     # Reached end without finding complete signature
+    scanner.pos = start_pos
+    return nil
+  end
+
+  # The signature a '{' ends, or nil. Only a definition has one. Its parameter list is the last
+  # group to close ahead of the brace, and with no group there the text is no function's.
+  def _definition_end(scanner, start_pos, type, candidates)
+    return _rewind( scanner, start_pos ) unless type == :definition and candidates.any?
+
+    return clean_signature( scanner.string.byteslice( start_pos, candidates.last - start_pos ) )
+  end
+
+  # The signature a ';' ends, or nil. Only a declaration has one, and only when it declares a
+  # function (see _prototype?). On success the scanner passes the ';'.
+  def _declaration_end(scanner, start_pos, type, found_opening_paren)
+    cleaned = clean_declaration( scanner.string.byteslice( start_pos, scanner.pos + 1 - start_pos ) ) if type == :declaration and found_opening_paren
+    return _rewind( scanner, start_pos ) unless cleaned and _prototype?( cleaned )
+
+    scanner.pos += 1
+    return cleaned
+  end
+
+  # Whether a declaration with a parenthesis declares a function rather than a variable. A name
+  # inside a pointer group declares a function only when a parameter list follows it. Otherwise the
+  # declaration is an object's, such as a pointer to a function or an array. Any other
+  # function's declaration ends with its parameter list. Extensions may follow that list and are
+  # passed over, so `int x __attribute__((aligned(16)));` stays a variable. Attributes may sit
+  # among a group's stars too. An asm label changes the rule (see _labeled_prototype?).
+  def _prototype?(cleaned)
+    unlabeled = CExtractorDeclarator::AsmLabel.without( cleaned )
+    stripped  = @code_text.strip_compiler_extensions( unlabeled ).sub( /\s*;\z/, '' )
+    grouped   = CExtractorDeclarator.parenthesized( stripped )
+    return grouped.follows == '(' if grouped
+
+    return (unlabeled == cleaned) ? stripped.end_with?( ')' ) : _labeled_prototype?( stripped )
+  end
+
+  # Whether a declaration with an asm label, read without it, declares a function. Unexpanded
+  # macros may sit around the label, as in `int f(void) MY_API asm("f");`, so the text need not
+  # end with the list. A function's text holds a group outside brackets that opens like a
+  # parameter list. A macro's argument such as `(4)` or `(".data")` can't, so
+  # `int MY_ALIGN(4) g asm("g");` stays a variable. A specifier's argument may, and is passed
+  # over, as in `typeof(int) g asm("g");`. A macro's word argument reads as a parameter list,
+  # since the two can't be told apart unexpanded.
+  def _labeled_prototype?(text)
+    scanner = StringScanner.new( text )
+    depth   = 0
+    while scanner.skip_until( CExtractorDeclarator::BALANCE_TOKEN )
+      token = scanner.matched
+      return true if token == '(' and depth.zero? and scanner.match?( PARAMETERS_AHEAD ) and !CExtractorDeclarator._specifier_argument?( text, scanner.pos - 1 )
+
+      depth += CExtractorDeclarator::DEPTH_CHANGE.fetch( token, 0 )
+    end
+
+    return false
+  end
+
+  # Returns the scanner to where a signature's scan started, and gives nil
+  def _rewind(scanner, start_pos)
     scanner.pos = start_pos
     return nil
   end
