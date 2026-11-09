@@ -21,6 +21,9 @@ module CExtractorConstants
   # C11/C23 bare specifier keywords (no argument list)
   C11_SPECIFIER_KEYWORDS = ['_Noreturn', '_Thread_local', '_Atomic', '_Bool', '_Complex', '_Imaginary'].freeze unless const_defined?(:C11_SPECIFIER_KEYWORDS, false)
 
+  # A C identifier. GCC and Clang accept '$' in one, at its start, middle or end.
+  IDENTIFIER = /[A-Za-z_$][\w$]*/ unless const_defined?(:IDENTIFIER, false)
+
   # C type qualifiers
   TYPE_QUALIFIER_KEYWORDS = ['const', 'volatile', 'restrict'].freeze unless const_defined?(:TYPE_QUALIFIER_KEYWORDS, false)
 

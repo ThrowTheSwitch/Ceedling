@@ -39,16 +39,16 @@ class PartializerHelper
 
   # Code uses a function wherever it names one. A call counts, and so do an address taken, a
   # callback passed by name and an entry in a table of handlers.
-  C_IDENTIFIER = /(?<!\w)[A-Za-z_]\w*/ unless const_defined?(:C_IDENTIFIER, false)
+  C_IDENTIFIER = /(?<![\w$])[A-Za-z_$][\w$]*/ unless const_defined?(:C_IDENTIFIER, false)
 
   # A struct or union member, or a struct, union or enum tag, which only shares a name with any function
-  C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_]\w*/ unless const_defined?(:C_MEMBER_ACCESS, false)
-  C_TAG           = /(?<!\w)(?:struct|union|enum)\s+[A-Za-z_]\w*/ unless const_defined?(:C_TAG, false)
+  C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_$][\w$]*/ unless const_defined?(:C_MEMBER_ACCESS, false)
+  C_TAG           = /(?<![\w$])(?:struct|union|enum)\s+[A-Za-z_$][\w$]*/ unless const_defined?(:C_TAG, false)
 
   # A local variable declared at the start of a statement. Any qualifiers come first, then a
   # type name, any pointer stars, and the variable's name ahead of `=`, `;`, `,` or `[`. A
   # keyword that starts a statement is no type, so `return x;` declares nothing.
-  C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_]\w*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_]\w*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
+  C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_$][\w$]*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_$][\w$]*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
   C_STATEMENT_KEYWORDS = %w[return goto case default else do sizeof typedef break continue].freeze unless const_defined?(:C_STATEMENT_KEYWORDS, false)
 
   # A preprocessor directive line, matched from the line's start past any leading whitespace
@@ -737,7 +737,7 @@ class PartializerHelper
 
     scanner = StringScanner.new( run )
     walk    = DefinitionWalk.new( directive: _directive_line?( scanner ), inline: false, static: false )
-    _walk_word( walk, scanner, wanted, found ) while scanner.skip_until( /\n|\w+/ )
+    _walk_word( walk, scanner, wanted, found ) while scanner.skip_until( /\n|[\w$]+/ )
   end
 
   # One word of a run, or the newline that starts its next line

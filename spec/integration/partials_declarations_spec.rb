@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'spec_integration_helper'
 require 'partials_generation_integration_helper'
+require 'tempfile'
 
 describe 'Declarations in a Partial' do
 
@@ -158,6 +159,67 @@ describe 'Declarations in a Partial' do
       expect( @result.types_h ).to include( 'struct pk { char c; int i; } __packed;' )
       expect_types_header_compiles( @result )
       expect_link( @result, ['g_pk', 'ticker_size'], stubs: "int read_pk(void) { return g_pk.c; }\n" )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context "names holding '$'" do
+  # ---------------------------------------------------------------------------
+
+    # GCC and Clang accept '$' in an identifier on most targets, and a case needs a compiler that does
+    before do
+      probe = Tempfile.new( ['dollar', '.c'] )
+      probe.write( "int a$b;\n" ) && probe.close
+      _out, _err, status = Open3.capture3( "#{partials_compiler} -fsyntax-only #{probe.path}" )
+      probe.unlink
+      skip "#{partials_compiler} rejects '$' in identifiers" unless status.success?
+    end
+
+    it "declares a variable and selects a function whose names hold '$'" do
+      @result = ticker(
+        header: "int f$1(void);\n",
+        source: "static int hook$2;\nint g$v[2];\nint f$1(void) { return hook$2 + g$v[1]; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int hook$2;', 'extern int g$v[2];', 'int f$1(void);' )
+      expect_link( @result, ['hook$2', 'g$v', 'f$1'] )
+    end
+
+    it "promotes a function-scope static whose name holds '$'" do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) { static int c$1 = 0; c$1++; return c$1; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int partial_ticker_get_c$1;' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_c$1'] )
+    end
+
+    # The source's prototype gives an inline function another header defines its external
+    # definition, so the Partial must carry that prototype
+    it "carries the prototype of an inline function another header defines, named with '$'" do
+      @result = generate_partial(
+        module_name: 'ticker', header: guarded( "int ticker_get(void);\n" ),
+        source: "#include \"ticker.h\"\n#include \"engine_api.h\"\nextern int eng$twice(void);\nint ticker_get(void) { return 1; }\n",
+        source_includes: ['ticker.h', 'engine_api.h'], tests_expose: PartializerConfig::PUBLIC,
+        extra: { 'engine_api.h' => "#ifndef ENGINE_API_H\n#define ENGINE_API_H\ninline int eng$twice(void) { return 42; }\n#endif\n" }
+      )
+
+      expect( @result.impl_c ).to include( 'extern int eng$twice(void);' )
+      link = link_partial( @result, references: ['eng$twice'], flags: '-O0' )
+      expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
+    end
+
+    # A weak definition of a struct never completed can't compile, so none is written
+    it "writes no weak definition for an extern whose struct type, named with '$', is never completed" do
+      @result = ticker(
+        header: "struct h$s;\nextern struct h$s the$h;\ntypedef struct h$t h$t_t;\nextern h$t_t the$t;\nint ticker_get(void);\n",
+        source: "int ticker_get(void) { return 1; }\n"
+      )
+
+      expect( @result.impl_c ).not_to include( 'the$h', 'the$t' )
+      compile = compile_objects( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
   end
 

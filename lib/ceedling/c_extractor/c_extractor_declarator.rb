@@ -35,8 +35,8 @@ module CExtractorDeclarator
   QUALIFIERS = (CExtractorConstants::TYPE_QUALIFIER_KEYWORDS + CExtractorConstants::MSVC_CALLING_CONVENTIONS +
     %w[__restrict __restrict__ _Nullable _Nonnull _Null_unspecified __far __near __huge __ptr32 __ptr64 __unaligned]).freeze unless const_defined?(:QUALIFIERS, false)
 
-  # An identifier, which GCC lets hold '$'
-  WORD = /[A-Za-z_$][\w$]*/ unless const_defined?(:WORD, false)
+  # An identifier, which GCC and Clang let hold '$'
+  WORD = CExtractorConstants::IDENTIFIER unless const_defined?(:WORD, false)
 
   # Space between a group's tokens. Fallback preprocessing leaves comments in place.
   GAP = %r{(?:\s|/\*.*?\*/|//[^\n]*)*}m unless const_defined?(:GAP, false)

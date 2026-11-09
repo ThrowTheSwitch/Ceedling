@@ -394,6 +394,20 @@ describe PartializerHelper do
     end
   end
 
+  # Carrying reads the names kept code uses. GCC and Clang accept '$' in one.
+  context "#_statement_references" do
+    it "reads names holding '$', past members and tags" do
+      expect( @helper._statement_references( "x$1 = h$2( s.m$3, (struct t$4 *)p$5 );" ).to_a ).to contain_exactly( 'x$1', 'h$2', 's', 'p$5' )
+    end
+  end
+
+  # A body's own locals shadow a helper of the same name, so they don't count as uses
+  context "#_locals" do
+    it "reads locals whose names hold '$'" do
+      expect( @helper._locals( "{ int h$ = 1; int *q$; struct s$t v; int k; }" ) ).to include( 'h$', 'q$', 'v', 'k' )
+    end
+  end
+
   context "#extract_function_scope_static_vars" do
     context "mock-based delegation tests" do
       it "returns empty array and makes no calls when funcs is empty" do
@@ -758,6 +772,19 @@ describe PartializerHelper do
         expect(func.code_block).to include('return partial_calc_x + partial_calc_a + partial_calc_b;')
       end
 
+      it "promotes a static whose name holds '$'" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{\n  static int c$1 = 0;\n  int c = c$1;\n  return c$1 + c;\n}",
+          code_block: "int calc(void) {\n  static int c$1 = 0;\n  int c = c$1;\n  return c$1 + c;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map { |v| [v.name, v.text] }).to eq [['partial_calc_c$1', 'int partial_calc_c$1 = 0;']]
+        expect(func.code_block).to include('int c = partial_calc_c$1;', 'return partial_calc_c$1 + c;')
+      end
+
       # A tag lives apart from variables, so a static's type keeps a tag another static shares
       it "leaves a struct tag alone when another promoted static shares its name" do
         func = OpenStruct.new(
@@ -847,17 +874,17 @@ describe PartializerHelper do
     # A prototype is written word for word and CMock reads its own name, so neither needs one
     it "leaves a declaration without a name alone" do
       c_module = CExtractorTypes::CModule.new(
-        function_declarations: [CExtractorTypes::CFunctionDeclaration.new( name: nil, signature: 'int count$all(void);' )]
+        function_declarations: [CExtractorTypes::CFunctionDeclaration.new( name: nil, signature: 'int __count__(void);' )]
       )
 
       expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }.not_to raise_error
     end
 
     it "collapses whitespace in the signature it shows" do
-      c_module = CExtractorTypes::CModule.new( function_definitions: [defined( nil, "int  count$all(\n  void )" )] )
+      c_module = CExtractorTypes::CModule.new( function_definitions: [defined( nil, "int  __count__(\n  void )" )] )
 
       expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }
-        .to raise_error( CeedlingException, /declared by `int count\$all\( void \)`\./ )
+        .to raise_error( CeedlingException, /declared by `int __count__\( void \)`\./ )
     end
 
     # Extraction reads raw bytes, which may hold any character

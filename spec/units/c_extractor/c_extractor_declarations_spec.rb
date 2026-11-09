@@ -791,6 +791,26 @@ describe CExtractorDeclarations do
       end
     end
 
+    # GCC and Clang accept '$' in an identifier, at its start, middle or end
+    context "names holding '$'" do
+      [
+        ['static int hook$2;',     [['hook$2', 'int', '']]],
+        ['int g$v[2];',            [['g$v', 'int', '[2]']]],
+        ['int $lead;',             [['$lead', 'int', '']]],
+        ['int trail$;',            [['trail$', 'int', '']]],
+        ['int a$1 = 0, b$2;',      [['a$1', 'int', ''], ['b$2', 'int', '']]],
+        ['struct s$t x$y;',        [['x$y', 'struct s$t', '']]],
+        ['static int x$_Atomic;',  [['x$_Atomic', 'int', '']]]
+      ].each do |content, expected|
+        it "reads `#{content}`" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.array_suffix] } ).to eq expected
+        end
+      end
+    end
+
     context "compiler extensions on variable declarations" do
       it "extracts name and type from variable with trailing __attribute__" do
         content = "int x __attribute__((aligned(16)));"

@@ -35,7 +35,13 @@ class CExtractorDeclarations
   # How a declaration's text looks once its comments are blanked. A type and a name come first,
   # and the last character before the ';' closes a name, a suffix, an initializer or a literal.
   # A multiline initializer still matches.
-  DECLARATION_SHAPE = /\w+.*[\w\]\)\}"']\s*;$/m unless const_defined?(:DECLARATION_SHAPE, false)
+  DECLARATION_SHAPE = /[\w$]+.*[\w$\]\)\}"']\s*;$/m unless const_defined?(:DECLARATION_SHAPE, false)
+
+  # A declaration's last identifier, which names its variable once suffixes are gone
+  LAST_IDENTIFIER = /(?<![\w$])(#{IDENTIFIER.source})\s*\z/ unless const_defined?(:LAST_IDENTIFIER, false)
+
+  # A declaration's array sizes, which follow its name
+  ARRAY_SUFFIX = /[\w$](\s*(?:\[[^\]]*\])+)\s*\z/ unless const_defined?(:ARRAY_SUFFIX, false)
 
   # A comma, or a bracket or literal whose commas don't split a compound declaration
   SPLIT_TOKEN = Regexp.union( /,/, CExtractorDeclarator::BALANCE_TOKEN ) unless const_defined?(:SPLIT_TOKEN, false)
@@ -312,15 +318,15 @@ class CExtractorDeclarations
     text = CExtractorDeclarator.without_initializer( clean_text )
     # Strip array subscripts
     text = text.gsub(/\[.*?\]/, '')
-    # Strip trailing whitespace and return last word token
-    text.strip =~ /(\w+)\s*$/ ? $1 : nil
+    # Strip trailing whitespace and return the last identifier
+    text.strip[LAST_IDENTIFIER, 1]
   end
 
   # Extract array subscript suffix from a clean (decorator/extension-stripped) declaration.
   # Returns the complete subscript string (e.g., "[8]", "[M][N]") or "" for scalars.
   def extract_array_suffix(clean_text)
     text = CExtractorDeclarator.without_initializer( clean_text )
-    text =~ /\w+(\s*(?:\[[^\]]*\])+)\s*$/ ? $1.strip : ''
+    text =~ ARRAY_SUFFIX ? $1.strip : ''
   end
 
   # Extract the type from a clean (decorator-stripped) declaration
@@ -333,14 +339,11 @@ class CExtractorDeclarations
     # subscripts are gone
     text = CExtractorDeclarator.without_initializer( clean_text ).gsub(/\[.*?\]/, '').strip
 
-    # Find the name in the text and take everything before it (including pointer specifiers).
-    # A plain rindex(name) would find the last substring occurrence of `name` anywhere in
-    # text, even inside an unrelated longer identifier that merely ends with it (e.g. `name`
-    # "count" inside a type-side identifier like "recount") -- \b anchors this to a whole
-    # identifier occurrence. Greedy `.*` in a single match (not scan) naturally finds the
-    # rightmost such occurrence, since it consumes as much as possible before backtracking
-    # just enough to let the trailing \bname\b still match.
-    match = text.match(/\A(.*)\b#{Regexp.escape(name)}\b/m)
+    # Find the name in the text and take everything before it, pointer specifiers included. The
+    # name must be a whole identifier, so `count` isn't found inside `recount` or `count$2`.
+    # Greedy `.*` in a single match finds its rightmost such occurrence, since it consumes as
+    # much as it can before backtracking just enough for the name to match.
+    match = text.match(/\A(.*)(?<![\w$])#{Regexp.escape(name)}(?![\w$])/m)
     return nil if match.nil?
 
     type_part = match[1]

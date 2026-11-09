@@ -3072,4 +3072,34 @@ describe CExtractorFunctions do
     end
   end
 
+  # GCC and Clang accept '$' in an identifier
+  describe "names holding '$'" do
+    let(:functions) { CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup) }
+
+    it "does not find a name inside a longer one that holds a '$'" do
+      expect( described_class.name_position( "int x$f(void); int f(void)", 'f' ) ).to eq( 19 )
+    end
+
+    [
+      ['int f$1(void);',        'f$1'],
+      ['int $g(int $a);',       '$g'],
+      ['static int h$(void);',  'h$'],
+      ['int f$__inline(void);', 'f$__inline']
+    ].each do |signature, name|
+      it "reads the declaration `#{signature}` as `#{name}`" do
+        success, declaration = functions.try_extract_function_declaration( StringScanner.new( signature ) )
+
+        expect( success ).to be true
+        expect( declaration.name ).to eq( name )
+      end
+    end
+
+    it "reads a definition's name holding '$'" do
+      success, definition = functions.try_extract_function_definition( StringScanner.new( "int f$1(void) { return 1; }" ), nil )
+
+      expect( success ).to be true
+      expect( [definition.name, definition.signature_stripped] ).to eq ['f$1', 'int f$1(void)']
+    end
+  end
+
 end

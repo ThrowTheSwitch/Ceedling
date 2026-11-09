@@ -1950,7 +1950,7 @@ describe Partializer do
 
     # Every later step finds a definition by its name
     it "stops on a definition it can't name before anything reads the name" do
-      unnamed = CExtractorTypes::CFunctionDefinition.new(name: nil, signature: 'int count$all(void)')
+      unnamed = CExtractorTypes::CFunctionDefinition.new(name: nil, signature: 'int __count__(void)')
       source_contents = CExtractorTypes::CModule.new(function_definitions: [unnamed])
 
       config = PartializerConfig::Config.new(

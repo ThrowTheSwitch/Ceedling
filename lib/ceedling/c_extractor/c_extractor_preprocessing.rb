@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 
 class CExtractorPreprocessing
@@ -47,7 +48,7 @@ class CExtractorPreprocessing
   def try_extract_bare_macro_invocation(scanner)
     start_pos = scanner.pos
 
-    return [false, nil] unless scanner.scan(/[A-Za-z_]\w*/)
+    return [false, nil] unless scanner.scan(CExtractorConstants::IDENTIFIER)
     if scanner.matched.match?(COMPILER_EXTENSION_IDENTIFIER)
       scanner.pos = start_pos
       return [false, nil]

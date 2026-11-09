@@ -12,21 +12,16 @@ class CExtractorCodeText
 
   include CExtractorConstants
 
-  # Bare (no-argument-list) keywords strip_compiler_extensions strips verbatim:
-  # MSVC calling conventions, inline hints, and C11 specifier keywords. Built
-  # once into a single alternation regex rather than tried one keyword at a
-  # time, since this check runs at every scanner position -- one shared regex
-  # avoids rebuilding and re-running many small ones on every character
-  # scanned. `\b` on both ends keeps a short keyword from matching as a mere
-  # prefix of a longer identifier that happens to start the same way (e.g.
-  # matching "__cdecl" inside "__cdeclFoo"); listing keywords in any order is
-  # safe even where one prefixes another (__inline vs. __inline__), since a
-  # match that fails its own trailing \b simply falls through to try the next
-  # alternative at that same position.
+  # Bare keywords, without an argument list, that strip_compiler_extensions removes. They are
+  # MSVC calling conventions, inline hints and C11 specifier keywords. Each matches only as a
+  # whole identifier, so `__cdecl` isn't found inside `__cdeclFoo` or `x$__cdecl`.
   BARE_STRIP_KEYWORDS = (
     MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline'] + C11_SPECIFIER_KEYWORDS
   ).freeze unless const_defined?(:BARE_STRIP_KEYWORDS, false)
-  BARE_STRIP_REGEX = /\b(?:#{BARE_STRIP_KEYWORDS.map { |kw| Regexp.escape(kw) }.join('|')})\b/.freeze unless const_defined?(:BARE_STRIP_REGEX, false)
+
+  # The keyword of an attribute form whose arguments follow, as in `__attribute__((packed))`
+  # and `__declspec(dllexport)`
+  EXTENSION_WORD = /\A(?:__\w+__|__declspec)\z/ unless const_defined?(:EXTENSION_WORD, false)
 
   # Collect the full text of a balanced delimiter pair starting AT open_char.
   # Nested pairs, string literals (verbatim), and comments (replaced with a
@@ -260,34 +255,29 @@ class CExtractorCodeText
     scanner = StringScanner.new(text)
     result  = +""
 
+    # Whole identifiers are read at once, so an extension's keyword is never found inside a
+    # longer name, as `_Atomic` would be inside `x$_Atomic`
     until scanner.eos?
-      # __word__(…) — any double-underscore attribute form including __attribute__((…))
-      if scanner.check(/__\w+__\s*\(/)
-        scanner.skip(/__\w+__/)
-        skip_deadspace(scanner)
-        collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
-        next
-      end
+      word = scanner.scan(IDENTIFIER)
+      next result << scanner.getch if word.nil?
 
-      # __declspec(…) — handles nested forms like __declspec(align(8))
-      if scanner.check(/__declspec\s*\(/)
-        scanner.skip(/__declspec/)
-        skip_deadspace(scanner)
-        collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
-        next
-      end
-
-      # Whitelisted bare keywords (calling conventions, inline hints, C11 specifiers)
-      if scanner.scan(BARE_STRIP_REGEX)
-        next
-      end
-
-      result << scanner.getch
+      result << word unless _extension?(scanner, word)
     end
 
     result.gsub!(/\s+/, ' ')
     result.strip!
     result
+  end
+
+  # Whether a word is an extension to strip. A bare keyword strips alone. An attribute form,
+  # `__word__(…)` or `__declspec(…)`, strips only with its arguments, which the scanner passes.
+  def _extension?(scanner, word)
+    return true if BARE_STRIP_KEYWORDS.include?(word)
+    return false unless word.match?(EXTENSION_WORD) and scanner.check(/\s*\(/)
+
+    skip_deadspace(scanner)
+    collect_balanced(scanner, '(', ')')
+    return true
   end
 
 end

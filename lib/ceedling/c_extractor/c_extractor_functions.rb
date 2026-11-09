@@ -80,7 +80,7 @@ class CExtractorFunctions
 
   # Each name's pattern, compiled once, since a name is looked up for every function extracted.
   # The name must be a whole word followed by its parameter list.
-  NAME_PATTERNS = Hash.new { |patterns, name| patterns[name] = /(?<!\w)#{Regexp.escape( name )}(?=\s*\()/ } unless const_defined?(:NAME_PATTERNS, false)
+  NAME_PATTERNS = Hash.new { |patterns, name| patterns[name] = /(?<![\w$])#{Regexp.escape( name )}(?=\s*\()/ } unless const_defined?(:NAME_PATTERNS, false)
 
   # Where a function's name starts in text that begins with its signature, or nil. The name must
   # be a whole word followed by its parameter list, so `f` is never found inside `float`.
@@ -369,7 +369,7 @@ class CExtractorFunctions
     # Now find the function name in the cleaned signature
     # Look for: identifier followed by '('
     # The identifier should be preceded by whitespace or * (for pointer returns)
-    if cleaned =~ /(?:^|[\s*])([a-zA-Z_][a-zA-Z0-9_]*)\s*\(/
+    if cleaned =~ /(?:^|[\s*])(#{IDENTIFIER.source})\s*\(/
       return $1
     end
     
