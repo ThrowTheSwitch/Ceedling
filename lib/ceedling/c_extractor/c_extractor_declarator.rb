@@ -27,6 +27,9 @@ module CExtractorDeclarator
   # A '(' opening a declarator, perhaps through redundant parentheses and a calling convention
   POINTER_GROUP = /\([\s(]*(?:#{CALLING_CONVENTION}\s*)*\*/ unless const_defined?(:POINTER_GROUP, false)
 
+  # A type specifier ending the text ahead of a group, whose argument the group holds
+  SPECIFIER_AHEAD = /(?<![\w$])(?:#{CExtractorConstants::SPECIFIERS_WITH_ARGUMENTS.join( '|' )})\s*\z/ unless const_defined?(:SPECIFIER_AHEAD, false)
+
   # A nested pointer group. After a word, a '(' that opens one is no parameter list.
   NESTED_GROUP = /\(\s*(?:#{CALLING_CONVENTION}\s*)*\*/ unless const_defined?(:NESTED_GROUP, false)
 
@@ -95,17 +98,25 @@ module CExtractorDeclarator
   # Where the declarator group opens. That is the first top-level '(' whose next token is a '*',
   # perhaps after a calling convention. Any other group is a parameter list or a macro's
   # arguments, a bracket holds an array size, and a brace holds a struct's members, so each is
-  # passed over whole.
+  # passed over whole. So is a type specifier's argument, as in `typeof(*p)`.
   def self._group_start(text)
     scanner = StringScanner.new( text )
     while scanner.skip_until( /[(\[{]/ )
       open = scanner.pos - 1
       scanner.pos = open
-      return open if scanner.match?( POINTER_GROUP )
+      return open if scanner.match?( POINTER_GROUP ) and !_specifier_argument?( text, open )
       return nil unless _skip_balanced( scanner )
     end
 
     return nil
+  end
+
+  # Whether the group at `open` follows a specifier. Only the few bytes ahead of it are read,
+  # which the longest specifier and its space fit in. Every caller collapses whitespace and
+  # blanks or removes comments first, so nothing longer sits between the two.
+  def self._specifier_argument?(text, open)
+    from = [open - 24, 0].max
+    return text.byteslice( from, open - from ).scrub( '' ).match?( SPECIFIER_AHEAD )
   end
 
   # Moves the scanner past the group, bracket or brace it sits at. A bracket in a string, a

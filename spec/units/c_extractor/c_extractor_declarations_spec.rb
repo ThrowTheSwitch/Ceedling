@@ -811,6 +811,40 @@ describe CExtractorDeclarations do
       end
     end
 
+    # A variable's extern repeats its type, so a type keyword or a specifier's argument must stay
+    context "type specifiers and keywords" do
+      [
+        ['typeof(int) g_t;',            'g_t',  'typeof(int)'],
+        ['_Atomic(int) g_a;',           'g_a',  '_Atomic(int)'],
+        ['typeof(*g_pp) g_q;',          'g_q',  'typeof(*g_pp)'],
+        ['__typeof__(int) g_u;',        'g_u',  '__typeof__(int)'],
+        ['_BitInt(8) g_b;',             'g_b',  '_BitInt(8)'],
+        ['typeof(int (*)(int)) g_fp;',  'g_fp', 'typeof(int (*)(int))'],
+        ['typeof(int[3]) g_arr;',       'g_arr', 'typeof(int[3])'],
+        ['typeof(char (*)[4]) g_pa;',   'g_pa', 'typeof(char (*)[4])'],
+        ['__typeof_unqual(const int) g_tu;', 'g_tu', '__typeof_unqual(const int)'],
+        ['_Alignas(8) int g_al;',       'g_al', '_Alignas(8) int'],
+        ['_Bool g_f;',                  'g_f',  '_Bool'],
+        ['_Atomic int g_ai;',           'g_ai', '_Atomic int'],
+        ['_Thread_local int g_tl;',     'g_tl', '_Thread_local int'],
+        ['_Complex double g_c;',        'g_c',  '_Complex double']
+      ].each do |content, name, type|
+        it "reads `#{content}` with its type whole" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type] } ).to eq [[name, type]]
+        end
+      end
+
+      it "gives a later declarator a base type a specifier spells" do
+        success, variables, _pos, _rest = extract_variable.call( 'typeof(*p) a = 0, b;' )
+
+        expect( success ).to be true
+        expect( variables.map { |v| [v.name, v.type, v.text] } ).to eq [['a', 'typeof(*p)', 'typeof(*p) a = 0;'], ['b', 'typeof(*p)', 'typeof(*p) b;']]
+      end
+    end
+
     context "compiler extensions on variable declarations" do
       it "extracts name and type from variable with trailing __attribute__" do
         content = "int x __attribute__((aligned(16)));"

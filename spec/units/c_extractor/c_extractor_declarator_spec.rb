@@ -81,6 +81,14 @@ describe CExtractorDeclarator do
       expect( read( 'FOO(* const (a), b)' ) ).to be_nil
     end
 
+    # A type specifier's argument may hold a pointer, but that names no declarator
+    it "passes over the group of a type specifier that takes parentheses" do
+      expect( read( 'typeof(*g_pp) g_q' ) ).to be_nil
+      expect( read( '__typeof__(*g_pp) g_q' ) ).to be_nil
+      expect( read( '_Atomic(int *) g_a' ) ).to be_nil
+      expect( read( 'typeof(*p) (*g_fp)(int)' ) ).to include( name: 'g_fp', base_type: 'typeof(*p)' )
+    end
+
     # GCC accepts '$' in an identifier, and fallback preprocessing leaves comments in place
     it "reads a name holding '$' or followed by a comment" do
       expect( read( 'int (*count$all)(int)' ) ).to include( name: 'count$all', follows: nil )

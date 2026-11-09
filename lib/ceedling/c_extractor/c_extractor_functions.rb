@@ -82,6 +82,12 @@ class CExtractorFunctions
   # The name must be a whole word followed by its parameter list.
   NAME_PATTERNS = Hash.new { |patterns, name| patterns[name] = /(?<![\w$])#{Regexp.escape( name )}(?=\s*\()/ } unless const_defined?(:NAME_PATTERNS, false)
 
+  # An identifier with a parameter list or a specifier's argument after it
+  CALLED_IDENTIFIER = /(?:^|[\s*])(#{IDENTIFIER.source})\s*\(/ unless const_defined?(:CALLED_IDENTIFIER, false)
+
+  # A specifier up to the '(' of its argument
+  SPECIFIER_CALL = /(?<![\w$])(?:#{SPECIFIERS_WITH_ARGUMENTS.join( '|' )})\s*(?=\()/ unless const_defined?(:SPECIFIER_CALL, false)
+
   # Where a function's name starts in text that begins with its signature, or nil. The name must
   # be a whole word followed by its parameter list, so `f` is never found inside `float`.
   def self.name_position(text, name)
@@ -366,15 +372,27 @@ class CExtractorFunctions
     grouped = CExtractorDeclarator.parenthesized( cleaned )
     return grouped.name if grouped and grouped.follows == '('
 
-    # Now find the function name in the cleaned signature
-    # Look for: identifier followed by '('
-    # The identifier should be preceded by whitespace or * (for pointer returns)
-    if cleaned =~ /(?:^|[\s*])(#{IDENTIFIER.source})\s*\(/
-      return $1
+    # The name is the first identifier followed by '(', after whitespace or a '*' for a pointer
+    # return. A specifier, as in `typeof(int) f(void)`, takes parentheses too and names nothing.
+    # Its argument is emptied first, since a call inside one, as in `typeof(g(1))`, names
+    # another function.
+    words = _without_specifier_arguments( cleaned ).scan( CALLED_IDENTIFIER ).flatten
+    return words.find { |word| !SPECIFIERS_WITH_ARGUMENTS.include?( word ) }
+  end
+
+  # The text with each specifier's argument emptied, so `typeof(g(1)) f(void)` reads
+  # `typeof() f(void)`
+  def _without_specifier_arguments(text)
+    scanner = StringScanner.new( text )
+    emptied = +''
+    while (before = scanner.scan_until( SPECIFIER_CALL ))
+      emptied << before
+      break unless CExtractorDeclarator._skip_balanced( scanner )
+
+      emptied << '()'
     end
-    
-    # Fallback: no valid function name found
-    nil
+
+    return emptied << scanner.rest
   end
 
   # True when every ')' closes an earlier '(' and none stays open. It only counts, so it needs

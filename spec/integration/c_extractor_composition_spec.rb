@@ -1285,6 +1285,22 @@ describe CExtractor do
       end
     end
 
+    # A type specifier that takes parentheses has a macro invocation's shape. Each declaration
+    # must still arrive whole, as one element.
+    context "with type specifiers that take parentheses" do
+      [
+        ['typeof(int) g_t;',      'CVariableDeclaration', 'typeof(int) g_t;'],
+        ['_Atomic(int) g_a;',     'CVariableDeclaration', '_Atomic(int) g_a;'],
+        ['_Alignas(8) int g_al;', 'CVariableDeclaration', '_Alignas(8) int g_al;'],
+        ['typeof(*g_pp) g_q;',    'CVariableDeclaration', 'typeof(*g_pp) g_q;'],
+        ['typeof(int) tf(void);', 'CFunctionDeclaration', 'typeof(int) tf(void);']
+      ].each do |content, kind, text|
+        it "extracts `#{content}` as one element" do
+          expect( sequence_of( "#{content}\n" ) ).to eq [[kind, text]]
+        end
+      end
+    end
+
     # Fallback preprocessing leaves comments in place, inside declarations too
     context "with comments inside declarations" do
       it "reads on past a declaration that ends in a comment" do

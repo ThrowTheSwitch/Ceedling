@@ -697,6 +697,21 @@ describe Partializer do
         expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
       end
 
+      # Such a keyword changes how the variable is stored or accessed, not which type it holds
+      it "marks a thread-local or atomic struct variable whose struct the module only declares" do
+        stub_texts( header: "struct handle_s;\ntypedef struct handle_s handle_t;\n", source: '' )
+        c_module = CExtractorTypes::CModule.new(
+          variable_declarations: [
+            extern_var( 'local', '_Thread_local struct handle_s' ),
+            extern_var( 'shared', '_Atomic struct handle_s' ),
+            extern_var( 'named', '__thread _Atomic handle_t' )
+          ],
+          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef struct handle_s handle_t;' )]
+        )
+
+        expect( incomplete_for( c_module ) ).to eq( Set['local', 'shared', 'named'] )
+      end
+
       # A pointer is complete whatever it points to, so a function pointer can always be defined
       it "leaves alone a function pointer returning a struct the module only declares" do
         stub_texts( header: "struct handle_s;\nextern struct handle_s (*make_handle)(void);\n", source: '' )

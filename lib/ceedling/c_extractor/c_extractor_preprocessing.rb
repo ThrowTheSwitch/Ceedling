@@ -15,14 +15,7 @@ class CExtractorPreprocessing
 
   constructor :c_extractor_code_text
 
-  # Compiler-extension attribute forms (CExtractorCodeText#strip_compiler_extensions'
-  # own `__word__(...)`/`__declspec(...)` shapes) are indistinguishable from a bare
-  # invocation by identifier-plus-parens shape alone -- e.g. `__declspec(dllexport)
-  # void foo(int x) {...}` -- but they're a function signature's own leading
-  # decoration, always followed by more of that same signature, never a construct in
-  # their own right. Excluded in try_extract_bare_macro_invocation below so that method
-  # never steals them out from under the signature-scanning extractors it exists to run
-  # ahead of.
+  # A compiler extension's attribute form, as in `__declspec(dllexport) void foo(int x) {...}`
   COMPILER_EXTENSION_IDENTIFIER = /\A(?:__\w+__|__declspec)\z/
 
   # What can follow IDENTIFIER(balanced-args) in real code but never a bare invocation. A ';'
@@ -37,59 +30,48 @@ class CExtractorPreprocessing
   # follows IDENTIFIER(balanced-args) with one of those, so this shape mostly exists before
   # macro expansion. Each of those shapes is left for the extractor that handles it.
   #
-  # A specifier that takes parentheses also fits this shape and is misread, as in
-  # `typeof(*p) q;`, `_Atomic(int) x;` and `_Alignas(8) int x;`. So is an old K&R-style
-  # function definition (`foo(a,b)\nint a; int b;\n{...}`). The extractors after this one
-  # misread K&R too, and the style is essentially extinct in modern embedded C, so it isn't
-  # worth real declaration grammar here.
+  # An old K&R-style function definition (`foo(a,b)\nint a; int b;\n{...}`) fits this shape
+  # and is misread. The extractors after this one misread K&R too, and the style is
+  # essentially extinct in modern embedded C, so it isn't worth real declaration grammar here.
   #
   # @param scanner [StringScanner] positioned at a potential macro invocation
   # @return [Array(Boolean, CExtractorTypes::CStatement|nil)]
   def try_extract_bare_macro_invocation(scanner)
     start_pos = scanner.pos
-
-    return [false, nil] unless scanner.scan(CExtractorConstants::IDENTIFIER)
-    if scanner.matched.match?(COMPILER_EXTENSION_IDENTIFIER)
+    finish    = _invocation_end(scanner)
+    if finish.nil?
       scanner.pos = start_pos
       return [false, nil]
     end
+
+    scanner.pos = finish
+    return [true, CExtractorTypes::CStatement.new(text: scanner.string.byteslice(start_pos, finish - start_pos))]
+  end
+
+  # Where a bare invocation at the scanner ends, or nil when there is none. Only the
+  # invocation belongs to its text, so the scanner peeks past the deadspace after it.
+  #
+  # The end of the buffer right after the invocation is ambiguous. It may mean only that this
+  # chunk ran out, so the method fails and extract_next_feature grows the buffer and retries,
+  # as collect_balanced does. A file that truly ends there is handled like any other trailing
+  # content, by CExtractor#extract_contents' final break.
+  def _invocation_end(scanner)
+    word = scanner.scan(CExtractorConstants::IDENTIFIER)
+    return nil if word.nil? or _leads_declaration?(word)
 
     @c_extractor_code_text.skip_deadspace(scanner)
-    unless scanner.peek(1) == '('
-      scanner.pos = start_pos
-      return [false, nil]
-    end
+    return nil unless scanner.peek(1) == '(' and @c_extractor_code_text.collect_balanced(scanner, '(', ')').first
 
-    success, _args = @c_extractor_code_text.collect_balanced(scanner, '(', ')')
-    unless success
-      scanner.pos = start_pos
-      return [false, nil]
-    end
-
-    # Peek past trailing deadspace without consuming it as part of this element --
-    # only the invocation itself belongs to this element's own text span.
-    after_invocation = scanner.pos
+    finish = scanner.pos
     @c_extractor_code_text.skip_deadspace(scanner)
-    # A mid-buffer eos? here is ambiguous -- it may only mean this chunk ran out, not
-    # that the real file has ended. Fail (not succeed) so extract_next_feature's own
-    # buffer-growth-and-retry sees more input before this method decides, exactly like
-    # collect_balanced/try_extract_static_assert already do at their own boundaries. A
-    # genuine, whole-file EOF right after the invocation is legitimate and handled the
-    # same way every other feature type's own unterminated-trailing-content case is
-    # (see CExtractor#extract_contents' final break) -- no special-casing needed here.
-    if scanner.eos?
-      scanner.pos = start_pos
-      return [false, nil]
-    end
-    next_char = scanner.peek(1)
-    scanner.pos = after_invocation
+    return (scanner.eos? or NOT_AFTER_INVOCATION.include?(scanner.peek(1))) ? nil : finish
+  end
 
-    if NOT_AFTER_INVOCATION.include?( next_char )
-      scanner.pos = start_pos
-      return [false, nil]
-    end
-
-    [true, CExtractorTypes::CStatement.new(text: scanner.string[start_pos...scanner.pos])]
+  # Whether a word with an invocation's shape leads a declaration instead. An attribute form
+  # leads more of a signature, and a specifier, as in `typeof(int) x;`, leads a declarator. Both
+  # are left for the extractors this one runs ahead of.
+  def _leads_declaration?(word)
+    return (word.match?(COMPILER_EXTENSION_IDENTIFIER) or CExtractorConstants::SPECIFIERS_WITH_ARGUMENTS.include?(word))
   end
 
   # Scan `scanner` for calls to any macro in `macro_names` and return them as a

@@ -2083,8 +2083,20 @@ describe CExtractorCodeText do
       expect(strip_ext.call("_Noreturn void exit_prog(int code)")).to eq("void exit_prog(int code)")
     end
 
-    it "strips _Thread_local C11 specifier" do
-      expect(strip_ext.call("_Thread_local int counter")).to eq("int counter")
+    # A variable's type is read from this text, and its extern must agree with its definition
+    [
+      '_Thread_local int counter',
+      '_Atomic int counter',
+      '_Atomic(int) counter',
+      '_Bool ready',
+      'double _Complex z',
+      'double _Imaginary y',
+      '__typeof__(int) counter',
+      'typeof(*p) q'
+    ].each do |text|
+      it "keeps the type in `#{text}`" do
+        expect(strip_ext.call(text)).to eq(text)
+      end
     end
 
     it "strips multiple extensions in one signature" do

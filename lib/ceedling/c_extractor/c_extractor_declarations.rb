@@ -40,6 +40,9 @@ class CExtractorDeclarations
   # A declaration's last identifier, which names its variable once suffixes are gone
   LAST_IDENTIFIER = /(?<![\w$])(#{IDENTIFIER.source})\s*\z/ unless const_defined?(:LAST_IDENTIFIER, false)
 
+  # A parenthesized group, nested ones included, or an array size outside any group
+  GROUP_OR_ARRAY_SIZE = /(?<group>\((?:[^()]|\g<group>)*\))|\[[^\]]*\]/ unless const_defined?(:GROUP_OR_ARRAY_SIZE, false)
+
   # A declaration's array sizes, which follow its name
   ARRAY_SUFFIX = /[\w$](\s*(?:\[[^\]]*\])+)\s*\z/ unless const_defined?(:ARRAY_SUFFIX, false)
 
@@ -317,9 +320,15 @@ class CExtractorDeclarations
     # so an array size such as `[N == 2 ? 2 : 3]` stays.
     text = CExtractorDeclarator.without_initializer( clean_text )
     # Strip array subscripts
-    text = text.gsub(/\[.*?\]/, '')
+    text = _without_array_sizes( text )
     # Strip trailing whitespace and return the last identifier
     text.strip[LAST_IDENTIFIER, 1]
+  end
+
+  # The text without its array sizes. A bracket inside parentheses belongs to a type a specifier
+  # spells, as in `typeof(int[3])`, so it stays.
+  def _without_array_sizes(text)
+    return text.gsub( GROUP_OR_ARRAY_SIZE ) { |match| match.start_with?( '(' ) ? match : '' }
   end
 
   # Extract array subscript suffix from a clean (decorator/extension-stripped) declaration.
@@ -337,7 +346,7 @@ class CExtractorDeclarations
 
     # Find last occurrence of name in the text, once its semicolon, initializer and array
     # subscripts are gone
-    text = CExtractorDeclarator.without_initializer( clean_text ).gsub(/\[.*?\]/, '').strip
+    text = _without_array_sizes( CExtractorDeclarator.without_initializer( clean_text ) ).strip
 
     # Find the name in the text and take everything before it, pointer specifiers included. The
     # name must be a whole identifier, so `count` isn't found inside `recount` or `count$2`.

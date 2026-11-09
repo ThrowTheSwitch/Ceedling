@@ -18,8 +18,10 @@ module CExtractorConstants
   # MSVC calling-convention keywords (appear between return type and function name)
   MSVC_CALLING_CONVENTIONS = ['__cdecl', '__stdcall', '__fastcall', '__thiscall', '__vectorcall'].freeze unless const_defined?(:MSVC_CALLING_CONVENTIONS, false)
 
-  # C11/C23 bare specifier keywords (no argument list)
-  C11_SPECIFIER_KEYWORDS = ['_Noreturn', '_Thread_local', '_Atomic', '_Bool', '_Complex', '_Imaginary'].freeze unless const_defined?(:C11_SPECIFIER_KEYWORDS, false)
+  # Specifiers that take parentheses, as `typeof(int)`, `_Atomic(int)` and `_Alignas(8)` do.
+  # Each has a macro invocation's shape, and its argument may hold a pointer or a call that
+  # names no declarator.
+  SPECIFIERS_WITH_ARGUMENTS = %w[typeof typeof_unqual __typeof __typeof__ __typeof_unqual __typeof_unqual__ _Atomic _Alignas alignas _BitInt].freeze unless const_defined?(:SPECIFIERS_WITH_ARGUMENTS, false)
 
   # A C identifier. GCC and Clang accept '$' in one, at its start, middle or end.
   IDENTIFIER = /[A-Za-z_$][\w$]*/ unless const_defined?(:IDENTIFIER, false)

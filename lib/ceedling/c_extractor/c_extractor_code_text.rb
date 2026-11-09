@@ -13,15 +13,17 @@ class CExtractorCodeText
   include CExtractorConstants
 
   # Bare keywords, without an argument list, that strip_compiler_extensions removes. They are
-  # MSVC calling conventions, inline hints and C11 specifier keywords. Each matches only as a
-  # whole identifier, so `__cdecl` isn't found inside `__cdeclFoo` or `x$__cdecl`.
+  # MSVC calling conventions, inline hints and `_Noreturn`. Each matches only as a whole
+  # identifier, so `__cdecl` isn't found inside `__cdeclFoo` or `x$__cdecl`. Type keywords such
+  # as `_Atomic`, `_Bool` and `_Thread_local` stay, because a variable's type is read from the
+  # text and its extern must agree with its definition.
   BARE_STRIP_KEYWORDS = (
-    MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline'] + C11_SPECIFIER_KEYWORDS
+    MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline', '_Noreturn']
   ).freeze unless const_defined?(:BARE_STRIP_KEYWORDS, false)
 
   # The keyword of an attribute form whose arguments follow, as in `__attribute__((packed))`
-  # and `__declspec(dllexport)`
-  EXTENSION_WORD = /\A(?:__\w+__|__declspec)\z/ unless const_defined?(:EXTENSION_WORD, false)
+  # and `__declspec(dllexport)`. A type `__typeof__` spells has the same shape and stays.
+  EXTENSION_WORD = /\A(?!__typeof(?:_unqual)?__\z)(?:__\w+__|__declspec)\z/ unless const_defined?(:EXTENSION_WORD, false)
 
   # Collect the full text of a balanced delimiter pair starting AT open_char.
   # Nested pairs, string literals (verbatim), and comments (replaced with a
@@ -248,15 +250,15 @@ class CExtractorCodeText
   # Whitespace is normalized to single spaces and the result is stripped.
   #
   # Handles:
-  #   __word__(…) — any double-underscore attribute form
+  #   __word__(…) — a double-underscore attribute form, though `__typeof__(…)` spells a type and stays
   #   __declspec(…) — MSVC declaration specifier (including nested parens)
-  #   Bare MSVC calling conventions, MSVC inline hints, C11 specifier keywords
+  #   Bare MSVC calling conventions, MSVC inline hints and `_Noreturn`
   def strip_compiler_extensions(text)
     scanner = StringScanner.new(text)
     result  = +""
 
     # Whole identifiers are read at once, so an extension's keyword is never found inside a
-    # longer name, as `_Atomic` would be inside `x$_Atomic`
+    # longer name, as `__cdecl` would be inside `x$__cdecl`
     until scanner.eos?
       word = scanner.scan(IDENTIFIER)
       next result << scanner.getch if word.nil?

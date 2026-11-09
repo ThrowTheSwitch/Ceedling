@@ -163,6 +163,59 @@ describe 'Declarations in a Partial' do
   end
 
   # ---------------------------------------------------------------------------
+  context 'type specifiers and keywords' do
+  # ---------------------------------------------------------------------------
+
+    # An extern repeats a variable's type, which a specifier or keyword may spell. Every case
+    # here compiles in GCC 13's default dialect, which CI's Linux job uses.
+    it 'declares variables whose types a specifier taking parentheses spells' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int *g_pp;\ntypeof(int) g_t;\n_Atomic(int) g_a;\n_Alignas(8) int g_al;\ntypeof(*g_pp) g_q;\n__typeof__(int) g_u;\n" \
+                "int ticker_get(void) { return g_t + g_a + g_al + g_q + g_u; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern typeof(int) g_t;', 'extern _Atomic(int) g_a;', 'extern typeof(*g_pp) g_q;' )
+      expect_link( @result, ['g_t', 'g_a', 'g_al', 'g_q', 'g_u'] )
+    end
+
+    it 'declares variables whose types a keyword spells' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "_Bool g_f;\n_Atomic int g_ai;\n_Thread_local int g_tl;\n_Complex double g_c;\n" \
+                "int ticker_get(void) { return g_f + g_ai + g_tl + (int)__real__ g_c; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern _Bool g_f;', 'extern _Atomic int g_ai;', 'extern _Thread_local int g_tl;', 'extern _Complex double g_c;' )
+      expect_link( @result, ['g_f', 'g_ai', 'g_c'] )
+    end
+
+    # A weak definition of a struct never completed can't compile, whatever keyword leads its type.
+    # Clang rejects `_Atomic` on an incomplete struct, so only a unit spec covers that keyword.
+    it 'writes no weak definition for a thread-local extern of a struct never completed' do
+      @result = ticker(
+        header: "struct opaque;\nextern _Thread_local struct opaque g_o;\n" \
+                "typedef struct opaque opaque_t;\nextern _Thread_local opaque_t g_t;\nint ticker_get(void);\n",
+        source: "int ticker_get(void) { return 1; }\n"
+      )
+
+      expect( @result.impl_c ).not_to include( 'g_o', 'g_t' )
+      compile = compile_objects( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
+    it 'selects a function whose return type a specifier spells' do
+      @result = ticker(
+        header: "typeof(int) tf(void);\n",
+        source: "typeof(int) tf(void) { return 0; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'typeof(int) tf(void);' )
+      expect_link( @result, ['tf'] )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   context "names holding '$'" do
   # ---------------------------------------------------------------------------
 

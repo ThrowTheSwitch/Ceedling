@@ -708,6 +708,25 @@ describe CExtractorPreprocessing do
       [result, scanner.pos]
     end
 
+    # A type specifier that takes parentheses has an invocation's shape, but a declaration follows
+    [
+      'typeof(int) g_t;',
+      'typeof(*g_pp) g_q;',
+      'typeof_unqual(const int) g_u;',
+      '__typeof(int) g_v;',
+      '__typeof_unqual(const int) g_w;',
+      '_Atomic(int) g_a;',
+      '_Alignas(8) int g_al;',
+      'alignas(8) int g_al2;',
+      '_BitInt(8) g_b;'
+    ].each do |text|
+      it "declines a type specifier taking parentheses: #{text}" do
+        result, pos = try_bare_invocation(text)
+        expect(result).to eq [false, nil]
+        expect(pos).to eq 0
+      end
+    end
+
     # --- Success cases ---
 
     it "extracts a simple invocation followed by unrelated trailing content" do

@@ -3102,4 +3102,32 @@ describe CExtractorFunctions do
     end
   end
 
+
+  # A return type a specifier spells keeps its parentheses, which hold no name
+  describe "return types a specifier spells" do
+    let(:functions) { CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup) }
+
+    [
+      ['typeof(int) tf(void);',      'tf', 'typeof(int) tf(void);'],
+      ['_Atomic(int) af(void);',     'af', '_Atomic(int) af(void);'],
+      ['typeof(*p) pf(int n);',      'pf', 'typeof(*p) pf(int n);'],
+      ['__typeof__( helper(1) ) tq(void);', 'tq', '__typeof__( helper(1) ) tq(void);'],
+      ['typeof(unsigned int (*)(void)) getfp(void);', 'getfp', 'typeof(unsigned int (*)(void)) getfp(void);']
+    ].each do |signature, name, stripped|
+      it "reads the declaration `#{signature}` as `#{name}`" do
+        success, declaration = functions.try_extract_function_declaration( StringScanner.new( signature ) )
+
+        expect( success ).to be true
+        expect( [declaration.name, declaration.signature_stripped] ).to eq [name, stripped]
+      end
+    end
+
+    it "reads a definition whose return type `__typeof__` spells" do
+      success, definition = functions.try_extract_function_definition( StringScanner.new( "__typeof__(int) uf(void) { return 0; }" ), nil )
+
+      expect( success ).to be true
+      expect( definition.name ).to eq( 'uf' )
+    end
+  end
+
 end
