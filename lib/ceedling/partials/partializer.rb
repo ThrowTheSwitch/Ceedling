@@ -580,13 +580,7 @@ class Partializer
   def _extern_aggregates(c_module)
     tags  = _aggregate_tags( c_module )
     plain = c_module.variable_declarations.select { |v| v.extern? and v.declarator.nil? }
-    return plain.filter_map { |v| [v, tags[_named_type( v )]] if tags.key?( _named_type( v ) ) }
-  end
-
-  # The type a variable holds by value, less a keyword ahead of it that changes only how it's
-  # stored or accessed, as `_Thread_local` and `_Atomic` do
-  def _named_type(var)
-    return var.type.to_s.sub( /\A(?:(?:_Thread_local|thread_local|__thread|_Atomic)\s+)+/, '' )
+    return plain.filter_map { |v| [v, tags[Partials.named_type( v )]] if tags.key?( Partials.named_type( v ) ) }
   end
 
   # Each type a variable may name by value that is a struct or union tag, keyed to its tag. A
@@ -594,8 +588,8 @@ class Partializer
   def _aggregate_tags(c_module)
     tags = {}
     c_module.variable_declarations.each do |v|
-      tag = _named_type( v )[/\A(?:struct|union)\s+([\w$]+)\z/, 1]
-      tags[_named_type( v )] = tag if tag
+      tag = Partials.named_type( v )[/\A(?:struct|union)\s+([\w$]+)\z/, 1]
+      tags[Partials.named_type( v )] = tag if tag
     end
     c_module.type_definitions.each do |typedef|
       match = typedef.text.match( /\Atypedef\s+(?:struct|union)\s+([\w$]+)\s+([\w$]+)\s*;/ )

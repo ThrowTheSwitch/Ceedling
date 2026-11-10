@@ -162,36 +162,16 @@ class CExtractorFunctions
     start_pos = scanner.pos
     # Tracks paren depth while accumulating candidate end-positions — not suitable for collect_balanced()
     paren_depth = 0
-    in_string = false
-    string_char = nil
     signature_candidates = []  # Track positions where paren_depth returns to 0
     found_opening_paren = false  # Track if we've seen an opening paren
 
     until scanner.eos?
       char = scanner.peek(1)
 
-      # Handle string literals
-      if in_string
-        if char == '\\'
-          scanner.getch
-          scanner.getch unless scanner.eos?
-          next
-        elsif char == string_char
-          scanner.getch
-          in_string = false
-          string_char = nil
-          next
-        else
-          scanner.getch
-          next
-        end
-      end
-      
       case char
       when '"', "'"
-        in_string = true
-        string_char = char
-        scanner.getch
+        # A literal is passed whole, escapes included, so nothing in it counts
+        @code_text.skip_c_string(scanner, char)
       when '/'
         # Hottest comparison in the extractor -- reached for every '/' in the
         # source. `start_with?` avoids compiling and running a regex here. The

@@ -427,7 +427,7 @@ describe PartializerHelper do
         allow(@c_extractor_declarations).to receive(:try_extract_variable)
           .and_return([false, nil])
 
-        expect(@partializer_utils).not_to receive(:replace_declaration_with_noop)
+        expect(@partializer_utils).not_to receive(:replace_compound_declaration_with_noops)
         expect(@partializer_utils).not_to receive(:rename_c_identifiers)
 
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
@@ -451,7 +451,7 @@ describe PartializerHelper do
         allow(@c_extractor_declarations).to receive(:try_extract_variable)
           .and_return([true, [non_static_var]], [false, nil])
 
-        expect(@partializer_utils).not_to receive(:replace_declaration_with_noop)
+        expect(@partializer_utils).not_to receive(:replace_compound_declaration_with_noops)
         expect(@partializer_utils).not_to receive(:rename_c_identifiers)
 
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
@@ -478,14 +478,14 @@ describe PartializerHelper do
         placeholder = '__CEEDLING_NOOP_PROCESS_COUNT__'
         noop_text   = "(void)0; /* `#{placeholder}` ... */"
 
-        allow(@partializer_utils).to receive(:replace_declaration_with_noop)
-          .and_return(noop_text)
+        allow(@partializer_utils).to receive(:replace_compound_declaration_with_noops)
+          .with(anything, 'static int count', placeholder, 1).and_return(noop_text)
         allow(@partializer_utils).to receive(:rename_c_identifiers)
           .and_return('')
 
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
 
-        expect(@partializer_utils).to have_received(:replace_declaration_with_noop).exactly(2).times
+        expect(@partializer_utils).to have_received(:replace_compound_declaration_with_noops).exactly(2).times
         expect(@partializer_utils).to have_received(:rename_c_identifiers).exactly(3).times
         expect(result.first.name).to eq('partial_process_count')
       end

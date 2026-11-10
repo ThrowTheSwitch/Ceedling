@@ -253,11 +253,7 @@ class PartializerHelper
         # A compound declaration (e.g. int x, y) yields multiple declaration Structs
         success, var_decls = @declaration_extractor.try_extract_variable( scanner )
         break unless success
-        var_decls.each do |var|
-          if var.decorators.any? { |d| CExtractorConstants::PRIVATE_KEYWORDS.include?(d) }
-            _decls << var
-          end
-        end
+        _decls.concat( var_decls.select { |var| var.decorators.any? { |d| CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) } } )
       end
 
       # Group declarations by statement. The variables of a compound declaration, such as
@@ -296,45 +292,34 @@ class PartializerHelper
     placeholders = groups.map { |original, group| [original, _replace_statement( func, original, group )] }
 
     vars.each { |var| _rename_variable( var, renames ) }
-    _rename_in_function( func, renames )
-    placeholders.each { |original, placeholder| _restore_statement( func, original, placeholder ) }
+    _in_function( func ) { |text| _restored( @utils.rename_c_identifiers( text, renames ), placeholders ) }
+  end
+
+  # The text with each statement's original put back in place of its placeholder
+  def _restored(text, placeholders)
+    return placeholders.reduce( text ) { |restored, (original, placeholder)| restored.sub( placeholder ) { original } }
   end
 
   # Puts one no-op per variable where the statement stood, followed by a placeholder comment,
   # and returns the placeholder. It's keyed on the statement's first variable.
   def _replace_statement(func, original, vars)
-    placeholder     = "__CEEDLING_NOOP_#{func.name.upcase}_#{vars.first.name.upcase}__"
-    func.code_block = _noops( func.code_block, original, placeholder, vars.size )
-    func.body       = _noops( func.body, original, placeholder, vars.size )
+    placeholder = "__CEEDLING_NOOP_#{func.name.upcase}_#{vars.first.name.upcase}__"
+    _in_function( func ) { |text| @utils.replace_compound_declaration_with_noops( text, original, placeholder, vars.size ) }
     return placeholder
-  end
-
-  # The text with the statement replaced by `count` no-ops and the placeholder comment
-  def _noops(text, original, placeholder, count)
-    return @utils.replace_declaration_with_noop( text, original, placeholder ) if count == 1
-
-    return @utils.replace_compound_declaration_with_noops( text, original, placeholder, count )
   end
 
   # Gives a promoted variable its new name. Its text, declarator and array size take the new
   # name of every promoted variable they mention.
   def _rename_variable(var, renames)
-    var.text         = @utils.rename_c_identifiers( var.text, renames )
-    var.declarator   = @utils.rename_c_identifiers( var.declarator, renames ) if var.declarator
-    var.array_suffix = @utils.rename_c_identifiers( var.array_suffix, renames ) if var.array_suffix
-    var.name         = renames[var.name]
+    var.text, var.declarator, var.array_suffix = [var.text, var.declarator, var.array_suffix].map { |text| text && @utils.rename_c_identifiers( text, renames ) }
+    var.name = renames[var.name]
   end
 
-  # Renames each promoted variable throughout the function
-  def _rename_in_function(func, renames)
-    func.code_block = @utils.rename_c_identifiers( func.code_block, renames )
-    func.body       = @utils.rename_c_identifiers( func.body, renames )
-  end
-
-  # Puts the statement's original text back in place of the placeholder in its comment
-  def _restore_statement(func, original, placeholder)
-    func.code_block = func.code_block.sub( placeholder ) { original }
-    func.body       = func.body.sub( placeholder )       { original }
+  # Changes the function's code block and its body alike, as the block does each one. Each
+  # promoted statement and each rename must reach both.
+  def _in_function(func)
+    func.code_block = yield( func.code_block )
+    func.body       = yield( func.body )
   end
 
   # Refuses a module whose shape fallback preprocessing cannot resolve.

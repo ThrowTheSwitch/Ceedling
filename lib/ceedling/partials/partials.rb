@@ -86,6 +86,12 @@ module Partials
     return Regexp.new( tokens.join( STATEMENT_GAP.source ), Regexp::MULTILINE )
   end
 
+  # The type a variable holds by value, less a keyword ahead of it that changes only how it's
+  # stored or accessed, as `_Thread_local` and `_Atomic` do
+  def self.named_type(var)
+    return var.type.to_s.sub( /\A(?:(?:_Thread_local|thread_local|__thread|_Atomic)\s+)+/, '' )
+  end
+
   # A `static` function is private to its file
   def self.static?(decorators)
     return decorators.include?( 'static' )
