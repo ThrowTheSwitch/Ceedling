@@ -993,6 +993,47 @@ describe CExtractorDeclarations do
       end
     end
 
+    # A C23 attribute may lead a declaration, ahead of its storage class, or follow a name. The
+    # record's text keeps it in place. Its type leaves it out, so an extern can declare the type.
+    context "C23 attributes" do
+      [
+        ['[[maybe_unused]] static int count;',              'count', ['static'],          'int', '[[maybe_unused]] int count;'],
+        ['[[gnu::unused]] static int s_g;',                 's_g', ['static'],          'int', '[[gnu::unused]] int s_g;'],
+        ['[[deprecated("a]]b")]] static int s_d;',          's_d', ['static'],          'int', '[[deprecated("a]]b")]] int s_d;'],
+        ['[[maybe_unused]] [[deprecated]] static int s_m;', 's_m', ['static'],          'int', '[[maybe_unused]] [[deprecated]] int s_m;'],
+        ['[[maybe_unused]] static const int s_c = 1;',      's_c', ['static', 'const'], 'int', '[[maybe_unused]] int s_c = 1;'],
+        ['static int count [[maybe_unused]];',              'count', ['static'],          'int', 'int count [[maybe_unused]];']
+      ].each do |content, name, decorators, type, text|
+        it "reads `#{content}` with its storage class as a decorator" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.decorators, v.type, v.text, v.array_suffix] } ).to eq [[name, decorators, type, text, '']]
+        end
+      end
+
+      it 'keeps an array size after an attribute that follows the name' do
+        _success, variables, _pos, _rest = extract_variable.call( 'int buf [[maybe_unused]] [4];' )
+
+        expect( variables.map { |v| [v.name, v.type, v.array_suffix] } ).to eq [['buf', 'int', '[4]']]
+      end
+
+      it 'gives each declarator of a compound declaration the leading attribute' do
+        _success, variables, _pos, _rest = extract_variable.call( '[[maybe_unused]] static int a, b;' )
+
+        expect( variables.map { |v| [v.name, v.decorators, v.type, v.text] } ).to eq [
+          ['a', ['static'], 'int', '[[maybe_unused]] int a;'],
+          ['b', ['static'], 'int', '[[maybe_unused]] int b;']
+        ]
+      end
+
+      it 'keeps an attribute after a name with its own declarator' do
+        _success, variables, _pos, _rest = extract_variable.call( 'int a [[maybe_unused]], b;' )
+
+        expect( variables.map { |v| [v.name, v.type, v.text] } ).to eq [['a', 'int', 'int a [[maybe_unused]];'], ['b', 'int', 'int b;']]
+      end
+    end
+
     context "asm labels" do
       def read_all(content)
         success, variables, _, _ = extract_variable.call( content )

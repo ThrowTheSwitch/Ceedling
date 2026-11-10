@@ -243,6 +243,23 @@ class CExtractorCodeText
     false
   end
 
+  # Two brackets, which open a C23 attribute and nothing else
+  C23_ATTRIBUTE_OPEN = /\[\s*\[/ unless const_defined?(:C23_ATTRIBUTE_OPEN, false)
+
+  # The text without its C23 attributes, its spacing otherwise unchanged. A reader looking for
+  # array sizes uses it, since an attribute's brackets are no size.
+  def strip_c23_attributes(text)
+    scanner = StringScanner.new(text)
+    result  = +""
+    until scanner.eos?
+      next collect_balanced(scanner, '[', ']') if scanner.check(C23_ATTRIBUTE_OPEN)
+
+      result << (scanner.scan(/[^\[]+/) || scanner.getch)
+    end
+
+    result
+  end
+
   # Strip all compiler extensions from a string and return the cleaned result.
   # Uses an internal StringScanner plus collect_balanced() so all paren nesting depths
   # are handled correctly (e.g. __declspec(align(8)), __attribute__((format(printf,1,2)))).
@@ -254,6 +271,8 @@ class CExtractorCodeText
   #   __word__(…) — a double-underscore attribute form, though `__typeof__(…)` spells a type and stays
   #   __declspec(…) — MSVC declaration specifier (including nested parens)
   #   Bare MSVC calling conventions, MSVC inline hints and `_Noreturn`
+  #   [[…]] — a C23 attribute, before a declaration or after a name. Only an attribute opens
+  #   with two brackets, so an array size never strips.
   def strip_compiler_extensions(text)
     scanner = StringScanner.new(text)
     result  = +""
@@ -261,15 +280,15 @@ class CExtractorCodeText
     # Whole identifiers are read at once, so an extension's keyword is never found inside a
     # longer name, as `__cdecl` would be inside `x$__cdecl`
     until scanner.eos?
+      next collect_balanced(scanner, '[', ']') if scanner.check(C23_ATTRIBUTE_OPEN)
+
       word = scanner.scan(IDENTIFIER)
       next result << scanner.getch if word.nil?
 
       result << word unless _extension?(scanner, word)
     end
 
-    result.gsub!(/\s+/, ' ')
-    result.strip!
-    result
+    return result.gsub(/\s+/, ' ').strip
   end
 
   # Whether a word is an extension to strip. A bare keyword strips alone. An attribute form,

@@ -27,9 +27,10 @@ class CExtractorDeclarations
   # stops at every '/', since one may start a comment.
   PLAIN_RUN = %r{[^"'/()\[\]{};]+} unless const_defined?(:PLAIN_RUN, false)
 
-  # One item of a declaration's leading run. That is a decorator keyword, read whole, or an
-  # alignment specifier or attribute with its arguments, whose literals may hold parentheses.
-  LEADING_RUN_ITEM = /\A(?:(?<keyword>#{DECORATOR_KEYWORDS.map { |kw| Regexp.escape( kw ) }.join( '|' )})(?![\w$])|(?:_Alignas|alignas|__attribute__|__attribute|__declspec)\s*(?<group>\((?>[^()"']+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\g<group>)*\)))\s*/ unless const_defined?(:LEADING_RUN_ITEM, false)
+  # One item of a declaration's leading run. That is a decorator keyword, read whole, an
+  # alignment specifier or attribute with its arguments, or a C23 attribute in double brackets.
+  # Literals among the arguments may hold parentheses or brackets.
+  LEADING_RUN_ITEM = /\A(?:(?<keyword>#{DECORATOR_KEYWORDS.map { |kw| Regexp.escape( kw ) }.join( '|' )})(?![\w$])|(?:_Alignas|alignas|__attribute__|__attribute|__declspec)\s*(?<group>\((?>[^()"']+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\g<group>)*\))|(?=\[\s*\[)(?<brackets>\[(?>[^\[\]"']+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\g<brackets>)*\]))\s*/ unless const_defined?(:LEADING_RUN_ITEM, false)
 
   # Each delimiter's own kind of depth, and how the delimiter changes it
   DELIMITER_DEPTH = {
@@ -230,7 +231,8 @@ class CExtractorDeclarations
 
   # Whether the base type shows that a macro after the first name, such as an attribute, was
   # read as the name. A word ahead of a star is never the name, so a base type ending at a star
-  # stands. An array size outside parentheses follows a name. A word after a type follows one
+  # stands. An array size outside parentheses follows a name, though a C23 attribute's brackets
+  # are no size. A word after a type follows one
   # too when the name read is spelled as a macro is, in capitals or with a leading `__`, as in
   # `const u8 MAX_A UNUSED = 3, MAX_B = 1;` or `int a1 __maybe_unused, b1;`. A keyword or a
   # compiler's `__` extension there is part of the type, as in `int __far a, b;`. Any other word
@@ -238,7 +240,8 @@ class CExtractorDeclarations
   # expanding the macros, the two readings can't be told apart.
   def _misread_base?(base_type, head, name)
     return false if head.byteslice( base_type.bytesize, head.bytesize ).lstrip.start_with?( '*' )
-    return true unless _without_array_sizes( base_type ) == base_type
+    bare = @code_text.strip_c23_attributes( base_type )
+    return true unless _without_array_sizes( bare ) == bare
     return false unless _type_then_name?( base_type.match( LAST_TWO_WORDS ) )
 
     return (name.to_s.match?( MACRO_CASE ) or name.to_s.start_with?( '__' ))
