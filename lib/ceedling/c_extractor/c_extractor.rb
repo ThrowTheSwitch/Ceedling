@@ -342,8 +342,9 @@ class CExtractor
       # Create a new scanner for the current buffer
       scanner = StringScanner.new(buffer)
 
-      # Skip any deadspace
-      @code_text.skip_deadspace(scanner)
+      # Skip any deadspace, a stray ';' included. When a feature ends at the buffer's last byte,
+      # skip_semicolons below can't see the ';' after it, so that ';' arrives here.
+      @code_text.skip_deadspace(scanner, semicolons: true)
 
       # If reached end of string having found no feature -- restart loop to containing loop to grow buffer
       next if scanner.eos?

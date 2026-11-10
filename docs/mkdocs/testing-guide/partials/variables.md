@@ -252,4 +252,18 @@ function name. Both arguments must be literal tokens that match the original
 C identifiers exactly (the function name and the variable name as they appear
 in the source file).
 
+## A variable declared together with its type
+
+A Partial can’t yet copy a variable declared in the same statement that defines
+its type, such as `static struct { int count; } s_ctx;` or
+`static enum { IDLE, RUN } s_state;`. The generated files repeat the type’s
+body, and the build fails with conflicting types or a redefinition. A
+function-scoped `static` of this form fails the same way. Define the type on
+its own, then declare the variable by the type’s name:
+
+```c
+struct ctx { int count; };
+static struct ctx s_ctx;
+```
+
 <br/><br/>

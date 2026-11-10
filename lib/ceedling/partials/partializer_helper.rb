@@ -39,16 +39,16 @@ class PartializerHelper
 
   # Code uses a function wherever it names one. A call counts, and so do an address taken, a
   # callback passed by name and an entry in a table of handlers.
-  C_IDENTIFIER = /(?<!\w)[A-Za-z_]\w*/ unless const_defined?(:C_IDENTIFIER, false)
+  C_IDENTIFIER = /(?<![\w$])[A-Za-z_$][\w$]*/ unless const_defined?(:C_IDENTIFIER, false)
 
   # A struct or union member, or a struct, union or enum tag, which only shares a name with any function
-  C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_]\w*/ unless const_defined?(:C_MEMBER_ACCESS, false)
-  C_TAG           = /(?<!\w)(?:struct|union|enum)\s+[A-Za-z_]\w*/ unless const_defined?(:C_TAG, false)
+  C_MEMBER_ACCESS = /(?:\.|->)\s*[A-Za-z_$][\w$]*/ unless const_defined?(:C_MEMBER_ACCESS, false)
+  C_TAG           = /(?<![\w$])(?:struct|union|enum)\s+[A-Za-z_$][\w$]*/ unless const_defined?(:C_TAG, false)
 
   # A local variable declared at the start of a statement. Any qualifiers come first, then a
   # type name, any pointer stars, and the variable's name ahead of `=`, `;`, `,` or `[`. A
   # keyword that starts a statement is no type, so `return x;` declares nothing.
-  C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_]\w*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_]\w*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
+  C_LOCAL_DECLARATION = /(?:\A|[;{}(])\s*(?:(?:const|volatile|static|register|auto|signed|unsigned|struct|union|enum|long|short)\s+)*([A-Za-z_$][\w$]*)(?:\s*\*[\s*]*|\s+)(?:const\s+)?([A-Za-z_$][\w$]*)\s*(?=[=;,\[])/ unless const_defined?(:C_LOCAL_DECLARATION, false)
   C_STATEMENT_KEYWORDS = %w[return goto case default else do sizeof typedef break continue].freeze unless const_defined?(:C_STATEMENT_KEYWORDS, false)
 
   # A preprocessor directive line, matched from the line's start past any leading whitespace
@@ -253,18 +253,11 @@ class PartializerHelper
         # A compound declaration (e.g. int x, y) yields multiple declaration Structs
         success, var_decls = @declaration_extractor.try_extract_variable( scanner )
         break unless success
-        var_decls.each do |var|
-          if var.decorators.any? { |d| CExtractorConstants::PRIVATE_KEYWORDS.include?(d) }
-            _decls << var
-          end
-        end
+        _decls.concat( var_decls.select { |var| var.decorators.any? { |d| CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) } } )
       end
 
-      # Group declarations by original statement.
-      # Simple declarations (one var per unique original) and 
-      # compound declarations (multiple vars sharing the same original, e.g. `static int a, b;`)
-      # require different strategies to prevent the restored comment text from being found and
-      # corrupted by a subsequent replace call.
+      # Group declarations by statement. The variables of a compound declaration, such as
+      # `static int a, b;`, share one statement, which becomes one no-op per variable.
       groups = _decls.group_by { |var| var.original.strip }
 
       # A static the extractor read no name from, such as one a macro declares, can't be renamed.
@@ -272,38 +265,7 @@ class PartializerHelper
       groups.reject! { |_original, vars| vars.any? { |var| var.name.nil? } }
       _decls = groups.values.flatten
 
-      groups.each do |_original, vars|
-        # Pre-compute old/new names before any mutation of var.name
-        old_names   = vars.map(&:name)
-        new_names   = old_names.map { |n| "partial_#{func.name}_#{n}" }
-
-        # Single placeholder per group — keyed on the first variable's name
-        placeholder = "__CEEDLING_NOOP_#{func.name.upcase}_#{old_names.first.upcase}__"
-
-        # Replace original declaration: one no-op per variable, single comment with placeholder.
-        # Defer placeholder restoration until after ALL renames are complete so that
-        # restored comment text cannot be found and re-processed by a subsequent replace.
-        if vars.size > 1
-          func.code_block = @utils.replace_compound_declaration_with_noops( func.code_block, _original, placeholder, vars.size )
-          func.body       = @utils.replace_compound_declaration_with_noops( func.body,       _original, placeholder, vars.size )
-        else
-          func.code_block = @utils.replace_declaration_with_noop( func.code_block, _original, placeholder )
-          func.body       = @utils.replace_declaration_with_noop( func.body,       _original, placeholder )
-        end
-
-        # Rename all variables' token-bounded references (shared logic for both cases)
-        vars.zip( old_names, new_names ).each do |var, old_name, new_name|
-          var.text        = @utils.rename_c_identifier( var.text,        old_name, new_name )
-          var.declarator  = @utils.rename_c_identifier( var.declarator,  old_name, new_name ) if var.declarator
-          var.name        = new_name
-          func.code_block = @utils.rename_c_identifier( func.code_block, old_name, new_name )
-          func.body       = @utils.rename_c_identifier( func.body,       old_name, new_name )
-        end
-
-        # Restore original declaration text in the single placeholder comment
-        func.code_block = func.code_block.sub(placeholder) { _original }
-        func.body       = func.body.sub(placeholder)       { _original }
-      end
+      _promote_statements( func, groups ) unless groups.empty?
 
       _decls_log = _decls.map { |d| "`#{d.original.strip}`" }
       @loginator.log_list(
@@ -317,6 +279,49 @@ class PartializerHelper
 
     return decls
   end
+
+  # Promotes a function's statics to module scope under new names. Each statement becomes one
+  # no-op per variable, with its text kept in a comment behind a placeholder. Every statement is
+  # replaced before any rename, since a rename would change the text a later statement is found
+  # by. Each variable's text, declarator and array size then take every rename, because one
+  # static's initializer may name another, as in `static int a = 1, *p = &a;`. The placeholders
+  # are restored last, so no rename reaches the restored text.
+  def _promote_statements(func, groups)
+    vars         = groups.values.flatten
+    renames      = vars.to_h { |var| [var.name, "partial_#{func.name}_#{var.name}"] }
+    placeholders = groups.map { |original, group| [original, _replace_statement( func, original, group )] }
+
+    vars.each { |var| _rename_variable( var, renames ) }
+    _in_function( func ) { |text| _restored( @utils.rename_c_identifiers( text, renames ), placeholders ) }
+  end
+
+  # The text with each statement's original put back in place of its placeholder
+  def _restored(text, placeholders)
+    return placeholders.reduce( text ) { |restored, (original, placeholder)| restored.sub( placeholder ) { original } }
+  end
+
+  # Puts one no-op per variable where the statement stood, followed by a placeholder comment,
+  # and returns the placeholder. It's keyed on the statement's first variable.
+  def _replace_statement(func, original, vars)
+    placeholder = "__CEEDLING_NOOP_#{func.name.upcase}_#{vars.first.name.upcase}__"
+    _in_function( func ) { |text| @utils.replace_compound_declaration_with_noops( text, original, placeholder, vars.size ) }
+    return placeholder
+  end
+
+  # Gives a promoted variable its new name. Its text, declarator and array size take the new
+  # name of every promoted variable they mention.
+  def _rename_variable(var, renames)
+    var.text, var.declarator, var.array_suffix = [var.text, var.declarator, var.array_suffix].map { |text| text && @utils.rename_c_identifiers( text, renames ) }
+    var.name = renames[var.name]
+  end
+
+  # Changes the function's code block and its body alike, as the block does each one. Each
+  # promoted statement and each rename must reach both.
+  def _in_function(func)
+    func.code_block = yield( func.code_block )
+    func.body       = yield( func.body )
+  end
+
   # Refuses a module whose shape fallback preprocessing cannot resolve.
   #
   # Fallback never runs a compiler. It scans text and tracks a handful of conditional shapes
@@ -717,7 +722,7 @@ class PartializerHelper
 
     scanner = StringScanner.new( run )
     walk    = DefinitionWalk.new( directive: _directive_line?( scanner ), inline: false, static: false )
-    _walk_word( walk, scanner, wanted, found ) while scanner.skip_until( /\n|\w+/ )
+    _walk_word( walk, scanner, wanted, found ) while scanner.skip_until( /\n|[\w$]+/ )
   end
 
   # One word of a run, or the newline that starts its next line

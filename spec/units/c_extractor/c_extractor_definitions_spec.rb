@@ -28,6 +28,14 @@ describe CExtractorDefinitions do
 
     # --- Failure cases ---
 
+    # GCC and Clang accept '$' in an identifier, so a longer name only starts like the keyword
+    it "returns [false, nil] for a name that only starts with typedef or struct" do
+      result, pos = try_typedef('typedef$init(a);')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+      expect(@definitions.try_extract_aggregate_definition(StringScanner.new('struct$x(a) { 1; };'))).to eq [false, nil]
+    end
+
     it "returns [false, nil] when scanner is not at typedef" do
       result, pos = try_typedef('int x;')
       expect(result).to eq [false, nil]
@@ -202,6 +210,13 @@ describe CExtractorDefinitions do
       result, pos = try_typedef(input)
       expect(result).to eq [true, "typedef int MyInt;"]
       expect(pos).to eq "typedef int MyInt;\n".length
+    end
+
+    it "keeps a literal whole after text that isn't ASCII" do
+      input = "typedef struct { char d[sizeof(\"é;\")]; } T;"
+      scanner = StringScanner.new(input)
+      expect(@definitions.try_extract_typedef(scanner)).to eq [true, input]
+      expect(scanner.pos).to eq input.bytesize
     end
 
     it "leaves scanner position unchanged on failure" do
@@ -401,6 +416,145 @@ describe CExtractorDefinitions do
       result, pos = try_aggregate(input)
       expect(result[0]).to be true
       expect(pos).to eq input.length
+    end
+
+    # --- The head ahead of the body ---
+
+    # A variable's initializer and a function's body are braced too. The text ahead of the brace
+    # tells them from a type's body.
+    [
+      "struct ops g_ops = { 1 };",
+      "union u g_u = { 0 };",
+      "struct ops *tbl[] = { &a1, &b1 };",
+      "struct ops g_arr[2] = { {1}, {2} };",
+      "struct ops g_a = { 1 }, g_b = { 2 };",
+      "struct ops *make_ops(void) { return &k; };",
+      "struct ops make_v(void) { struct ops o = { 1 }; return o; };",
+      "struct ops (*get_ops(void)) { return 0; };",
+      "struct ops (__stdcall *get_cb(void)) { return 0; };",
+      "struct ops *make_q(const char *s, int n) { return &k; };",
+      "struct ops __wrap_make(void) { return o; };",
+      "struct ops *__wrap_make2(int a) { return &k; };"
+    ].each do |input|
+      it "rolls back for a variable or function with a braced body: #{input}" do
+        result, pos = try_aggregate(input)
+        expect(result).to eq [false, nil]
+        expect(pos).to eq 0
+      end
+    end
+
+    [
+      "struct __attribute__((packed)) pk { char c; int i; };",
+      "struct __attribute__((aligned(sizeof(int) == 4 ? 4 : 8))) al { int a; };",
+      "struct __attribute__((section(\"a=b)\"))) sec { int a; };",
+      "struct __declspec(align(16)) ds { int a; };",
+      "struct [[gnu::packed]] c23 { char c; int i; };",
+      "struct PACKED pm { char c; };",
+      "struct ALIGNED(4) fm { int a; };",
+      "struct FOO_TYPE(bar) { int baz; };",
+      "struct __attribute__((packed)) FOO_TYPE(bar) { int baz; };",
+      "struct PACKED FOO_TYPE(bar) { int baz; };",
+      "struct ALIGN(4) FOO_TYPE(bar, 2) { int baz; };",
+      "struct ALIGN_T(4) FOO_TYPE(bar, (2)) { int a; };",
+      "struct FOO_TYPE(bar, 2 * N) { int a; };",
+      "struct FOO_TYPE(\"name\") { int a; };",
+      "enum ENUM_ATTR(sizeof(int)) { EA, EB };",
+      "enum __attribute((packed)) { HA, HB };",
+      "struct __attribute((packed)) gp { char c; int i; };",
+      "enum Color ENUM_BASE(unsigned char) { RED };",
+      "enum PACKED_ATTR(N*2) { X1 };",
+      "struct ALIGNED_T(N * 2) { int a; };",
+      "struct STACK_OF(char *) { int a; };",
+      "enum ATTR_PACKED() { AP1 };",
+      "enum e : typeof(unsigned char) { EA = 1 };",
+      "enum mode : unsigned char { M_A = 1, M_B = 2 };",
+      "struct __attribute__((packed)) { int a; };"
+    ].each do |input|
+      it "extracts a type whose head holds attributes, macros or an enum base: #{input}" do
+        result, pos = try_aggregate(input)
+        expect(result).to eq [true, input]
+        expect(pos).to eq input.length
+      end
+    end
+
+    # A macro can spell a tag the way these spell a function's name and parameters, so the head
+    # reads as a type's. Only the stray ';' after the body makes the function look like one.
+    [
+      "struct ops make_p(int a, int b) { return o; };",
+      "struct ops make_u(VOID) { return o; };"
+    ].each do |input|
+      it "reads a function with a stray ';' as a type when its head could spell a tag: #{input}" do
+        result, _pos = try_aggregate(input)
+        expect(result).to eq [true, input]
+      end
+    end
+
+    # --- Attributes after the body ---
+
+    [
+      "struct pk2 { char c; int i; } __attribute__((packed));",
+      "union pu { char c; int i; } __attribute__((aligned(8)));",
+      "enum big { BA, BB } __attribute__((packed)) /* small */ ;",
+      "struct two { char c; } __attribute__((packed)) __attribute__((aligned(4)));",
+      "struct zp { char c; int i; } __packed;",
+      "struct za { char c; } __aligned(8);",
+      "struct zg { char c; } __attribute((packed));"
+    ].each do |input|
+      it "extracts a type with attributes after its body: #{input}" do
+        result, pos = try_aggregate(input)
+        expect(result).to eq [true, input]
+        expect(pos).to eq input.length
+      end
+    end
+
+    it "rolls back for a declarator after the body's attributes" do
+      result, pos = try_aggregate("struct pk3 { char c; } __attribute__((packed)) g_pk3;")
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    # A word C doesn't reserve may name a variable, so it reads as one
+    it "rolls back for a plain word after the body, which may be a variable or a macro" do
+      result, pos = try_aggregate("struct pm2 { char c; } PACKED;")
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+    end
+
+    # A file-scope statement of its own can follow a function the head misreads
+    [
+      "struct ops make_v2(VOID) { return o; }\n__asm__(\".symver make_v2,make_v2@V1\");",
+      "struct ops make_v3(VOID) { return o; }\n__FBSDID(\"$FreeBSD$\");"
+    ].each do |input|
+      it "rolls back rather than take a following statement for an extension: #{input.lines.last}" do
+        result, pos = try_aggregate(input)
+        expect(result).to eq [false, nil]
+        expect(pos).to eq 0
+      end
+    end
+
+    # --- Text that isn't ASCII ---
+
+    it "keeps a literal whole after text that isn't ASCII" do
+      input = "struct M { char d[sizeof(\"é;\")]; } __attribute__((packed));"
+      result, pos = try_aggregate(input)
+      expect(result).to eq [true, input]
+      expect(pos).to eq input.bytesize
+    end
+
+    it "passes an extension's arguments after text that isn't ASCII" do
+      input = "struct M2 { /* #{'é' * 20} */ int a; } __attribute__((section(\"x\")));"
+      result, pos = try_aggregate(input)
+      expect(result[0]).to be true
+      expect(pos).to eq input.bytesize
+    end
+
+    # --- A buffer that ends early ---
+
+    # The extractor sees a growing buffer, so text cut short must fail rather than succeed
+    it "rolls back when an extension's arguments are cut off" do
+      result, pos = try_aggregate("struct cut { char c; } __attribute__((section(\";\"")
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
     end
 
     # --- Boundary behaviour ---

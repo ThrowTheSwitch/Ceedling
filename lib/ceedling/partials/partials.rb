@@ -5,7 +5,10 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
+require 'strscan'
 require 'ceedling/c_extractor/c_extractor_constants'
+require 'ceedling/c_extractor/c_extractor_declarator'
 require 'ceedling/partials/carry_plan'
 
 module Partials
@@ -23,6 +26,10 @@ module Partials
   # A string or character literal, or a comment. One pattern finds both, so whichever starts
   # first wins, as it does for the compiler.
   LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:LITERAL_OR_COMMENT)
+
+  # Space between a statement's tokens in a function's code block. Under fallback preprocessing
+  # it may hold a comment where the function's comment-blanked body holds a space.
+  STATEMENT_GAP = %r{(?:\s|/\*.*?\*/|//[^\n]*)+}m unless const_defined?(:STATEMENT_GAP)
 
   # Data class representing a source or header file to be partialized
   ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
@@ -61,6 +68,30 @@ module Partials
     end
   end unless const_defined?(:FunctionDefinition, false)
 
+  # The text with its first copy of `statement` replaced by what the block returns, or the text
+  # as it was. The statement is read from a function's body, whose comments are blanked to
+  # spaces. The text usually holds it exactly, and a plain search finds that copy fastest. Under
+  # fallback preprocessing the text may keep a comment inside the statement, so then each gap
+  # between its tokens matches whitespace and comments alike.
+  def self.replace_statement(text, statement, &replacement)
+    return text.sub( statement, &replacement ) if text.include?( statement )
+
+    found = _statement_pattern( statement ).match( text )
+    return found ? found.pre_match + yield + found.post_match : text
+  end
+
+  # The statement with any whitespace or comments between its tokens
+  def self._statement_pattern(statement)
+    tokens = statement.strip.split( /\s+/ ).map { |part| Regexp.escape( part ) }
+    return Regexp.new( tokens.join( STATEMENT_GAP.source ), Regexp::MULTILINE )
+  end
+
+  # The type a variable holds by value, less a keyword ahead of it that changes only how it's
+  # stored or accessed, as `_Thread_local` and `_Atomic` do
+  def self.named_type(var)
+    return var.type.to_s.sub( /\A(?:(?:_Thread_local|thread_local|__thread|_Atomic)\s+)+/, '' )
+  end
+
   # A `static` function is private to its file
   def self.static?(decorators)
     return decorators.include?( 'static' )
@@ -96,4 +127,70 @@ module Partials
       line_num: line_num
     )
   end
+  # How promotion renames a function's statics in C text. A rename reads the text one token at a
+  # time, so literals, comments, member access and tags keep their spelling.
+  module Rename
+
+    # A struct or union keyword and whatever follows it in the statement up to a '{', such as a
+    # tag, attributes, macros or comments. A function's head may match too, which only renames
+    # more. Nothing is read twice, so the match takes linear time.
+    BODY_HEAD = /(?<![\w$])(?:struct|union)(?![\w$])(?>[^;{}()"']+|(?<group>\((?>[^()]+|\g<group>)*\)))*+\{/ unless const_defined?(:BODY_HEAD)
+
+    # A member after '.' or '->', or a tag after struct, union or enum. Each lives apart from
+    # variables.
+    MEMBER_OR_TAG = /(?:\.|->)\s*[A-Za-z_$][\w$]*|(?<![\w$])(?:struct|union|enum)\s+[A-Za-z_$][\w$]*/ unless const_defined?(:MEMBER_OR_TAG)
+
+    # The start of a member or tag token
+    MEMBER_OR_TAG_START = /\A(?:(?:\.|->)\s*[A-Za-z_$]|(?:struct|union|enum)\s)/ unless const_defined?(:MEMBER_OR_TAG_START)
+
+    # A number, read whole, since a C23 digit separator, as in `1'000`, would otherwise open a
+    # character literal
+    NUMBER = /(?<![\w$])\.?\d(?:[\w$.]|[eEpP][+-]|'(?=[\w$]))*/ unless const_defined?(:NUMBER)
+
+    # How a rename reads text, one token at a time. Only an identifier is renamed, so first come
+    # the tokens that hold one without naming a variable.
+    TOKEN = Regexp.union( MEMBER_OR_TAG, NUMBER, LITERAL_OR_COMMENT, CExtractorConstants::IDENTIFIER ) unless const_defined?(:TOKEN)
+
+    # An asm template's reference to a named operand, as in `%[count]` or `%w[count]`. A string
+    # holding one is renamed wherever it sits, since a macro may open the template, as in
+    # `LOCK_PREFIX "incl %[count]"`.
+    ASM_OPERAND_REFERENCE = /%[A-Za-z]*\[\K[A-Za-z_$][\w$]*(?=\])/ unless const_defined?(:ASM_OPERAND_REFERENCE)
+
+    # The text with each identifier `renames` maps replaced, in one pass whatever the number of
+    # names. Literals and comments stay as written, and so do member access and tags. A name a
+    # local struct or union body holds is renamed in member access and tags too (see
+    # _names_in_bodies). The exception is a string's asm operand references, which must follow the
+    # operand names they refer to.
+    def self.identifiers(text, renames)
+      shared = _names_in_bodies( text, renames )
+      return text.gsub( TOKEN ) do |token|
+        next token.sub( /[A-Za-z_$][\w$]*\z/ ) { |name| shared.include?( name ) ? renames[name] : name } if token.match?( MEMBER_OR_TAG_START )
+        next renames.fetch( token, token ) unless token.start_with?( '"' )
+
+        token.gsub( ASM_OPERAND_REFERENCE ) { |name| renames.fetch( name, name ) }
+      end
+    end
+
+    # The names `renames` maps that a struct or union body in the text holds, as a member or in
+    # use. Such a body is local to the function, so its members and their uses take the new name
+    # alike, wherever they sit.
+    def self._names_in_bodies(text, renames)
+      names = Set.new
+      text.scan( BODY_HEAD ) do
+        body = _body_after( text, Regexp.last_match )
+        body&.gsub( LITERAL_OR_COMMENT, ' ' )&.scan( CExtractorConstants::IDENTIFIER ) { |name| names << name if renames.key?( name ) }
+      end
+      return names
+    end
+
+    # The body whose '{' ends the match, or nil when its braces don't balance
+    def self._body_after(text, match)
+      scanner = StringScanner.new( text )
+      scanner.pos = match.pre_match.bytesize + match[0].bytesize - 1
+      start = scanner.pos
+      return CExtractorDeclarator._skip_balanced( scanner ) ? text.byteslice( start, scanner.pos - start ) : nil
+    end
+
+  end
+
 end
