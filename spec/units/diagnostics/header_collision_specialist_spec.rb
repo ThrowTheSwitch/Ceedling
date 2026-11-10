@@ -243,7 +243,7 @@ describe HeaderCollisionSpecialist do
         notices = prescriptions( "/project/include/ifx_core.h:20:16: error: redefinition of 'ifx_t'\n" )
 
         expect( notices.size ).to eq( 1 )
-        expect( notices.first ).to include( "This header shares the directory '#{File.expand_path( '/project/include' )}' with other headers.\n" )
+        expect( notices.first ).to include( "This header shares the directory '/project/include' with other headers.\n" )
       end
 
       it 'prescribes nothing when the listing holds no other header' do
