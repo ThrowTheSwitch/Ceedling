@@ -603,11 +603,18 @@ describe PartializerUtils do
       expect(result).to eq("struct __attribute__((packed)) tag { char c[sizeof(partial_foo_hist[0])]; void (*partial_foo_handler)(void); /* { */ char q[sizeof(\"}\")]; } s; s.partial_foo_handler = partial_foo_handler; x.size = partial_foo_size;")
     end
 
-    # Outside an asm template, a string holding `%[count]` is data, such as a scanf scanset
-    it "leaves an operand reference's spelling alone in a string that is no asm template" do
-      text   = 'sscanf(b, "%[count]", out); printf("%s[count]", s); asm ("nop %[count]" :: [count] "r" (count));'
+    # A macro may open an asm template, so its string is recognized by the reference alone
+    it "renames an operand reference in a template a macro opens" do
+      text   = '__asm__ __volatile__( LOCK_PREFIX "incl %[count]" : [count] "+m" (count) );'
       result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
-      expect(result).to eq('sscanf(b, "%[count]", out); printf("%s[count]", s); asm ("nop %[partial_foo_count]" :: [partial_foo_count] "r" (partial_foo_count));')
+      expect(result).to eq('__asm__ __volatile__( LOCK_PREFIX "incl %[partial_foo_count]" : [partial_foo_count] "+m" (partial_foo_count) );')
+    end
+
+    # A head may hold a C23 attribute, a macro or a comment ahead of the body's brace
+    it "finds a body past a C23 attribute, a macro or a comment in its head" do
+      text   = "struct [[gnu::packed]] { int a; } x; struct PACKED_ALIGN(4) { int b; } y; struct /* wire */ { int c; } z; x.a = a; y.b = b; z.c = c;"
+      result = @utils.rename_c_identifiers(text, { "a" => "p_a", "b" => "p_b", "c" => "p_c" })
+      expect(result).to eq("struct [[gnu::packed]] { int p_a; } x; struct PACKED_ALIGN(4) { int p_b; } y; struct /* wire */ { int p_c; } z; x.p_a = p_a; y.p_b = p_b; z.p_c = p_c;")
     end
 
     it "renames every name it maps in one pass" do

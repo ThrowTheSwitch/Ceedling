@@ -131,16 +131,10 @@ module Partials
   # time, so literals, comments, member access and tags keep their spelling.
   module Rename
 
-    # An asm statement up through its template strings, whose operand references such as
-    # `%[count]` must follow the operand names they refer to
-    ASM_TEMPLATE = /(?<![\w$])(?:__asm__|__asm|asm)(?:\s+(?:volatile|__volatile__|__volatile|inline|__inline__|goto))*\s*\(\s*"(?:\\.|[^"\\\n])*"(?:\s*"(?:\\.|[^"\\\n])*")*/ unless const_defined?(:ASM_TEMPLATE)
-
-    # The keyword that opens an asm statement
-    ASM_START = /\A(?:__asm__|__asm|asm)(?![\w$])/ unless const_defined?(:ASM_START)
-
-    # A struct or union keyword, any tag and attributes, and the '{' that opens its body. Each word
-    # is read whole and nothing is read twice, so the match takes linear time.
-    BODY_HEAD = /(?<![\w$])(?:struct|union)(?![\w$])\s*(?:(?>(?:__attribute__|__attribute|__declspec)\s*(?<group>\((?>[^()]+|\g<group>)*\))|[A-Za-z_$][\w$]*+)\s*)*+\{/ unless const_defined?(:BODY_HEAD)
+    # A struct or union keyword and whatever follows it in the statement up to a '{', such as a
+    # tag, attributes, macros or comments. A function's head may match too, which only renames
+    # more. Nothing is read twice, so the match takes linear time.
+    BODY_HEAD = /(?<![\w$])(?:struct|union)(?![\w$])(?>[^;{}()"']+|(?<group>\((?>[^()]+|\g<group>)*\)))*+\{/ unless const_defined?(:BODY_HEAD)
 
     # A member after '.' or '->', or a tag after struct, union or enum. Each lives apart from
     # variables.
@@ -155,22 +149,23 @@ module Partials
 
     # How a rename reads text, one token at a time. Only an identifier is renamed, so first come
     # the tokens that hold one without naming a variable.
-    TOKEN = Regexp.union( ASM_TEMPLATE, MEMBER_OR_TAG, NUMBER, LITERAL_OR_COMMENT, CExtractorConstants::IDENTIFIER ) unless const_defined?(:TOKEN)
+    TOKEN = Regexp.union( MEMBER_OR_TAG, NUMBER, LITERAL_OR_COMMENT, CExtractorConstants::IDENTIFIER ) unless const_defined?(:TOKEN)
 
-    # An asm template's reference to a named operand, as in `%[count]` or `%w[count]`
+    # An asm template's reference to a named operand, as in `%[count]` or `%w[count]`. A string
+    # holding one is renamed wherever it sits, since a macro may open the template, as in
+    # `LOCK_PREFIX "incl %[count]"`.
     ASM_OPERAND_REFERENCE = /%[A-Za-z]*\[\K[A-Za-z_$][\w$]*(?=\])/ unless const_defined?(:ASM_OPERAND_REFERENCE)
 
     # The text with each identifier `renames` maps replaced, in one pass whatever the number of
     # names. Literals and comments stay as written, and so do member access and tags. A name a
     # local struct or union body holds is renamed in member access and tags too (see
-    # _names_in_bodies). The exception is an asm template's operand references, which must follow
-    # the operand names they refer to.
+    # _names_in_bodies). The exception is a string's asm operand references, which must follow the
+    # operand names they refer to.
     def self.identifiers(text, renames)
       shared = _names_in_bodies( text, renames )
       return text.gsub( TOKEN ) do |token|
         next token.sub( /[A-Za-z_$][\w$]*\z/ ) { |name| shared.include?( name ) ? renames[name] : name } if token.match?( MEMBER_OR_TAG_START )
-        next renames.fetch( token, token ) unless token.end_with?( '"' )
-        next token unless token.match?( ASM_START )
+        next renames.fetch( token, token ) unless token.start_with?( '"' )
 
         token.gsub( ASM_OPERAND_REFERENCE ) { |name| renames.fetch( name, name ) }
       end

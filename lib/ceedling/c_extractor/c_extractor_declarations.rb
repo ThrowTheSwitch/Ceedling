@@ -66,10 +66,11 @@ class CExtractorDeclarations
   # Words that are no type, so the word after one is no name
   NOT_A_TYPE = (DECORATOR_KEYWORDS + CExtractorDeclarator::QUALIFIERS + %w[struct union enum _Thread_local thread_local __thread]).to_set.freeze unless const_defined?(:NOT_A_TYPE, false)
 
-  # Keywords that may follow a builtin type or a tag ahead of a name, qualifiers and type and
-  # storage keywords among them. None can be a name.
+  # Words that may follow a type ahead of a name: qualifiers, type and storage keywords, and the
+  # memory-space keywords some compilers add, such as Keil's `xdata`
   TYPE_WORDS = (CExtractorDeclarator::QUALIFIERS + %w[
     void char short int long float double signed unsigned _Bool _Complex _Imaginary _Atomic _Thread_local thread_local
+    data idata xdata pdata bdata code far near huge rom ram eeprom
   ]).to_set.freeze unless const_defined?(:TYPE_WORDS, false)
 
   # A macro's spelling, all capitals
@@ -243,12 +244,19 @@ class CExtractorDeclarations
     return (name.to_s.match?( MACRO_CASE ) or name.to_s.start_with?( '__' ))
   end
 
-  # Whether a base type's last two words may be a type and a name: the first is no storage
-  # class, qualifier or keyword ahead of a tag, and the second no type keyword or extension
+  # Whether a base type's last two words may be a type and a name. The first is no storage
+  # class, qualifier, keyword ahead of a tag or `__` word, and the second no type keyword or
+  # `__` word. A macro in capitals ahead of a lowercase word qualifies a type, as `__IO` and
+  # `MYQ` do in `MYQ u32_t TICK_A, TICK_B;`.
   def _type_then_name?(words)
-    return false if words.nil? or NOT_A_TYPE.include?( words[:type] )
+    return false if words.nil? or _qualifier?( words[:type] ) or _qualifier?( words[:word] ) or TYPE_WORDS.include?( words[:word] )
 
-    return !(TYPE_WORDS.include?( words[:word] ) or words[:word].start_with?( '__' ))
+    return !(words[:type].match?( MACRO_CASE ) and !words[:word].match?( MACRO_CASE ))
+  end
+
+  # Whether a word qualifies a type rather than naming one
+  def _qualifier?(word)
+    return (NOT_A_TYPE.include?( word ) or word.start_with?( '__' ))
   end
 
   # Where a declarator starts in the text ahead of any initializer. That is its first star or

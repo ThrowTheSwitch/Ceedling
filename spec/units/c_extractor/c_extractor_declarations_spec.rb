@@ -771,7 +771,10 @@ describe CExtractorDeclarations do
         ['_Alignas(sizeof(x[0])) int a, b;',         [['a', '_Alignas(sizeof(x[0])) int'], ['b', '_Alignas(sizeof(x[0])) int']]],
         ['int *x MY_ATTR, y;',                       [['MY_ATTR', 'int *x'], ['y', 'int']]],
         ['const u8 MAX_A = 1, MAX_B = 2;',           [['MAX_A', 'u8'], ['MAX_B', 'u8']]],
-        ['unsigned long MAX_A = 1, MAX_B = 2;',      [['MAX_A', 'unsigned long'], ['MAX_B', 'unsigned long']]]
+        ['unsigned long MAX_A = 1, MAX_B = 2;',      [['MAX_A', 'unsigned long'], ['MAX_B', 'unsigned long']]],
+        ['static __IO u32_t TICK_A, TICK_B;',        [['TICK_A', '__IO u32_t'], ['TICK_B', '__IO u32_t']]],
+        ['MYQ u32_t TICK_A, TICK_B;',                [['TICK_A', 'MYQ u32_t'], ['TICK_B', 'MYQ u32_t']]],
+        ['unsigned char xdata A, B;',                [['A', 'unsigned char xdata'], ['B', 'unsigned char xdata']]]
       ].each do |content, expected|
         it "splits `#{content}` with each variable's base type" do
           success, variables, _pos, _rest = extract_variable.call( content )
@@ -800,7 +803,7 @@ describe CExtractorDeclarations do
       [
         ['static const int MAX_A UNUSED = 3, MAX_B = 1;', 'int MAX_A UNUSED = 3, MAX_B = 1;'],
         ['static const u8 MAX_A UNUSED = 3, MAX_B = 1;',  'u8 MAX_A UNUSED = 3, MAX_B = 1;'],
-        ['static int data UNUSED, other;',                'int data UNUSED, other;'],
+        ['static UINT32 MAX_A UNUSED = 3, MAX_B = 1;',    'UINT32 MAX_A UNUSED = 3, MAX_B = 1;'],
         ['static int a1 __maybe_unused, b1;',             'int a1 __maybe_unused, b1;']
       ].each do |content, text|
         it "keeps `#{content}` one record when a capitalized name follows the first name" do
