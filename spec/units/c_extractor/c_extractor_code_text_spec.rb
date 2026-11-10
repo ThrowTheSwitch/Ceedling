@@ -784,20 +784,22 @@ describe CExtractorCodeText do
         expect(rest).to eq("")
       end
 
-      it "handles only semicolons and whitespace" do
+      # The text may be a buffer that ends early, so deadspace running to its end may go on past
+      # it. That deadspace stays for the next read, which sees all of it.
+      it "leaves trailing whitespace after the last semicolon" do
         content = "; ; ; "
         pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(6)
-        expect(rest).to eq("")
+
+        expect(pos).to eq(5)
+        expect(rest).to eq(" ")
       end
 
-      it "handles semicolons with unterminated comment" do
+      it "leaves a comment the text cuts short" do
         content = "; /* unterminated"
         pos, rest = skip_semicolons.call(content)
-        
-        expect(pos).to eq(17)
-        expect(rest).to eq("")
+
+        expect(pos).to eq(1)
+        expect(rest).to eq(" /* unterminated")
       end
 
     end
@@ -864,6 +866,20 @@ describe CExtractorCodeText do
         code_text = CExtractorCodeText.new()
         bytes_skipped = code_text.skip_deadspace( scanner )
         return [bytes_skipped, scanner.pos, scanner.rest]
+      end
+    end
+
+    # A stray ';' declares nothing, so ahead of a statement it can count as space
+    context "stray semicolons" do
+      it "stops at a ';' by default" do
+        _bytes, _pos, rest = skip_deadspace.call( " ; int x;" )
+        expect( rest ).to eq( "; int x;" )
+      end
+
+      it "skips each ';' among the space when asked" do
+        scanner = StringScanner.new( " ;; /* c */ ;\n int x;" )
+        CExtractorCodeText.new().skip_deadspace( scanner, semicolons: true )
+        expect( scanner.rest ).to eq( "int x;" )
       end
     end
 
@@ -2067,8 +2083,20 @@ describe CExtractorCodeText do
       expect(strip_ext.call("_Noreturn void exit_prog(int code)")).to eq("void exit_prog(int code)")
     end
 
-    it "strips _Thread_local C11 specifier" do
-      expect(strip_ext.call("_Thread_local int counter")).to eq("int counter")
+    # A variable's type is read from this text, and its extern must agree with its definition
+    [
+      '_Thread_local int counter',
+      '_Atomic int counter',
+      '_Atomic(int) counter',
+      '_Bool ready',
+      'double _Complex z',
+      'double _Imaginary y',
+      '__typeof__(int) counter',
+      'typeof(*p) q'
+    ].each do |text|
+      it "keeps the type in `#{text}`" do
+        expect(strip_ext.call(text)).to eq(text)
+      end
     end
 
     it "strips multiple extensions in one signature" do

@@ -465,73 +465,161 @@ describe PartializerUtils do
       expect(result).to include("`TOKEN_1`")
       expect(result).not_to include("static int val1, val2;")
     end
+
+    # The statement comes from a function's body, whose comments are blanked to spaces, while a
+    # code block under fallback preprocessing keeps them
+    it "finds a statement whose code block copy holds a block comment" do
+      text   = "int f(void) { static int x /* count */ = 0; return x; }"
+      result = @utils.replace_compound_declaration_with_noops(text, "static int x   = 0;", "PH_X", 1)
+
+      expect(result).to eq("int f(void) { (void)0; /* `PH_X` replaced with no-op plus variable renamed & promoted to module-scope */ return x; }")
+    end
+
+    it "finds a compound statement whose code block copy holds a line comment" do
+      text   = "int f(void) {\n  static int a, // first\n    b;\n  return a + b;\n}"
+      result = @utils.replace_compound_declaration_with_noops(text, "static int a,  b;", "PH_A", 2)
+
+      expect(result.scan("(void)0;").length).to eq(2)
+      expect(result).not_to include("static int a,")
+      expect(result).to include("return a + b;")
+    end
+
+    it "finds a statement whose code block copy holds comments after earlier no-op comments" do
+      text   = "int f(void) { (void)0; /* `PH_A` replaced */ static int x /* count */ = 0; return x; }"
+      result = @utils.replace_compound_declaration_with_noops(text, "static int x   = 0;", "PH_X", 1)
+
+      expect(result).to include("/* `PH_A` replaced */ (void)0; /* `PH_X`")
+      expect(result).not_to include("static int x")
+    end
   end
 
-  context "#rename_c_identifier" do
+  context "#rename_c_identifiers" do
     it "replaces a single token-bounded occurrence" do
-      result = @utils.rename_c_identifier("count = 0;", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("count = 0;", { "count" => "partial_foo_count" })
       expect(result).to eq("partial_foo_count = 0;")
     end
 
     it "replaces all occurrences throughout the text (gsub)" do
-      result = @utils.rename_c_identifier("count = count + 1;", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("count = count + 1;", { "count" => "partial_foo_count" })
       expect(result).to eq("partial_foo_count = partial_foo_count + 1;")
     end
 
     it "does not replace left-bounded substrings" do
-      result = @utils.rename_c_identifier("recount = 0;", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("recount = 0;", { "count" => "partial_foo_count" })
       expect(result).to eq("recount = 0;")
     end
 
     it "does not replace right-bounded substrings" do
-      result = @utils.rename_c_identifier("count_down = 0;", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("count_down = 0;", { "count" => "partial_foo_count" })
       expect(result).to eq("count_down = 0;")
     end
 
     it "does not replace interior substrings" do
-      result = @utils.rename_c_identifier("recount_down = 0;", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("recount_down = 0;", { "count" => "partial_foo_count" })
       expect(result).to eq("recount_down = 0;")
     end
 
     it "replaces identifier in parentheses context" do
-      result = @utils.rename_c_identifier("foo(count)", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("foo(count)", { "count" => "partial_foo_count" })
       expect(result).to eq("foo(partial_foo_count)")
     end
 
     it "replaces pointer dereference context" do
-      result = @utils.rename_c_identifier("*count = 0;", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("*count = 0;", { "count" => "partial_foo_count" })
       expect(result).to eq("*partial_foo_count = 0;")
     end
 
     it "replaces array subscript context" do
-      result = @utils.rename_c_identifier("count[0]", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("count[0]", { "count" => "partial_foo_count" })
       expect(result).to eq("partial_foo_count[0]")
     end
 
     it "replaces comparison context without spaces" do
-      result = @utils.rename_c_identifier("count==5", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("count==5", { "count" => "partial_foo_count" })
       expect(result).to eq("partial_foo_count==5")
     end
 
     it "replaces compound assignment without spaces" do
-      result = @utils.rename_c_identifier("count+=1", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("count+=1", { "count" => "partial_foo_count" })
       expect(result).to eq("partial_foo_count+=1")
     end
 
     it "replaces address-of context" do
-      result = @utils.rename_c_identifier("&count", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("&count", { "count" => "partial_foo_count" })
       expect(result).to eq("&partial_foo_count")
     end
 
     it "returns empty string unchanged" do
-      result = @utils.rename_c_identifier("", "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers("", { "count" => "partial_foo_count" })
       expect(result).to eq("")
     end
 
     it "returns unchanged text when old_name not present" do
       text   = "value = 5;"
-      result = @utils.rename_c_identifier(text, "count", "partial_foo_count")
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
       expect(result).to eq(text)
+    end
+
+    # A literal's text is data the program uses, and a comment's is prose
+    it "leaves the name alone inside a string literal, a character literal or a comment" do
+      text   = "printf(\"count=%d\", count); c = 'count'; /* count */ // count\ncount++;"
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
+      expect(result).to eq("printf(\"count=%d\", partial_foo_count); c = 'count'; /* count */ // count\npartial_foo_count++;")
+    end
+
+    # A member and a tag live apart from variables, so they keep a name a variable shares
+    it "leaves a member or a tag that shares the name alone" do
+      text   = "struct count *p = &count; p->count = s.count; union count u; enum count e; f(.count = count);"
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
+      expect(result).to eq("struct count *p = &partial_foo_count; p->count = s.count; union count u; enum count e; f(.count = partial_foo_count);")
+    end
+
+    # C23 digit separators would otherwise open a character literal
+    it "renames past a number written with digit separators" do
+      result = @utils.rename_c_identifiers("m = 1'000 + count + 2'000;", { "count" => "partial_foo_count" })
+      expect(result).to eq("m = 1'000 + partial_foo_count + 2'000;")
+    end
+
+    # An asm template refers to a named operand inside its string, and the name must follow
+    it "renames an asm template's references to an operand named after the variable" do
+      text   = '__asm__ volatile ("mov %[count], %w[count]" : [count] "+r" (count));'
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
+      expect(result).to eq('__asm__ volatile ("mov %[partial_foo_count], %w[partial_foo_count]" : [partial_foo_count] "+r" (partial_foo_count));')
+    end
+
+    # A body in the function is local to it, so a name it holds is renamed everywhere, member
+    # access included, and its members and their uses keep agreeing. That holds for a member
+    # declared any way and for a name the body only uses.
+    it "renames a name a local struct or union body holds everywhere, member access included" do
+      text   = "struct { int count; } s = {0}; union u { int count; } v; struct lc { int count; } t = { .count = count }; s.count = ++count; p->count = 1;"
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
+      expect(result).to eq("struct { int partial_foo_count; } s = {0}; union u { int partial_foo_count; } v; struct lc { int partial_foo_count; } t = { .partial_foo_count = partial_foo_count }; s.partial_foo_count = ++partial_foo_count; p->partial_foo_count = 1;")
+    end
+
+    it "finds the names a body holds past attributes, function-pointer members and braces in comments" do
+      renames = { "hist" => "partial_foo_hist", "handler" => "partial_foo_handler", "size" => "partial_foo_size" }
+      text    = "struct __attribute__((packed)) tag { char c[sizeof(hist[0])]; void (*handler)(void); /* { */ char q[sizeof(\"}\")]; } s; s.handler = handler; x.size = size;"
+      result  = @utils.rename_c_identifiers(text, renames)
+      expect(result).to eq("struct __attribute__((packed)) tag { char c[sizeof(partial_foo_hist[0])]; void (*partial_foo_handler)(void); /* { */ char q[sizeof(\"}\")]; } s; s.partial_foo_handler = partial_foo_handler; x.size = partial_foo_size;")
+    end
+
+    # A macro may open an asm template, so its string is recognized by the reference alone
+    it "renames an operand reference in a template a macro opens" do
+      text   = '__asm__ __volatile__( LOCK_PREFIX "incl %[count]" : [count] "+m" (count) );'
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
+      expect(result).to eq('__asm__ __volatile__( LOCK_PREFIX "incl %[partial_foo_count]" : [partial_foo_count] "+m" (partial_foo_count) );')
+    end
+
+    # A head may hold a C23 attribute, a macro or a comment ahead of the body's brace
+    it "finds a body past a C23 attribute, a macro or a comment in its head" do
+      text   = "struct [[gnu::packed]] { int a; } x; struct PACKED_ALIGN(4) { int b; } y; struct /* wire */ { int c; } z; x.a = a; y.b = b; z.c = c;"
+      result = @utils.rename_c_identifiers(text, { "a" => "p_a", "b" => "p_b", "c" => "p_c" })
+      expect(result).to eq("struct [[gnu::packed]] { int p_a; } x; struct PACKED_ALIGN(4) { int p_b; } y; struct /* wire */ { int p_c; } z; x.p_a = p_a; y.p_b = p_b; z.p_c = p_c;")
+    end
+
+    it "renames every name it maps in one pass" do
+      result = @utils.rename_c_identifiers("a = b + ab;", { "a" => "x_a", "b" => "x_b" })
+      expect(result).to eq("x_a = x_b + ab;")
     end
   end
 

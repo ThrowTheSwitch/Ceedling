@@ -114,9 +114,12 @@ module CExtractorTypes
     :text,          # Cleaned declaration without decorators, whitespace normalized (e.g., "int x;")
     :line_num,      # Integer — 1-based line number in source file where declaration begins
     :declarator,    # A parenthesized declarator from its '(' onward (e.g., "(*hook)(int)" after type "int"), or nil
+    :asm_label,     # An asm label naming the symbol (e.g., '__asm__("g_symbol")'), or nil. :text and :original hold it too.
+                    # A file-scope basic asm statement, such as `asm(".globl x");`, has no name and holds itself here.
     keyword_init: true
   ) do
-    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, declarator: nil)
+    def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, declarator: nil,
+                   asm_label: nil)
       super
     end
 

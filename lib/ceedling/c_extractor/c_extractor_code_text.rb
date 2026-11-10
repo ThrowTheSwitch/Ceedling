@@ -12,21 +12,18 @@ class CExtractorCodeText
 
   include CExtractorConstants
 
-  # Bare (no-argument-list) keywords strip_compiler_extensions strips verbatim:
-  # MSVC calling conventions, inline hints, and C11 specifier keywords. Built
-  # once into a single alternation regex rather than tried one keyword at a
-  # time, since this check runs at every scanner position -- one shared regex
-  # avoids rebuilding and re-running many small ones on every character
-  # scanned. `\b` on both ends keeps a short keyword from matching as a mere
-  # prefix of a longer identifier that happens to start the same way (e.g.
-  # matching "__cdecl" inside "__cdeclFoo"); listing keywords in any order is
-  # safe even where one prefixes another (__inline vs. __inline__), since a
-  # match that fails its own trailing \b simply falls through to try the next
-  # alternative at that same position.
+  # Bare keywords, without an argument list, that strip_compiler_extensions removes. They are
+  # MSVC calling conventions, inline hints and `_Noreturn`. Each matches only as a whole
+  # identifier, so `__cdecl` isn't found inside `__cdeclFoo` or `x$__cdecl`. Type keywords such
+  # as `_Atomic` and `_Bool`, and the storage class `_Thread_local`, stay. A variable's type is
+  # read from the text, and its extern must agree with its definition.
   BARE_STRIP_KEYWORDS = (
-    MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline'] + C11_SPECIFIER_KEYWORDS
+    MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline', '_Noreturn']
   ).freeze unless const_defined?(:BARE_STRIP_KEYWORDS, false)
-  BARE_STRIP_REGEX = /\b(?:#{BARE_STRIP_KEYWORDS.map { |kw| Regexp.escape(kw) }.join('|')})\b/.freeze unless const_defined?(:BARE_STRIP_REGEX, false)
+
+  # The keyword of an attribute form whose arguments follow, as in `__attribute__((packed))`
+  # and `__declspec(dllexport)`. A type `__typeof__` spells has the same shape and stays.
+  EXTENSION_WORD = /\A(?!__typeof(?:_unqual)?__\z)(?:__\w+__|__declspec)\z/ unless const_defined?(:EXTENSION_WORD, false)
 
   # Collect the full text of a balanced delimiter pair starting AT open_char.
   # Nested pairs, string literals (verbatim), and comments (replaced with a
@@ -126,12 +123,16 @@ class CExtractorCodeText
   #   3. If found, consumes it and continues
   #   4. If not found, restores position and exits
   #
+  # Deadspace that reaches the end of the text is left in place too. The text may be a buffer
+  # that ends early, inside a comment, so the next read must see that deadspace whole.
+  #
   # Parameters:
   #   scanner: StringScanner positioned at potential semicolons/deadspace
   #
   # Returns: Nothing (void method)
   #
-  # Side effects: Advances scanner position past all consecutive semicolons and deadspace
+  # Side effects: Advances scanner position past consecutive semicolons and the deadspace before
+  # and between them, not past deadspace after the last one
   #
   # Examples:
   #   ";;;"               -> skips all three semicolons
@@ -140,19 +141,14 @@ class CExtractorCodeText
   #   "; code"            -> skips first semicolon, stops at "code"
   #   "code"              -> skips nothing
   def skip_semicolons(scanner)
-    while !scanner.eos?
+    until scanner.eos?
       start_pos = scanner.pos
       skip_deadspace(scanner)
-      break if scanner.eos?
-      
-      # If we find a semicolon, consume it and continue
-      if scanner.scan(/;/)
-        next
-      else
-        # Not a semicolon, restore position and break
-        scanner.pos = start_pos
-        break
-      end
+      next if scanner.scan(/;/)
+
+      # Not a semicolon, or the text's end: restore position and stop
+      scanner.pos = start_pos
+      break
     end
   end
 
@@ -167,8 +163,12 @@ class CExtractorCodeText
   # This method repeatedly scans for and skips these elements until no more are found,
   # ensuring all consecutive deadspace is consumed in a single call.
   #
+  # Ahead of a statement, a stray ';' declares nothing. With `semicolons`, it counts as
+  # deadspace too.
+  #
   # Parameters:
-  #   scanner: StringScanner positioned at potential deadspace
+  #   scanner:    StringScanner positioned at potential deadspace
+  #   semicolons: Whether a stray ';' counts as deadspace
   #
   # Returns: Number of bytes skipped
   #
@@ -178,14 +178,14 @@ class CExtractorCodeText
   #   "   \n// comment\ncode" -> skips to "code"
   #   "/* block */  \t\ncode" -> skips to "code"
   #   "code"                  -> skips 0 bytes (no deadspace)
-  def skip_deadspace(scanner)
+  def skip_deadspace(scanner, semicolons: false)
     start_pos = scanner.pos
 
     loop do
       initial = scanner.pos
 
-      # Skip whitespace
-      scanner.skip(/\s+/)
+      # Skip whitespace, and any stray ';' when asked
+      scanner.skip(semicolons ? /[\s;]+/ : /\s+/)
 
       # Skip comments
       skip_comment(scanner) if scanner.check(%r{/[/*]})
@@ -251,41 +251,36 @@ class CExtractorCodeText
   # Whitespace is normalized to single spaces and the result is stripped.
   #
   # Handles:
-  #   __word__(…) — any double-underscore attribute form
+  #   __word__(…) — a double-underscore attribute form, though `__typeof__(…)` spells a type and stays
   #   __declspec(…) — MSVC declaration specifier (including nested parens)
-  #   Bare MSVC calling conventions, MSVC inline hints, C11 specifier keywords
+  #   Bare MSVC calling conventions, MSVC inline hints and `_Noreturn`
   def strip_compiler_extensions(text)
     scanner = StringScanner.new(text)
     result  = +""
 
+    # Whole identifiers are read at once, so an extension's keyword is never found inside a
+    # longer name, as `__cdecl` would be inside `x$__cdecl`
     until scanner.eos?
-      # __word__(…) — any double-underscore attribute form including __attribute__((…))
-      if scanner.check(/__\w+__\s*\(/)
-        scanner.skip(/__\w+__/)
-        skip_deadspace(scanner)
-        collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
-        next
-      end
+      word = scanner.scan(IDENTIFIER)
+      next result << scanner.getch if word.nil?
 
-      # __declspec(…) — handles nested forms like __declspec(align(8))
-      if scanner.check(/__declspec\s*\(/)
-        scanner.skip(/__declspec/)
-        skip_deadspace(scanner)
-        collect_balanced(scanner, '(', ')') if scanner.peek(1) == '('
-        next
-      end
-
-      # Whitelisted bare keywords (calling conventions, inline hints, C11 specifiers)
-      if scanner.scan(BARE_STRIP_REGEX)
-        next
-      end
-
-      result << scanner.getch
+      result << word unless _extension?(scanner, word)
     end
 
     result.gsub!(/\s+/, ' ')
     result.strip!
     result
+  end
+
+  # Whether a word is an extension to strip. A bare keyword strips alone. An attribute form,
+  # `__word__(…)` or `__declspec(…)`, strips only with its arguments, which the scanner passes.
+  def _extension?(scanner, word)
+    return true if BARE_STRIP_KEYWORDS.include?(word)
+    return false unless word.match?(EXTENSION_WORD) and scanner.check(/\s*\(/)
+
+    skip_deadspace(scanner)
+    collect_balanced(scanner, '(', ')')
+    return true
   end
 
 end

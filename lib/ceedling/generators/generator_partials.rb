@@ -223,22 +223,15 @@ class GeneratorPartials
     guard = FileWrapper.generate_include_guard( name )
     emit_preamble( io, guard, include_guard, includes )
 
+    # A function leaves this lookup once written, so a later declaration or definition writes nothing
     func_by_name = function_list.to_h { |f| [f.name, f] }
-    emitted_funcs = {}
-    emitted_vars = {}
+    emitted_vars = Set.new
     # A variable's definition knows its full type, such as an array's size, so its extern comes from there
     defining_vars = c_module.variable_declarations.reject( &:extern? ).group_by( &:name ).transform_values( &:first )
+    # Any of a variable's declarations may hold its asm label (see _header_extern)
+    labels = c_module.variable_declarations.select( &:asm_label ).to_h { |v| [v.name, v.asm_label] }
     last_was_func = false
     anything_emitted = false
-
-    emit_func = lambda do |func|
-      # Blank line before a function when preceded by a non-function item
-      io << "\n" if anything_emitted && !last_was_func
-      io << func.signature << ";\n\n"
-      emitted_funcs[func.name] = true
-      last_was_func = true
-      anything_emitted = true
-    end
 
     c_module.element_sequence.each do |item|
       case item
@@ -266,28 +259,21 @@ class GeneratorPartials
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CVariableDeclaration
-        next unless include_variables
-        # A variable the extractor read no name from, such as one a macro declares, has no extern to write
-        next if item.name.nil?
-        # A header's extern and the source's definition name one variable, so it gets one line
-        next if emitted_vars[item.name]
-        emitted_vars[item.name] = true
-        var = defining_vars[item.name] || item
-        # If there is no array involved, array_suffix collapses to an empty string.
-        # A function pointer or a pointer to an array has its name inside a parenthesized
-        # declarator. The extern writes the declarator whole.
-        # A leading const/volatile/restrict on the original declaration (see
-        # qualifier_prefix) is part of the variable's type and belongs here too,
-        # so this extern agrees with the definition and any other declaration of
-        # the same variable elsewhere in the translation unit.
-        declared = var.declarator || "#{var.name}#{var.array_suffix}"
-        io << "extern #{qualifier_prefix(var)}#{var.type} #{declared};\n"
+        extern = include_variables && _header_extern( item, emitted_vars, defining_vars, labels )
+        next unless extern
+
+        io << extern << "\n"
         last_was_func = false
         anything_emitted = true
       when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration
-        func = func_by_name[item.name]
-        next unless func && !emitted_funcs[item.name]
-        emit_func.call(func)
+        func = func_by_name.delete( item.name )
+        next unless func
+
+        # Blank line before a function when preceded by a non-function item
+        io << "\n" if anything_emitted && !last_was_func
+        io << func.signature << ";\n\n"
+        last_was_func = true
+        anything_emitted = true
       end
     end
 
@@ -296,6 +282,26 @@ class GeneratorPartials
     io << "\n" if anything_emitted && !last_was_func
 
     io << "#endif // #{guard}\n\n"
+  end
+
+  # The extern a header writes for a variable, or nil when it writes none.
+  # - A variable the extractor read no name from, such as one a macro declares, has no extern.
+  # - A header's extern and the source's definition name one variable, so it gets one line.
+  # - The definition knows the full type, such as an array's size, so the extern comes from there.
+  # - A leading const, volatile or restrict is part of the type (see qualifier_prefix), so the
+  #   extern agrees with every other declaration of the variable.
+  # - A function pointer or a pointer to an array has its name inside a parenthesized
+  #   declarator, which the extern writes whole.
+  # - An asm label names the variable's symbol, so the extern carries it to reach that symbol.
+  #   Any of the variable's declarations may hold it. The implementation source includes the
+  #   extern ahead of the definition, so the Partial's symbol takes the label too.
+  def _header_extern(item, emitted, defining, labels)
+    name = item.name
+    return nil unless name and emitted.add?( name )
+
+    var      = defining[name] || item
+    declared = [var.declarator || "#{name}#{var.array_suffix}", labels[name]].compact
+    return "extern #{qualifier_prefix( var )}#{var.type} #{declared.join( ' ' )};"
   end
 
   # Emit a partial source file.

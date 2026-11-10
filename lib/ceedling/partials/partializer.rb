@@ -576,7 +576,7 @@ class Partializer
   def _extern_aggregates(c_module)
     tags  = _aggregate_tags( c_module )
     plain = c_module.variable_declarations.select { |v| v.extern? and v.declarator.nil? }
-    return plain.filter_map { |v| [v, tags[v.type.to_s]] if tags.key?( v.type.to_s ) }
+    return plain.filter_map { |v| [v, tags[Partials.named_type( v )]] if tags.key?( Partials.named_type( v ) ) }
   end
 
   # Each type a variable may name by value that is a struct or union tag, keyed to its tag. A
@@ -584,11 +584,11 @@ class Partializer
   def _aggregate_tags(c_module)
     tags = {}
     c_module.variable_declarations.each do |v|
-      tag = v.type.to_s[/\A(?:struct|union)\s+(\w+)\z/, 1]
-      tags[v.type] = tag if tag
+      tag = Partials.named_type( v )[/\A(?:struct|union)\s+([\w$]+)\z/, 1]
+      tags[Partials.named_type( v )] = tag if tag
     end
     c_module.type_definitions.each do |typedef|
-      match = typedef.text.match( /\Atypedef\s+(?:struct|union)\s+(\w+)\s+(\w+)\s*;/ )
+      match = typedef.text.match( /\Atypedef\s+(?:struct|union)\s+([\w$]+)\s+([\w$]+)\s*;/ )
       tags[match[2]] = match[1] if match
     end
 
@@ -603,7 +603,7 @@ class Partializer
   end
 
   def _completed?(tag, texts)
-    return texts.any? { |text| text.match?( /(?<!\w)(?:struct|union)\s+#{Regexp.escape( tag )}\s*\{/ ) }
+    return texts.any? { |text| text.match?( /(?<![\w$])(?:struct|union)\s+#{Regexp.escape( tag )}\s*\{/ ) }
   end
 
   # A carried prototype is written behind a #line naming its own file and line. Each is found in

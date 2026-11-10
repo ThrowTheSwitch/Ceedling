@@ -140,8 +140,8 @@ describe CExtractor do
         result = extract_feature.call(io, 1000, extractor)
         
         expect(result).to eq("HELLO")
-        # End of IO chunk + handling of possible trailing orphaned semicolon & deadspace
-        expect(io.pos).to eq(10)
+        # The chunk ends inside the comment, so the comment is left for the next read whole
+        expect(io.pos).to eq(5)
       end
 
       it "returns nil when pattern is not found before EOF" do
@@ -333,8 +333,8 @@ describe CExtractor do
         result = extract_feature.call(io, 1000, extractor)
         
         expect(result).to eq("PATTERN")
-        # End of IO chunk + handling of possible trailing orphaned semicolon & deadspace
-        expect(io.pos).to eq(10)
+        # The chunk ends inside the comment, so the comment is left for the next read whole
+        expect(io.pos).to eq(7)
       end
 
       it "allows extraction when pattern exactly matches chunk size" do

@@ -56,6 +56,11 @@ describe CExtractor do
       ->(content) { extractor.from_string(content: content) }
     end
 
+    # Each element in order, as its kind and its text or signature
+    def sequence_of(content, chunk_size: CExtractorConstants::DEFAULT_CHUNK_SIZE)
+      extractor.from_string( content: content, chunk_size: chunk_size ).element_sequence.map { |element| [element.class.name.split( '::' ).last, element.respond_to?( :text ) ? element.text : element.signature] }
+    end
+
     it "should extract nothing from blank input" do
       contents = extract_from.call('')
       expect( contents.function_definitions.length ).to eq 0
@@ -1207,10 +1212,6 @@ describe CExtractor do
     # A function pointer's name sits inside parentheses, which a bare macro invocation's shape
     # also starts with. Each declaration must arrive whole, as one element.
     context "with function-pointer declarators" do
-      def sequence_of(content)
-        extract_from.call( content ).element_sequence.map { |element| [element.class.name.split( '::' ).last, element.respond_to?( :text ) ? element.text : element.signature] }
-      end
-
       it "extracts a function-pointer variable as one variable" do
         expect( sequence_of( "int (*g_hook)(int);\n" ) ).to eq [['CVariableDeclaration', 'int (*g_hook)(int);']]
       end
@@ -1237,6 +1238,112 @@ describe CExtractor do
 
       it "extracts a definition of a function returning a function pointer as one definition" do
         expect( sequence_of( "int (*ticker_get(void))(int) { return bump; }\n" ) ).to eq [['CFunctionDefinition', 'int (*ticker_get(void))(int)']]
+      end
+    end
+
+    # A struct, union or enum keyword can lead a variable or a function as well as a type. Each
+    # statement must arrive as what it declares.
+    context "with a struct, union or enum keyword leading the statement" do
+      it "extracts an initialized struct variable as a variable" do
+        expect( sequence_of( "struct ops g_ops = { 1 };\n" ) ).to eq [['CVariableDeclaration', 'struct ops g_ops = { 1 };']]
+      end
+
+      it "extracts an initialized union variable as a variable" do
+        expect( sequence_of( "union u g_u = { 0 };\n" ) ).to eq [['CVariableDeclaration', 'union u g_u = { 0 };']]
+      end
+
+      it "extracts an initialized array of struct pointers as a variable" do
+        expect( sequence_of( "struct ops *tbl[] = { &a1, &b1 };\n" ) ).to eq [['CVariableDeclaration', 'struct ops *tbl[] = { &a1, &b1 };']]
+      end
+
+      it "extracts a table of designated function pointers as a variable" do
+        expect( sequence_of( "struct drv_ops g_drv = { .init = drv_init, .read = drv_read };\n" ) ).to eq [['CVariableDeclaration', 'struct drv_ops g_drv = { .init = drv_init, .read = drv_read };']]
+      end
+
+      it "extracts an initialized array of structs as a variable" do
+        expect( sequence_of( "struct ops g_arr[2] = { {1}, {2} };\n" ) ).to eq [['CVariableDeclaration', 'struct ops g_arr[2] = { {1}, {2} };']]
+      end
+
+      it "extracts a function returning a struct pointer, with a stray ';' after its body, as a function" do
+        expect( sequence_of( "struct ops *make_ops(void) { return &k; };\nint after;\n" ) ).to eq [['CFunctionDefinition', 'struct ops *make_ops(void)'], ['CVariableDeclaration', 'int after;']]
+      end
+
+      it "extracts a function returning a struct, with a stray ';' after its body, as a function" do
+        expect( sequence_of( "struct ops make_v(void) { struct ops o = { 1 }; return o; };\n" ) ).to eq [['CFunctionDefinition', 'struct ops make_v(void)']]
+      end
+
+      # A feature can end at the buffer's last byte, before the stray ';' after it is read
+      (1..8).each do |chunk_size|
+        it "reads past a stray ';' after a function body with #{chunk_size}-byte chunks" do
+          expect( sequence_of( "struct ops *make_ops(void) { return 0; };\nint after;\n", chunk_size: chunk_size ) ).to eq [['CFunctionDefinition', 'struct ops *make_ops(void)'], ['CVariableDeclaration', 'int after;']]
+          expect( sequence_of( "int f(void) { return 0; };\nint after;\n", chunk_size: chunk_size ) ).to eq [['CFunctionDefinition', 'int f(void)'], ['CVariableDeclaration', 'int after;']]
+        end
+      end
+
+      it "extracts a type with an attribute after its body as a type" do
+        expect( sequence_of( "struct pk { char c; int i; } __attribute__((packed));\nint after;\n" ) ).to eq [['CStatement', 'struct pk { char c; int i; } __attribute__((packed));'], ['CVariableDeclaration', 'int after;']]
+      end
+    end
+
+    # A type specifier that takes parentheses has a macro invocation's shape. Each declaration
+    # must still arrive whole, as one element.
+    context "with type specifiers that take parentheses" do
+      [
+        ['typeof(int) g_t;',      'CVariableDeclaration', 'typeof(int) g_t;'],
+        ['_Atomic(int) g_a;',     'CVariableDeclaration', '_Atomic(int) g_a;'],
+        ['_Alignas(8) int g_al;', 'CVariableDeclaration', '_Alignas(8) int g_al;'],
+        ['typeof(*g_pp) g_q;',    'CVariableDeclaration', 'typeof(*g_pp) g_q;'],
+        ['typeof(int) tf(void);', 'CFunctionDeclaration', 'typeof(int) tf(void);']
+      ].each do |content, kind, text|
+        it "extracts `#{content}` as one element" do
+          expect( sequence_of( "#{content}\n" ) ).to eq [[kind, text]]
+        end
+      end
+    end
+
+    # An asm label's ')' ends a declaration as a parameter list does. A variable with one must
+    # still arrive as a variable, and a function with one as a function.
+    context "with asm labels" do
+      it "extracts each declaration as the element it declares" do
+        content = "int g_s asm(\"g_sym\");\nint f(void) __asm(\"f_sym\");\nint f2(void) MY_API asm(\"f2_sym\");\n" \
+                  "asm(\".globl top_sym\");\nint after_fn(void) { return 7; }\n"
+
+        expect( sequence_of( content ) ).to eq [
+          ['CVariableDeclaration', 'int g_s asm("g_sym");'],
+          ['CFunctionDeclaration', 'int f(void) __asm("f_sym");'],
+          ['CFunctionDeclaration', 'int f2(void) MY_API asm("f2_sym");'],
+          ['CVariableDeclaration', 'asm(".globl top_sym");'],
+          ['CFunctionDefinition', 'int after_fn(void)']
+        ]
+      end
+    end
+
+    # A chunk may end at a lone '/', which may open a comment the next chunk holds
+    context "with a comment after a macro invocation's arguments" do
+      (1..24).each do |chunk_size|
+        it "reads the same elements with #{chunk_size}-byte chunks" do
+          content = "FOO(x) /* c */;\nint after;\n"
+          expect( sequence_of( content, chunk_size: chunk_size ) ).to eq sequence_of( content )
+        end
+      end
+    end
+
+    # Fallback preprocessing leaves comments in place, inside declarations too
+    context "with comments inside declarations" do
+      it "reads on past a declaration that ends in a comment" do
+        expect( sequence_of( "int g_m /* count */;\nint after_fn(void) { return 7; }\n" ) ).to eq [['CVariableDeclaration', 'int g_m ;'], ['CFunctionDefinition', 'int after_fn(void)']]
+      end
+
+      it "reads a declaration whose initializer follows a line comment" do
+        expect( sequence_of( "int g_n // count\n    = 3;\nint after;\n" ) ).to eq [['CVariableDeclaration', 'int g_n = 3;'], ['CVariableDeclaration', 'int after;']]
+      end
+
+      # A comment after a feature can run past the buffer's end, so it must be read again whole
+      (1..24).each do |chunk_size|
+        it "reads past a comment after a declaration with #{chunk_size}-byte chunks" do
+          expect( sequence_of( "int g_last; // trailing; comment\nint after;\n", chunk_size: chunk_size ) ).to eq [['CVariableDeclaration', 'int g_last;'], ['CVariableDeclaration', 'int after;']]
+          expect( sequence_of( "int g_last; /* trailing; comment */\nint after;\n", chunk_size: chunk_size ) ).to eq [['CVariableDeclaration', 'int g_last;'], ['CVariableDeclaration', 'int after;']]
+        end
       end
     end
 

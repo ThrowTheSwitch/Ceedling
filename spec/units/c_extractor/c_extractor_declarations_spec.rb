@@ -701,6 +701,203 @@ describe CExtractorDeclarations do
         expect(pos).to eq(20)
         expect(rest).to eq("")
       end
+
+      # A comma after an initializer separates declarators just as one before it does. A comma
+      # inside brackets, braces or a literal belongs to the initializer.
+      [
+        ['int g_x = 0, g_y;',                  [['g_x', 'int', 'int g_x = 0;'], ['g_y', 'int', 'int g_y;']]],
+        ['int g_p = f(1, 2), g_q, g_r = 3;',   [['g_p', 'int', 'int g_p = f(1, 2);'], ['g_q', 'int', 'int g_q;'], ['g_r', 'int', 'int g_r = 3;']]],
+        ['char *g_s = "a,b", *g_t;',           [['g_s', 'char *', 'char *g_s = "a,b";'], ['g_t', 'char *', 'char *g_t;']]],
+        ["char g_c = ',', g_d;",               [['g_c', 'char', "char g_c = ',';"], ['g_d', 'char', 'char g_d;']]],
+        ['int g_a[2] = {1, 2}, g_b;',          [['g_a', 'int', 'int g_a[2] = {1, 2};'], ['g_b', 'int', 'int g_b;']]],
+        ['struct ops g_o = { 1 }, g_n = { 2 };', [['g_o', 'struct ops', 'struct ops g_o = { 1 };'], ['g_n', 'struct ops', 'struct ops g_n = { 2 };']]],
+        ['int g_m[N == 2 ? 2 : 3] = {0}, g_k;', [['g_m', 'int', 'int g_m[N == 2 ? 2 : 3] = {0};'], ['g_k', 'int', 'int g_k;']]]
+      ].each do |content, expected|
+        it "splits `#{content}` at its top-level commas" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.text] } ).to eq expected
+          expect( variables.map( &:original ).uniq ).to eq [content]
+        end
+      end
+
+      # A later declarator takes the text ahead of the first one's declarator. Stars, qualifiers
+      # after a star, attributes after the name and line breaks belong to the first declarator.
+      [
+        ["int\ng_x = 0, g_y = 1;",                                  ['g_y', 'int', [], 'int g_y = 1;']],
+        ["const unsigned char\n  g_tbl[] = {1, 2}, g_after = 3;",   ['g_after', 'unsigned char', ['const'], 'unsigned char g_after = 3;']],
+        ['int *const g_a = 0, g_b;',                                ['g_b', 'int', [], 'int g_b;']],
+        ['const char *const g_n = "x", *const g_m = "y";',          ['g_m', 'char *const', ['const'], 'char *const g_m = "y";']],
+        ['int *restrict g_a = 0, g_b = 2;',                         ['g_b', 'int', [], 'int g_b = 2;']],
+        ['int g_a __attribute__((aligned(4))) = 1, g_b;',           ['g_b', 'int', [], 'int g_b;']],
+        ['__ALIGNED(4) uint8_t g_buf[16] = {0}, g_buf2[16];',       ['g_buf2', '__ALIGNED(4) uint8_t', [], '__ALIGNED(4) uint8_t g_buf2[16];']],
+        ['__attribute__((section(".x"))) int g_s = 1, g_t;',        ['g_t', 'int', [], '__attribute__((section(".x"))) int g_t;']]
+      ].each do |content, (name, type, decorators, text)|
+        it "gives a later declarator only the base type of `#{content.gsub( "\n", '\n' )}`" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.last.to_h.slice( :name, :type, :decorators, :text ) ).to eq( name: name, type: type, decorators: decorators, text: text )
+        end
+      end
+
+      # Without the first name the base type can't be found, so the declaration stays whole. It
+      # reads as nameless, as a declaration a macro spells does, rather than named by its last.
+      [
+        'int (g_a) = 1, g_b = 2;',
+        'static ARR_OF(int, hits)[3], n;'
+      ].each do |content|
+        it "keeps `#{content}` whole and nameless, since its first name can't be read" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.text] } ).to eq [[nil, nil, content.delete_prefix( 'static ' )]]
+        end
+      end
+
+      # A word may stand between the type and the name: a qualifier, a type or storage keyword, a
+      # memory-space keyword, a compiler's `__` extension or a macro in capitals. A word ahead of a
+      # star is never the name, and a bracket inside parentheses is no array size.
+      [
+        ['int __far a, b;',                          [['a', 'int __far'], ['b', 'int __far']]],
+        ['char __far *p, *q;',                       [['p', 'char __far *'], ['q', 'char __far *']]],
+        ['unsigned char xdata a, b;',                [['a', 'unsigned char xdata'], ['b', 'unsigned char xdata']]],
+        ['int MYQ *p, *q;',                          [['p', 'int MYQ *'], ['q', 'int MYQ *']]],
+        ['int MYQ a, b;',                            [['a', 'int MYQ'], ['b', 'int MYQ']]],
+        ['int _Atomic a, b;',                        [['a', 'int _Atomic'], ['b', 'int _Atomic']]],
+        ['struct S _Atomic s, t;',                   [['s', 'struct S _Atomic'], ['t', 'struct S _Atomic']]],
+        ['typeof(int[3]) a, b;',                     [['a', 'typeof(int[3])'], ['b', 'typeof(int[3])']]],
+        ['_Alignas(sizeof(x[0])) int a, b;',         [['a', '_Alignas(sizeof(x[0])) int'], ['b', '_Alignas(sizeof(x[0])) int']]],
+        ['int *x MY_ATTR, y;',                       [['MY_ATTR', 'int *x'], ['y', 'int']]],
+        ['const u8 MAX_A = 1, MAX_B = 2;',           [['MAX_A', 'u8'], ['MAX_B', 'u8']]],
+        ['unsigned long MAX_A = 1, MAX_B = 2;',      [['MAX_A', 'unsigned long'], ['MAX_B', 'unsigned long']]],
+        ['static __IO u32_t TICK_A, TICK_B;',        [['TICK_A', '__IO u32_t'], ['TICK_B', '__IO u32_t']]],
+        ['MYQ u32_t TICK_A, TICK_B;',                [['TICK_A', 'MYQ u32_t'], ['TICK_B', 'MYQ u32_t']]],
+        ['unsigned char xdata A, B;',                [['A', 'unsigned char xdata'], ['B', 'unsigned char xdata']]]
+      ].each do |content, expected|
+        it "splits `#{content}` with each variable's base type" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type] } ).to eq expected
+        end
+      end
+
+      # An unexpanded attribute macro after the first name reads as the name, which leaves a base
+      # type no declaration could have. The statement then stays one record, read whole.
+      [
+        "const char g_a KEEP = 'x', g_b = 'y';",
+        'const uint8_t table[] PROGMEM = {1}, t2[] PROGMEM = {2};'
+      ].each do |content|
+        it "keeps `#{content}` one record when a macro after its first name misleads the base type" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map( &:text ) ).to eq [content.delete_prefix( 'const ' )]
+        end
+      end
+
+      # A name read in capitals after another word is taken for an attribute macro, so the word
+      # before it is the real name and the statement stays one record
+      [
+        ['static const int MAX_A UNUSED = 3, MAX_B = 1;', 'int MAX_A UNUSED = 3, MAX_B = 1;'],
+        ['static const u8 MAX_A UNUSED = 3, MAX_B = 1;',  'u8 MAX_A UNUSED = 3, MAX_B = 1;'],
+        ['static UINT32 MAX_A UNUSED = 3, MAX_B = 1;',    'UINT32 MAX_A UNUSED = 3, MAX_B = 1;'],
+        ['static int a1 __maybe_unused, b1;',             'int a1 __maybe_unused, b1;']
+      ].each do |content, text|
+        it "keeps `#{content}` one record when a capitalized name follows the first name" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map( &:text ) ).to eq [text]
+        end
+      end
+
+      it "splits a compound declaration whose first function pointer has an initializer" do
+        success, variables, _pos, _rest = extract_variable.call( "static int (*a)(int) = f, (*b)(int);" )
+
+        expect( success ).to be true
+        expect( variables.map { |v| [v.name, v.type, v.decorators, v.declarator] } ).to eq [
+          ['a', 'int', ['static'], '(*a)(int)'],
+          ['b', 'int', ['static'], '(*b)(int)']
+        ]
+      end
+
+      # Array sizes are found in one pass, however many parentheses a literal holds
+      it "reads a declaration whose literal holds many parentheses within a time bound" do
+        content = 'int MACRO("' + ('(' * 20_000) + '") x, y;'
+
+        success, variables = nil
+        Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
+
+        expect( success ).to be true
+        expect( variables.map( &:name ) ).to eq ['x', 'y']
+      end
+
+      it "splits a compound declaration after a large initializer table within a time bound" do
+        content = 'static const uint8_t table[] = { ' + ('0x5A, ' * 20_000) + '0 }, after;'
+
+        success, variables = nil
+        Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
+
+        expect( success ).to be true
+        expect( variables.map( &:name ) ).to eq ['table', 'after']
+      end
+    end
+
+    # GCC and Clang accept '$' in an identifier, at its start, middle or end
+    context "names holding '$'" do
+      [
+        ['static int hook$2;',     [['hook$2', 'int', '']]],
+        ['int g$v[2];',            [['g$v', 'int', '[2]']]],
+        ['int $lead;',             [['$lead', 'int', '']]],
+        ['int trail$;',            [['trail$', 'int', '']]],
+        ['int a$1 = 0, b$2;',      [['a$1', 'int', ''], ['b$2', 'int', '']]],
+        ['struct s$t x$y;',        [['x$y', 'struct s$t', '']]],
+        ['static int x$_Atomic;',  [['x$_Atomic', 'int', '']]]
+      ].each do |content, expected|
+        it "reads `#{content}`" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type, v.array_suffix] } ).to eq expected
+        end
+      end
+    end
+
+    # A variable's extern repeats its type, so a type keyword or a specifier's argument must stay
+    context "type specifiers and keywords" do
+      [
+        ['typeof(int) g_t;',            'g_t',  'typeof(int)'],
+        ['_Atomic(int) g_a;',           'g_a',  '_Atomic(int)'],
+        ['typeof(*g_pp) g_q;',          'g_q',  'typeof(*g_pp)'],
+        ['__typeof__(int) g_u;',        'g_u',  '__typeof__(int)'],
+        ['_BitInt(8) g_b;',             'g_b',  '_BitInt(8)'],
+        ['typeof(int (*)(int)) g_fp;',  'g_fp', 'typeof(int (*)(int))'],
+        ['typeof(int[3]) g_arr;',       'g_arr', 'typeof(int[3])'],
+        ['typeof(char (*)[4]) g_pa;',   'g_pa', 'typeof(char (*)[4])'],
+        ['__typeof_unqual(const int) g_tu;', 'g_tu', '__typeof_unqual(const int)'],
+        ['_Alignas(8) int g_al;',       'g_al', '_Alignas(8) int'],
+        ['_Bool g_f;',                  'g_f',  '_Bool'],
+        ['_Atomic int g_ai;',           'g_ai', '_Atomic int'],
+        ['_Thread_local int g_tl;',     'g_tl', '_Thread_local int'],
+        ['_Complex double g_c;',        'g_c',  '_Complex double']
+      ].each do |content, name, type|
+        it "reads `#{content}` with its type whole" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type] } ).to eq [[name, type]]
+        end
+      end
+
+      it "gives a later declarator a base type a specifier spells" do
+        success, variables, _pos, _rest = extract_variable.call( 'typeof(*p) a = 0, b;' )
+
+        expect( success ).to be true
+        expect( variables.map { |v| [v.name, v.type, v.text] } ).to eq [['a', 'typeof(*p)', 'typeof(*p) a = 0;'], ['b', 'typeof(*p)', 'typeof(*p) b;']]
+      end
     end
 
     context "compiler extensions on variable declarations" do
@@ -774,6 +971,59 @@ describe CExtractorDeclarations do
         expect(variable[0].name).to eq('my_point')
         expect(variable[0].type).to eq('struct Point { int x ; int y; }')
         expect(variable[0].text).to eq('struct Point { int x __attribute__((aligned(4))); int y; } my_point;')
+      end
+    end
+
+    # An asm label names the variable's symbol. The record keeps it apart from the name and type,
+    # and its text keeps it for the definition.
+    # An alignment specifier or attribute may lead a declaration, ahead of its storage class
+    context "a leading alignment specifier or attribute" do
+      [
+        ['_Alignas(8) static int s_as;',                ['static'],          '_Alignas(8) int',  '_Alignas(8) int s_as;'],
+        ['alignas(16) static const int s_c = 1;',       ['static', 'const'], 'alignas(16) int',  'alignas(16) int s_c = 1;'],
+        ['__attribute__((unused)) static int s_u;',     ['static'],          'int',              '__attribute__((unused)) int s_u;'],
+        ['static _Alignas(4) volatile int s_v;',        ['static', 'volatile'], '_Alignas(4) int', '_Alignas(4) int s_v;']
+      ].each do |content, decorators, type, text|
+        it "reads `#{content}` with its storage class as a decorator" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.decorators, v.type, v.text] } ).to eq [[decorators, type, text]]
+        end
+      end
+    end
+
+    context "asm labels" do
+      def read_all(content)
+        success, variables, _, _ = extract_variable.call( content )
+        expect( success ).to be true
+        variables.map { |v| v.to_h.slice( :name, :type, :array_suffix, :declarator, :text, :asm_label ) }
+      end
+
+      it "reads a variable by its name, whichever spelling its label takes" do
+        expect( read_all( 'int g_s __asm__("g_symbol") = 1;' ) ).to eq( [{ name: 'g_s', type: 'int', array_suffix: '', declarator: nil,
+                                                                           text: 'int g_s __asm__("g_symbol") = 1;', asm_label: '__asm__("g_symbol")' }] )
+        expect( read_all( 'int g_b asm("g_b_sym");' ).first ).to include( name: 'g_b', type: 'int', asm_label: 'asm("g_b_sym")' )
+        expect( read_all( 'static char *g_p __asm ("g_p_sym");' ).first ).to include( name: 'g_p', type: 'char *', asm_label: '__asm ("g_p_sym")' )
+      end
+
+      it "reads a label after an array size, an attribute or a declarator group" do
+        expect( read_all( 'int g_a[2] asm("g_a_sym") = { 1, 2 };' ).first ).to include( name: 'g_a', array_suffix: '[2]', asm_label: 'asm("g_a_sym")' )
+        expect( read_all( 'int g_u __attribute__((used)) asm("g_u_sym");' ).first ).to include( name: 'g_u', type: 'int', asm_label: 'asm("g_u_sym")' )
+        expect( read_all( 'int (*fp)(int) __asm__("fp_label");' ).first ).to include( name: 'fp', declarator: '(*fp)(int)', asm_label: '__asm__("fp_label")' )
+        expect( read_all( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ).first ).to include( name: 'g', declarator: '(*g)(int)', asm_label: '__asm__("sym")' )
+      end
+
+      it "reads each label of a compound declaration" do
+        expect( read_all( 'int a asm("a_sym") = 1, *b asm("b_sym"), c;' ).map { |v| v.slice( :name, :type, :asm_label ) } ).to eq( [
+          { name: 'a', type: 'int', asm_label: 'asm("a_sym")' },
+          { name: 'b', type: 'int *', asm_label: 'asm("b_sym")' },
+          { name: 'c', type: 'int', asm_label: nil }
+        ] )
+      end
+
+      it "gives a variable without a label none" do
+        expect( read_all( 'int asm_count = 1;' ).first ).to include( name: 'asm_count', asm_label: nil )
       end
     end
 
@@ -965,19 +1215,19 @@ describe CExtractorDeclarations do
       [
         ['void (*(fp34))(void) = 0;',          'fp34',      '(*(fp34))(void)'],
         ['static int (*hook$1)(int) = 0;',     'hook$1',    '(*hook$1)(int)'],
-        ['int (*s_hook /* callback */)(int);', 's_hook',    '(*s_hook /* callback */)(int)']
+        ['int (*s_hook /* callback */)(int);', 's_hook',    '(*s_hook )(int)']
       ].each do |content, name, declarator|
         it "reads `#{content}` by its name #{name}" do
           expect( read_one( content ) ).to include( name: name, declarator: declarator )
         end
       end
 
-      # An extern repeats the declarator. An attribute after it would draw a warning there, while
-      # an asm label names the symbol and must stay.
-      it "leaves a trailing attribute out of the declarator and keeps an asm label" do
+      # An extern repeats the declarator. An attribute after it would draw a warning there, and an
+      # asm label is kept apart.
+      it "leaves a trailing attribute and an asm label out of the declarator" do
         expect( read_one( "void (* const vec[])(void) __attribute__ ((used)) = { 0 };" ) ).to include( name: 'vec', declarator: '(* const vec[])(void)' )
-        expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int) __asm__("fp_label")' )
-        expect( read_one( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ) ).to include( name: 'g', declarator: '(*g)(int) __asm__("sym")' )
+        expect( read_one( 'int (*fp)(int) __asm__("fp_label");' ) ).to include( name: 'fp', declarator: '(*fp)(int)' )
+        expect( read_one( 'int (*g)(int) __attribute__((used)) __asm__("sym") = f;' ) ).to include( name: 'g', declarator: '(*g)(int)' )
         expect( read_one( 'int (*g_u)(int) MY_USED = f;' ) ).to include( name: 'g_u', declarator: '(*g_u)(int)' )
       end
 
@@ -1061,6 +1311,58 @@ describe CExtractorDeclarations do
           ['a', 'int', '(*a)(int)', 'int (*a)(int);'],
           ['b', 'int', '(*b)(int)', 'int (*b)(int);']
         ]
+      end
+    end
+
+    # Fallback preprocessing leaves comments in place, and a declaration's lines are joined into
+    # one. A comment must not swallow what follows it on the joined line.
+    context "comments inside a declaration" do
+      def read(content)
+        success, variables, pos, _rest = extract_variable.call( content )
+        expect( success ).to be(true), "expected a declaration in #{content.inspect}"
+        expect( pos ).to eq( content.length )
+        return variables
+      end
+
+      it "reads past a line comment before the initializer" do
+        content = "int g_n // count\n    = 3;"
+        variable = read( content ).first
+        expect( [variable.name, variable.type, variable.text] ).to eq ['g_n', 'int', 'int g_n = 3;']
+        expect( variable.original ).to eq content
+      end
+
+      it "reads a declaration that ends in a block comment" do
+        expect( read( "int g_m /* count */;" ).map { |v| [v.name, v.type] } ).to eq [['g_m', 'int']]
+      end
+
+      it "reads a function pointer with a line comment before its initializer" do
+        variable = read( "int (*g_fp)(int) // cb\n    = 0;" ).first
+        expect( [variable.name, variable.declarator, variable.text] ).to eq ['g_fp', '(*g_fp)(int)', 'int (*g_fp)(int) = 0;']
+      end
+
+      it "splits a compound declaration only at commas outside its comments" do
+        expect( read( "int g_c1, // first, of two\n    g_c2;" ).map { |v| [v.name, v.text] } ).to eq [['g_c1', 'int g_c1;'], ['g_c2', 'int g_c2;']]
+      end
+
+      it "keeps what looks like a comment inside a literal" do
+        expect( read( "char *g_lit = \"a // b /* c */\";" ).first.text ).to eq 'char *g_lit = "a // b /* c */";'
+        expect( read( "char g_ch = '/';" ).first.text ).to eq "char g_ch = '/';"
+      end
+
+      # The buffer may end inside the comment, so the scan fails and the caller grows the buffer
+      it "fails at a block comment that never closes" do
+        success, variables, pos, _rest = extract_variable.call( "int x /* never closed; int y;" )
+        expect( [success, variables, pos] ).to eq [false, nil, 0]
+      end
+
+      it "reads a declaration with a commented initializer table within a time bound" do
+        content = 'static const uint8_t table[] = { ' + ('0x5A, /* v */ ' * 20_000) + '0 };'
+
+        success, variables = nil
+        Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
+
+        expect( success ).to be true
+        expect( variables.first.name ).to eq( 'table' )
       end
     end
 

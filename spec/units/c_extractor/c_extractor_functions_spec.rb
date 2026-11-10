@@ -316,10 +316,58 @@ describe CExtractorFunctions do
       it "rejects pointer to array declaration" do
         content = "int (*ptr)[10];"
         signature, pos, rest = extract_signature.call(content, :declaration)
-        
+
         expect(signature).to be_nil
         expect(pos).to eq(0)
         expect(rest).to eq("int (*ptr)[10];")
+      end
+
+      # A label's ')' ends the declaration, but it closes no parameter list. A basic asm statement
+      # at file scope is a label alone.
+      it "rejects a variable declaration with an asm label, and a basic asm statement" do
+        ['int g asm("g_sym");', 'int g __asm ("g_sym");', 'int g[2] __asm__("g_sym");', 'int (*fp)(int) asm("fp_sym");', 'asm(".globl top_sym");'].each do |content|
+          signature, pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to be_nil, content
+          expect(pos).to eq(0)
+        end
+      end
+
+      it "accepts a function declaration with an asm label" do
+        signature, pos, rest = extract_signature.call('int f(void) asm("f_sym"); int g;', :declaration)
+
+        expect(signature).to eq('int f(void) asm("f_sym");')
+        expect(pos).to eq(25)
+        expect(rest).to eq(' int g;')
+      end
+
+      # Unexpanded macros may sit around the label. A function's text holds a parameter list, which
+      # is empty or opens with a word, an ellipsis or a C23 attribute. A macro's argument such as
+      # `(4)` and a specifier's argument are no parameter list.
+      it "accepts a function declaration with a macro ahead of its asm label" do
+        ['int f(void) MY_API asm("f_sym");', 'int h(int) DEPRECATED __asm("h_sym");', 'int k(void) MY_API __asm__("k_sym");',
+         'int f(int a, char *b) API asm("f_sym");', 'int f(...) API asm("f_sym");', 'int f() API asm("f_sym");',
+         'int f(typeof(int) *p) API asm("f_sym");', 'int f([[maybe_unused]] int x) API asm("f_sym");',
+         'int f(void) MY_DEPRECATED("use g") API asm("f_sym");', 'int f(void) asm("f_sym") MY_TRAIL;'].each do |content|
+          signature, _pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to eq(content)
+        end
+
+        # A line splice, or a directive fallback preprocessing leaves in place, may open the list
+        ["int f(\\\n  int x) __asm__(\"f_sym\");", "int f(\n#if WIDE\n  long x\n#else\n  int x\n#endif\n) asm(\"f_sym\");"].each do |content|
+          signature, _pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to start_with('int f('), content
+        end
+
+        ['typeof(int) g MY asm("g_sym");', '_Alignas(8) int g asm("g_sym");', 'int MY_ALIGN(4) g __asm__("g_sym");',
+         'int SECTION(".data") g __asm__("g_sym");', 'int __attribute((aligned(4))) g asm("g_sym");', 'int g asm("g"), *h asm("h");',
+         'int g MY_SECTION(".x") asm("g_sym");'].each do |content|
+          signature, _pos, _rest = extract_signature.call(content, :declaration)
+
+          expect(signature).to be_nil, content
+        end
       end
     end
 
@@ -3069,6 +3117,64 @@ describe CExtractorFunctions do
 
     it "counts the position in characters" do
       expect( described_class.name_position( "/* é */ int f(void)", 'f' ) ).to eq( 12 )
+    end
+  end
+
+  # GCC and Clang accept '$' in an identifier
+  describe "names holding '$'" do
+    let(:functions) { CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup) }
+
+    it "does not find a name inside a longer one that holds a '$'" do
+      expect( described_class.name_position( "int x$f(void); int f(void)", 'f' ) ).to eq( 19 )
+    end
+
+    [
+      ['int f$1(void);',        'f$1'],
+      ['int $g(int $a);',       '$g'],
+      ['static int h$(void);',  'h$'],
+      ['int f$__inline(void);', 'f$__inline']
+    ].each do |signature, name|
+      it "reads the declaration `#{signature}` as `#{name}`" do
+        success, declaration = functions.try_extract_function_declaration( StringScanner.new( signature ) )
+
+        expect( success ).to be true
+        expect( declaration.name ).to eq( name )
+      end
+    end
+
+    it "reads a definition's name holding '$'" do
+      success, definition = functions.try_extract_function_definition( StringScanner.new( "int f$1(void) { return 1; }" ), nil )
+
+      expect( success ).to be true
+      expect( [definition.name, definition.signature_stripped] ).to eq ['f$1', 'int f$1(void)']
+    end
+  end
+
+
+  # A return type a specifier spells keeps its parentheses, which hold no name
+  describe "return types a specifier spells" do
+    let(:functions) { CExtractorFunctions.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup) }
+
+    [
+      ['typeof(int) tf(void);',      'tf', 'typeof(int) tf(void);'],
+      ['_Atomic(int) af(void);',     'af', '_Atomic(int) af(void);'],
+      ['typeof(*p) pf(int n);',      'pf', 'typeof(*p) pf(int n);'],
+      ['__typeof__( helper(1) ) tq(void);', 'tq', '__typeof__( helper(1) ) tq(void);'],
+      ['typeof(unsigned int (*)(void)) getfp(void);', 'getfp', 'typeof(unsigned int (*)(void)) getfp(void);']
+    ].each do |signature, name, stripped|
+      it "reads the declaration `#{signature}` as `#{name}`" do
+        success, declaration = functions.try_extract_function_declaration( StringScanner.new( signature ) )
+
+        expect( success ).to be true
+        expect( [declaration.name, declaration.signature_stripped] ).to eq [name, stripped]
+      end
+    end
+
+    it "reads a definition whose return type `__typeof__` spells" do
+      success, definition = functions.try_extract_function_definition( StringScanner.new( "__typeof__(int) uf(void) { return 0; }" ), nil )
+
+      expect( success ).to be true
+      expect( definition.name ).to eq( 'uf' )
     end
   end
 
