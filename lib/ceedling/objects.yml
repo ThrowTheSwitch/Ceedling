@@ -649,6 +649,8 @@ build_step_doctor:
 header_collision_specialist:
   compose:
     - test_substitutions
+    - gcc_dependency_parser
+    - file_wrapper
 
 missing_symbol_specialist:
   compose:

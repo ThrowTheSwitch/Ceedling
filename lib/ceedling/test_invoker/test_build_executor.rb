@@ -850,9 +850,9 @@ class TestBuildExecutor
   # ordinary convention, so "shares a directory" alone would flag nearly every
   # file in the project. Only one level deep: a directory elsewhere in the same
   # dependency list that shares no header with any of this test's own mocks or
-  # Partials, but itself holds more than one candidate, is shaped the same way
-  # and reported, but nothing designates which of its occupants should win, so
-  # nothing there is acted on.
+  # Partials is shaped the same way, but nothing designates which of its occupants
+  # should win, so nothing there is acted on. Should the compilation fail with a
+  # collision there, the build step doctor's shared-directory diagnosis explains it.
   #
   # Returns nil when nothing needs isolating; otherwise a hash of the search
   # paths to compile with (isolation directory listed first) and that directory's
@@ -865,8 +865,7 @@ class TestBuildExecutor
     dependencies = parsed.values.flatten.uniq
     by_directory = dependencies.group_by { |dep| File.dirname( dep ) }
 
-    isolated   = []
-    mocked_dirs = mocked_headers.values.map { |real_path| File.dirname( real_path ) }.uniq
+    isolated = []
 
     mocked_headers.each_value do |real_path|
       next unless dependencies.include?( real_path )
@@ -886,27 +885,6 @@ class TestBuildExecutor
               "directory with '#{real_path}' and C conventions could bypass mock substitution leading to " \
               "false negative test failures or even test fixture crashes."
         @loginator.log( msg, Verbosity::NORMAL, LogLabels::NOTICE )
-      end
-    end
-
-    # Any other directory in this same reachable set holding more than one file is
-    # shaped the same way a mocked header's own directory is -- but with no
-    # designated substitute among its occupants, there's nothing to safely isolate.
-    # Ceedling's own generated/vendor directories are exempt: a mocks output
-    # directory or a vendor framework's own source directory routinely holds
-    # several co-resident files as a matter of course, never a same-directory
-    # quote-include shortcut risk the way a real project header directory is.
-    generated_dirs = @test_substitutions.generated_dirs( testable )
-
-    by_directory.each do |dir, files|
-      next if mocked_dirs.include?( dir )
-      next if generated_dirs.any? { |gd| dir.start_with?( gd ) }
-
-      files.uniq.combination( 2 ).each do |a, b|
-        msg = "'#{a}' sits alongside '#{b}' at a nesting depth beyond what automated sibling-header " \
-              "isolation provides. If this test's build fails with a redeclaration or conflicting types " \
-              "error, the include ordering and path structure leading to '#{a}' or '#{b}' is worth investigating."
-        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
       end
     end
 

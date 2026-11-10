@@ -807,7 +807,9 @@ describe TestBuildExecutor do
         expect( call_it() ).to be_nil
       end
 
-      it "reports, but does not isolate, another shared directory elsewhere in the dependency list" do
+      # Nothing designates which occupant of an unsubstituted shared directory should win.
+      # A compilation failure there is the build step doctor's to explain.
+      it "neither reports nor isolates another shared directory elsewhere in the dependency list" do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           {
             'a.o' => [
@@ -820,14 +822,10 @@ describe TestBuildExecutor do
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
           .and_return( isolation_in( 'isolated/dir' ) )
 
-        expect(@loginator).to receive(:log).with(
-          a_string_including( '/project/other/x.h' ).and( a_string_including( '/project/other/y.h' ) ),
-          Verbosity::COMPLAIN, LogLabels::NOTICE
-        )
-
         result = call_it()
 
         expect( result[:search_paths] ).to_not include( a_string_including( '/project/other' ) )
+        expect(@loginator).to_not have_received(:log).with( a_string_including( '/project/other' ), anything, anything )
       end
 
       it "logs nothing at all when there is no risk anywhere in the dependency list" do
@@ -836,53 +834,6 @@ describe TestBuildExecutor do
         )
 
         expect(@loginator).to_not receive(:log).with( anything, anything, LogLabels::NOTICE )
-
-        call_it()
-      end
-
-      # This test's own mocks output directory routinely holds several generated files
-      # side by side (a mock's own interface header, and -- when :treat_inlines: :include
-      # is configured -- a same-basename shadow of the real header too), and Unity's own
-      # vendor directory ships more than one header as a matter of course. Neither is a
-      # real project header directory a quote-include could ambiguously resolve within,
-      # so neither belongs in the "worth investigating" heads-up.
-      it "does not report co-resident files inside this test's own mocks output directory or a vendor framework directory" do
-        @testable.paths = { build: 'build/test/out/a_test', mocks: 'build/test/mocks/a_test' }
-
-        allow(@gcc_dependency_parser).to receive(:parse).and_return(
-          {
-            'a.o' => [
-              'test/a_test.c', '/project/library/gpio.h',
-              'build/test/mocks/a_test/mock_gpio.h', 'build/test/mocks/a_test/gpio.h',
-              PROJECT_BUILD_VENDOR_UNITY_PATH + '/unity.h', PROJECT_BUILD_VENDOR_UNITY_PATH + '/unity_internals.h'
-            ]
-          }
-        )
-
-        expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, anything )
-
-        call_it()
-      end
-
-      # A test's own Partials output directory is shaped exactly the same way as its
-      # mocks output directory -- several generated headers (a types header, an
-      # interface header, and more) routinely sit side by side there, one set per
-      # Partialized module, none of it a real project header.
-      it "does not report co-resident files inside this test's own Partials output directory" do
-        @testable.paths = { build: 'build/test/out/a_test', partials: 'build/test/partials/a_test' }
-
-        allow(@gcc_dependency_parser).to receive(:parse).and_return(
-          {
-            'a.o' => [
-              'test/a_test.c', '/project/library/gpio.h',
-              'build/test/partials/a_test/ceedling_partial_moduleA_impl.h',
-              'build/test/partials/a_test/ceedling_partial_gpio_interface.h',
-              'build/test/partials/a_test/ceedling_partial_gpio_types.h'
-            ]
-          }
-        )
-
-        expect(@loginator).to_not receive(:log).with( anything, Verbosity::COMPLAIN, anything )
 
         call_it()
       end
