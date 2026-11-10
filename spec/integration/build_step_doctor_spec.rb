@@ -19,6 +19,7 @@ require 'fileutils'
 require 'tmpdir'
 require 'open3'
 require 'ceedling/constants'
+require 'ceedling/filename_extension'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/dependencies/gcc_dependency_parser'
 require 'ceedling/test_invoker/test_invoker_types'
@@ -48,8 +49,11 @@ describe 'BuildStepDoctor (integration)' do
     @logged = []
     allow( loginator ).to receive( :log ).with( anything, Verbosity::ERRORS, LogLabels::NOTICE ) { |msg, *_| @logged << msg }
 
-    configurator = double( 'configurator', project_build_vendor_ceedling_path: 'build/vendor/ceedling', project_use_mocks: true )
-    allow( configurator ).to receive( :extension_object ).and_return( '.o' )
+    configurator = double(
+      'configurator',
+      project_build_vendor_ceedling_path: 'build/vendor/ceedling', project_use_mocks: true,
+      cmock_mock_prefix: 'mock_', extension_object: FilenameExtension.new( '.o' )
+    )
 
     file_wrapper  = FileWrapper.new( loginator: loginator, verbosinator: verbosinator )
     substitutions = TestSubstitutions.new( configurator: configurator )
@@ -60,7 +64,7 @@ describe 'BuildStepDoctor (integration)' do
         test_substitutions: substitutions, gcc_dependency_parser: GccDependencyParser.new, file_wrapper: file_wrapper
       ),
       missing_symbol_specialist:   MissingSymbolSpecialist.new( configurator: configurator ),
-      duplicate_symbol_specialist: DuplicateSymbolSpecialist.new
+      duplicate_symbol_specialist: DuplicateSymbolSpecialist.new( configurator: configurator )
     ).tap( &:setup )
 
     @testable = TestInvokerTypes::Testable.new( name: 'a_test', paths: { build: File.join( @root, 'build' ) } )
@@ -160,6 +164,20 @@ describe 'BuildStepDoctor (integration)' do
         diagnose_link( *link_failing( compiler, test, other ) )
 
         expect( @logged ).not_to include( a_string_including( 'missing symbols' ) )
+        expect( @logged.size ).to eq( 1 )
+        expect( @logged.first ).to start_with( 'The linker output appears to report a symbol defined more than once.' )
+        expect( @logged.first ).not_to include( 'links both' )
+      end
+
+      it 'names a mock linked beside the source it stands in for' do
+        test   = write( 'build/a_test.c', "int gpio_init(void);\nint main(void) { return gpio_init(); }\n" )
+        mock   = write( 'build/mock_gpio.c', "int gpio_init(void) { return 0; }\n" )
+        source = write( 'build/gpio.c', "int gpio_init(void) { return 1; }\n" )
+
+        diagnose_link( *link_failing( compiler, test, mock, source ) )
+
+        expect( @logged.size ).to eq( 1 )
+        expect( @logged.first ).to include( "This test links both 'mock_gpio.o' and 'gpio.o'" )
       end
 
       it 'prescribes nothing for an error that is no collision' do
