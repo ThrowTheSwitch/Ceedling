@@ -12,8 +12,8 @@ require 'ceedling/constants'
 # Specialists teach the doctor diagnoses. A diagnosis names the steps and outcomes it
 # covers, the symptoms its output must show, and an examination that decides whether
 # the case is really its own. Every diagnosis that applies writes a prescription, so
-# one failure can draw several. The doctor logs each one. The caller still raises the
-# failure itself, so guidance never takes the place of the tool's own error.
+# one failure can draw several. The doctor logs each one as a notice. The caller still
+# raises the failure itself, so guidance never takes the place of the tool's own error.
 #
 # The doctor gathers its diagnoses once, in setup, and only reads them afterward. That
 # is what lets every compilation thread share one doctor without a lock. Adding a
@@ -28,8 +28,9 @@ class BuildStepDoctor
   # What a specialist teaches the doctor. `symptoms` is a Regexp, or several, any of
   # which marks the case as a candidate. `examination` takes a Case and returns a
   # prescription, several, or nil when the case is not this diagnosis's after all.
-  Diagnosis = Struct.new( :name, :steps, :outcomes, :symptoms, :examination, keyword_init: true ) do
-    def initialize(outcomes: [:failure], **fields)
+  # `verbosity` is the level its prescriptions log at.
+  Diagnosis = Struct.new( :name, :steps, :outcomes, :symptoms, :verbosity, :examination, keyword_init: true ) do
+    def initialize(outcomes: [:failure], verbosity: Verbosity::ERRORS, **fields)
       super
     end
 
@@ -61,14 +62,12 @@ class BuildStepDoctor
     check_scope( [step], [outcome], 'diagnosis request' )
     return [] if output.nil?
 
-    prescriptions = @diagnoses.flat_map do |diagnosis|
+    return @diagnoses.flat_map do |diagnosis|
       next [] unless diagnosis.steps.include?( step ) && diagnosis.outcomes.include?( outcome )
 
-      examine( diagnosis, output: output, step: step, outcome: outcome, inputs: inputs )
+      prescriptions = examine( diagnosis, output: output, step: step, outcome: outcome, inputs: inputs )
+      prescriptions.each { |prescription| @loginator.log( prescription, diagnosis.verbosity, LogLabels::NOTICE ) }
     end
-
-    prescriptions.each { |prescription| @loginator.log( prescription, Verbosity::ERRORS, LogLabels::NOTICE ) }
-    return prescriptions
   end
 
   ### Private ###

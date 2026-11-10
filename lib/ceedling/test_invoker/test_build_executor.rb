@@ -313,7 +313,8 @@ class TestBuildExecutor
           flags:      link_flags,
           lib_args:   lib_args,
           lib_paths:  lib_paths,
-          tool:       tool
+          tool:       tool,
+          testable:   testable
         }
 
         generate_executable( **arg_hash )
@@ -491,50 +492,23 @@ class TestBuildExecutor
     }
   end
 
-  def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:)
-    begin
-      @generator.generate_executable_file(
-        tool,
-        context,
-        objects.map { |v| "\"#{v}\"" },
-        flags,
-        executable,
-        @file_path_utils.form_test_build_map_filepath( build_path, executable ),
-        lib_args,
-        lib_paths
-      )
-    rescue ShellException => ex
-      if ex.shell_result[:output].match?(/symbol/i)
-        notice =    "If the linker reports missing symbols, the following may be to blame:\n" +
-                    "  1. This test lacks #include statements corresponding to needed source files (see note below).\n" +
-                    "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
-                    "  3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n" +
-                    "  4. Your project is attempting to mix C++ and C file extensions (not supported).\n"
-        if @configurator.project_use_mocks
-          notice += "  5. This test does not #include needed mocks (that triggers their generation).\n"
-        end
+  # A failed link goes to the build step doctor before it is raised
+  def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:, testable:)
+    @generator.generate_executable_file(
+      tool,
+      context,
+      objects.map { |v| "\"#{v}\"" },
+      flags,
+      executable,
+      @file_path_utils.form_test_build_map_filepath( build_path, executable ),
+      lib_args,
+      lib_paths
+    )
+  rescue ShellException => ex
+    inputs = { tool: tool, objects: objects, executable: executable, flags: flags, lib_args: lib_args, lib_paths: lib_paths, testable: testable }
+    @build_step_doctor.diagnose( step: :link, output: ex.shell_result[:output], inputs: inputs )
 
-        notice +=   "\n"
-        notice +=   "NOTE: A test file directs the build of a test executable with #include statements:\n" +
-                    "  * By convention, Ceedling assumes header filenames correspond to source filenames.\n" +
-                    "  * Which code files to compile and link are determined by #include statements.\n"
-        if @configurator.project_use_mocks
-          notice += "  * An #include statement convention directs the generation of mocks from header files.\n"
-        end
-
-        notice +=   "\n"
-        notice +=   "OPTIONS:\n" +
-                    "  1. Doublecheck this test's #include statements.\n" +
-                    "  2. Simplify complex macros or fully specify symbols for this test in :project ↳ :defines.\n" +
-                    "  3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE()\n" +
-                    "     build directive macro in this test to inject a source file into the build.\n\n" +
-                    "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
-
-        @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
-      end
-
-      raise ex
-    end
+    raise ex
   end
 
   def clean_test_results(path, test)

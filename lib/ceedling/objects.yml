@@ -651,6 +651,8 @@ header_collision_specialist:
     - test_substitutions
 
 missing_symbol_specialist:
+  compose:
+    - configurator
 
 duplicate_symbol_specialist:
 

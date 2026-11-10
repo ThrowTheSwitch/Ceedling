@@ -1119,7 +1119,7 @@ describe TestBuildExecutor do
   context "#generate_executable" do
     before(:each) do
       allow(@file_path_utils).to receive(:form_test_build_map_filepath).and_return( 'build/map' )
-      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+      @testable = @state.testables[:a_test]
     end
 
     def build_args
@@ -1131,66 +1131,34 @@ describe TestBuildExecutor do
         flags:      [],
         lib_args:   [],
         lib_paths:  [],
-        tool:       { name: 'fake linker' }
+        tool:       { name: 'fake linker' },
+        testable:   @testable
       }
     end
 
-    it "re-raises a ShellException from the linker" do
-      ex = ShellException.new( shell_result: { output: 'some unrelated linker failure' }, name: 'linker' )
-      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
-      allow(@loginator).to receive(:log)
-
-      expect {
-        @executor.generate_executable( **build_args )
-      }.to raise_error( ShellException )
-    end
-
-    it "logs missing-symbols guidance when the shell output mentions a symbol, before re-raising" do
+    it "asks the doctor about a failed link, with its inputs, then re-raises" do
       ex = ShellException.new( shell_result: { output: 'undefined reference to symbol foo' }, name: 'linker' )
       allow(@generator).to receive(:generate_executable_file).and_raise( ex )
 
-      expect(@loginator).to receive(:log).with(
-        a_string_matching(/missing symbols/i),
-        Verbosity::COMPLAIN,
-        LogLabels::NOTICE
+      expect {
+        @executor.generate_executable( **build_args )
+      }.to raise_error( ShellException )
+
+      expect(@build_step_doctor).to have_received(:diagnose).with(
+        step: :link,
+        output: 'undefined reference to symbol foo',
+        inputs: {
+          tool: { name: 'fake linker' }, objects: ['build/foo.o'], executable: 'build/a_test.out',
+          flags: [], lib_args: [], lib_paths: [], testable: @testable
+        }
       )
-
-      expect {
-        @executor.generate_executable( **build_args )
-      }.to raise_error( ShellException )
     end
 
-    it "does not log guidance when the shell output does not mention a symbol" do
-      ex = ShellException.new( shell_result: { output: 'some unrelated linker failure' }, name: 'linker' )
-      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
-
-      expect(@loginator).to_not receive(:log)
-
-      expect {
-        @executor.generate_executable( **build_args )
-      }.to raise_error( ShellException )
-    end
-
-    it "includes mock-specific guidance only when the project uses mocks" do
-      ex = ShellException.new( shell_result: { output: 'missing symbol foo' }, name: 'linker' )
-      allow(@generator).to receive(:generate_executable_file).and_raise( ex )
-      allow(@configurator).to receive(:project_use_mocks).and_return( true )
-
-      expect(@loginator).to receive(:log).with(
-        a_string_matching(/needed mocks/i),
-        Verbosity::COMPLAIN,
-        LogLabels::NOTICE
-      )
-
-      expect {
-        @executor.generate_executable( **build_args )
-      }.to raise_error( ShellException )
-    end
-
-    it "does not raise when the linker succeeds" do
+    it "asks the doctor nothing when the linker succeeds" do
       allow(@generator).to receive(:generate_executable_file)
 
       expect { @executor.generate_executable( **build_args ) }.to_not raise_error
+      expect(@build_step_doctor).not_to have_received(:diagnose)
     end
   end
 
