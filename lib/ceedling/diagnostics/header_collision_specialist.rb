@@ -7,6 +7,7 @@
 
 require 'ceedling/diagnostics/build_step_doctor'
 require 'ceedling/diagnostics/toolchain_output'
+require 'ceedling/diagnostics/header_collision_guidance'
 
 # Explains compiler errors where one translation unit declares a name twice or two ways.
 #
@@ -16,31 +17,23 @@ require 'ceedling/diagnostics/toolchain_output'
 # HEADER_COLLISIONS.md). Headers that share a directory can collide the same way with no
 # substitute involved, since a quoted #include finds its neighbor before any search path.
 #
-# Compilers word the collision differently. GCC reports "conflicting types for" and
-# "previous definition of". Clang reports "redefinition of" and "previous definition is
-# here". Each is a real wording for the same error.
+# Compilers word the collision differently, and no list of wordings is complete. The
+# symptoms below cover the families DOCTOR.md lists and end in a generic net, since a
+# missed collision costs more than guidance that turns out not to apply.
 class HeaderCollisionSpecialist
 
-  COLLISION_SYMPTOMS = /redeclaration of|redefinition of|conflicting types|previous definition/i
-
-  # A header path in a GCC or Clang diagnostic location, `path.h:line:column`
-  HEADER_LOCATION = /([^\s"]+\.h):\d+:\d+/
-
-  # The education and options that follow a shared-directory prescription's lead
-  SHARED_DIRECTORY_GUIDANCE = <<~GUIDANCE.freeze
-    HOW THIS HAPPENS:
-    • One translation unit may define a type, a tag, or an enum value only once, and every declaration of a name must agree.
-    • An include guard keeps a header out the second time only when both arrivals are the same file. Two copies of a header, or two headers that declare one name, pass every guard.
-    • A quoted #include looks in the including file's own directory before any search path. A header there reaches its neighbor directly, whatever order the search paths set.
-    • Ceedling isolates a header's neighbors only when the header is mocked or Partialized. No header in this directory is, so no isolation applies here.
-    • Isolation reaches only one level: a neighbor that #includes a substituted header directly. A chain that passes through further headers or directories is beyond it.
-
-    OPTIONS:
-    1. Trace the #include chains into this directory to the declaration that arrives twice, or to the two declarations that disagree.
-    2. Mock or Partialize the header whose content should be substituted, so Ceedling isolates its neighbors.
-    3. Change the #include or the search path that brings in the second copy.
-    4. Add or fix the include guard of a header that arrives twice.
-  GUIDANCE
+  COLLISION_SYMPTOMS = [
+    # GCC
+    /redefinition of|redeclaration of|conflicting types|previous (?:definition|declaration)|redeclared as different kind/i,
+    # Clang, armclang, and Microchip XC8 v2 and later
+    /typedef redefinition|previous definition is here/i,
+    # EDG front ends: IAR (Pe101), Arm armcc (#101), TI and Green Hills (error #101)
+    /has already been (?:declared|defined)|invalid redeclaration|declaration is incompatible|(?:\bPe|#)0*(?:101|147|256)\b/i,
+    # MSVC
+    /\bC(?:2011|2084|2370|2371)\b|redefinition; different/,
+    # TASKING, SDCC, and other compilers
+    /redefin|redeclar|already (?:been )?(?:declared|defined)|duplicate (?:definition|declaration)/i
+  ].freeze
 
   constructor :test_substitutions, :gcc_dependency_parser, :file_wrapper
 
@@ -62,7 +55,7 @@ class HeaderCollisionSpecialist
   # A header the output names that is also one the test substitutes means the real
   # header's content reached the compilation beside its substitute
   def examine_substituted_header(kase)
-    mentioned = kase.output.scan( HEADER_LOCATION ).flatten.uniq
+    mentioned = ToolchainOutput.headers( kase.output )
 
     culprit = @test_substitutions.real_headers( kase.inputs[:testable] ).find do |basename, real_path|
       mentioned.any? { |m| File.basename( m ) == basename && File.expand_path( m ) == File.expand_path( real_path ) }
@@ -126,16 +119,10 @@ class HeaderCollisionSpecialist
   end
 
   def substituted_header_prescription(basename, real_path)
-    notice  = "This looks like '#{basename}' is mocked or Partialized for this test, but its " \
-              "real content ('#{real_path}') is also reaching compilation through a second " \
-              "unmocked #include chain.\n"
-    notice += "> The cause is most likely a transitive #include chain through an unrelated " \
-              "header brought about by C convention quirks in search paths and #include guards.\n"
-    notice += "> Consider investigating the #include chain and modifying your source or " \
-              "Partializing/mocking the problematic header (without necessarily using it) to " \
-              "break the transitive #include chain.\n"
-
-    return notice
+    return "The compiler output appears to report a redeclaration or conflicting types in '#{basename}'. " \
+           "If so, this test's substitute for '#{basename}' may be colliding with its real content ('#{real_path}'), " \
+           "which can reach this compilation through a second, unmocked #include chain.\n" \
+           "\n" + HeaderCollisionGuidance::SUBSTITUTED_HEADER
   end
 
   # The directory is spelled as the output spelled it
@@ -148,6 +135,6 @@ class HeaderCollisionSpecialist
 
     return "The compiler output appears to report a redeclaration or conflicting types involving #{listing}. " \
            "If so, the cause may lie in how headers reach this compilation. #{subject} the directory '#{dir}' with #{company}.\n" \
-           "\n" + SHARED_DIRECTORY_GUIDANCE
+           "\n" + HeaderCollisionGuidance::SHARED_DIRECTORY
   end
 end

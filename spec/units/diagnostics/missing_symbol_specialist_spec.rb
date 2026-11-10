@@ -53,9 +53,28 @@ describe MissingSymbolSpecialist do
     expect( prescriptions( 'missing symbol foo' ).first ).to match( /needed mocks/i )
   end
 
-  it 'logs at COMPLAIN as a notice' do
+  it 'logs at ERRORS as a notice' do
     prescriptions( 'missing symbol foo' )
 
-    expect( @loginator ).to have_received( :log ).with( a_string_matching( /missing symbols/i ), Verbosity::COMPLAIN, LogLabels::NOTICE )
+    expect( @loginator ).to have_received( :log ).with( a_string_matching( /missing symbols/i ), Verbosity::ERRORS, LogLabels::NOTICE )
+  end
+
+  it 'opens tentatively, then gives causes, education, and options in left-justified blocks' do
+    allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
+
+    notice = prescriptions( 'missing symbol foo' ).first
+
+    expect( notice ).to start_with(
+      "The linker output appears to report missing symbols. If so, the following may be to blame:\n" \
+      "1. This test lacks #include statements corresponding to needed source files (see note below).\n"
+    )
+    expect( notice ).to include(
+      "5. This test does not #include needed mocks (that triggers their generation).\n\n" \
+      "NOTE: A test file directs the build of a test executable with #include statements:\n" \
+      "• By convention, Ceedling assumes header filenames correspond to source filenames.\n",
+      "\n\nOPTIONS:\n1. Doublecheck this test's #include statements.\n",
+      "3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.\n"
+    )
+    expect( notice.lines.grep( /\A\s/ ) ).to all( eq( "\n" ) )
   end
 end

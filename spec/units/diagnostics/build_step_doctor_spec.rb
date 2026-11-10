@@ -41,16 +41,6 @@ describe BuildStepDoctor do
     expect( @loginator ).to have_received( :log ).with( 'first prescription', Verbosity::ERRORS, LogLabels::NOTICE )
   end
 
-  it 'logs at a diagnosis\'s own verbosity when it names one' do
-    quiet = BuildStepDoctor::Diagnosis.new(
-      name: :quiet, steps: [:compile], symptoms: /boom/, verbosity: Verbosity::COMPLAIN, examination: ->(_case) { 'hush' }
-    )
-    doctor = doctor_with( quiet )
-
-    doctor.diagnose( step: :compile, output: 'boom', inputs: {} )
-    expect( @loginator ).to have_received( :log ).with( 'hush', Verbosity::COMPLAIN, LogLabels::NOTICE )
-  end
-
   it 'examines nothing when the symptoms are absent' do
     examined = false
     doctor = doctor_with( diagnosis( :quiet ) { |_case| examined = true; 'x' } )

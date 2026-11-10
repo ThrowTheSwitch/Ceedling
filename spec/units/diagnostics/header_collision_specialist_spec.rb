@@ -62,7 +62,24 @@ describe HeaderCollisionSpecialist do
       notices = prescriptions( "/project/library/gpio.h:12:8: error: redeclaration of 'struct gpio'\n" )
 
       expect( notices.size ).to eq( 1 )
-      expect( notices.first ).to include( "'gpio.h'", "'/project/library/gpio.h'" )
+      expect( notices.first ).to start_with(
+        "The compiler output appears to report a redeclaration or conflicting types in 'gpio.h'. If so, this test's " \
+        "substitute for 'gpio.h' may be colliding with its real content ('/project/library/gpio.h'), which can reach " \
+        "this compilation through a second, unmocked #include chain.\n\nHOW THIS HAPPENS:\n• A mock or Partial replaces"
+      )
+      expect( notices.first ).to include(
+        "• Ceedling isolates the real header's direct neighbors, one level deep.",
+        "\n\nOPTIONS:\n1. Trace the #include chain that brings in the real header.\n",
+        "3. Change the source's #include so it reaches the header the way the test does.\n"
+      )
+      expect( notices.first.lines.grep( /\A\s/ ) ).to eq( ["\n", "\n"] )
+    end
+
+    it 'finds the substituted header in an include chain line' do
+      output = "In file included from /project/library/gpio.h:3,\n                 from test/a_test.c:1:\n" \
+               "/project/library/pins.h:2:5: error: redefinition of 'pin'\n"
+
+      expect( prescriptions( output ).first ).to include( "'/project/library/gpio.h'" )
     end
 
     {
@@ -70,7 +87,17 @@ describe HeaderCollisionSpecialist do
       'GCC previous definition'         => "/project/library/gpio.h:12:8: note: previous definition of 'gpio_init' was here\n",
       'Clang redefinition'              => "/project/library/gpio.h:8:5: error: redefinition of enumerator 'GPIO_DIR_MODE_IN'\n",
       'Clang previous definition'       => "/project/library/gpio.h:8:5: note: previous definition is here\n",
-      'conflicting types with a reason' => "/project/library/gpio.h:8:5: error: conflicting types for 'gpio_init', different types\n"
+      'conflicting types with a reason' => "/project/library/gpio.h:8:5: error: conflicting types for 'gpio_init', different types\n",
+      'GCC previous declaration'        => "/project/library/gpio.h:8:5: note: previous declaration of 'gpio_t' with type 'int'\n",
+      'GCC different kind of symbol'    => "/project/library/gpio.h:8:5: error: 'gpio' redeclared as different kind of symbol\n",
+      'Clang typedef redefinition'      => "/project/library/gpio.h:8:5: error: typedef redefinition with different types\n",
+      'IAR'                             => "\"/project/library/gpio.h\",8  Error[Pe101]: \"GPIO_A\" has already been declared in the current scope\n",
+      'IAR incompatible declaration'    => "\"/project/library/gpio.h\",8  Error[Pe147]: declaration is incompatible with \"int g(void)\"\n",
+      'Arm armcc'                       => "\"/project/library/gpio.h\", line 8: Error:  #101: \"GPIO_A\" has already been declared in the current scope\n",
+      'TI'                              => "\"/project/library/gpio.h\", line 8: error #256: invalid redeclaration of type name \"gpio_t\"\n",
+      'MSVC'                            => "/project/library/gpio.h(8): error C2011: 'gpio': 'struct' type redefinition\n",
+      'MSVC different basic types'      => "/project/library/gpio.h(8): error C2371: 'gpio_t': redefinition; different basic types\n",
+      'other compilers, generically'    => "E 249: [\"/project/library/gpio.h\" 8] duplicate declaration of \"gpio_t\"\n"
     }.each do |wording, output|
       it "recognizes #{wording}" do
         expect( prescriptions( output ).size ).to eq( 1 )
