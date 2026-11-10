@@ -28,6 +28,14 @@ describe CExtractorDefinitions do
 
     # --- Failure cases ---
 
+    # GCC and Clang accept '$' in an identifier, so a longer name only starts like the keyword
+    it "returns [false, nil] for a name that only starts with typedef or struct" do
+      result, pos = try_typedef('typedef$init(a);')
+      expect(result).to eq [false, nil]
+      expect(pos).to eq 0
+      expect(@definitions.try_extract_aggregate_definition(StringScanner.new('struct$x(a) { 1; };'))).to eq [false, nil]
+    end
+
     it "returns [false, nil] when scanner is not at typedef" do
       result, pos = try_typedef('int x;')
       expect(result).to eq [false, nil]

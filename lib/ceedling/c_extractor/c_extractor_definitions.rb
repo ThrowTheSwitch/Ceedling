@@ -39,7 +39,7 @@ class CExtractorDefinitions
   #   [true,  "typedef struct { int x; } Point;"]   the typedef's text
   #   [false, nil                               ]   no typedef here, or no ';' before the text ends
   def try_extract_typedef(scanner)
-    return [false, nil] unless scanner.check(/typedef\b/)
+    return [false, nil] unless scanner.check(/typedef(?![\w$])/)
 
     text  = +''
     depth = 0
@@ -78,7 +78,7 @@ class CExtractorDefinitions
   #   [true,  "struct Foo { int x; };"]   the definition's text
   #   [false, nil                     ]   no type definition here, or the text ends first. The scanner doesn't move.
   def try_extract_aggregate_definition(scanner)
-    return [false, nil] unless scanner.check(/(?:struct|enum|union)\b/)
+    return [false, nil] unless scanner.check(/(?:struct|enum|union)(?![\w$])/)
 
     start_pos   = scanner.pos
     text        = _aggregate_text( scanner )
@@ -124,8 +124,9 @@ class CExtractorDefinitions
     return !(flat.match?( /[=*]/ ) or flat.match?( /\(p\)\s*\z/ ))
   end
 
-  # The head with each top-level group reduced to a stand-in, so `struct ops make(void)` reads
-  # `struct ops make()`. A bracket inside a literal or a comment doesn't count.
+  # The head with each top-level group reduced to a stand-in, so `struct ops make(int a)` reads
+  # `struct ops make()` and `struct ops make(void)` reads `struct ops make(p)`. A bracket inside a
+  # literal or a comment doesn't count.
   def _empty_groups(head)
     scanner = StringScanner.new( head )
     flat    = +''

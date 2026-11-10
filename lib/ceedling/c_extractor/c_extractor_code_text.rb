@@ -15,8 +15,8 @@ class CExtractorCodeText
   # Bare keywords, without an argument list, that strip_compiler_extensions removes. They are
   # MSVC calling conventions, inline hints and `_Noreturn`. Each matches only as a whole
   # identifier, so `__cdecl` isn't found inside `__cdeclFoo` or `x$__cdecl`. Type keywords such
-  # as `_Atomic`, `_Bool` and `_Thread_local` stay, because a variable's type is read from the
-  # text and its extern must agree with its definition.
+  # as `_Atomic` and `_Bool`, and the storage class `_Thread_local`, stay. A variable's type is
+  # read from the text, and its extern must agree with its definition.
   BARE_STRIP_KEYWORDS = (
     MSVC_CALLING_CONVENTIONS + ['__forceinline', '__inline__', '__inline', '_Noreturn']
   ).freeze unless const_defined?(:BARE_STRIP_KEYWORDS, false)
@@ -131,7 +131,8 @@ class CExtractorCodeText
   #
   # Returns: Nothing (void method)
   #
-  # Side effects: Advances scanner position past all consecutive semicolons and deadspace
+  # Side effects: Advances scanner position past consecutive semicolons and the deadspace before
+  # and between them, not past deadspace after the last one
   #
   # Examples:
   #   ";;;"               -> skips all three semicolons
