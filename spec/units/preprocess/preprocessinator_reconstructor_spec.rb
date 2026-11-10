@@ -355,6 +355,40 @@ describe PreprocessinatorReconstructor do
       end
     end
 
+    # GCC 14's full expansion of a CMSIS stub under -std=c99, as written on Linux. Returning from
+    # <stdint.h>, it pads with blank lines around the #define it keeps, then names line 19 again.
+    [true, false].each do |rejoin|
+      it "keeps a declaration apart from an empty #define in GCC's output for a CMSIS stub (rejoin: #{rejoin})" do
+        file_contents = [
+          '# 13 "stubs/cmsis_gcc.h" 2',
+          '', '', '',
+          '#define CMSIS_DEPRECATED ',
+          '', '', '',
+          '# 19 "stubs/cmsis_gcc.h"',
+          'void __enable_irq(void);',
+          'void __disable_irq(void);',
+          '',
+          'uint32_t __get_PRIMASK(void);',
+          '',
+          'void __DSB(void);'
+        ]
+
+        expected = [
+          '#define CMSIS_DEPRECATED', '', '', '',
+          'void __enable_irq(void);',
+          'void __disable_irq(void);',
+          '',
+          'uint32_t __get_PRIMASK(void);',
+          '',
+          'void __DSB(void);'
+        ]
+
+        input = StringIO.new( file_contents.join( "\n" ) + "\n" )
+
+        expect( @extractor.extract_file_as_array_from_expansion( input, 'stubs/cmsis_gcc.h', rejoin: rejoin ) ).to eq expected
+      end
+    end
+
     # GCC and clang both give a mid-line _Pragma() a line of its own between two markers
     # for the source line it sat on
     it "keeps a #pragma on its own line between markers for the same source line" do
