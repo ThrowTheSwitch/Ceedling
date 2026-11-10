@@ -39,8 +39,8 @@ describe 'Declarations in a Partial' do
   end
 
   # `stubs` is C the stand-in test file holds after the headers, such as code reading a member
-  def expect_link(result, references, stubs: '')
-    link = link_partial( result, references: references, stubs: stubs )
+  def expect_link(result, references, stubs: '', flags: '')
+    link = link_partial( result, references: references, stubs: stubs, flags: flags )
     expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
   end
 
@@ -435,6 +435,50 @@ describe 'Declarations in a Partial' do
       expect( @result.impl_h ).to include( 'extern int partial_ticker_get_m[sizeof(partial_ticker_get_n)];' )
       expect( @result.impl_c ).to include( 'int *partial_ticker_get_q = &partial_ticker_get_n;', '"n and m"' )
       expect_link( @result, ['ticker_get', 'partial_ticker_get_m', 'partial_ticker_get_q', 'partial_ticker_get_s'] )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context 'C23 attributes' do
+  # ---------------------------------------------------------------------------
+
+    # The oldest spelling of the standard that GCC and Clang accept with these attributes
+    def c23 = '-std=c2x'
+
+    before do
+      probe = Tempfile.new( ['c23', '.c'] ).tap { |file| file.write( "[[maybe_unused]] static int probe;\n" ) }.tap( &:close )
+      _out, _err, status = Open3.capture3( "#{partials_compiler} #{c23} -fsyntax-only #{probe.path}" )
+      skip "#{partials_compiler} does not accept C23 attributes" unless status.success?
+    end
+
+    it 'declares a variable an attribute leads without its storage class' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "[[maybe_unused]] static int count;\nint ticker_get(void) { return count; }\n" )
+
+      expect( @result.impl_h ).to include( 'extern int count;' )
+      expect_link( @result, ['count', 'ticker_get'], flags: c23 )
+    end
+
+    it 'declares each variable of a compound declaration an attribute leads' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "[[maybe_unused]] static int a, b;\nint ticker_get(void) { return a + b; }\n" )
+
+      expect( @result.impl_h ).to include( 'extern int a;', 'extern int b;' )
+      expect_link( @result, ['a', 'b', 'ticker_get'], flags: c23 )
+    end
+
+    it 'declares a variable whose name an attribute follows' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "static int buf [[maybe_unused]] [4];\nint ticker_get(void) { return buf[0]; }\n" )
+
+      expect( @result.impl_h ).to include( 'extern int buf[4];' )
+      expect_link( @result, ['buf', 'ticker_get'], flags: c23 )
+    end
+
+    it 'reads a function an attribute leads, and the functions after it' do
+      @result = ticker(
+        header: "int ticker_peek(void);\nint ticker_get(void);\n",
+        source: "[[nodiscard]] int ticker_peek(void) { return 1; }\nint ticker_get(void) { return ticker_peek(); }\n"
+      )
+
+      expect_link( @result, ['ticker_peek', 'ticker_get'], flags: c23 )
     end
   end
 
