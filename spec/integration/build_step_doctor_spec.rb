@@ -137,7 +137,8 @@ describe 'BuildStepDoctor (integration)' do
 
       it 'explains a mocked header whose real content also reaches the compilation' do
         gpio = write( 'library/gpio.h', "struct gpio { int pin; };\n" )
-        write( 'mocks/mock_gpio.h', "struct gpio { int pin; };\n" )
+        # The definitions differ, since C23 lets an identical struct be redefined
+        write( 'mocks/mock_gpio.h', "struct gpio { int line; };\n" )
         write( 'library/driverlib.h', "#include \"gpio.h\"\n" )
         source = write( 'test/a_test.c', "#include \"mock_gpio.h\"\n#include \"driverlib.h\"\n" )
 
