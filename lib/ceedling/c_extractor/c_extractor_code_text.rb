@@ -243,8 +243,17 @@ class CExtractorCodeText
     false
   end
 
+  # Characters that can't start an identifier, and aren't a bracket that may open an attribute
+  NON_WORD_RUN = /[^A-Za-z_$\[]+/ unless const_defined?(:NON_WORD_RUN, false)
+
   # Two brackets, which open a C23 attribute and nothing else
   C23_ATTRIBUTE_OPEN = /\[\s*\[/ unless const_defined?(:C23_ATTRIBUTE_OPEN, false)
+
+  # Whether a C23 attribute opens at the scanner. A one-character peek first keeps the check
+  # cheap, since the scans calling it test every position.
+  def c23_attribute_at?(scanner)
+    return (scanner.peek(1) == '[' and scanner.check(C23_ATTRIBUTE_OPEN))
+  end
 
   # The text without its C23 attributes, its spacing otherwise unchanged. A reader looking for
   # array sizes uses it, since an attribute's brackets are no size.
@@ -252,7 +261,7 @@ class CExtractorCodeText
     scanner = StringScanner.new(text)
     result  = +""
     until scanner.eos?
-      next collect_balanced(scanner, '[', ']') if scanner.check(C23_ATTRIBUTE_OPEN)
+      next collect_balanced(scanner, '[', ']') if c23_attribute_at?(scanner)
 
       result << (scanner.scan(/[^\[]+/) || scanner.getch)
     end
@@ -280,15 +289,22 @@ class CExtractorCodeText
     # Whole identifiers are read at once, so an extension's keyword is never found inside a
     # longer name, as `__cdecl` would be inside `x$__cdecl`
     until scanner.eos?
-      next collect_balanced(scanner, '[', ']') if scanner.check(C23_ATTRIBUTE_OPEN)
-
       word = scanner.scan(IDENTIFIER)
-      next result << scanner.getch if word.nil?
+      next _pass_non_word(scanner, result) if word.nil?
 
       result << word unless _extension?(scanner, word)
     end
 
     return result.gsub(/\s+/, ' ').strip
+  end
+
+  # Passes text that starts no identifier into the result, a run of it at once. A C23 attribute
+  # passes whole and is left out.
+  def _pass_non_word(scanner, result)
+    return result << scanner.scan(NON_WORD_RUN) if scanner.check(NON_WORD_RUN)
+    return collect_balanced(scanner, '[', ']') if c23_attribute_at?(scanner)
+
+    result << scanner.getch
   end
 
   # Whether a word is an extension to strip. A bare keyword strips alone. An attribute form,
