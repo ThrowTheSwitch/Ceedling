@@ -634,6 +634,19 @@ library_resolver:
 
 gcc_dependency_parser:
 
+build_step_doctor:
+  compose:
+    - loginator
+    - header_collision_specialist
+    - missing_symbol_specialist
+    - duplicate_symbol_specialist
+
+header_collision_specialist:
+
+missing_symbol_specialist:
+
+duplicate_symbol_specialist:
+
 quote_include_isolator:
   compose:
     - file_wrapper

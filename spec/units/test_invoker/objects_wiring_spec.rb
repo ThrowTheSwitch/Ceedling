@@ -22,7 +22,8 @@ describe 'Test pipeline object wiring' do
     standin_headerinator test_source_file_directive_resolver
   ].map { |name| [name, "ceedling/test_invoker/#{name}"] }.concat( [
     ['build_log_writer',                 'ceedling/build_log_writer'],
-    ['generator_test_results_backtrace', 'ceedling/generators/generator_test_results_backtrace']
+    ['generator_test_results_backtrace', 'ceedling/generators/generator_test_results_backtrace'],
+    ['build_step_doctor',                'ceedling/diagnostics/build_step_doctor']
   ] ).each do |name, path|
     it "composes exactly what #{name}'s constructor takes" do
       require path
