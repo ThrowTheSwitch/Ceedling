@@ -62,6 +62,7 @@ The doctor composes its specialists, rather than each specialist registering its
    - a blank line, then a heading such as `HOW THIS HAPPENS:` over `•` bullets on the C mechanics, mentioning Ceedling only briefly;
    - a blank line, then `OPTIONS:` over a numbered list of ways to resolve the problem;
    - every line left-justified, so a narrow terminal wraps it cleanly. The loginator turns `•` into `*` when decorators are off.
+   - adapted to the project, read from the configurator at examination time. A cause tied to a feature, such as mocks, Partials, or test preprocessing, appears only when the project's settings make it possible. A remedy that mocks or Partializes a header appears either way, and names the setting that turns on a disabled feature (`GuidancePhrases`).
 5. Cover it in a unit spec under `spec/units/diagnostics/`, with one case per wording, and in `spec/integration/build_step_doctor_spec.rb` when a real compiler can produce the failure.
 
 ## Known toolchain wordings

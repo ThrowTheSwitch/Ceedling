@@ -63,6 +63,16 @@ describe TestSubstitutions do
     end
   end
 
+  describe '#partialized?' do
+    it 'tells a Partialized header from a mocked one' do
+      @testable.mocks = { gpio: mock( '/project/library/gpio.h' ) }
+      @testable.partials.configs = { moduleA: partial_config( '/project/src/moduleA.h' ) }
+
+      expect( @substitutions.partialized?( @testable, '/project/src/moduleA.h' ) ).to be true
+      expect( @substitutions.partialized?( @testable, '/project/library/gpio.h' ) ).to be false
+    end
+  end
+
   describe '#generated_dirs' do
     it 'lists the test\'s mocks and Partials directories and the vendor framework directories' do
       expect( @substitutions.generated_dirs( @testable ) ).to eq( [

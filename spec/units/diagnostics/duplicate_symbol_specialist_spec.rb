@@ -50,6 +50,17 @@ describe DuplicateSymbolSpecialist do
     end
   end
 
+  context 'without mocks' do
+    before(:each) { allow( @configurator ).to receive( :project_use_mocks ).and_return( false ) }
+
+    it 'leaves out the mock cause and option, and names the setting a mock remedy needs' do
+      notice = prescriptions( GNU_DUPLICATE ).first
+
+      expect( notice ).not_to include( '• A mock defines', "4. Don't #include both" )
+      expect( notice ).to include( "or mock the source's header instead. Mocking requires :project ↳ :use_mocks.\n" )
+    end
+  end
+
   it 'prescribes nothing for a missing symbol' do
     expect( prescriptions( "undefined reference to `gpio_init'\n" ) ).to eq( [] )
   end
@@ -64,9 +75,9 @@ describe DuplicateSymbolSpecialist do
     expect( notice ).to start_with( "The linker output appears to report a symbol defined more than once.\n\nHOW THIS HAPPENS:\n" )
     expect( notice ).to include(
       "• A program may define each function and each global variable only once across all its object files.\n",
-      "Since GCC 10, tentative definitions of a header variable are errors too (-fno-common).\n",
+      "• A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header.\n",
       "\n\nOPTIONS:\n1. Declare header variables extern, and define each one in a single source file.\n",
-      "4. Don't #include both a mock and its real header in one test, and don't name a mocked module's source in TEST_SOURCE_FILE().\n"
+      "4. Don't #include both a mock and its real header in one test and don't name a mocked module's source in TEST_SOURCE_FILE().\n"
     )
     expect( notice.lines.grep( /\A\s/ ) ).to eq( ["\n", "\n"] )
   end

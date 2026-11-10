@@ -23,6 +23,11 @@ class TestSubstitutions
     return mocked_headers( testable ).merge( partialized_headers( testable ) )
   end
 
+  # Whether `real_path` is a header this test Partializes, rather than mocks
+  def partialized?(testable, real_path)
+    return partialized_headers( testable ).value?( real_path )
+  end
+
   # Directory roots holding only Ceedling's generated or vendored content for this test.
   # Several files routinely share each one, such as a Partial's types, interface, and
   # implementation headers, so sharing a directory there is no quote-include risk.

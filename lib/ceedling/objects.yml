@@ -648,6 +648,7 @@ build_step_doctor:
 
 header_collision_specialist:
   compose:
+    - configurator
     - test_substitutions
     - gcc_dependency_parser
     - file_wrapper

@@ -512,8 +512,8 @@ ceedling_system_tests do
           # of") -- either is the real, raw error this guidance explains, not a
           # bare, unexplained failure.
           expect(output).to match(/redeclaration of|redefinition of|conflicting types|previous definition/)
-          expect(output).to match(/this test's substitute for '.*' may be colliding with its real content/)
-          expect(output).to match(/second, unmocked #include chain/)
+          expect(output).to match(/this test's Partial of '.*' may be colliding with its real content/)
+          expect(output).to match(/second #include chain that bypasses the Partial/)
         end
       end
     end

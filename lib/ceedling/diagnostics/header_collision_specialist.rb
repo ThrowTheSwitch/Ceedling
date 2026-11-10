@@ -35,7 +35,7 @@ class HeaderCollisionSpecialist
     /redefin|redeclar|already (?:been )?(?:declared|defined)|duplicate (?:definition|declaration)/i
   ].freeze
 
-  constructor :test_substitutions, :gcc_dependency_parser, :file_wrapper
+  constructor :configurator, :test_substitutions, :gcc_dependency_parser, :file_wrapper
 
   def diagnoses()
     return [
@@ -55,14 +55,19 @@ class HeaderCollisionSpecialist
   # A header the output names that is also one the test substitutes means the real
   # header's content reached the compilation beside its substitute
   def examine_substituted_header(kase)
-    mentioned = ToolchainOutput.headers( kase.output )
-
-    culprit = @test_substitutions.real_headers( kase.inputs[:testable] ).find do |basename, real_path|
-      mentioned.any? { |m| File.basename( m ) == basename && File.expand_path( m ) == File.expand_path( real_path ) }
-    end
+    testable = kase.inputs[:testable]
+    culprit  = substituted_culprit( testable, ToolchainOutput.headers( kase.output ) )
     return nil if culprit.nil?
 
-    return substituted_header_prescription( *culprit )
+    substitute = @test_substitutions.partialized?( testable, culprit.last ) ? 'Partial' : 'mock'
+    return substituted_header_prescription( *culprit, substitute: substitute )
+  end
+
+  # The substituted header, as `[basename, real path]`, that a mentioned path names
+  def substituted_culprit(testable, mentioned)
+    return @test_substitutions.real_headers( testable ).find do |basename, real_path|
+      mentioned.any? { |m| File.basename( m ) == basename && File.expand_path( m ) == File.expand_path( real_path ) }
+    end
   end
 
   # A named header beside other headers, none of them substituted, may have reached its
@@ -118,11 +123,18 @@ class HeaderCollisionSpecialist
     return ToolchainOutput::HEADER_EXTENSIONS.include?( File.extname( filepath ).delete_prefix( '.' ).downcase )
   end
 
-  def substituted_header_prescription(basename, real_path)
+  def substituted_header_prescription(basename, real_path, substitute:)
+    guidance = HeaderCollisionGuidance.substituted_header( substitute: substitute, **features )
+
     return "The compiler output appears to report a redeclaration or conflicting types in '#{basename}'. " \
-           "If so, this test's substitute for '#{basename}' may be colliding with its real content ('#{real_path}'), " \
-           "which can reach this compilation through a second, unmocked #include chain.\n" \
-           "\n" + HeaderCollisionGuidance::SUBSTITUTED_HEADER
+           "If so, this test's #{substitute} of '#{basename}' may be colliding with its real content ('#{real_path}'), " \
+           "which can reach this compilation through a second #include chain that bypasses the #{substitute}.\n" \
+           "\n" + guidance
+  end
+
+  # The substitution features the project has on, which decide how remedies are worded
+  def features()
+    return { mocks: @configurator.project_use_mocks, partials: @configurator.project_use_partials }
   end
 
   # The directory is spelled as the output spelled it
@@ -135,6 +147,6 @@ class HeaderCollisionSpecialist
 
     return "The compiler output appears to report a redeclaration or conflicting types involving #{listing}. " \
            "If so, the cause may lie in how headers reach this compilation. #{subject} the directory '#{dir}' with #{company}.\n" \
-           "\n" + HeaderCollisionGuidance::SHARED_DIRECTORY
+           "\n" + HeaderCollisionGuidance.shared_directory( **features )
   end
 end

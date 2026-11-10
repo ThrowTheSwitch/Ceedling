@@ -18,6 +18,7 @@ describe HeaderCollisionSpecialist do
 
     @test_substitutions = double( 'test_substitutions' )
     allow( @test_substitutions ).to receive( :real_headers ).with( @testable ).and_return( { 'gpio.h' => '/project/library/gpio.h' } )
+    allow( @test_substitutions ).to receive( :partialized? ).and_return( false )
     allow( @test_substitutions ).to receive( :generated_dirs ).with( @testable ).and_return( ['build/test/mocks/a_test', 'build/vendor/unity'] )
 
     # No .d file unless an example writes one
@@ -28,8 +29,12 @@ describe HeaderCollisionSpecialist do
     @loginator = double( 'loginator' )
     allow( @loginator ).to receive( :log )
 
+    @configurator = double( 'configurator' )
+    allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
+    allow( @configurator ).to receive( :project_use_partials ).and_return( true )
+
     specialist = described_class.new(
-      test_substitutions: @test_substitutions, gcc_dependency_parser: GccDependencyParser.new, file_wrapper: @file_wrapper
+      configurator: @configurator, test_substitutions: @test_substitutions, gcc_dependency_parser: GccDependencyParser.new, file_wrapper: @file_wrapper
     )
     nobody = double( 'specialist', diagnoses: [] )
 
@@ -64,8 +69,8 @@ describe HeaderCollisionSpecialist do
       expect( notices.size ).to eq( 1 )
       expect( notices.first ).to start_with(
         "The compiler output appears to report a redeclaration or conflicting types in 'gpio.h'. If so, this test's " \
-        "substitute for 'gpio.h' may be colliding with its real content ('/project/library/gpio.h'), which can reach " \
-        "this compilation through a second, unmocked #include chain.\n\nHOW THIS HAPPENS:\n• A mock or Partial replaces"
+        "mock of 'gpio.h' may be colliding with its real content ('/project/library/gpio.h'), which can reach " \
+        "this compilation through a second #include chain that bypasses the mock.\n\nHOW THIS HAPPENS:\n• A mock replaces"
       )
       expect( notices.first ).to include(
         "• Ceedling isolates the real header's direct neighbors, one level deep.",
@@ -73,6 +78,26 @@ describe HeaderCollisionSpecialist do
         "3. Change the source's #include so it reaches the header the way the test does.\n"
       )
       expect( notices.first.lines.grep( /\A\s/ ) ).to eq( ["\n", "\n"] )
+    end
+
+    it 'speaks of a Partial when the test Partializes the header' do
+      allow( @test_substitutions ).to receive( :partialized? ).with( @testable, '/project/library/gpio.h' ).and_return( true )
+
+      notice = prescriptions( "/project/library/gpio.h:12:8: error: redeclaration of 'struct gpio'\n" ).first
+
+      expect( notice ).to include( "this test's Partial of 'gpio.h'", 'bypasses the Partial.', '• A Partial replaces a header' )
+    end
+
+    it 'names the setting a substitution remedy needs when that feature is off' do
+      allow( @configurator ).to receive( :project_use_partials ).and_return( false )
+
+      notice = prescriptions( "/project/library/gpio.h:12:8: error: redeclaration of 'struct gpio'\n" ).first
+
+      expect( notice ).to include(
+        "2. Mock or Partialize the intermediate header that #includes it, without necessarily using it, to break the chain. " \
+        "Partializing requires :project ↳ :use_partials.\n"
+      )
+      expect( notice ).not_to include( 'Mocking requires' )
     end
 
     it 'finds the substituted header in an include chain line' do
@@ -143,11 +168,22 @@ describe HeaderCollisionSpecialist do
         "\n\nHOW THIS HAPPENS:\n" \
         "• One translation unit may define a type, a tag, or an enum value only once, and every declaration of a name must agree.\n",
         "• Isolation reaches only one level: a neighbor that #includes a substituted header directly. " \
-        "A chain that passes through further headers or directories is beyond it.\n",
+        "A chain that passes through further headers or directories is beyond this isolation.\n",
         "\n\nOPTIONS:\n1. Trace the #include chains into this directory",
+        "2. Mock or Partialize the header whose content should be substituted so that Ceedling isolates its neighbors.\n",
         "4. Add or fix the include guard of a header that arrives twice.\n"
       )
       expect( notice.lines.grep( /\A\s/ ) ).to eq( ["\n", "\n"] )
+    end
+
+    it 'names both settings when the project neither mocks nor Partializes' do
+      allow( @configurator ).to receive( :project_use_mocks ).and_return( false )
+      allow( @configurator ).to receive( :project_use_partials ).and_return( false )
+      reached( '/project/include/ifx_core.h', '/project/include/tle9974.h' )
+
+      expect( prescriptions( collision ).first ).to include(
+        "neighbors. Mocking requires :project ↳ :use_mocks. Partializing requires :project ↳ :use_partials.\n"
+      )
     end
 
     it 'prescribes once for each directory that holds a named header' do

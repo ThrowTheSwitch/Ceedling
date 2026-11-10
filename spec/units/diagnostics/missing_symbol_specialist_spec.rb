@@ -14,6 +14,8 @@ describe MissingSymbolSpecialist do
   before(:each) do
     @configurator = double( 'configurator' )
     allow( @configurator ).to receive( :project_use_mocks ).and_return( false )
+    allow( @configurator ).to receive( :project_use_partials ).and_return( false )
+    allow( @configurator ).to receive( :project_use_test_preprocessor_tests ).and_return( false )
 
     @loginator = double( 'loginator' )
     allow( @loginator ).to receive( :log )
@@ -85,22 +87,66 @@ describe MissingSymbolSpecialist do
     expect( @loginator ).to have_received( :log ).with( a_string_matching( /missing symbols/i ), Verbosity::ERRORS, LogLabels::NOTICE )
   end
 
+  def notice
+    prescriptions( "undefined reference to `foo'" ).first
+  end
+
   it 'opens tentatively, then gives causes, education, and options in left-justified blocks' do
     allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
-
-    notice = prescriptions( "undefined reference to `foo'" ).first
 
     expect( notice ).to start_with(
       "The linker output appears to report missing symbols. If so, the following may be to blame:\n" \
       "1. This test lacks #include statements corresponding to needed source files (see note below).\n"
     )
     expect( notice ).to include(
-      "5. This test does not #include needed mocks (that triggers their generation).\n\n" \
+      "4. This test does not #include needed mocks (that triggers their generation).\n\n" \
       "NOTE: A test file directs the build of a test executable with #include statements:\n" \
       "• By convention, Ceedling assumes header filenames correspond to source filenames.\n",
       "\n\nOPTIONS:\n1. Doublecheck this test's #include statements.\n",
-      "3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.\n"
+      "4. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.\n",
+      "5. Mock the header that declares a missing function, so the mock supplies it.\n"
     )
     expect( notice.lines.grep( /\A\s/ ) ).to all( eq( "\n" ) )
+  end
+
+  it 'no longer blames mixed C and C++ file extensions' do
+    expect( notice ).not_to include( 'C++' )
+  end
+
+  context 'without test preprocessing' do
+    it 'blames macros obscuring #include statements read as text, and offers to enable preprocessing' do
+      expect( notice ).to include(
+        "3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n",
+        "3. Enable test preprocessing with :project ↳ :use_test_preprocessor, so macros and #ifdefs decide which #include statements count.\n"
+      )
+    end
+  end
+
+  context 'with test preprocessing' do
+    before(:each) { allow( @configurator ).to receive( :project_use_test_preprocessor_tests ).and_return( true ) }
+
+    it 'blames macros as the preprocessor evaluates them, and offers no preprocessing option' do
+      expect( notice ).to include( "3. Macros or #ifdefs, evaluated with this test's defines, leave out an #include statement the test needs.\n" )
+      expect( notice ).not_to include( 'Enable test preprocessing' )
+    end
+  end
+
+  it 'offers a mock as a remedy, naming the setting when mocks are off' do
+    expect( notice ).to include( "Mock the header that declares a missing function, so the mock supplies it. Mocking requires :project ↳ :use_mocks.\n" )
+  end
+
+  context 'with Partials enabled' do
+    before(:each) { allow( @configurator ).to receive( :project_use_partials ).and_return( true ) }
+
+    it 'blames a function a Partial left out, and offers to select it' do
+      expect( notice ).to include(
+        "4. A Partial in this test leaves out a function the test or the Partial's code calls. A Partial carries only the functions its directive selects.\n",
+        "6. Select a function a Partial left out with +name in its directive, or select the whole module with TEST_PARTIAL_ALL_MODULE.\n"
+      )
+    end
+  end
+
+  it 'says nothing of Partials when they are off' do
+    expect( notice ).not_to include( 'Partial' )
   end
 end

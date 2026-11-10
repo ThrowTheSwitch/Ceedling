@@ -52,6 +52,7 @@ describe 'BuildStepDoctor (integration)' do
     configurator = double(
       'configurator',
       project_build_vendor_ceedling_path: 'build/vendor/ceedling', project_use_mocks: true,
+      project_use_partials: false, project_use_test_preprocessor_tests: true,
       cmock_mock_prefix: 'mock_', extension_object: FilenameExtension.new( '.o' )
     )
 
@@ -61,7 +62,7 @@ describe 'BuildStepDoctor (integration)' do
     @doctor = BuildStepDoctor.new(
       loginator:                   loginator,
       header_collision_specialist: HeaderCollisionSpecialist.new(
-        test_substitutions: substitutions, gcc_dependency_parser: GccDependencyParser.new, file_wrapper: file_wrapper
+        configurator: configurator, test_substitutions: substitutions, gcc_dependency_parser: GccDependencyParser.new, file_wrapper: file_wrapper
       ),
       missing_symbol_specialist:   MissingSymbolSpecialist.new( configurator: configurator ),
       duplicate_symbol_specialist: DuplicateSymbolSpecialist.new( configurator: configurator )
