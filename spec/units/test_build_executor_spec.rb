@@ -14,6 +14,7 @@ require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
 require 'ceedling/test_context_extractor'
 require 'ceedling/quote_include_isolator'
+require 'ceedling/test_invoker/test_substitutions'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH = 'build/vendor/unity' unless defined?(PROJECT_BUILD_VENDOR_UNITY_PATH)
 UNITY_C_FILE = 'unity.c' unless defined?(UNITY_C_FILE)
@@ -35,7 +36,7 @@ describe TestBuildExecutor do
     @test_source_file_directive_resolver                      = double( "TestSourceFileDirectiveResolver" )
     @gcc_dependency_parser                                        = double( "GccDependencyParser" )
     @quote_include_isolator                                       = double( "QuoteIncludeIsolator" )
-    @generator_helper                                                = double( "GeneratorHelper" )
+    @build_step_doctor                                               = double( "BuildStepDoctor" )
     @library_resolver                                                = double( "LibraryResolver" )
 
     @tools_test_compiler                     = { name: 'fake compiler' }
@@ -81,7 +82,7 @@ describe TestBuildExecutor do
     # The real literal scan over the doubled file layer, so each example's read stubs decide it
     real_isolator = QuoteIncludeIsolator.new( { :file_wrapper => @file_wrapper, :loginator => @loginator } )
     allow(@quote_include_isolator).to receive(:includes_by_name?) { |file, name| real_isolator.includes_by_name?( file, name ) }
-    allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( nil )
+    allow(@build_step_doctor).to receive(:diagnose).and_return( [] )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_progress).and_return( '' )
@@ -127,7 +128,8 @@ describe TestBuildExecutor do
         :dependinator            => @dependinator,
         :gcc_dependency_parser   => @gcc_dependency_parser,
         :quote_include_isolator  => @quote_include_isolator,
-        :generator_helper        => @generator_helper,
+        :test_substitutions      => TestSubstitutions.new( configurator: @configurator ),
+        :build_step_doctor       => @build_step_doctor,
         :library_resolver        => @library_resolver,
         :mock_locator            => MockLocator.new(
           configurator: @configurator, include_pathinator: double( 'include_pathinator' ), file_finder: @file_finder, file_path_utils: @file_path_utils
@@ -635,10 +637,9 @@ describe TestBuildExecutor do
 
       # A Partial's own generated content never gives isolation an alternative same-named
       # file for a search path to fall through to, so a redeclaration/conflicting-types
-      # failure can survive every attempt here. Logging the likely cause alongside the raw
-      # compiler error, rather than raising it bare, is the deliberate fallback for exactly
-      # that case -- and for any other collision isolation doesn't resolve.
-      it "logs the guidance from generator_helper and still raises, when the compile fails with no isolation to try" do
+      # failure can survive every attempt here. The build step doctor explains it beside the
+      # raw compiler error, which is still raised.
+      it "asks the doctor about a failed compile with no isolation to try, then raises" do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
         )
@@ -646,28 +647,30 @@ describe TestBuildExecutor do
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
 
-        allow(@generator_helper).to receive(:explain_possible_mock_partial_collision)
-          .with( output: 'redeclaration of struct gpio', mocked_headers: { 'gpio.h' => '/project/library/gpio.h' } )
-          .and_return( 'explanatory notice text' )
-
-        expect(@loginator).to receive(:log).with( 'explanatory notice text', Verbosity::ERRORS, LogLabels::NOTICE )
-
         expect {
           @executor.send(
             :compile_test_component,
             :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
           )
         }.to raise_error( ShellException )
+
+        expect(@build_step_doctor).to have_received(:diagnose).with(
+          step: :compile,
+          output: 'redeclaration of struct gpio',
+          inputs: hash_including(
+            tool: @tools_test_compiler, source: 'test/a_test.c', object: 'build/foo.o',
+            dependencies: 'build/deps', testable: @state.testables[:a_test]
+          )
+        )
       end
 
-      it "logs the guidance after a retry that also fails" do
+      # The first attempt's .d file names the real headers. The retry's names the isolated
+      # copies, and is never registered.
+      it "asks the doctor after a retry that also fails, with the first attempt's .d file" do
         allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
         allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
-        allow(@generator_helper).to receive(:explain_possible_mock_partial_collision).and_return( 'explanatory notice text' )
-
-        expect(@loginator).to receive(:log).with( 'explanatory notice text', Verbosity::ERRORS, LogLabels::NOTICE )
 
         expect {
           @executor.send(
@@ -675,23 +678,23 @@ describe TestBuildExecutor do
             :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
           )
         }.to raise_error( ShellException )
+
+        expect(@generator).to have_received(:generate_object_file_c).twice
+        expect(@build_step_doctor).to have_received(:diagnose).once.with(
+          step: :compile, output: 'redeclaration of struct gpio', inputs: hash_including( dependencies: 'build/deps' )
+        )
       end
 
-      it "logs nothing extra when generator_helper finds no explanation" do
-        allow(@gcc_dependency_parser).to receive(:parse).and_return(
-          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
+      it "asks the doctor nothing when the compile succeeds" do
+        allow(@quote_include_isolator).to receive(:isolate).and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+        allow(@generator).to receive(:generate_object_file_c)
+
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
         )
-        ex = ShellException.new( shell_result: { output: 'totally unrelated failure' }, name: 'compiler' )
-        allow(@generator).to receive(:generate_object_file_c).and_raise( ex )
 
-        expect(@loginator).to_not receive(:log).with( anything, Verbosity::ERRORS, LogLabels::NOTICE )
-
-        expect {
-          @executor.send(
-            :compile_test_component,
-            :context => :test, :test => :a_test, :source => 'test/a_test.c', :object => 'build/foo.o', :state => @state
-          )
-        }.to raise_error( ShellException )
+        expect(@build_step_doctor).not_to have_received(:diagnose)
       end
     end
   end

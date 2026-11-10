@@ -19,11 +19,12 @@ describe 'Test pipeline object wiring' do
     test_invoker test_pipeline_manager test_build_setup test_includes_extractinator test_bare_includes_extractinator
     test_includes_preprocessinator test_includes_reconcilinator test_build_planner partials_manager
     test_build_executor test_file_preprocessinator test_runner_generatinator test_search_paths mock_locator
-    standin_headerinator test_source_file_directive_resolver
+    standin_headerinator test_source_file_directive_resolver test_substitutions
   ].map { |name| [name, "ceedling/test_invoker/#{name}"] }.concat( [
     ['build_log_writer',                 'ceedling/build_log_writer'],
     ['generator_test_results_backtrace', 'ceedling/generators/generator_test_results_backtrace'],
-    ['build_step_doctor',                'ceedling/diagnostics/build_step_doctor']
+    ['build_step_doctor',                'ceedling/diagnostics/build_step_doctor'],
+    ['header_collision_specialist',      'ceedling/diagnostics/header_collision_specialist']
   ] ).each do |name, path|
     it "composes exactly what #{name}'s constructor takes" do
       require path
