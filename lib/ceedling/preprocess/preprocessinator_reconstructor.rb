@@ -12,6 +12,11 @@ require 'ceedling/exceptions'
 
 class PreprocessinatorReconstructor
 
+  # How much of a header's code, comments and blank lines left out, is searched for its include
+  # guard. The guard pair opens a header by construction. A limit keeps a `#ifndef X` / `#define X`
+  # default deep in a `#pragma once` header from passing for one.
+  INCLUDE_GUARD_SCAN_BYTES = 2048
+
   constructor :parsing_parcels, :file_wrapper
 
   ##
@@ -26,8 +31,11 @@ class PreprocessinatorReconstructor
   ## ignoring text based on preprocessor statements referencing the file we're
   ## seeking to reassemble.
   ##
-  ## Note that the same text handling approach applies to full preprocessor 
-  ## expansion as directives only expansion.
+  ## Note that the same text handling approach applies to full preprocessor
+  ## expansion as directives only expansion, with one difference. Full expansion
+  ## can wrap one source line's expansion across several physical lines, which
+  ## `rejoin` puts back together. Directives-only output expands no macros and
+  ## never wraps a line, so its readers pass `rejoin: false`.
   ## 
   ## Example preprocessed expansion output
   ## --------------------------------------
@@ -80,31 +88,31 @@ class PreprocessinatorReconstructor
   ## }
 
   # `input` must have the interface of IO -- StringIO for testing or File in typical use
-  def extract_file_as_array_from_expansion(input, filepath)
+  def extract_file_as_array_from_expansion(input, filepath, rejoin: true)
     lines = []
-    _scan_expansion_for_file(input, filepath) { |line| lines << line }
+    _scan_expansion_for_file(input, filepath, rejoin: rejoin) { |line| lines << line }
     return lines
   end
 
 
   # Simple variation of preceding that returns file contents as single string
-  def extract_file_as_string_from_expansion(input, filepath)
-    return extract_file_as_array_from_expansion(input, filepath).join( "\n" )
+  def extract_file_as_string_from_expansion(input, filepath, rejoin: true)
+    return extract_file_as_array_from_expansion(input, filepath, rejoin: rejoin).join( "\n" )
   end
 
 
   # Writes only C code from `input` preprocessor expansion belonging to `filepath`
   # to `output` IO object incrementally (one logical line at a time) without building
   # an intermediate array. `output` must respond to `puts` (e.g. File or StringIO).
-  def compact_from_expansion(input:, filepath:, output:)
-    _scan_expansion_for_file(input, filepath) { |line| output.puts(line) }
+  def compact_from_expansion(input:, filepath:, output:, rejoin: true)
+    _scan_expansion_for_file(input, filepath, rejoin: rejoin) { |line| output.puts(line) }
   end
 
 
   # File-based convenience wrapper around `compact_from_expansion`.
   # Opens `input_filepath` for reading and `output_filepath` for writing,
   # then delegates to `compact_from_expansion` with the resulting IO objects.
-  def compact_file_from_expansion(input_filepath:, source_filepath:, output_filepath:)
+  def compact_file_from_expansion(input_filepath:, source_filepath:, output_filepath:, rejoin: true)
     # Binary mode on both ends: GCC output under non-C locale contains non-ASCII
     # bytes (localized markers; the whole-buffer clean_encoding in
     # _scan_expansion_for_file handles content), and the compacted output is
@@ -120,7 +128,7 @@ class PreprocessinatorReconstructor
     begin
       @file_wrapper.open_with_retry( input_filepath, 'rb' ) do |input|
         @file_wrapper.open( output_filepath, 'wb' ) do |output|
-          compact_from_expansion( input: input, filepath: source_filepath, output: output )
+          compact_from_expansion( input: input, filepath: source_filepath, output: output, rejoin: rejoin )
         end
       end
     rescue => e
@@ -224,11 +232,12 @@ class PreprocessinatorReconstructor
   end
 
 
-  # Find include guard in file contents as string
+  # Find include guard in a whole file's contents as string. Only code counts toward the scan
+  # window, so a long license comment ahead of the guard doesn't hide it.
   def extract_include_guard(file_contents)
     # Look for first occurrence of #ifndef <sring> followed by #define <string>
     regex = /#\s*ifndef\s+(\w+)(?:\s*\n)+\s*#\s*define\s+(\w+)/
-    matches = file_contents.match( regex )
+    matches = leading_code( file_contents, INCLUDE_GUARD_SCAN_BYTES ).match( regex )
 
     # Return if no match results
     return nil if matches.nil?
@@ -286,8 +295,14 @@ class PreprocessinatorReconstructor
   ## Yields one complete logical line at a time to the given block.
   ## A single `pending_line` buffer is held to allow aggregation of preprocessor-wrapped
   ## expansions (multiple physical lines at the same logical line number) before yielding.
+  ## `rejoin: false` turns that aggregation off.
   ##
-  def _scan_expansion_for_file(input, filepath, &block)
+  ## A directive is never joined to a neighbor. The preprocessor writes each directive it
+  ## keeps on a line of its own, such as a mid-line _Pragma() between two markers for the
+  ## same source line. A marker that names a line already counted would otherwise glue a
+  ## declaration onto an empty #define before it.
+  ##
+  def _scan_expansion_for_file(input, filepath, rejoin: true, &block)
     # Expand filepath under inspection to ensure proper match
     extraction_filepath = File.expand_path( filepath )
     # Preprocessor directive blocks generally take the form of '# <digits> <text> [optional digits]'.
@@ -300,6 +315,8 @@ class PreprocessinatorReconstructor
     directive   = /^\s*# \d+ \"/
     # Line markers have the specific form of '# <digits> "path/filename.ext" [optional digits]' (see above)
     line_marker = /^\s*#\s(\d+)\s\"(.+)\"/
+    # Any other directive the preprocessor kept, such as #define or #pragma
+    kept_directive = /\A\s*#/
     # Boolean to ping pong between line-by-line extract/ignore
     extract = false
 
@@ -356,7 +373,8 @@ class PreprocessinatorReconstructor
         end
 
         # If the linemarker line number hasn't advanced, aggregate the expanded line into pending
-        if (last_line_num == line_num) and !pending_line.nil?
+        if rejoin and (last_line_num == line_num) and !pending_line.nil? and
+           !pending_line.match?( kept_directive ) and !_line.match?( kept_directive )
           # Append the stripped line to the pending line
           # Include a space in the concatenation unless it's a semicolon or pending_line is blank
           pending_line = (_line == ';' or pending_line.empty?) ? (pending_line + _line) : (pending_line + ' ' + _line)
@@ -385,6 +403,19 @@ class PreprocessinatorReconstructor
 
     # Yield any remaining buffered line at end of input
     flush.call()
+  end
+
+
+  # The first `bytes` of a file's code, comments and blank lines left out
+  def leading_code(file_contents, bytes)
+    code = +''
+    @parsing_parcels.code_lines( file_contents ) do |line|
+      next if line.strip.empty?
+      code << line.rstrip << "\n"
+      break if code.bytesize >= bytes
+    end
+
+    return code.byteslice( 0, bytes ).scrub
   end
 
 

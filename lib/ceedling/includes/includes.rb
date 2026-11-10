@@ -275,12 +275,15 @@ class Includes
 
     bare_filenames = Set.new(bare.map(&:filename))
 
+    # One entry per #include line written. A compiler's wrapper header, such as GCC's
+    # <stdint.h> doing #include_next <stdint.h>, is entered at two paths that render alike.
+    # The first is the one the file named.
     system_includes = system.select do |include|
       bare_filenames.include?(include.filename)
     end.map do |include|
       original = best_bare_match(bare, include.filepath)
       SystemInclude.new(include.filepath, include_path: original.filepath)
-    end
+    end.uniq( &:to_s )
 
     user_filepaths = user.map(&:filepath)
     user_by_filepath = {}

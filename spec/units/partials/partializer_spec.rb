@@ -362,9 +362,9 @@ describe Partializer do
     # Read from the original header, not the reconstituted copy: that copy carries a synthetic
     # guard which #sanitize then strips, and fallback preprocessing excludes a guard from the
     # macros it recovers. Neither is a dependable source for the name to spoof.
-    it "reads a bounded prefix of the module's own header and returns the guard found" do
+    it "reads the module's own header and returns the guard found" do
       expect(@file_wrapper).to receive(:read)
-        .with('src/Foo.h', Partializer::GUARD_SCAN_BYTES)
+        .with('src/Foo.h')
         .and_return("#ifndef FOO_H\n#define FOO_H\n")
       allow(@preprocessinator_reconstructor).to receive(:extract_include_guard)
         .with("#ifndef FOO_H\n#define FOO_H\n")

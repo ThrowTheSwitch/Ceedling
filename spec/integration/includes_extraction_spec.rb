@@ -93,17 +93,14 @@ describe 'Includes extraction (integration)' do
     expect(extracted(tree, 'gadget.c')).to eq(['#include "gadget_hw.h"'])
   end
 
-  it 'currently emits a standard-library header once per file in its resolution wrapper chain' do
-    # Characterization, not endorsement: <stdint.h> resolves through a compiler wrapper
-    # header of the same basename, so the SYSTEM line-marker pass reports it at two
-    # distinct paths and reconcile keeps both. The Include value model (out of scope for
-    # this work) is where any dedup-by-basename would live.
+  it 'emits a standard-library header once though its resolution wrapper chain enters it twice' do
+    # GCC's own <stdint.h> is a wrapper that does #include_next <stdint.h>, so the SYSTEM
+    # line-marker pass reports the name at two distinct paths. Both would be written as
+    # the same #include line.
     tree = {
       'clock.c' => %(#include <stdint.h>\nuint8_t c(void){return 0;}\n)
     }
-    result = extracted(tree, 'clock.c')
-    expect(result.uniq).to eq(['#include <stdint.h>'])
-    expect(result.count('#include <stdint.h>')).to be >= 1
+    expect(extracted(tree, 'clock.c')).to eq(['#include <stdint.h>'])
   end
 
   it 'returns nothing for a file with no includes' do

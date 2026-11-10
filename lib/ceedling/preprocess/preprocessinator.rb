@@ -466,7 +466,7 @@ class Preprocessinator
     compacted = ensure_output_dir( @file_path_utils.form_preprocessed_file_compacted_directives_only_filepath( filepath, test ) )
 
     @comment_stripper.strip_file( raw )
-    @reconstructor.compact_file_from_expansion( input_filepath: raw, source_filepath: filepath, output_filepath: compacted )
+    @reconstructor.compact_file_from_expansion( input_filepath: raw, source_filepath: filepath, output_filepath: compacted, rejoin: false )
   end
 
   # Creates a preprocessed artifact's own directory and hands the path back, so a caller

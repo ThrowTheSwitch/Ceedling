@@ -333,7 +333,7 @@ RSpec.describe PreprocessinatorFileAssembler do
       end
 
       it 'extracts the include guard from the original file in fallback mode' do
-        allow(@file_wrapper).to receive(:read).with(filepath, 2048).and_return(header_with_guard)
+        allow(@file_wrapper).to receive(:read).with(filepath).and_return(header_with_guard)
         stub_file_open(filepath, header_with_guard, 'rb')
 
         _contents, _extras, include_guard = call_collect_mockable(fallback: true, extras: true)
@@ -341,16 +341,47 @@ RSpec.describe PreprocessinatorFileAssembler do
       end
 
       it 'extracts the include guard from the original file in directives-only mode' do
-        allow(@file_wrapper).to receive(:read).with(filepath, 2048).and_return(header_with_guard)
+        allow(@file_wrapper).to receive(:read).with(filepath).and_return(header_with_guard)
         stub_file_open(directives_only_filepath, header_with_guard, 'r')
 
         _contents, _extras, include_guard = call_collect_mockable(fallback: false, extras: true)
         expect(include_guard).to eq('FOO_H')
       end
 
+      it 'extracts the include guard behind a license comment longer than the scan window' do
+        license = "/*\n" + (" * SPDX-License-Identifier: Apache-2.0 -- see the LICENSE file for terms.\n" * 40) + " */\n"
+        header = license + header_with_guard
+        allow(@file_wrapper).to receive(:read).with(filepath).and_return(header)
+        stub_file_open(directives_only_filepath, "# 1 \"#{filepath}\"\n#define FOO_H\n", 'r')
+
+        _contents, extras, include_guard = call_collect_mockable(fallback: false, extras: true)
+        expect(license.bytesize).to be > 2048
+        expect(include_guard).to eq('FOO_H')
+        expect(extras).to eq([])
+      end
+
+      # A marker naming a line already counted would otherwise glue the declaration onto the
+      # empty #define, and CMock would never see the function
+      it 'keeps an empty #define apart from the declaration after it in directives-only mode' do
+        allow(@file_wrapper).to receive(:read).with(filepath).and_return(header_with_guard)
+        directives_only = [
+          "# 1 \"#{filepath}\"",
+          '',
+          '',
+          '    #define CMSIS_DEPRECATED',
+          "# 2 \"#{filepath}\"",
+          '',
+          'void __enable_irq(void);',
+        ].join("\n")
+        stub_file_open(directives_only_filepath, directives_only, 'r')
+
+        _contents, extras, _include_guard = call_collect_mockable(fallback: false, extras: true)
+        expect(extras).to eq(['#define CMSIS_DEPRECATED'])
+      end
+
       it 'returns a nil include guard when the original file has no #ifndef/#define guard pair' do
         header_without_guard = "#pragma once\n\nvoid foo(void);\n"
-        allow(@file_wrapper).to receive(:read).with(filepath, 2048).and_return(header_without_guard)
+        allow(@file_wrapper).to receive(:read).with(filepath).and_return(header_without_guard)
         stub_file_open(filepath, header_without_guard, 'rb')
 
         _contents, _extras, include_guard = call_collect_mockable(fallback: true, extras: true)
@@ -663,6 +694,28 @@ RSpec.describe PreprocessinatorFileAssembler do
       expect(result).to eq(['void test_ShouldDoSomething(void) {}'])
     end
 
+    # Directives-only output expands no macros, so it never wraps a line to rejoin
+    it 'keeps lines apart that a marker puts at the same count' do
+      source_filepath = 'src/widget.h'
+      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
+        .with(source_filepath, 'test_widget')
+        .and_return('/build/directives_only/raw_widget.h')
+
+      file_contents = [
+        "# 1 \"#{source_filepath}\"",
+        'int widget_a(void);',
+        "# 1 \"#{source_filepath}\"",
+        'int widget_b(void);',
+      ].join("\n")
+      stub_file_open('/build/directives_only/raw_widget.h', file_contents, 'r')
+
+      result = subject.collect_file_contents_from_directives_only_preprocessing(
+        source_filepath: source_filepath, test: 'test_widget'
+      )
+
+      expect(result).to eq(['int widget_a(void);', 'int widget_b(void);'])
+    end
+
   end
 
 
@@ -699,7 +752,7 @@ RSpec.describe PreprocessinatorFileAssembler do
     let(:source_filepath) { '/src/module.h' }
 
     it 'extracts pragmas and macro definitions, excluding the include guard\'s own #define' do
-      allow(@file_wrapper).to receive(:read).with(source_filepath, 2048).and_return(
+      allow(@file_wrapper).to receive(:read).with(source_filepath).and_return(
         "#ifndef MODULE_H\n#define MODULE_H\n"
       )
       content = <<~C
@@ -720,7 +773,7 @@ RSpec.describe PreprocessinatorFileAssembler do
     end
 
     it 'filters out macros inside an inactive conditional block' do
-      allow(@file_wrapper).to receive(:read).with(source_filepath, 2048).and_return('')
+      allow(@file_wrapper).to receive(:read).with(source_filepath).and_return('')
       content = <<~C
         #ifdef FEATURE_X
         #define FEATURE_MACRO 1
