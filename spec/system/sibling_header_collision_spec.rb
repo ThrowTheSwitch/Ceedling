@@ -401,7 +401,7 @@ ceedling_system_tests do
         end
       end
 
-      it "still resolves the genuine collision, but only reports -- never isolates -- the unrelated pair" do
+      it "still resolves the genuine collision, and neither reports nor isolates the unrelated pair" do
         in_project do
           output = @c.ceedling_build_exec("test:all")
 
@@ -412,9 +412,8 @@ ceedling_system_tests do
 
           expect(output).to match(/Isolated '.*driverlib\.h'.*shares a directory with '.*gpio\.h'/)
 
-          expect(output).to match(/NOTICE:.*extra_a\.h.*extra_b\.h.*nesting depth/).or(
-            match(/NOTICE:.*extra_b\.h.*extra_a\.h.*nesting depth/)
-          )
+          # A passing build has no failure to explain
+          expect(output).to_not match(/extra_[ab]\.h.*(nesting depth|shares the directory)/)
           expect(output).to_not match(/Isolated '.*extra_[ab]\.h'/)
         end
       end
@@ -513,8 +512,8 @@ ceedling_system_tests do
           # of") -- either is the real, raw error this guidance explains, not a
           # bare, unexplained failure.
           expect(output).to match(/redeclaration of|redefinition of|conflicting types|previous definition/)
-          expect(output).to match(/mocked or Partialized for this test/)
-          expect(output).to match(/transitive #include chain/)
+          expect(output).to match(/this test's Partial of '.*' may be colliding with its real content/)
+          expect(output).to match(/second #include chain that bypasses the Partial/)
         end
       end
     end

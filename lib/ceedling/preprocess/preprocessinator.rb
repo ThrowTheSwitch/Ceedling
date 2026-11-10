@@ -446,7 +446,9 @@ class Preprocessinator
   # Runs a preprocessor `tool` over `filepath` into `output`. A file's own search paths
   # come ahead of vendor paths, so a project header wins a name clash. `boom: false` keeps
   # a failing run from raising: ToolExecutor#exec would otherwise stop the build before the
-  # caller could fall back in its own way.
+  # caller could fall back in its own way. A failure here goes to no BuildStepDoctor
+  # diagnosis. Several of these runs are expected to fail and fall back, so their output
+  # yields little guidance (see diagnostics/DOCTOR.md).
   def run_preprocessor(tool, filepath, output, flags:, include_paths:, vendor_paths:, defines:)
     command = @tool_executor.build_command_line( tool, flags, filepath, output, defines, (include_paths + vendor_paths) )
     command[:options][:boom] = false

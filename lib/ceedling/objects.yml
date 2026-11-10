@@ -577,7 +577,8 @@ test_build_executor:
     - dependinator
     - gcc_dependency_parser
     - quote_include_isolator
-    - generator_helper
+    - test_substitutions
+    - build_step_doctor
     - library_resolver
     - mock_locator
 
@@ -633,6 +634,32 @@ library_resolver:
     - file_path_collection_utils
 
 gcc_dependency_parser:
+
+test_substitutions:
+  compose:
+    - configurator
+
+build_step_doctor:
+  compose:
+    - loginator
+    - header_collision_specialist
+    - missing_symbol_specialist
+    - duplicate_symbol_specialist
+
+header_collision_specialist:
+  compose:
+    - configurator
+    - test_substitutions
+    - gcc_dependency_parser
+    - file_wrapper
+
+missing_symbol_specialist:
+  compose:
+    - configurator
+
+duplicate_symbol_specialist:
+  compose:
+    - configurator
 
 quote_include_isolator:
   compose:

@@ -29,7 +29,8 @@ class TestBuildExecutor
     :dependinator,
     :gcc_dependency_parser,
     :quote_include_isolator,
-    :generator_helper,
+    :test_substitutions,
+    :build_step_doctor,
     :library_resolver,
     :mock_locator
   )
@@ -312,7 +313,8 @@ class TestBuildExecutor
           flags:      link_flags,
           lib_args:   lib_args,
           lib_paths:  lib_paths,
-          tool:       tool
+          tool:       tool,
+          testable:   testable
         }
 
         generate_executable( **arg_hash )
@@ -490,50 +492,23 @@ class TestBuildExecutor
     }
   end
 
-  def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:)
-    begin
-      @generator.generate_executable_file(
-        tool,
-        context,
-        objects.map { |v| "\"#{v}\"" },
-        flags,
-        executable,
-        @file_path_utils.form_test_build_map_filepath( build_path, executable ),
-        lib_args,
-        lib_paths
-      )
-    rescue ShellException => ex
-      if ex.shell_result[:output].match?(/symbol/i)
-        notice =    "If the linker reports missing symbols, the following may be to blame:\n" +
-                    "  1. This test lacks #include statements corresponding to needed source files (see note below).\n" +
-                    "  2. Project file paths omit source files corresponding to #include statements in this test.\n" +
-                    "  3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n" +
-                    "  4. Your project is attempting to mix C++ and C file extensions (not supported).\n"
-        if @configurator.project_use_mocks
-          notice += "  5. This test does not #include needed mocks (that triggers their generation).\n"
-        end
+  # A failed link goes to the build step doctor before it is raised
+  def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:, testable:)
+    @generator.generate_executable_file(
+      tool,
+      context,
+      objects.map { |v| "\"#{v}\"" },
+      flags,
+      executable,
+      @file_path_utils.form_test_build_map_filepath( build_path, executable ),
+      lib_args,
+      lib_paths
+    )
+  rescue ShellException => ex
+    inputs = { tool: tool, objects: objects, executable: executable, flags: flags, lib_args: lib_args, lib_paths: lib_paths, testable: testable }
+    @build_step_doctor.diagnose( step: :link, output: ex.shell_result[:output], inputs: inputs )
 
-        notice +=   "\n"
-        notice +=   "NOTE: A test file directs the build of a test executable with #include statements:\n" +
-                    "  * By convention, Ceedling assumes header filenames correspond to source filenames.\n" +
-                    "  * Which code files to compile and link are determined by #include statements.\n"
-        if @configurator.project_use_mocks
-          notice += "  * An #include statement convention directs the generation of mocks from header files.\n"
-        end
-
-        notice +=   "\n"
-        notice +=   "OPTIONS:\n" +
-                    "  1. Doublecheck this test's #include statements.\n" +
-                    "  2. Simplify complex macros or fully specify symbols for this test in :project ↳ :defines.\n" +
-                    "  3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE()\n" +
-                    "     build directive macro in this test to inject a source file into the build.\n\n" +
-                    "See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.\n\n"
-
-        @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
-      end
-
-      raise ex
-    end
+    raise ex
   end
 
   def clean_test_results(path, test)
@@ -574,9 +549,8 @@ class TestBuildExecutor
   # A test file's own C compile (only) gets one extra check: isolate_sibling_headers
   # inspects its freshly-written .d file for a real header sharing a directory with
   # one this test mocks or Partializes, and retries with corrected search paths if
-  # it finds one. A failure that's still standing afterward -- nothing to isolate,
-  # or an isolated retry that failed too -- gets one last look from generator_helper
-  # before it's raised, in case it's explainable as this same class of collision.
+  # it finds one. A failure still standing afterward, with nothing to isolate or a
+  # retry that failed too, goes to the build step doctor before it is raised.
   #
   # Any other source sharing a directory with a header mocked under inline shadowing
   # compiles from an isolated copy instead (compile_isolated_source).
@@ -657,34 +631,11 @@ class TestBuildExecutor
       # settled on (see stage_build_objects's own two-pass split).
       if source == testable.filepath && @file_wrapper.exist_with_retry?( dependencies )
         isolation = apply_sibling_isolation( testable: testable, dependencies_filepath: dependencies )
-
-        if isolation
-          # A throwaway retry: its own .d file is never registered, so the attempt
-          # registered just above -- real headers, real paths -- remains the lasting
-          # record of this object's antecedents. The isolated copy is always freshly,
-          # fully derived from those same tracked files, so it can never itself go
-          # stale independently and needs no tracking of its own.
-          retry_arg_hash = arg_hash.merge(
-            search_paths: tailor_search_paths( search_paths: isolation[:search_paths], filepath: source ),
-            dependencies: dependencies + '.isolated_retry'
-          )
-
-          begin
-            @generator.generate_object_file_c( **retry_arg_hash )
-            compile_failure = nil
-          rescue ShellException => ex
-            compile_failure = ex
-          end
-        end
+        compile_failure = compile_isolated_retry( arg_hash: arg_hash, isolation: isolation ) if isolation
       end
 
       if compile_failure
-        notice = @generator_helper.explain_possible_mock_partial_collision(
-          output: compile_failure.shell_result[:output],
-          mocked_headers: mocked_and_partialized_headers( testable )
-        )
-        @loginator.log( notice, Verbosity::ERRORS, LogLabels::NOTICE ) if notice
-
+        diagnose_compile_failure( compile_failure, arg_hash: arg_hash, testable: testable )
         raise compile_failure
       end
 
@@ -752,6 +703,31 @@ class TestBuildExecutor
     end
 
     return nil
+  end
+
+  # A throwaway retry with the isolation's search paths. Its .d file is never
+  # registered, so the first attempt's, with real headers and real paths, stays the
+  # lasting record of this object's antecedents. The isolated copy is always freshly
+  # derived from those same tracked files, so it never goes stale on its own. Returns
+  # the retry's failure, or nil when it compiles.
+  def compile_isolated_retry(arg_hash:, isolation:)
+    retry_arg_hash = arg_hash.merge(
+      search_paths: tailor_search_paths( search_paths: isolation[:search_paths], filepath: arg_hash[:source] ),
+      dependencies: arg_hash[:dependencies] + '.isolated_retry'
+    )
+
+    @generator.generate_object_file_c( **retry_arg_hash )
+    return nil
+  rescue ShellException => ex
+    return ex
+  end
+
+  # The doctor sees the first attempt's .d file, whose paths are the real headers,
+  # whichever attempt produced the failure
+  def diagnose_compile_failure(failure, arg_hash:, testable:)
+    inputs = arg_hash.slice( :tool, :source, :object, :search_paths, :flags, :defines, :dependencies )
+
+    @build_step_doctor.diagnose( step: :compile, output: failure.shell_result[:output], inputs: inputs.merge( testable: testable ) )
   end
 
   # Compiles a source from a copy staged alone, returning any compile failure.
@@ -874,23 +850,22 @@ class TestBuildExecutor
   # ordinary convention, so "shares a directory" alone would flag nearly every
   # file in the project. Only one level deep: a directory elsewhere in the same
   # dependency list that shares no header with any of this test's own mocks or
-  # Partials, but itself holds more than one candidate, is shaped the same way
-  # and reported, but nothing designates which of its occupants should win, so
-  # nothing there is acted on.
+  # Partials is shaped the same way, but nothing designates which of its occupants
+  # should win, so nothing there is acted on. Should the compilation fail with a
+  # collision there, the build step doctor's shared-directory diagnosis explains it.
   #
   # Returns nil when nothing needs isolating; otherwise a hash of the search
   # paths to compile with (isolation directory listed first) and that directory's
   # own path, for the caller to track and eventually clean up.
   def isolate_sibling_headers(testable:, dependencies_filepath:)
-    mocked_headers = mocked_and_partialized_headers( testable )
+    mocked_headers = @test_substitutions.real_headers( testable )
     return nil if mocked_headers.empty?
 
     parsed       = @gcc_dependency_parser.parse( @file_wrapper.read( dependencies_filepath ) )
     dependencies = parsed.values.flatten.uniq
     by_directory = dependencies.group_by { |dep| File.dirname( dep ) }
 
-    isolated   = []
-    mocked_dirs = mocked_headers.values.map { |real_path| File.dirname( real_path ) }.uniq
+    isolated = []
 
     mocked_headers.each_value do |real_path|
       next unless dependencies.include?( real_path )
@@ -913,69 +888,11 @@ class TestBuildExecutor
       end
     end
 
-    # Any other directory in this same reachable set holding more than one file is
-    # shaped the same way a mocked header's own directory is -- but with no
-    # designated substitute among its occupants, there's nothing to safely isolate.
-    # Ceedling's own generated/vendor directories are exempt: a mocks output
-    # directory or a vendor framework's own source directory routinely holds
-    # several co-resident files as a matter of course, never a same-directory
-    # quote-include shortcut risk the way a real project header directory is.
-    generated_dirs = generated_content_dirs( testable )
-
-    by_directory.each do |dir, files|
-      next if mocked_dirs.include?( dir )
-      next if generated_dirs.any? { |gd| dir.start_with?( gd ) }
-
-      files.uniq.combination( 2 ).each do |a, b|
-        msg = "'#{a}' sits alongside '#{b}' at a nesting depth beyond what automated sibling-header " \
-              "isolation provides. If this test's build fails with a redeclaration or conflicting types " \
-              "error, the include ordering and path structure leading to '#{a}' or '#{b}' is worth investigating."
-        @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
-      end
-    end
-
     return nil if isolated.empty?
 
     isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq )
 
     { search_paths: [isolation.dir] + testable.search_paths, isolation_dir: isolation.dir }
-  end
-
-  # `{ basename => real path }` for every real header this test substitutes -- CMock
-  # mocks of a real header, and Partials -- cross-referenced elsewhere against
-  # whatever a test's own compile actually reached. A mock Partial's own `source` is
-  # its own generated interface header, not a real project header, and is excluded.
-  def mocked_and_partialized_headers(testable)
-    headers = {}
-
-    (testable.mocks || {}).each_value do |details|
-      next if details.partial
-      headers[File.basename( details.source )] = details.source if details.source
-    end
-
-    testable.partials.configs.each_value do |config|
-      filepath = config.header.filepath
-      headers[File.basename( filepath )] = filepath if filepath
-    end
-
-    headers
-  end
-
-  # Directory roots holding only Ceedling's own generated or vendored content for this
-  # test -- never real project headers, so co-residency there is routine, not a
-  # same-directory quote-include risk. A test's own Partials output directory
-  # routinely holds several generated headers side by side (a types header, an
-  # interface header, and more, one set per Partialized module), exactly the same
-  # shape as the mocks output directory.
-  def generated_content_dirs(testable)
-    [
-      testable.paths[:mocks],
-      testable.paths[:partials],
-      PROJECT_BUILD_VENDOR_UNITY_PATH,
-      PROJECT_BUILD_VENDOR_CMOCK_PATH,
-      PROJECT_BUILD_VENDOR_CEXCEPTION_PATH,
-      @configurator.project_build_vendor_ceedling_path
-    ].compact
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers
