@@ -123,13 +123,14 @@ class PartializerUtils
   # Renaming `count` changes `count = 0`, `(count)`, `count==5`, `*count` and `count[0]`, but
   # not `count_down`, `up_count` or `recount`. A literal's text is data the program uses, such
   # as a format string naming the variable, so it stays, and so does a comment. A member or a
-  # tag sharing the name stays too. See Partials.rename_identifiers.
+  # tag sharing the name stays too, unless a struct or union body in the text holds the name.
+  # See Partials::Rename.
   #
   # @param text    [String] Code text to process
   # @param renames [Hash{String => String}] Each identifier to replace, with its replacement
   # @return [String] Modified text with every mapped identifier renamed
   def rename_c_identifiers(text, renames)
-    return Partials.rename_identifiers( text, renames )
+    return Partials::Rename.identifiers( text, renames )
   end
 
   # Stamp the originating source filepath onto each function in a collection.

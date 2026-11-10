@@ -587,6 +587,29 @@ describe PartializerUtils do
       expect(result).to eq('__asm__ volatile ("mov %[partial_foo_count], %w[partial_foo_count]" : [partial_foo_count] "+r" (partial_foo_count));')
     end
 
+    # A body in the function is local to it, so a name it holds is renamed everywhere, member
+    # access included, and its members and their uses keep agreeing. That holds for a member
+    # declared any way and for a name the body only uses.
+    it "renames a name a local struct or union body holds everywhere, member access included" do
+      text   = "struct { int count; } s = {0}; union u { int count; } v; struct lc { int count; } t = { .count = count }; s.count = ++count; p->count = 1;"
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
+      expect(result).to eq("struct { int partial_foo_count; } s = {0}; union u { int partial_foo_count; } v; struct lc { int partial_foo_count; } t = { .partial_foo_count = partial_foo_count }; s.partial_foo_count = ++partial_foo_count; p->partial_foo_count = 1;")
+    end
+
+    it "finds the names a body holds past attributes, function-pointer members and braces in comments" do
+      renames = { "hist" => "partial_foo_hist", "handler" => "partial_foo_handler", "size" => "partial_foo_size" }
+      text    = "struct __attribute__((packed)) tag { char c[sizeof(hist[0])]; void (*handler)(void); /* { */ char q[sizeof(\"}\")]; } s; s.handler = handler; x.size = size;"
+      result  = @utils.rename_c_identifiers(text, renames)
+      expect(result).to eq("struct __attribute__((packed)) tag { char c[sizeof(partial_foo_hist[0])]; void (*partial_foo_handler)(void); /* { */ char q[sizeof(\"}\")]; } s; s.partial_foo_handler = partial_foo_handler; x.size = partial_foo_size;")
+    end
+
+    # Outside an asm template, a string holding `%[count]` is data, such as a scanf scanset
+    it "leaves an operand reference's spelling alone in a string that is no asm template" do
+      text   = 'sscanf(b, "%[count]", out); printf("%s[count]", s); asm ("nop %[count]" :: [count] "r" (count));'
+      result = @utils.rename_c_identifiers(text, { "count" => "partial_foo_count" })
+      expect(result).to eq('sscanf(b, "%[count]", out); printf("%s[count]", s); asm ("nop %[partial_foo_count]" :: [partial_foo_count] "r" (partial_foo_count));')
+    end
+
     it "renames every name it maps in one pass" do
       result = @utils.rename_c_identifiers("a = b + ab;", { "a" => "x_a", "b" => "x_b" })
       expect(result).to eq("x_a = x_b + ab;")

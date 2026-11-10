@@ -392,6 +392,39 @@ describe 'Declarations in a Partial' do
       expect_link( @result, ['partial_f1_cnt', 'partial_f1_other', 'partial_f2_cnt', 'partial_f2_other'] )
     end
 
+    # A local struct's member that a promoted static shares a name with is renamed alike, where declared and used
+    it 'promotes a static that shares its name with a local struct member' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) { static int count; struct { int count; } s = {0}; s.count = ++count; return s.count; }\n"
+      )
+
+      expect( @result.impl_c ).to include( 'struct { int partial_ticker_get_count; } s = {0}; s.partial_ticker_get_count = ++partial_ticker_get_count;' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_count'] )
+    end
+
+    # A name a local struct's body uses is still the promoted static's
+    it 'promotes a static that a local struct body names' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) { static int hist[4]; struct { char c[sizeof(hist)]; /* { */ } s; return (int)sizeof(s.c) + hist[0]; }\n"
+      )
+
+      expect( @result.impl_c ).to include( 'char c[sizeof(partial_ticker_get_hist)];' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_hist'] )
+    end
+
+    it 'promotes statics that local struct bodies hold past attributes and function-pointer members' do
+      @result = ticker(
+        header: "void tick(void);\nint f1(void);\nint f2(void);\n",
+        source: "void tick(void) { }\n" \
+                "int f1(void) { static int hist[4]; struct __attribute__((packed)) { char c[sizeof(hist[0])]; int hist; } s = {{0}, 1}; return s.hist + hist[0]; }\n" \
+                "int f2(void) { static void (*handler)(void) = tick; struct { void (*handler)(void); } s = { handler }; s.handler(); return 0; }\n"
+      )
+
+      expect_link( @result, ['f1', 'f2', 'partial_f1_hist', 'partial_f2_handler'] )
+    end
+
     it 'promotes statics that name one another across statements and in array sizes' do
       @result = ticker(
         header: "int ticker_get(void);\n",
