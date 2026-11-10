@@ -88,6 +88,25 @@ describe 'BuildStepDoctor (integration)' do
     [output, deps]
   end
 
+  # Compiles each source to an object, then links them, returning the output of a link
+  # that must fail and the objects it linked
+  def link_failing(compiler, *sources)
+    objects = sources.map do |source|
+      object = source.sub( /\.c\z/, '.o' )
+      output, status = Open3.capture2e( compiler, '-c', source, '-o', object )
+      expect( status.success? ).to be( true ), "#{compiler} failed to compile #{source}:\n#{output}"
+      object
+    end
+
+    output, status = Open3.capture2e( compiler, *objects, '-o', File.join( @root, 'a_test.out' ) )
+    expect( status.success? ).to be( false ), "expected #{compiler} to fail linking, but it linked:\n#{output}"
+    [output, objects]
+  end
+
+  def diagnose_link(output, objects)
+    @doctor.diagnose( step: :link, output: output, inputs: { testable: @testable, objects: objects } )
+  end
+
   def diagnose_compile(output, deps)
     @doctor.diagnose( step: :compile, output: output, inputs: { testable: @testable, dependencies: deps } )
   end
@@ -123,6 +142,24 @@ describe 'BuildStepDoctor (integration)' do
 
         expect( @logged ).to include( a_string_including( "'gpio.h'", "'#{gpio}'" ) )
         expect( @logged ).not_to include( a_string_including( 'shares the directory' ) )
+      end
+
+      it 'explains a symbol no linked object defines' do
+        test = write( 'build/a_test.c', "int gpio_init(void);\nint main(void) { return gpio_init(); }\n" )
+
+        diagnose_link( *link_failing( compiler, test ) )
+
+        expect( @logged.size ).to eq( 1 )
+        expect( @logged.first ).to start_with( 'The linker output appears to report missing symbols.' )
+      end
+
+      it 'gives no missing-symbols guidance for a symbol defined twice' do
+        test  = write( 'build/a_test.c', "int gpio_init(void) { return 0; }\nint main(void) { return gpio_init(); }\n" )
+        other = write( 'build/gpio.c', "int gpio_init(void) { return 1; }\n" )
+
+        diagnose_link( *link_failing( compiler, test, other ) )
+
+        expect( @logged ).not_to include( a_string_including( 'missing symbols' ) )
       end
 
       it 'prescribes nothing for an error that is no collision' do

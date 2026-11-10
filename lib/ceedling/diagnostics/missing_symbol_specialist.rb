@@ -14,7 +14,22 @@ require 'ceedling/diagnostics/build_step_doctor'
 # convention left out a source the test needs.
 class MissingSymbolSpecialist
 
-  MISSING_SYMBOL_SYMPTOMS = /symbol/i
+  # Each family's wording for a symbol no object defines, ending in a generic net. A
+  # duplicate symbol is left to DuplicateSymbolSpecialist, whose advice differs.
+  MISSING_SYMBOL_SYMPTOMS = [
+    # GNU ld, and Microchip XC16 and XC32
+    /undefined reference to/i,
+    # LLD, Apple ld, and Arm armlink (L6218E)
+    /undefined symbol|symbol\(s\) not found|\bL6218E\b/i,
+    # MSVC
+    /\bLNK20(?:19|01)\b|unresolved external symbol/i,
+    # IAR ILINK
+    /\bLi005\b|no definition for/i,
+    # TI
+    /undefined\s+first referenced|unresolved symbols remain/i,
+    # Green Hills, TASKING, SDCC, and other linkers
+    /undefined (?:global|external)|unresolved (?:external|symbol)/i
+  ].freeze
 
   constructor :configurator
 

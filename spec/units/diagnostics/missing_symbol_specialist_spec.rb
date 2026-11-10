@@ -30,31 +30,57 @@ describe MissingSymbolSpecialist do
     @doctor.diagnose( step: step, output: output, inputs: {} )
   end
 
-  it 'prescribes missing-symbols guidance when the output mentions a symbol' do
-    notices = prescriptions( 'undefined reference to symbol foo' )
+  it 'prescribes missing-symbols guidance for an undefined reference' do
+    notices = prescriptions( "undefined reference to `foo'" )
 
     expect( notices.size ).to eq( 1 )
     expect( notices.first ).to match( /missing symbols/i )
   end
 
-  it 'prescribes nothing when the output does not mention a symbol' do
+  it 'prescribes nothing for an unrelated linker failure' do
     expect( prescriptions( 'some unrelated linker failure' ) ).to eq( [] )
   end
 
+  {
+    'GNU ld and Microchip XC16/XC32' => "/usr/bin/ld: build/a_test.o: in function `test_f':\na_test.c:(.text+0x9): undefined reference to `gpio_init'\n",
+    'LLD'                            => "ld.lld: error: undefined symbol: gpio_init\n>>> referenced by a_test.c\n",
+    'Apple ld'                       => "Undefined symbols for architecture arm64:\n  \"_gpio_init\", referenced from:\nld: symbol(s) not found for architecture arm64\n",
+    'MSVC'                           => "a_test.obj : error LNK2019: unresolved external symbol gpio_init referenced in function test_f\n",
+    'MSVC, unreferenced by function' => "a_test.obj : error LNK2001: unresolved external symbol gpio_state\n",
+    'IAR ILINK'                      => "Error[Li005]: no definition for \"gpio_init\" [referenced from a_test.o]\n",
+    'Arm armlink'                    => "Error: L6218E: Undefined symbol gpio_init (referred from a_test.o).\n",
+    'TI'                             => " undefined   first referenced\n  symbol         in file\n gpio_init     a_test.obj\nerror #10234-D: unresolved symbols remain\n",
+    'other linkers, generically'     => "?ASlink-Warning-Undefined Global '_gpio_init' referenced by module 'a_test'\n"
+  }.each do |family, output|
+    it "recognizes #{family}" do
+      expect( prescriptions( output ).size ).to eq( 1 )
+    end
+  end
+
+  {
+    'GNU ld'   => "a.o: in function `f': multiple definition of `f'; b.o:(.text+0x0): first defined here\n",
+    'Apple ld' => "duplicate symbol '_f' in:\n    a.o\n    b.o\nld: 1 duplicate symbol for architecture arm64\n",
+    'Arm armlink' => "Error: L6200E: Symbol f multiply defined (by a.o and b.o).\n"
+  }.each do |family, output|
+    it "leaves duplicate symbols reported by #{family} to their own diagnosis" do
+      expect( prescriptions( output ) ).to eq( [] )
+    end
+  end
+
   it 'covers only linking' do
-    expect( prescriptions( 'undefined reference to symbol foo', step: :compile ) ).to eq( [] )
+    expect( prescriptions( "undefined reference to `foo'", step: :compile ) ).to eq( [] )
   end
 
   it 'includes mock-specific guidance only when the project uses mocks' do
-    expect( prescriptions( 'missing symbol foo' ).first ).not_to match( /needed mocks/i )
+    expect( prescriptions( "undefined reference to `foo'" ).first ).not_to match( /needed mocks/i )
 
     allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
 
-    expect( prescriptions( 'missing symbol foo' ).first ).to match( /needed mocks/i )
+    expect( prescriptions( "undefined reference to `foo'" ).first ).to match( /needed mocks/i )
   end
 
   it 'logs at ERRORS as a notice' do
-    prescriptions( 'missing symbol foo' )
+    prescriptions( "undefined reference to `foo'" )
 
     expect( @loginator ).to have_received( :log ).with( a_string_matching( /missing symbols/i ), Verbosity::ERRORS, LogLabels::NOTICE )
   end
@@ -62,7 +88,7 @@ describe MissingSymbolSpecialist do
   it 'opens tentatively, then gives causes, education, and options in left-justified blocks' do
     allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
 
-    notice = prescriptions( 'missing symbol foo' ).first
+    notice = prescriptions( "undefined reference to `foo'" ).first
 
     expect( notice ).to start_with(
       "The linker output appears to report missing symbols. If so, the following may be to blame:\n" \
