@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
@@ -44,8 +45,11 @@ class CExtractorDeclarations
   # A declaration's last identifier, which names its variable once suffixes are gone
   LAST_IDENTIFIER = /(?<![\w$])(#{IDENTIFIER.source})\s*\z/ unless const_defined?(:LAST_IDENTIFIER, false)
 
-  # A parenthesized group, nested ones included, or an array size outside any group
-  GROUP_OR_ARRAY_SIZE = /(?<group>\((?:[^()]|\g<group>)*\))|\[[^\]]*\]/ unless const_defined?(:GROUP_OR_ARRAY_SIZE, false)
+  # A parenthesis or a bracket, or a literal or comment whose brackets don't count
+  SIZE_TOKEN = Regexp.union( /[()\[]/, CExtractorDeclarator::LITERAL_OR_COMMENT ) unless const_defined?(:SIZE_TOKEN, false)
+
+  # How each parenthesis changes the depth
+  PAREN_CHANGE = { '(' => 1, ')' => -1 }.freeze unless const_defined?(:PAREN_CHANGE, false)
 
   # A declaration's array sizes, which follow its name
   ARRAY_SUFFIX = /[\w$](\s*(?:\[[^\]]*\])+)\s*\z/ unless const_defined?(:ARRAY_SUFFIX, false)
@@ -56,10 +60,20 @@ class CExtractorDeclarations
   # A bracket, a literal, a star or a word, which locate where a declarator starts
   DECLARATOR_TOKEN = Regexp.union( CExtractorDeclarator::BALANCE_TOKEN, /\*/, CExtractorDeclarator::WORD ) unless const_defined?(:DECLARATOR_TOKEN, false)
 
-  # A base type no declaration has. An array size follows a name, and a builtin type or a tag
-  # can't be followed by a plain word. Either means a macro after the first name, such as an
-  # attribute, was read as the name.
-  MISREAD_BASE = /[\w$]\s*\[|\b(?:(?:void|char|short|int|long|float|double|signed|unsigned|_Bool|_Complex)|(?:struct|union|enum)\s+[A-Za-z_$][\w$]*)\s+(?!(?:const|volatile|restrict|void|char|short|int|long|float|double|signed|unsigned|_Bool|_Complex)\b)[A-Za-z_$][\w$]*\s*\z/ unless const_defined?(:MISREAD_BASE, false)
+  # A base type's last two words, which may be a type and a name misread as part of it
+  LAST_TWO_WORDS = /(?<![\w$])(?<type>[A-Za-z_$][\w$]*)\s+(?<word>[A-Za-z_$][\w$]*)\s*\z/ unless const_defined?(:LAST_TWO_WORDS, false)
+
+  # Words that are no type, so the word after one is no name
+  NOT_A_TYPE = (DECORATOR_KEYWORDS + CExtractorDeclarator::QUALIFIERS + %w[struct union enum _Thread_local thread_local __thread]).to_set.freeze unless const_defined?(:NOT_A_TYPE, false)
+
+  # Keywords that may follow a builtin type or a tag ahead of a name, qualifiers and type and
+  # storage keywords among them. None can be a name.
+  TYPE_WORDS = (CExtractorDeclarator::QUALIFIERS + %w[
+    void char short int long float double signed unsigned _Bool _Complex _Imaginary _Atomic _Thread_local thread_local
+  ]).to_set.freeze unless const_defined?(:TYPE_WORDS, false)
+
+  # A macro's spelling, all capitals
+  MACRO_CASE = /\A[A-Z_][A-Z0-9_$]*\z/ unless const_defined?(:MACRO_CASE, false)
 
   # Extracts a complete variable declaration from the scanner, through its terminating ';'.
   #
@@ -160,8 +174,8 @@ class CExtractorDeclarations
   # Splits a compound declaration into one per variable, as `int x = 0, y;` into `int x = 0;`
   # and `int y;`. A comma outside parentheses, brackets, braces and literals separates two
   # declarators, wherever the initializers sit. Each declarator after the first takes the first
-  # one's base type, the text ahead of its declarator. A base type no declaration has means a
-  # macro after the first name was read as the name, so the statement stays whole.
+  # one's base type, the text ahead of its declarator. A misread base type means a macro after
+  # the first name was read as the name, so the statement stays whole (see _misread_base?).
   #
   # Parameters:
   #   text: A complete declaration with its comments blanked, its trailing semicolon included
@@ -172,9 +186,10 @@ class CExtractorDeclarations
     first, *rest = _top_level_pieces( text.rstrip.chomp( ';' ).strip )
     return [text] if rest.empty?
 
-    base_type = _base_type( first )
+    head      = CExtractorDeclarator::AsmLabel.without( CExtractorDeclarator.without_initializer( first ) ).gsub( /\s+/, ' ' )
+    base_type, name = _base_type( head )
     return nil if base_type.nil?
-    return [text] if base_type.match?( MISREAD_BASE )
+    return [text] if _misread_base?( base_type, head, name )
 
     return ["#{first};"] + rest.map { |declarator| "#{base_type} #{declarator};" }
   end
@@ -198,18 +213,42 @@ class CExtractorDeclarations
     return cuts.each_cons( 2 ).map { |from, to| body.byteslice( from, to - from - 1 ).strip }.reject( &:empty? )
   end
 
-  # The first declarator's base type, or nil when its name can't be read. A star and the
-  # qualifiers after it belong to the declarator, as do an attribute or asm label after the
+  # The first declarator's base type and name. The base type is nil when the name can't be read.
+  # The head is that declarator without its initializer and asm label, its spaces collapsed. A
+  # star and the qualifiers after it belong to the declarator, as does an attribute after the
   # name, so the base type ends at the first star outside brackets or else at the name. The name
   # is read as the declaration's own record reads it.
-  def _base_type(first)
-    head    = CExtractorDeclarator::AsmLabel.without( CExtractorDeclarator.without_initializer( first ) ).gsub( /\s+/, ' ' )
+  def _base_type(head)
     grouped = CExtractorDeclarator.parenthesized( head )
-    return grouped.base_type if grouped
+    return [grouped.base_type, grouped.name] if grouped
 
     name  = extract_name( @code_text.strip_compiler_extensions( head ) )
     start = name && _declarator_start( head, name )
-    return start && head.byteslice( 0, start ).strip
+    return [start && head.byteslice( 0, start ).strip, name]
+  end
+
+  # Whether the base type shows that a macro after the first name, such as an attribute, was
+  # read as the name. A word ahead of a star is never the name, so a base type ending at a star
+  # stands. An array size outside parentheses follows a name. A word after a type follows one
+  # too when the name read is spelled as a macro is, in capitals or with a leading `__`, as in
+  # `const u8 MAX_A UNUSED = 3, MAX_B = 1;` or `int a1 __maybe_unused, b1;`. A keyword or a
+  # compiler's `__` extension there is part of the type, as in `int __far a, b;`. Any other word
+  # is taken for a qualifier, as in `int MYQ a, b;` or `unsigned char xdata a, b;`. Without
+  # expanding the macros, the two readings can't be told apart.
+  def _misread_base?(base_type, head, name)
+    return false if head.byteslice( base_type.bytesize, head.bytesize ).lstrip.start_with?( '*' )
+    return true unless _without_array_sizes( base_type ) == base_type
+    return false unless _type_then_name?( base_type.match( LAST_TWO_WORDS ) )
+
+    return (name.to_s.match?( MACRO_CASE ) or name.to_s.start_with?( '__' ))
+  end
+
+  # Whether a base type's last two words may be a type and a name: the first is no storage
+  # class, qualifier or keyword ahead of a tag, and the second no type keyword or extension
+  def _type_then_name?(words)
+    return false if words.nil? or NOT_A_TYPE.include?( words[:type] )
+
+    return !(TYPE_WORDS.include?( words[:word] ) or words[:word].start_with?( '__' ))
   end
 
   # Where a declarator starts in the text ahead of any initializer. That is its first star or
@@ -328,7 +367,28 @@ class CExtractorDeclarations
   # The text without its array sizes. A bracket inside parentheses belongs to a type a specifier
   # spells, as in `typeof(int[3])`, so it stays.
   def _without_array_sizes(text)
-    return text.gsub( GROUP_OR_ARRAY_SIZE ) { |match| match.start_with?( '(' ) ? match : '' }
+    scanner = StringScanner.new( text )
+    kept    = +''
+    parens  = 0
+    while (before = scanner.scan_until( SIZE_TOKEN ))
+      parens += PAREN_CHANGE.fetch( scanner.matched, 0 )
+      next kept << before unless scanner.matched == '[' and parens.zero?
+
+      kept << (_skip_size( scanner ) ? before.byteslice( 0, before.bytesize - 1 ) : before)
+    end
+
+    return kept << scanner.rest
+  end
+
+  # Moves the scanner, just past an array size's '[', past its matching ']'. When none follows,
+  # the scanner stays, and the '[' is text.
+  def _skip_size(scanner)
+    after = scanner.pos
+    scanner.pos = after - 1
+    return true if CExtractorDeclarator._skip_balanced( scanner )
+
+    scanner.pos = after
+    return false
   end
 
   # Extract array subscript suffix from a clean (decorator/extension-stripped) declaration.

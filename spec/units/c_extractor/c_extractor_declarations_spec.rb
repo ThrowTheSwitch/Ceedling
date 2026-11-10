@@ -756,6 +756,31 @@ describe CExtractorDeclarations do
         end
       end
 
+      # A word may stand between the type and the name: a qualifier, a type or storage keyword, a
+      # memory-space keyword, a compiler's `__` extension or a macro in capitals. A word ahead of a
+      # star is never the name, and a bracket inside parentheses is no array size.
+      [
+        ['int __far a, b;',                          [['a', 'int __far'], ['b', 'int __far']]],
+        ['char __far *p, *q;',                       [['p', 'char __far *'], ['q', 'char __far *']]],
+        ['unsigned char xdata a, b;',                [['a', 'unsigned char xdata'], ['b', 'unsigned char xdata']]],
+        ['int MYQ *p, *q;',                          [['p', 'int MYQ *'], ['q', 'int MYQ *']]],
+        ['int MYQ a, b;',                            [['a', 'int MYQ'], ['b', 'int MYQ']]],
+        ['int _Atomic a, b;',                        [['a', 'int _Atomic'], ['b', 'int _Atomic']]],
+        ['struct S _Atomic s, t;',                   [['s', 'struct S _Atomic'], ['t', 'struct S _Atomic']]],
+        ['typeof(int[3]) a, b;',                     [['a', 'typeof(int[3])'], ['b', 'typeof(int[3])']]],
+        ['_Alignas(sizeof(x[0])) int a, b;',         [['a', '_Alignas(sizeof(x[0])) int'], ['b', '_Alignas(sizeof(x[0])) int']]],
+        ['int *x MY_ATTR, y;',                       [['MY_ATTR', 'int *x'], ['y', 'int']]],
+        ['const u8 MAX_A = 1, MAX_B = 2;',           [['MAX_A', 'u8'], ['MAX_B', 'u8']]],
+        ['unsigned long MAX_A = 1, MAX_B = 2;',      [['MAX_A', 'unsigned long'], ['MAX_B', 'unsigned long']]]
+      ].each do |content, expected|
+        it "splits `#{content}` with each variable's base type" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.name, v.type] } ).to eq expected
+        end
+      end
+
       # An unexpanded attribute macro after the first name reads as the name, which leaves a base
       # type no declaration could have. The statement then stays one record, read whole.
       [
@@ -770,6 +795,22 @@ describe CExtractorDeclarations do
         end
       end
 
+      # A name read in capitals after another word is taken for an attribute macro, so the word
+      # before it is the real name and the statement stays one record
+      [
+        ['static const int MAX_A UNUSED = 3, MAX_B = 1;', 'int MAX_A UNUSED = 3, MAX_B = 1;'],
+        ['static const u8 MAX_A UNUSED = 3, MAX_B = 1;',  'u8 MAX_A UNUSED = 3, MAX_B = 1;'],
+        ['static int data UNUSED, other;',                'int data UNUSED, other;'],
+        ['static int a1 __maybe_unused, b1;',             'int a1 __maybe_unused, b1;']
+      ].each do |content, text|
+        it "keeps `#{content}` one record when a capitalized name follows the first name" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map( &:text ) ).to eq [text]
+        end
+      end
+
       it "splits a compound declaration whose first function pointer has an initializer" do
         success, variables, _pos, _rest = extract_variable.call( "static int (*a)(int) = f, (*b)(int);" )
 
@@ -778,6 +819,17 @@ describe CExtractorDeclarations do
           ['a', 'int', ['static'], '(*a)(int)'],
           ['b', 'int', ['static'], '(*b)(int)']
         ]
+      end
+
+      # Array sizes are found in one pass, however many parentheses a literal holds
+      it "reads a declaration whose literal holds many parentheses within a time bound" do
+        content = 'int MACRO("' + ('(' * 20_000) + '") x, y;'
+
+        success, variables = nil
+        Timeout.timeout( 2 ) { success, variables, _, _ = extract_variable.call( content ) }
+
+        expect( success ).to be true
+        expect( variables.map( &:name ) ).to eq ['x', 'y']
       end
 
       it "splits a compound declaration after a large initializer table within a time bound" do

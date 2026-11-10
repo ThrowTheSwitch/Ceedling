@@ -380,6 +380,18 @@ describe 'Declarations in a Partial' do
       expect_link( @result, ['ticker_get', 'partial_ticker_get_x', 'partial_ticker_get_y', 'partial_ticker_get_p'] )
     end
 
+    # A qualifier macro between the type and the name is part of the base type
+    it 'promotes each static of a compound statement whose type holds a qualifier macro' do
+      @result = ticker(
+        header: "int f1(void);\nint f2(void);\n",
+        source: "#define MYQ\nint f1(void) { static int MYQ cnt, other; return cnt + other; }\n" \
+                "int f2(void) { static int MYQ cnt, other; return cnt + other; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern int MYQ partial_f1_other;', 'extern int MYQ partial_f2_cnt;' )
+      expect_link( @result, ['partial_f1_cnt', 'partial_f1_other', 'partial_f2_cnt', 'partial_f2_other'] )
+    end
+
     it 'promotes statics that name one another across statements and in array sizes' do
       @result = ticker(
         header: "int ticker_get(void);\n",
