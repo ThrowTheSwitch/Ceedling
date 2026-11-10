@@ -139,6 +139,14 @@ There is no "stop the pipeline" signal. Every stage is still visited, and each c
 
 The three Partials stages and the two mock stages carry a second check. A project can enable Partials or mocking while a particular run has none of that work, such as a `test:pattern` run over files that use neither. The stage then declines to run as if the feature were off, but logs one line at OBNOXIOUS verbosity saying there was nothing to do, so a narrow run isn't left with headings that have nothing under them.
 
+## Guidance from failed build steps
+
+A failed compilation or link in stages 15 and 16 gets an explanation, where Ceedling can offer one, before its error is raised. `TestBuildExecutor` hands the tool's output and the inputs it ran with to `BuildStepDoctor` (see `diagnostics/DOCTOR.md`). Specialists recognize failures whose cause lies in Ceedling's conventions: a header colliding with its own substitute, headers colliding in a shared directory, a missing symbol, or a symbol defined twice. Each one that applies logs a notice, so one failure can draw several. The tool's error is still raised.
+
+A compilation is diagnosed with its first attempt's `.d` file, whose paths are the real headers, even when sibling-header isolation's retry produced the failure. Preprocessing isn't connected. Its runs are many, and several are expected to fail and fall back, so their failures yield little useful guidance.
+
+Stage 15's compilation threads share one doctor without a lock. The doctor fixes its diagnoses when it is built and only reads them afterward.
+
 ## Parallelism
 
 Most stages hand their per-test or per-item work to `Batchinator`, which runs the given block once per item on a pool of worker threads sized from the project's thread count. That is why so much pipeline code sits in a block passed to `@batchinator.exec`, guarded by `PipelineState#lock.synchronize` wherever it writes into the shared `testables` Hash, an accumulator list, or a `Testable` another thread may read. Ruby's collections aren't safe for concurrent writes without that guard. Each stage holds the lock only for the write itself, never for the real work, such as preprocessing or compiling, that produced it.
