@@ -921,6 +921,23 @@ describe CExtractorDeclarations do
 
     # An asm label names the variable's symbol. The record keeps it apart from the name and type,
     # and its text keeps it for the definition.
+    # An alignment specifier or attribute may lead a declaration, ahead of its storage class
+    context "a leading alignment specifier or attribute" do
+      [
+        ['_Alignas(8) static int s_as;',                ['static'],          '_Alignas(8) int',  '_Alignas(8) int s_as;'],
+        ['alignas(16) static const int s_c = 1;',       ['static', 'const'], 'alignas(16) int',  'alignas(16) int s_c = 1;'],
+        ['__attribute__((unused)) static int s_u;',     ['static'],          'int',              '__attribute__((unused)) int s_u;'],
+        ['static _Alignas(4) volatile int s_v;',        ['static', 'volatile'], '_Alignas(4) int', '_Alignas(4) int s_v;']
+      ].each do |content, decorators, type, text|
+        it "reads `#{content}` with its storage class as a decorator" do
+          success, variables, _pos, _rest = extract_variable.call( content )
+
+          expect( success ).to be true
+          expect( variables.map { |v| [v.decorators, v.type, v.text] } ).to eq [[decorators, type, text]]
+        end
+      end
+    end
+
     context "asm labels" do
       def read_all(content)
         success, variables, _, _ = extract_variable.call( content )

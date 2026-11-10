@@ -26,6 +26,10 @@ class CExtractorDeclarations
   # stops at every '/', since one may start a comment.
   PLAIN_RUN = %r{[^"'/()\[\]{};]+} unless const_defined?(:PLAIN_RUN, false)
 
+  # One item of a declaration's leading run. That is a decorator keyword, read whole, or an
+  # alignment specifier or attribute with its arguments, whose literals may hold parentheses.
+  LEADING_RUN_ITEM = /\A(?:(?<keyword>#{DECORATOR_KEYWORDS.map { |kw| Regexp.escape( kw ) }.join( '|' )})(?![\w$])|(?:_Alignas|alignas|__attribute__|__attribute|__declspec)\s*(?<group>\((?>[^()"']+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\g<group>)*\)))\s*/ unless const_defined?(:LEADING_RUN_ITEM, false)
+
   # Each delimiter's own kind of depth, and how the delimiter changes it
   DELIMITER_DEPTH = {
     '(' => [:paren, 1], ')' => [:paren, -1], '[' => [:bracket, 1], ']' => [:bracket, -1],
@@ -276,24 +280,20 @@ class CExtractorDeclarations
   # stopping at the first non-keyword token, naturally separates the two: the same keyword
   # (e.g. `const`) can appear once here and again later in the declarator without the two
   # occurrences being confused with each other, since only the leading run is ever consumed.
+  # An alignment specifier or attribute may sit in that run, as in `_Alignas(8) static int x;`.
+  # It is no decorator, so it keeps its place ahead of the rest of the text.
   #
   # Returns: [Array<String> ordered decorator keywords found at start of text, String remaining text after that run]
   def extract_decorators(text)
     decorators = []
-    remaining = text.strip
-    loop do
-      matched = false
-      DECORATOR_KEYWORDS.each do |kw|
-        if remaining =~ /\A#{Regexp.escape(kw)}\b(.*)/m
-          decorators << kw
-          remaining = $1.strip
-          matched = true
-          break
-        end
-      end
-      break unless matched
+    kept       = []
+    remaining  = text.strip
+    while (found = remaining.match( LEADING_RUN_ITEM ))
+      found[:keyword] ? decorators << found[:keyword] : kept << found[0].strip
+      remaining = found.post_match
     end
-    [decorators, remaining]
+
+    return [decorators, [*kept, remaining].join( ' ' )]
   end
 
   # A declaration with its leading decorator run already removed (see extract_decorators)

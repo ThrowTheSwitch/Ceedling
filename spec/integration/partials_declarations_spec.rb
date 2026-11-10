@@ -172,11 +172,12 @@ describe 'Declarations in a Partial' do
       @result = ticker(
         header: "int ticker_get(void);\n",
         source: "int *g_pp;\ntypeof(int) g_t;\n_Atomic(int) g_a;\n_Alignas(8) int g_al;\ntypeof(*g_pp) g_q;\n__typeof__(int) g_u;\n" \
-                "int ticker_get(void) { return g_t + g_a + g_al + g_q + g_u; }\n"
+                "_Alignas(8) static int s_as;\nint ticker_get(void) { return g_t + g_a + g_al + g_q + g_u + s_as; }\n"
       )
 
       expect( @result.impl_h ).to include( 'extern typeof(int) g_t;', 'extern _Atomic(int) g_a;', 'extern typeof(*g_pp) g_q;' )
-      expect_link( @result, ['g_t', 'g_a', 'g_al', 'g_q', 'g_u'] )
+      expect( @result.impl_h ).to include( 'extern _Alignas(8) int s_as;' )
+      expect_link( @result, ['g_t', 'g_a', 'g_al', 'g_q', 'g_u', 's_as'] )
     end
 
     it 'declares variables whose types a keyword spells' do
