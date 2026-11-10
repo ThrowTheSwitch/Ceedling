@@ -234,20 +234,20 @@ describe HeaderCollisionSpecialist do
 
     context 'without a .d file' do
       before(:each) do
-        allow( @file_wrapper ).to receive( :directory? ).with( '/project/include' ).and_return( true )
+        allow( @file_wrapper ).to receive( :directory? ).with( File.expand_path( '/project/include' ) ).and_return( true )
       end
 
       it 'falls back to the named header\'s own directory listing' do
-        allow( @file_wrapper ).to receive( :directory_entries ).with( '/project/include' ).and_return( ['ifx_core.h', 'notes.txt', 'tle9974.h'] )
+        allow( @file_wrapper ).to receive( :directory_entries ).with( File.expand_path( '/project/include' ) ).and_return( ['ifx_core.h', 'notes.txt', 'tle9974.h'] )
 
         notices = prescriptions( "/project/include/ifx_core.h:20:16: error: redefinition of 'ifx_t'\n" )
 
         expect( notices.size ).to eq( 1 )
-        expect( notices.first ).to include( "This header shares the directory '/project/include' with other headers.\n" )
+        expect( notices.first ).to include( "This header shares the directory '#{File.expand_path( '/project/include' )}' with other headers.\n" )
       end
 
       it 'prescribes nothing when the listing holds no other header' do
-        allow( @file_wrapper ).to receive( :directory_entries ).with( '/project/include' ).and_return( ['ifx_core.h', 'ifx_core.c'] )
+        allow( @file_wrapper ).to receive( :directory_entries ).with( File.expand_path( '/project/include' ) ).and_return( ['ifx_core.h', 'ifx_core.c'] )
 
         expect( prescriptions( "/project/include/ifx_core.h:20:16: error: redefinition of 'ifx_t'\n" ) ).to eq( [] )
       end
