@@ -1318,6 +1318,16 @@ describe CExtractor do
       end
     end
 
+    # A chunk may end at a lone '/', which may open a comment the next chunk holds
+    context "with a comment after a macro invocation's arguments" do
+      (1..24).each do |chunk_size|
+        it "reads the same elements with #{chunk_size}-byte chunks" do
+          content = "FOO(x) /* c */;\nint after;\n"
+          expect( sequence_of( content, chunk_size: chunk_size ) ).to eq sequence_of( content )
+        end
+      end
+    end
+
     # Fallback preprocessing leaves comments in place, inside declarations too
     context "with comments inside declarations" do
       it "reads on past a declaration that ends in a comment" do

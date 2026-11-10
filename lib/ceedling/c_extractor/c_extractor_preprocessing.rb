@@ -64,7 +64,13 @@ class CExtractorPreprocessing
 
     finish = scanner.pos
     @c_extractor_code_text.skip_deadspace(scanner)
-    return (scanner.eos? or NOT_AFTER_INVOCATION.include?(scanner.peek(1))) ? nil : finish
+    return (_undecided?(scanner) or NOT_AFTER_INVOCATION.include?(scanner.peek(1))) ? nil : finish
+  end
+
+  # Whether the buffer ends before what follows an invocation can be read. A lone '/' there may
+  # open a comment the next chunk holds.
+  def _undecided?(scanner)
+    return (scanner.eos? or (scanner.rest_size == 1 and scanner.peek(1) == '/'))
   end
 
   # Whether a word with an invocation's shape leads a declaration instead. An attribute form
