@@ -49,6 +49,12 @@ describe ToolchainOutput do
     it 'reads nothing from missing output' do
       expect( described_class.headers( nil ) ).to eq( [] )
     end
+
+    it 'reads a megabyte-long token in linear time' do
+      started = Process.clock_gettime( Process::CLOCK_MONOTONIC )
+      expect( described_class.headers( 'a' * 1_000_000 ) ).to eq( [] )
+      expect( Process.clock_gettime( Process::CLOCK_MONOTONIC ) - started ).to be < 1.0
+    end
   end
 
   describe '.objects' do

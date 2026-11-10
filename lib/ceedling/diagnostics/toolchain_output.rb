@@ -30,13 +30,15 @@ module ToolchainOutput
     return paths( output, Regexp.escape( extension.delete_prefix( '.' ) ) )
   end
 
+  # Tokens are scanned whole, quoted strings first, and each is kept only when it ends in
+  # the extension. Testing the ending after the scan keeps the pass linear on long tokens.
   def self.paths(output, extension)
     return [] if output.nil?
 
-    ending  = "\\.#{extension}(?![\\w.])"
-    pattern = /"([^"\n]+?#{ending})"|((?:[A-Za-z]:)?[^#{PATH_STOP}]+?#{ending})/i
+    ending = /\.#{extension}\z/i
+    tokens = output.scan( /"([^"\n]*)"|((?:[A-Za-z]:)?[^#{PATH_STOP}]+)/ ).map { |quoted, bare| quoted || bare }
 
-    return output.scan( pattern ).map { |quoted, bare| quoted || bare }.uniq
+    return tokens.select { |token| token.match?( ending ) }.uniq
   end
   private_class_method :paths
 end
