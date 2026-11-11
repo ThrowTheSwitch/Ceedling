@@ -36,6 +36,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 ### Partials
 
 1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.
+1. A module header that `#include`s another header after its own types, where that header uses them, fails in a Partial with an `unknown type name` error. A Partial writes a module header’s own includes ahead of its types. Including that other header from the module’s source instead, after the module’s header, works around it.
 1. A type created by a macro invocation rather than written out — the list and queue building macros in `sys/queue.h`, for instance — is not recognized as a type, and a Partial using one fails to compile with an `unknown type name` error.
 1. A `struct`, `union`, or `enum` written directly on a variable, as in `static struct { int depth; } slot;`, is treated as a variable alone. The generated Partial states the type twice and fails to compile. Define the type on its own, then declare the variable by the type’s name.
 1. A `struct`, `union`, or `enum` named but not defined, as in `struct node;`, is reproduced in the generated Partial as an invalid declaration. Builds treating warnings as errors fail on it.
@@ -69,6 +70,8 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 ### Partials
 
 1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.
+1. A module whose source includes its own header and then a header that uses the module header’s types or macros fails in a Partial with an `unknown type name` or `undeclared` error. A Partial writes every include it carries ahead of the module’s types. Moving those types and macros into a header of their own, which each header using them includes directly, works around it.
+1. A module header that `#include`s another header after its own types, where that header uses them, fails in a Partial with an `unknown type name` error. A Partial writes a module header’s own includes ahead of its types. Moving those types into a header of their own, which each header using them includes directly, works around it.
 1. A type created by a macro invocation rather than written out — the list and queue building macros in `sys/queue.h`, for instance — is not recognized as a type, and a Partial using one fails to compile with an `unknown type name` error.
 1. A `struct`, `union`, or `enum` written directly on a variable, as in `static struct { int depth; } slot;`, is treated as a variable alone. The generated Partial states the type twice and fails to compile. Define the type on its own, then declare the variable by the type’s name.
 1. A `struct`, `union`, or `enum` named but not defined, as in `struct node;`, is reproduced in the generated Partial as an invalid declaration. Builds treating warnings as errors fail on it.
@@ -81,7 +84,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
-Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build.
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, and a Partial failing for a module whose source includes its own header before a header that uses its types.
 
 ---
 
@@ -110,6 +113,8 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 ### Partials
 
 1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.
+1. A module whose source includes its own header and then a header that uses the module header’s types or macros fails in a Partial with an `unknown type name` or `undeclared` error. A Partial writes every include it carries ahead of the module’s types. Moving those types and macros into a header of their own, which each header using them includes directly, works around it.
+1. A module header that `#include`s another header after its own types, where that header uses them, fails in a Partial with an `unknown type name` error. A Partial writes a module header’s own includes ahead of its types. Moving those types into a header of their own, which each header using them includes directly, works around it.
 1. A type created by a macro invocation rather than written out — the list and queue building macros in `sys/queue.h`, for instance — is not recognized as a type, and a Partial using one fails to compile with an `unknown type name` error.
 1. A `struct`, `union`, or `enum` written directly on a variable, as in `static struct { int depth; } slot;`, is treated as a variable alone. The generated Partial states the type twice and fails to compile. Define the type on its own, then declare the variable by the type’s name.
 1. A `struct`, `union`, or `enum` named but not defined, as in `struct node;`, is reproduced in the generated Partial as an invalid declaration. Builds treating warnings as errors fail on it.
@@ -124,7 +129,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
 Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. Also resolved: a directory left in `build/vendor/` for a file `lstat` misreported failing every build. The [Changelog](Changelog.md) lists every other fix since this release.
 
-Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build.
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, and a Partial failing for a module whose source includes its own header before a header that uses its types.
 
 ---
 
@@ -153,6 +158,8 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 ### Partials
 
 1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.
+1. A module whose source includes its own header and then a header that uses the module header’s types or macros fails in a Partial with an `unknown type name` or `undeclared` error. A Partial writes every include it carries ahead of the module’s types. Moving those types and macros into a header of their own, which each header using them includes directly, works around it.
+1. A module header that `#include`s another header after its own types, where that header uses them, fails in a Partial with an `unknown type name` error. A Partial writes a module header’s own includes ahead of its types. Moving those types into a header of their own, which each header using them includes directly, works around it.
 1. A type created by a macro invocation rather than written out — the list and queue building macros in `sys/queue.h`, for instance — is not recognized as a type, and a Partial using one fails to compile with an `unknown type name` error.
 1. A `struct`, `union`, or `enum` written directly on a variable, as in `static struct { int depth; } slot;`, is treated as a variable alone. The generated Partial states the type twice and fails to compile. Define the type on its own, then declare the variable by the type’s name.
 1. A `struct`, `union`, or `enum` named but not defined, as in `struct node;`, is reproduced in the generated Partial as an invalid declaration. Builds treating warnings as errors fail on it.
@@ -167,7 +174,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
 Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. Also resolved: frameworks vendor copying failing on files `lstat` misreports as directories. The [Changelog](Changelog.md) lists every other fix since this release.
 
-Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build.
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, and a Partial failing for a module whose source includes its own header before a header that uses its types.
 
 ---
 
@@ -194,6 +201,8 @@ Covers 1.1.0 through 1.1.10 as known by 1.1.10. An item may not apply to every p
 1. User includes (`#include "path/user.h"`) from source C files lose their relative path when Partial and mock header files are generated from source. Compilation failures can result from certain uncommon cases involving headers of the same names in different directories and a source file including both such headers.
 1. Partial directive macros accept only a bare module name — a filename stem with no path. A project holding two modules of the same name in different directories cannot say which of them a Partial is for, and Ceedling resolves the name the way a compiler resolves a header, selecting the first match among the ordered search paths. Path-qualified Partial macros will arrive in 1.2.0.
 1. A module whose header protects itself with `#pragma once` instead of a traditional `#ifndef` include guard can still hit a `redefinition` or `conflicting types` error, if any other header your module uses reaches that header in turn. Ceedling suppresses the real header by defining its include guard, and `#pragma once` provides no guard to define. Converting the module’s header to a traditional include guard works around it.
+1. A module whose source includes its own header and then a header that uses the module header’s types or macros fails in a Partial with an `unknown type name` or `undeclared` error. A Partial writes every include it carries ahead of the module’s types. Moving those types and macros into a header of their own, which each header using them includes directly, works around it.
+1. A module header that `#include`s another header after its own types, where that header uses them, fails in a Partial with an `unknown type name` error. A Partial writes a module header’s own includes ahead of its types. Moving those types into a header of their own, which each header using them includes directly, works around it.
 1. A type created by a macro invocation rather than written out — the list and queue building macros in `sys/queue.h`, for instance — is not recognized as a type, and a Partial using one fails to compile with an `unknown type name` error.
 1. A `struct`, `union`, or `enum` written directly on a variable, as in `static struct { int depth; } slot;`, is treated as a variable alone. The generated Partial states the type twice and fails to compile. Define the type on its own, then declare the variable by the type’s name.
 1. A `struct`, `union`, or `enum` named but not defined, as in `struct node;`, is reproduced in the generated Partial as an invalid declaration. Builds treating warnings as errors fail on it.
@@ -205,6 +214,8 @@ Covers 1.1.0 through 1.1.10 as known by 1.1.10. An item may not apply to every p
 1. A macro the module retires with `#undef` is carried into the generated Partial anyway, so the name stays visible to your test file and can collide with another macro of the same name.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
 1. A source line can be joined to the line before it in a generated Partial when its line number happens to match the last line of a header the source included. Two adjacent `#define`s, for instance, become one line, and the build fails with `stray '#' in program`.
+
+Resolved in 1.2.3: a Partial misreading a declaration that a C23 attribute leads, and a Partial failing for a module whose source includes its own header before a header that uses its types.
 
 ---
 
