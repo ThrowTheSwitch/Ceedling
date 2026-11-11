@@ -321,10 +321,10 @@ describe PartialsManager do
       allow(@partializer).to receive(:validate_config)
       allow(@partializer).to receive(:sanitize)
       allow(@partializer).to receive(:validate_extracted_functions)
-      allow(@partializer).to receive(:remap_implementation_header_includes).and_return( [] )
+      allow(@partializer).to receive(:remap_implementation_header_includes).and_return( Partials::IncludeGroups.new )
       allow(@partializer).to receive(:remap_implementation_source_includes).and_return( [] )
-      allow(@partializer).to receive(:remap_interface_header_includes).and_return( [] )
-      allow(@partializer).to receive(:remap_types_header_includes).and_return( [] )
+      allow(@partializer).to receive(:remap_interface_header_includes).and_return( Partials::IncludeGroups.new )
+      allow(@partializer).to receive(:remap_types_header_includes).and_return( Partials::IncludeGroups.new )
       allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
       allow(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
       allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( true )
@@ -529,7 +529,9 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
       [:remap_implementation_header_includes, :remap_interface_header_includes].each do |remap|
-        allow(@partializer).to receive(remap) { |types_header: nil, **| [types_header && types_include, UserInclude.new( 'dep.h' )].compact }
+        allow(@partializer).to receive(remap) do |types_header: nil, **|
+          Partials::IncludeGroups.new( leading: [types_header && types_include, UserInclude.new( 'dep.h' )].compact )
+        end
       end
 
       metas = []
@@ -539,7 +541,8 @@ describe PartialsManager do
 
       @manager.stage_generate_partials( @state )
 
-      expect( metas.map { |meta| meta.values_at( :impl_header_includes, :interface_includes ) }.uniq ).to eq( [[['#include "dep.h"'], ['#include "dep.h"']]] )
+      recorded = { leading: ['#include "dep.h"'], following: [] }
+      expect( metas.map { |meta| meta.values_at( :impl_header_includes, :interface_includes ) }.uniq ).to eq( [[recorded, recorded]] )
     end
 
     it "registers the whole :partials config as meta, and an empty tools list since this stage runs no shell tool" do
@@ -563,11 +566,11 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
       allow(@partializer).to receive(:remap_types_header_includes)
-        .and_return( [UserInclude.new('foundation.h')] )
+        .and_return( Partials::IncludeGroups.new( leading: [UserInclude.new('foundation.h')], following: [UserInclude.new('log.h')] ) )
 
       expect(@dependinator).to receive(:register).at_least(:once) do |_target, meta: {}, **|
         expect( meta[:include_guard] ).to eq( 'FOO_H' )
-        expect( meta[:types_includes] ).to eq( ['#include "foundation.h"'] )
+        expect( meta[:types_includes] ).to eq( { leading: ['#include "foundation.h"'], following: ['#include "log.h"'] } )
       end
 
       @manager.stage_generate_partials( @state )
@@ -616,16 +619,16 @@ describe PartialsManager do
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
-      allow(@partializer).to receive(:remap_types_header_includes).and_return( [UserInclude.new('types_dep.h')] )
-      allow(@partializer).to receive(:remap_implementation_header_includes).and_return( [UserInclude.new('impl_h_dep.h')] )
+      allow(@partializer).to receive(:remap_types_header_includes).and_return( Partials::IncludeGroups.new( leading: [UserInclude.new('types_dep.h')] ) )
+      allow(@partializer).to receive(:remap_implementation_header_includes).and_return( Partials::IncludeGroups.new( following: [UserInclude.new('impl_h_dep.h')] ) )
       allow(@partializer).to receive(:remap_implementation_source_includes).and_return( [UserInclude.new('impl_c_dep.h')] )
-      allow(@partializer).to receive(:remap_interface_header_includes).and_return( [UserInclude.new('interface_dep.h')] )
+      allow(@partializer).to receive(:remap_interface_header_includes).and_return( Partials::IncludeGroups.new( leading: [UserInclude.new('interface_dep.h')] ) )
 
       expect(@dependinator).to receive(:register).at_least(:once) do |_target, meta: {}, **|
-        expect( meta[:types_includes] ).to eq( ['#include "types_dep.h"'] )
-        expect( meta[:impl_header_includes] ).to eq( ['#include "impl_h_dep.h"'] )
+        expect( meta[:types_includes] ).to eq( { leading: ['#include "types_dep.h"'], following: [] } )
+        expect( meta[:impl_header_includes] ).to eq( { leading: [], following: ['#include "impl_h_dep.h"'] } )
         expect( meta[:impl_source_includes] ).to eq( ['#include "impl_c_dep.h"'] )
-        expect( meta[:interface_includes] ).to eq( ['#include "interface_dep.h"'] )
+        expect( meta[:interface_includes] ).to eq( { leading: ['#include "interface_dep.h"'], following: [] } )
       end
 
       @manager.stage_generate_partials( @state )
@@ -636,18 +639,38 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
-      impl_h    = [UserInclude.new('impl_h_dep.h')]
+      impl_h    = Partials::IncludeGroups.new( leading: [UserInclude.new('impl_h_dep.h')], following: [UserInclude.new('impl_h_later.h')] )
       impl_c    = [UserInclude.new('impl_c_dep.h')]
-      interface = [UserInclude.new('interface_dep.h')]
+      interface = Partials::IncludeGroups.new( leading: [UserInclude.new('interface_dep.h')], following: [UserInclude.new('interface_later.h')] )
       expect(@partializer).to receive(:remap_implementation_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( impl_h )
       expect(@partializer).to receive(:remap_implementation_source_includes).with( hash_including( test: 'a_test' ) ).once.and_return( impl_c )
       expect(@partializer).to receive(:remap_interface_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( interface )
-      expect(@partializer).to receive(:remap_types_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( [] )
+      expect(@partializer).to receive(:remap_types_header_includes).with( hash_including( test: 'a_test' ) ).once.and_return( Partials::IncludeGroups.new )
 
       expect(@generator).to receive(:generate_partial_implementation).with(
-        hash_including( header_includes: impl_h, source_includes: impl_c )
+        hash_including( header_includes: impl_h.leading, header_following_includes: impl_h.following, source_includes: impl_c )
       )
-      expect(@generator).to receive(:generate_partial_interface).with( hash_including( includes: interface ) )
+      expect(@generator).to receive(:generate_partial_interface).with(
+        hash_including( includes: interface.leading, following_includes: interface.following )
+      )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # A generated header's includes split where the source includes the module's header, so the
+    # header remaps need the two lists apart. The implementation source keeps one list.
+    it "hands the header remaps the source's and the header's includes apart" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      @config.source.includes = [UserInclude.new( 'Foo.h' ), UserInclude.new( 'log.h' )]
+      @config.header.includes = [UserInclude.new( 'base.h' )]
+      apart = hash_including( source_includes: @config.source.includes, header_includes: @config.header.includes )
+
+      %i[remap_types_header_includes remap_implementation_header_includes remap_interface_header_includes].each do |remap|
+        expect(@partializer).to receive(remap).with( apart ).twice.and_return( Partials::IncludeGroups.new )
+      end
+      expect(@partializer).to receive(:remap_implementation_source_includes)
+        .with( hash_including( includes: @config.source.includes + @config.header.includes ) ).twice.and_return( [] )
 
       @manager.stage_generate_partials( @state )
     end
@@ -657,7 +680,8 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
       %i[remap_types_header_includes remap_implementation_header_includes remap_implementation_source_includes remap_interface_header_includes].each do |remap|
-        expect(@partializer).to receive(remap).with( hash_including( test: nil ) ).once.and_return( [] )
+        result = (remap == :remap_implementation_source_includes) ? [] : Partials::IncludeGroups.new
+        expect(@partializer).to receive(remap).with( hash_including( test: nil ) ).once.and_return( result )
       end
 
       @manager.stage_generate_partials( @state )
@@ -691,11 +715,11 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
-      carried = [UserInclude.new('foundation.h')]
+      carried = Partials::IncludeGroups.new( leading: [UserInclude.new('foundation.h')], following: [UserInclude.new('log.h')] )
       allow(@partializer).to receive(:remap_types_header_includes).and_return( carried )
 
       expect(@generator).to receive(:generate_partial_types).with(
-        hash_including( includes: carried, include_guard: 'FOO_H' )
+        hash_including( includes: carried.leading, following_includes: carried.following, include_guard: 'FOO_H' )
       )
 
       @manager.stage_generate_partials( @state )

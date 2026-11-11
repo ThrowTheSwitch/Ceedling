@@ -19,6 +19,10 @@ require 'ceedling/encodinator'
 
 class Partializer
 
+  # Holds the place between a generated header's include groups while a list is remapped.
+  # Matched by identity, and named so no real include or module can match it.
+  INCLUDE_BOUNDARY = UserInclude.new( '<ceedling include group boundary>' ) unless const_defined?(:INCLUDE_BOUNDARY, false)
+
   # Explains helpers a Partial leaves behind because the module header has no include guard
   UNGUARDED_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_HELPERS_NOTICE, false)
     Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
@@ -199,15 +203,16 @@ class Partializer
     )
   end
 
-  # Includes for the generated implementation header. This module's own header is replaced by
-  # the shared types header at its original list position; every other partialized module's
-  # include is dropped.
+  # Includes for the generated implementation header, in groups (see _remap_include_groups). This
+  # module's own header is replaced by the shared types header at its original list position;
+  # every other partialized module's include is dropped.
   #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_implementation_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
-    _remap_includes(
+  def remap_implementation_header_includes(name:, source_includes:, partials:, header_includes: [], types_header: nil, test: nil)
+    _remap_include_groups(
       name:        name,
-      includes:    includes,
+      source:      source_includes,
+      header:      header_includes,
       partials:    partials,
       replacement: types_header,
       others:      :drop,
@@ -221,10 +226,11 @@ class Partializer
   # in one test file still gets exactly one definition of each of its types.
   #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_interface_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
-    _remap_includes(
+  def remap_interface_header_includes(name:, source_includes:, partials:, header_includes: [], types_header: nil, test: nil)
+    _remap_include_groups(
       name:        name,
-      includes:    includes,
+      source:      source_includes,
+      header:      header_includes,
       partials:    partials,
       replacement: types_header,
       others:      :drop,
@@ -258,10 +264,11 @@ class Partializer
   # very content that module's own Partial replaced.
   #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_types_header_includes(name:, includes:, partials:, test: nil)
-    _remap_includes(
+  def remap_types_header_includes(name:, source_includes:, partials:, header_includes: [], test: nil)
+    _remap_include_groups(
       name:        name,
-      includes:    includes,
+      source:      source_includes,
+      header:      header_includes,
       partials:    partials,
       replacement: nil,
       others:      :mock_or_drop,
@@ -733,6 +740,25 @@ class Partializer
     end.to_h
   end
 
+  # A generated header's includes in the order the source compiles them: the source's includes
+  # ahead of the module's header, the header's own, then the source's after it. The last make
+  # up the following group (see Partials::IncludeGroups). A source that never includes its own
+  # header leaves that group empty, as if its header came last.
+  #
+  # The whole list is remapped at once, so deduplication, redirects, and sorting see every
+  # include. An include in both groups keeps its earlier place. A marker holds the boundary.
+  def _remap_include_groups(name:, source:, header:, **remap)
+    index    = _own_header_index( name, source )
+    remapped = _remap_includes( name: name, includes: source[0..index] + header + [INCLUDE_BOUNDARY] + source[(index + 1)..], **remap )
+
+    return Partials::IncludeGroups.split( remapped, INCLUDE_BOUNDARY )
+  end
+
+  # Where the source includes the module's own header, or its last include when it never does
+  def _own_header_index(name, source)
+    return source.index { |include| include.filename.ext().downcase() == module_basename( name ) } || (source.size - 1)
+  end
+
   # One body behind all four public remaps. Each differs only in what replaces this module's
   # own header, what becomes of other partialized modules, and the noun it logs under -- the
   # splice, the sanitize, and the logging are identical in every case.
@@ -771,7 +797,8 @@ class Partializer
           name: name,
           partials: partials,
           drop_unmocked: shared_types_header,
-          skip_self: shared_types_header
+          skip_self: shared_types_header,
+          replacement: replacement
         )
       else
         PartializerRuntime.raise_on_option( others )
@@ -781,7 +808,7 @@ class Partializer
     Includes.sanitize!(_includes)
 
     @loginator.log_list(
-      _includes,
+      _includes.reject { |include| include.equal?( INCLUDE_BOUNDARY ) },
       "#{noun} #{test}::#{name}:",
       Verbosity::OBNOXIOUS
     ) if test
@@ -789,10 +816,10 @@ class Partializer
     return _includes
   end
 
-  # Appends the generated interface header for each mocked partialized module the original list
-  # named, then removes the real headers those replaced. `skip_self` decides whether the module
-  # being generated counts as one of them, which it does everywhere except the types header --
-  # see the call site.
+  # Puts the generated interface header of each mocked partialized module the original list
+  # named where that module's real header was, then removes any other copies of the real
+  # headers. `skip_self` decides whether the module being generated counts as one of them,
+  # which it does everywhere except the types header -- see the call site.
   #
   # Mutates `includes`, which always arrives fresh from splice_in_replacement.
   #
@@ -801,7 +828,7 @@ class Partializer
   # added later without updating the check, so a module mocked via either was silently never
   # redirected: its real header, and any static inline or static function bodies in it, stayed
   # #include'd verbatim and compiled straight past the mock.
-  def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:, skip_self:)
+  def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:, skip_self:, replacement:)
     retired = []
 
     partials.each do |_module, config|
@@ -811,14 +838,28 @@ class Partializer
       if config.mocks.type.nil?
         retired << _module if drop_unmocked
       else
-        includes << UserInclude.new(
-          @file_path_utils.form_partial_interface_header_filename(_module)
-        )
+        _place_interface_header( includes, _module, (_module == name) ? replacement : nil )
         retired << _module
       end
     end
 
     remove_matching_includes( includes: includes, modules: retired )
+  end
+
+  # An interface header declares what its module's real header declared, which the includes
+  # after it may rely on. So it takes that header's place. The module being generated has
+  # already had its header replaced, so its interface header follows the replacement. With
+  # neither in the list, it goes last.
+  def _place_interface_header(includes, _module, replacement)
+    interface = UserInclude.new( @file_path_utils.form_partial_interface_header_filename(_module) )
+
+    index = includes.index { |include| include.filename.ext().downcase() == module_basename( _module ) }
+    return includes[index] = interface if index
+
+    index = replacement && includes.index { |include| include.filename == File.basename( replacement ) }
+    return includes.insert( index + 1, interface ) if index
+
+    includes << interface
   end
 
   # Swaps `name`'s own header include for `replacement` at that same list position,

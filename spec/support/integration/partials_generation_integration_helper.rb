@@ -295,9 +295,12 @@ module PartialsGenerationHelpers
     # build would emit.
     partializer.sanitize( c_module )
 
-    # Header list first, then source list -- the order partials_manager uses when it
-    # concatenates the two before remapping.
-    raw_includes = partial_include_objects( source_includes + header_includes )
+    # The header remaps take the source's and the header's lists apart, as partials_manager
+    # hands them. The implementation source's remap takes them joined, source first.
+    source_objects = partial_include_objects( source_includes )
+    header_objects = partial_include_objects( header_includes )
+    raw_includes   = source_objects + header_objects
+    apart          = { source_includes: source_objects, header_includes: header_objects }
 
     # DEDUCT with no subtractions is what TEST_PARTIAL_ALL_MODULE resolves to -- every function
     # exposed. The two sides are separate because a module is routinely tested at one visibility
@@ -340,17 +343,18 @@ module PartialsGenerationHelpers
     # The types header carries its own dependencies and its own guard-spoof, so both are
     # computed here the way partials_manager does and handed to the generator.
     types_includes = partializer.remap_types_header_includes(
-      name: module_name, includes: raw_includes, partials: all_partials
+      name: module_name, **apart, partials: all_partials
     )
     include_guard = partializer.extract_module_include_guard( config.header.filepath )
 
     types_h_name = generator.generate_types(
       name: module_name, c_module: c_module, output_path: dir,
-      includes: types_includes, include_guard: include_guard
+      includes: types_includes.leading, following_includes: types_includes.following,
+      include_guard: include_guard
     )
 
     header_list = partializer.remap_implementation_header_includes(
-      name: module_name, includes: raw_includes, partials: all_partials,
+      name: module_name, **apart, partials: all_partials,
       types_header: types_h_name
     )
 
@@ -359,7 +363,7 @@ module PartialsGenerationHelpers
     )
 
     interface_list = partializer.remap_interface_header_includes(
-      name: module_name, includes: raw_includes, partials: all_partials,
+      name: module_name, **apart, partials: all_partials,
       types_header: types_h_name
     )
 
@@ -378,7 +382,8 @@ module PartialsGenerationHelpers
       name: module_name,
       function_definitions: implementation || [],
       source_includes: source_list,
-      header_includes: header_list,
+      header_includes: header_list.leading,
+      header_following_includes: header_list.following,
       c_module: c_module,
       output_path: dir,
       include_guard: include_guard,
@@ -393,7 +398,8 @@ module PartialsGenerationHelpers
     generator.generate_interface(
       name: module_name,
       function_declarations: interface || [],
-      includes: interface_list,
+      includes: interface_list.leading,
+      following_includes: interface_list.following,
       c_module: c_module,
       output_path: dir,
       include_guard: include_guard

@@ -30,6 +30,7 @@ class GeneratorPartials
       header_includes:,
       c_module:,
       output_path:,
+      header_following_includes: [],
       include_guard: nil,
       carry: Partials::CarryPlan.new,
       suppress_redundant_decls: true,
@@ -47,7 +48,7 @@ class GeneratorPartials
     # content instead of passing it through unchanged.
     @file_wrapper.open(header_filepath, 'wb') do |file|
       generate_header(file, header, header_includes, function_definitions, c_module,
-                      include_variables: true, include_guard: include_guard)
+                      include_variables: true, include_guard: include_guard, following_includes: header_following_includes)
     end
 
     @file_wrapper.open(source_filepath, 'wb') do |file|
@@ -59,14 +60,14 @@ class GeneratorPartials
     return source_filepath
   end
 
-  def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, include_guard: nil)
+  def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, following_includes: [], include_guard: nil)
     header = @file_path_utils.form_partial_interface_header_filename(name)
     filepath = _prepare( File.join(output_path, header) )
 
     # Binary mode: see generate_implementation above.
     @file_wrapper.open(filepath, 'wb') do |file|
       generate_header(file, header, includes, function_declarations, c_module,
-                      include_variables: false, include_guard: include_guard)
+                      include_variables: false, include_guard: include_guard, following_includes: following_includes)
     end
 
     return filepath
@@ -84,8 +85,11 @@ class GeneratorPartials
   # @param name     [String] Partial module name (used to form the filename and include guard)
   # @param c_module [CExtractorTypes::CModule] Merged module with type_definitions/aggregate_definitions
   # @param output_path [String] Directory shared with the implementation and interface headers
+  # @param includes [Array] Includes ahead of the module's types
+  # @param following_includes [Array] The source's includes after the module header, written where
+  #   the header's items end (see write_following_includes)
   # @return [String, nil] The bare filename (for use as a sibling #include), or nil if nothing was generated
-  def generate_types(name:, c_module:, output_path:, includes: [], include_guard: nil)
+  def generate_types(name:, c_module:, output_path:, includes: [], following_includes: [], include_guard: nil)
     return nil if c_module.type_definitions.empty? && c_module.aggregate_definitions.empty?
 
     header = @file_path_utils.form_partial_types_header_filename(name)
@@ -96,36 +100,7 @@ class GeneratorPartials
       guard = FileWrapper.generate_include_guard( header )
       emit_preamble( file, guard, include_guard, includes )
 
-      anything_emitted = false
-      pending_macros = []
-
-      c_module.element_sequence.each do |item|
-        next unless item.is_a?(CExtractorTypes::CStatement)
-
-        if c_module.macro_definitions.include?(item)
-          # The guard emitted above also arrives among the extracted macros, since the real
-          # header's own `#define` survives preprocessing. Carrying it a second time is legal
-          # but puts a pointless duplicate in every generated types header.
-          pending_macros << item unless guard_macro?(item, include_guard)
-          next
-        end
-
-        next unless type_defining?(item, c_module)
-
-        # A typedef/struct/enum moved here may depend on a macro (e.g. an array-size
-        # constant) that preceded it in the original source -- this header is #included
-        # before any macro generate_header later emits inline into the non-shared
-        # header, so that macro would otherwise be undefined here. Carrying it forward
-        # is safe: an identical #define may legally repeat, so generate_header's own
-        # unmodified inline copy causes no redefinition conflict.
-        pending_macros.each { |macro| file << macro.text << "\n" }
-        pending_macros.clear
-
-        file << item.text << "\n"
-        anything_emitted = true
-      end
-
-      file << "\n" if anything_emitted
+      write_types( file, c_module, include_guard, following_includes.dup )
       file << "#endif // #{guard}\n\n"
     end
 
@@ -155,6 +130,63 @@ class GeneratorPartials
 
     includes.each { |include| io << "#{include}\n" }
     io << "\n"
+  end
+
+  # The types header's content: each type in element_sequence order, any macro ahead of it,
+  # and the source's later includes where the header's items end. `following` is consumed.
+  def write_types(io, c_module, include_guard, following)
+    anything_emitted = false
+    pending_macros = []
+
+    c_module.element_sequence.each do |item|
+      if item.origin == :source and following.any?
+        write_following_includes( io, following, macros: pending_macros, separate: anything_emitted )
+        anything_emitted = false
+      end
+
+      next unless item.is_a?(CExtractorTypes::CStatement)
+
+      if c_module.macro_definitions.include?(item)
+        # The guard emitted above also arrives among the extracted macros, since the real
+        # header's own `#define` survives preprocessing. Carrying it a second time is legal
+        # but puts a pointless duplicate in every generated types header.
+        pending_macros << item unless guard_macro?(item, include_guard)
+        next
+      end
+
+      next unless type_defining?(item, c_module)
+
+      # A typedef/struct/enum moved here may depend on a macro (e.g. an array-size
+      # constant) that preceded it in the original source -- this header is #included
+      # before any macro generate_header later emits inline into the non-shared
+      # header, so that macro would otherwise be undefined here. Carrying it forward
+      # is safe: an identical #define may legally repeat, so generate_header's own
+      # unmodified inline copy causes no redefinition conflict.
+      pending_macros.each { |macro| io << macro.text << "\n" }
+      pending_macros.clear
+
+      io << item.text << "\n"
+      anything_emitted = true
+    end
+
+    return write_following_includes( io, following, macros: pending_macros, separate: anything_emitted ) if following.any?
+
+    io << "\n" if anything_emitted
+  end
+
+  # The source's includes after the module header, written where the header's items end, as the
+  # source meets them when it compiles. The spoof keeps the real header out, so these includes
+  # find its types and macros only in what a generated header writes ahead of them. The types
+  # header has held back its header macros no type followed, so they come first. The includes
+  # are consumed. Returns true, since the output then ends in a blank line.
+  def write_following_includes(io, includes, macros: [], separate: false)
+    io << macros.map { |macro| "#{macro.text}\n" }.join
+    io << "\n" if separate or macros.any?
+    macros.clear
+    includes.each { |include| io << "#{include}\n" }
+    includes.clear
+    io << "\n"
+    return true
   end
 
   # Whether a macro statement is nothing but the definition of `include_guard`. Anchored so a
@@ -219,7 +251,9 @@ class GeneratorPartials
   # @param include_variables [Boolean] True for implementation header (emits extern vars); false for interface
   # @param include_guard [String, nil] The real module header's own guard, spoofed so a transitive
   #   reach at that header finds it already satisfied. nil when the header has no guard.
-  def generate_header(io, name, includes, function_list, c_module, include_variables:, include_guard: nil)
+  # @param following_includes [Array] The source's includes after the module header, written where
+  #   the header's items end (see write_following_includes)
+  def generate_header(io, name, includes, function_list, c_module, include_variables:, include_guard: nil, following_includes: [])
     guard = FileWrapper.generate_include_guard( name )
     emit_preamble( io, guard, include_guard, includes )
 
@@ -232,8 +266,14 @@ class GeneratorPartials
     labels = c_module.variable_declarations.select( &:asm_label ).to_h { |v| [v.name, v.asm_label] }
     last_was_func = false
     anything_emitted = false
+    following = following_includes.dup
 
     c_module.element_sequence.each do |item|
+      # The includes end in a blank line, as a function does
+      if item.origin == :source and following.any?
+        last_was_func = anything_emitted = write_following_includes( io, following, separate: anything_emitted && !last_was_func )
+      end
+
       case item
       when CExtractorTypes::CStatement
         # Typedefs and aggregate definitions live in the shared types header generated by
@@ -275,6 +315,10 @@ class GeneratorPartials
         last_was_func = true
         anything_emitted = true
       end
+    end
+
+    if following.any?
+      last_was_func = anything_emitted = write_following_includes( io, following, separate: anything_emitted && !last_was_func )
     end
 
     # Non-function items end with \n; add one more for a blank line before #endif.

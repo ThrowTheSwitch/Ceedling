@@ -30,7 +30,7 @@ A further round of checks happens later, once the module’s real functions are 
 
 Once a module’s configuration is known, a class called `Partializer` locates its real header and source files and hands them off for preprocessing. The preprocessed result is then handed to the c_extractor subsystem, which returns a structured picture of every function, variable, and type the module contains. The header’s picture and the source’s picture are merged into one combined view of the whole module.
 
-Each file is extracted on its own before the merge, so every function can record where it came from. `CModule#stamp_origin!` marks each one `:header` or `:source`. The extractor reads text alone and cannot know a file’s role, so `Partializer` stamps it. Deciding what a Partial carries depends on that origin.
+Each file is extracted on its own before the merge, so every item can record where it came from. `CModule#stamp_origin!` marks each function, variable, and statement `:header` or `:source`. The extractor reads text alone and cannot know a file’s role, so `Partializer` stamps it. Deciding what a Partial carries depends on that origin. So does where a generated header writes the source’s later includes.
 
 A second class, `PartializerHelper`, finishes preparing that combined view. It traces every function back to its original line number, following it through preprocessing to the real file it came from. This traceability matters later, when a generated file needs to point a coverage tool, a debugger, or a compiler message back at the true home of what it holds, rather than at the generated Partial standing in for it. `PartializerHelper` leans on a lower layer of its own, `PartializerUtils`, for the actual text work this requires.
 
@@ -79,6 +79,13 @@ The plan also names each `extern` variable whose struct or union type the module
 
 Once both lists are settled, a separate class named `GeneratorPartials` writes the actual files to disk. It lives outside this directory, alongside Ceedling’s other file-writing classes, deliberately kept apart from the classes that decide what belongs in a Partial. A tested module gets an implementation header and source. A mocked module gets an interface header, in the same shape CMock expects for any other header it mocks. Each promoted function is written with a line marker (`#line`) immediately ahead of it, pointing a coverage tool or a debugger back at the function’s real, original location rather than at the generated file holding it.
 
+Every generated header orders its includes the way the module’s source compiles them. Each header first spoofs the real header’s include guard, so a header that includes the real one finds it already satisfied. That header then needs the module’s types and macros written ahead of it. So the includes come in two groups, split where the source includes the module’s own header:
+
+- The leading group holds the source’s includes ahead of the module’s header, then the header’s own includes.
+- The following group holds the source’s includes after the module’s header. It is written between the header’s items and the source’s.
+
+The types header also writes the header’s macros ahead of the following group, even a macro no type follows. A mocked Partial’s interface header takes the place of the real header it replaces. `Partializer` forms the groups as `Partials::IncludeGroups`, and `GeneratorPartials` writes them.
+
 The implementation source also writes the carry plan. It walks the module’s items in their original order after every include, so a carried item sees each header the module’s code saw, the module’s own mock interface included. `GeneratorPartials` decides what each item is, and a `PartialSourceWriter` writes it. The writer keeps the state that spans items: an open run of prototypes, the file a `#line` last named, and the line count of the file so far.
 
 A carried prototype is written as the user spelled it, behind a `#line` naming its original file and line. A run of carried prototypes sits inside GCC diagnostic pragmas that quiet `-Wredundant-decls`, unless `:partials` ↳ `:suppress_redundant_decls` is off. A carried helper is written as its header wrote it, any function-scope `static` promoted, and anchored with `#line` like a selected body. After any located item, a `#line` hands attribution back to the generated file before the next item without a location of its own. Every `#line` path uses forward slashes, since a backslash in its string starts an escape sequence. Nothing carried is written to a header, so the test file and runner compile exactly what the selection gives them.
@@ -91,7 +98,7 @@ A delta build writes a Partial’s files again only when something generation re
 
 - The module’s original header and source, and the preprocessed copies of each that extraction parses. The copies connect generation to preprocessing. Whatever rewrites them, such as forced fallback preprocessing or a different preprocessor, regenerates the Partial. An unchanged rebuild rewrites nothing.
 - The test’s selection for the module: each side’s selection mode, additions, and subtractions.
-- The include list of each generated file, which depends on the test’s other Partial modules and how each is selected. The record’s lists leave out the types header, since the module’s files decide whether there is one.
+- The includes of each generated file, group by group, which depend on the test’s other Partial modules and how each is selected. The record’s lists leave out the types header, since the module’s files decide whether there is one.
 - The real header’s include guard, which every generated file spoofs.
 - The preprocessing flags, defines, and search paths, and the project’s `:partials` settings.
 
