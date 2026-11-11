@@ -1433,6 +1433,42 @@ describe Partializer do
       )
     end
 
+    # The implementation header already stands where this module's header was, so the
+    # interface header follows it rather than everything else.
+    it "puts this module's own interface header right after its implementation header" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('module').and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('last.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(
+        ['ceedling_partial_module_impl.h', 'ceedling_partial_module_interface.h', 'last.h']
+      )
+    end
+
+    it "puts a mocked dependency's interface header where its real header was" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('other').and_return('ceedling_partial_other_interface.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('first.h'), UserInclude.new('other.h'), UserInclude.new('module.h'), UserInclude.new('last.h')],
+        partials: { 'other' => make_partial_config(mocks_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(
+        ['first.h', 'ceedling_partial_other_interface.h', 'ceedling_partial_module_impl.h', 'last.h']
+      )
+    end
+
     it "carries no interface header for a module that is tested but not mocked" do
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
         .with('module').and_return('ceedling_partial_module_impl.h')
@@ -1889,6 +1925,22 @@ describe Partializer do
       )
 
       expect( result.map( &:filename ) ).to eq(['ceedling_partial_other_interface.h'])
+    end
+
+    # Whatever the real header declared, the includes after it could rely on. Its interface
+    # header declares the same names, so it belongs at the same place.
+    it "puts a mocked dependency's interface header where its real header was" do
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('other')
+        .and_return('ceedling_partial_other_interface.h')
+
+      result = @partializer.remap_types_header_includes(
+        name: 'module',
+        includes: [UserInclude.new('first.h'), UserInclude.new('other.h'), UserInclude.new('last.h'), UserInclude.new('module.h')],
+        partials: { 'other' => make_partial_config(mocks_type: :public) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(['first.h', 'ceedling_partial_other_interface.h', 'last.h'])
     end
 
     it "drops a partialized dependency that is not mocked" do

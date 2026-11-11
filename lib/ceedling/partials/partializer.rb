@@ -771,7 +771,8 @@ class Partializer
           name: name,
           partials: partials,
           drop_unmocked: shared_types_header,
-          skip_self: shared_types_header
+          skip_self: shared_types_header,
+          replacement: replacement
         )
       else
         PartializerRuntime.raise_on_option( others )
@@ -789,10 +790,10 @@ class Partializer
     return _includes
   end
 
-  # Appends the generated interface header for each mocked partialized module the original list
-  # named, then removes the real headers those replaced. `skip_self` decides whether the module
-  # being generated counts as one of them, which it does everywhere except the types header --
-  # see the call site.
+  # Puts the generated interface header of each mocked partialized module the original list
+  # named where that module's real header was, then removes any other copies of the real
+  # headers. `skip_self` decides whether the module being generated counts as one of them,
+  # which it does everywhere except the types header -- see the call site.
   #
   # Mutates `includes`, which always arrives fresh from splice_in_replacement.
   #
@@ -801,7 +802,7 @@ class Partializer
   # added later without updating the check, so a module mocked via either was silently never
   # redirected: its real header, and any static inline or static function bodies in it, stayed
   # #include'd verbatim and compiled straight past the mock.
-  def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:, skip_self:)
+  def _redirect_mocked_partials(includes:, original:, name:, partials:, drop_unmocked:, skip_self:, replacement:)
     retired = []
 
     partials.each do |_module, config|
@@ -811,14 +812,28 @@ class Partializer
       if config.mocks.type.nil?
         retired << _module if drop_unmocked
       else
-        includes << UserInclude.new(
-          @file_path_utils.form_partial_interface_header_filename(_module)
-        )
+        _place_interface_header( includes, _module, (_module == name) ? replacement : nil )
         retired << _module
       end
     end
 
     remove_matching_includes( includes: includes, modules: retired )
+  end
+
+  # An interface header declares what its module's real header declared, which the includes
+  # after it may rely on. So it takes that header's place. The module being generated has
+  # already had its header replaced, so its interface header follows the replacement. With
+  # neither in the list, it goes last.
+  def _place_interface_header(includes, _module, replacement)
+    interface = UserInclude.new( @file_path_utils.form_partial_interface_header_filename(_module) )
+
+    index = includes.index { |include| include.filename.ext().downcase() == module_basename( _module ) }
+    return includes[index] = interface if index
+
+    index = replacement && includes.index { |include| include.filename == File.basename( replacement ) }
+    return includes.insert( index + 1, interface ) if index
+
+    includes << interface
   end
 
   # Swaps `name`'s own header include for `replacement` at that same list position,
