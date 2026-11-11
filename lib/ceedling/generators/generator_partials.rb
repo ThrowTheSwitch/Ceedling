@@ -177,9 +177,8 @@ class GeneratorPartials
   # The source's includes after the module header, written where the header's items end, as the
   # source meets them when it compiles. The spoof keeps the real header out, so these includes
   # find its types and macros only in what a generated header writes ahead of them. The types
-  # header has held back its header macros no type followed, so they come first. Ends in a
-  # blank line.
-  # The includes are consumed. Returns true, since the output then ends in a blank line.
+  # header has held back its header macros no type followed, so they come first. The includes
+  # are consumed. Returns true, since the output then ends in a blank line.
   def write_following_includes(io, includes, macros: [], separate: false)
     io << macros.map { |macro| "#{macro.text}\n" }.join
     io << "\n" if separate or macros.any?

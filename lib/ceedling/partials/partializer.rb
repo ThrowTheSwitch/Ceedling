@@ -740,10 +740,6 @@ class Partializer
     end.to_h
   end
 
-  # One body behind all four public remaps. Each differs only in what replaces this module's
-  # own header, what becomes of other partialized modules, and the noun it logs under -- the
-  # splice, the sanitize, and the logging are identical in every case.
-  #
   # A generated header's includes in the order the source compiles them: the source's includes
   # ahead of the module's header, the header's own, then the source's after it. The last make
   # up the following group (see Partials::IncludeGroups). A source that never includes its own
@@ -762,6 +758,10 @@ class Partializer
     return Partials::IncludeGroups.new( leading: remapped[0...split], following: remapped[(split + 1)..] )
   end
 
+  # One body behind all four public remaps. Each differs only in what replaces this module's
+  # own header, what becomes of other partialized modules, and the noun it logs under -- the
+  # splice, the sanitize, and the logging are identical in every case.
+  #
   # `others` selects the treatment of every OTHER partialized module in the same test file:
   #   :drop         -- remove its include outright, with no substitute
   #   :mock_or_keep -- redirect to its interface header when mocked, else leave its real header
