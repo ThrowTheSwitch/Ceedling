@@ -903,7 +903,9 @@ class TestBuildExecutor
 
     return nil if isolated.empty?
 
-    isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq )
+    # Each copy names its original through #line, so diagnostics, __FILE__, debug info and
+    # coverage data report the original
+    isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq, preserve_location: true )
 
     { search_paths: [isolation.dir] + testable.search_paths, isolation: isolation }
   end

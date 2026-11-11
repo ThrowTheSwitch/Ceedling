@@ -496,7 +496,7 @@ describe TestBuildExecutor do
 
       it "retries the compile with corrected search paths when a sibling risk is found, and clears an initial failure" do
         allow(@quote_include_isolator).to receive(:isolate)
-          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'], preserve_location: true )
           .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         ex = ShellException.new( shell_result: { output: 'redeclaration of struct gpio' }, name: 'compiler' )
@@ -610,7 +610,7 @@ describe TestBuildExecutor do
       it "applies whatever isolation the existing .d file already reveals even when this object is not stale" do
         allow(@dependinator).to receive(:stale?).with( 'build/foo.o' ).and_return( false )
         allow(@quote_include_isolator).to receive(:isolate)
-          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'], preserve_location: true )
           .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
 
         expect(@generator).to_not receive(:generate_object_file_c)
@@ -841,7 +841,7 @@ describe TestBuildExecutor do
         )
         isolation = isolation_in( 'build/test/out/a_test/isolated_headers/xyz' )
         allow(@quote_include_isolator).to receive(:isolate)
-          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'], preserve_location: true )
           .and_return( isolation )
 
         expect( call_it() ).to eq(
@@ -887,7 +887,7 @@ describe TestBuildExecutor do
           }
         )
         allow(@quote_include_isolator).to receive(:isolate)
-          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
+          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'], preserve_location: true )
           .and_return( isolation_in( 'isolated/dir' ) )
 
         result = call_it()
