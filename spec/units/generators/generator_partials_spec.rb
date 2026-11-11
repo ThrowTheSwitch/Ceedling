@@ -238,7 +238,7 @@ describe GeneratorPartials do
         header_includes,
         defns,
         c_module,
-        { include_variables: true, include_guard: nil }
+        { include_variables: true, include_guard: nil, following_includes: [] }
       )
 
       # Verify generate_source was called with correct parameters
@@ -318,7 +318,7 @@ describe GeneratorPartials do
         includes,
         decls,
         c_module,
-        { include_variables: false, include_guard: nil }
+        { include_variables: false, include_guard: nil, following_includes: [] }
       )
 
       # Verify file path utilities were called
@@ -461,6 +461,93 @@ describe GeneratorPartials do
       )
 
       expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    # The source's includes after the module header follow everything that header supplies, as
+    # when the source compiles. The spoof keeps the real header out, so those includes find its
+    # types and macros only here.
+    context "with the source's includes after the module header" do
+      def stamped(text, origin)
+        make_stmt(text: text).tap { |stmt| stmt.origin = origin }
+      end
+
+      def generate_sensor_types(*items, following_includes:)
+        buf = types_buffer( 'sensor', 'sensor_types.h' )
+        types, macros = items.partition { |item| item.text.start_with?( 'typedef' ) }
+
+        @generator.generate_types(
+          name: 'sensor',
+          c_module: CExtractorTypes::CModule.new(
+            type_definitions: types, macro_definitions: macros, element_sequence: items
+          ),
+          output_path: '/path/to/output',
+          includes: [SystemInclude.new('stdint.h'), UserInclude.new('sensor_config.h')],
+          following_includes: following_includes,
+          include_guard: 'SENSOR_H'
+        )
+
+        mask_include_guard_hashes( buf.string )
+      end
+
+      let(:header_type)  { stamped( 'typedef enum { SENSOR_OK } sensor_status_t;', :header ) }
+      let(:header_macro) { stamped( '#define SENSOR_COUNT 4', :header ) }
+      let(:source_type)  { stamped( 'typedef struct { sensor_status_t status; } sensor_reading_t;', :source ) }
+
+      it "writes them where the header's types end, after the header's macros" do
+        file_contents = <<~CONTENTS
+        #ifndef GEN<HASH>_SENSOR_TYPES_H_CEEDLING
+        #define GEN<HASH>_SENSOR_TYPES_H_CEEDLING
+
+        #define SENSOR_H
+
+        #include <stdint.h>
+        #include "sensor_config.h"
+
+        typedef enum { SENSOR_OK } sensor_status_t;
+        #define SENSOR_COUNT 4
+
+        #include "sensor_log.h"
+
+        typedef struct { sensor_status_t status; } sensor_reading_t;
+
+        #endif // GEN<HASH>_SENSOR_TYPES_H_CEEDLING
+        CONTENTS
+
+        result = generate_sensor_types( header_type, header_macro, source_type, following_includes: [UserInclude.new('sensor_log.h')] )
+
+        expect( result.strip ).to eq( file_contents.strip )
+      end
+
+      it "writes them last when the source adds nothing" do
+        file_contents = <<~CONTENTS
+        #ifndef GEN<HASH>_SENSOR_TYPES_H_CEEDLING
+        #define GEN<HASH>_SENSOR_TYPES_H_CEEDLING
+
+        #define SENSOR_H
+
+        #include <stdint.h>
+        #include "sensor_config.h"
+
+        typedef enum { SENSOR_OK } sensor_status_t;
+        #define SENSOR_COUNT 4
+
+        #include "sensor_log.h"
+
+        #endif // GEN<HASH>_SENSOR_TYPES_H_CEEDLING
+        CONTENTS
+
+        result = generate_sensor_types( header_type, header_macro, following_includes: [UserInclude.new('sensor_log.h')] )
+
+        expect( result.strip ).to eq( file_contents.strip )
+      end
+
+      # Without later includes, a macro goes only ahead of a type that follows it
+      it "writes the same header as before when there are none" do
+        result = generate_sensor_types( header_type, source_type, header_macro, following_includes: [] )
+
+        expect( result ).to include( "sensor_status_t;\ntypedef struct { sensor_status_t status; } sensor_reading_t;\n\n#endif" )
+        expect( result ).not_to include( 'SENSOR_COUNT' )
+      end
     end
 
     it "states no guard when the module's header has none to spoof" do
@@ -714,6 +801,52 @@ describe GeneratorPartials do
       )
 
       expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    # A module with no types has no types header, so its macros and the source's later
+    # includes meet here, in the order the source compiles them
+    it "writes the source's later includes where the header's items end" do
+      file_contents = <<~CONTENTS
+      #ifndef GEN<HASH>_SENSOR_IMPL_H_CEEDLING
+      #define GEN<HASH>_SENSOR_IMPL_H_CEEDLING
+
+      #define SENSOR_H
+
+      #include "sensor_config.h"
+
+      #define SENSOR_COUNT 4
+
+      #include "sensor_log.h"
+
+      void sensor_read(void);
+
+      #endif // GEN<HASH>_SENSOR_IMPL_H_CEEDLING
+
+      CONTENTS
+
+      macro = make_stmt(text: '#define SENSOR_COUNT 4').tap { |stmt| stmt.origin = :header }
+      read  = CExtractorTypes::CFunctionDefinition.new(name: 'sensor_read', origin: :source)
+      decls = [Partials.manufacture_function_declaration(name: 'sensor_read', signature: 'void sensor_read(void)')]
+
+      @generator.send(
+        :generate_header, buf, 'sensor_impl', [UserInclude.new('sensor_config.h')], decls, make_module( macro, read ),
+        include_variables: true, include_guard: 'SENSOR_H', following_includes: [UserInclude.new('sensor_log.h')]
+      )
+
+      expect( mask_include_guard_hashes(buf.string).strip() ).to eq file_contents.strip()
+    end
+
+    it "writes the source's later includes last when the source adds nothing" do
+      macro = make_stmt(text: '#define SENSOR_COUNT 4').tap { |stmt| stmt.origin = :header }
+
+      @generator.send(
+        :generate_header, buf, 'sensor_impl', [], [], make_module( macro ),
+        include_variables: true, following_includes: [UserInclude.new('sensor_log.h')]
+      )
+
+      expect( mask_include_guard_hashes(buf.string) ).to end_with(
+        "#define SENSOR_COUNT 4\n\n#include \"sensor_log.h\"\n\n#endif // GEN<HASH>_SENSOR_IMPL_H_CEEDLING\n\n"
+      )
     end
 
     it "should generate a header file with variable declarations (extern prefix added automatically)" do
