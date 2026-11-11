@@ -984,4 +984,111 @@ describe 'Partial header composition' do
     end
   end
 
+
+  # ---------------------------------------------------------------------------
+  context "includes the source names after the module's header" do
+  # ---------------------------------------------------------------------------
+
+    # A later header that includes the module's header reaches only the spoofed guard, so it
+    # finds the module's types and macros only in what a generated header writes ahead of it.
+    SENSOR_LOG_H = <<~C
+      #ifndef SENSOR_LOG_H
+      #define SENSOR_LOG_H
+      #include "sensor.h"
+      void sensor_log_status(sensor_status_t status);
+      #endif
+    C
+
+    # Issue #1402. The source's own type uses the header's type, so the types header holds both.
+    it "compiles when a later header uses the module header's types" do
+      @result = generate_partial(
+        module_name: 'sensor',
+        header: <<~C,
+          #ifndef SENSOR_H
+          #define SENSOR_H
+          #include <stdint.h>
+          typedef enum { SENSOR_OK, SENSOR_ERROR } sensor_status_t;
+          sensor_status_t sensor_read(int32_t *value);
+          #endif
+        C
+        source: <<~C,
+          #include "sensor_config.h"
+          #include "sensor.h"
+          #include "sensor_log.h"
+          #include <stdint.h>
+          typedef struct { int32_t value; sensor_status_t status; } sensor_reading_t;
+          sensor_status_t sensor_read(int32_t *value) {
+            sensor_reading_t reading = { SENSOR_DEFAULT_VALUE, SENSOR_OK };
+            *value = reading.value;
+            sensor_log_status(reading.status);
+            return reading.status;
+          }
+        C
+        header_includes: ['<stdint.h>'],
+        source_includes: ['sensor_config.h', 'sensor.h', 'sensor_log.h', '<stdint.h>'],
+        extra: {
+          'sensor_config.h' => "#ifndef SENSOR_CONFIG_H\n#define SENSOR_CONFIG_H\n#define SENSOR_DEFAULT_VALUE 42\n#endif\n",
+          'sensor_log.h'    => SENSOR_LOG_H
+        }
+      )
+
+      compile = compile_partial( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+
+      alone = compile_types_header_alone( @result )
+      expect( alone.ok ).to be(true), "expected the types header to compile alone, got: #{alone.first_error}"
+    end
+
+    # A module with no types gets no types header, so its implementation and interface headers
+    # write its macros ahead of the later includes themselves
+    it "compiles when a later header uses a macro of a module with no types" do
+      @result = generate_partial(
+        module_name: 'sensor',
+        header: <<~C,
+          #ifndef SENSOR_H
+          #define SENSOR_H
+          #define SENSOR_COUNT 4
+          void sensor_read(void);
+          #endif
+        C
+        source: <<~C,
+          #include "sensor.h"
+          #include "sensor_log.h"
+          void sensor_read(void) {
+            int log[SENSOR_COUNT] = { 0 };
+            sensor_log_all(log);
+          }
+        C
+        source_includes: ['sensor.h', 'sensor_log.h'],
+        extra: {
+          'sensor_log.h' => "#ifndef SENSOR_LOG_H\n#define SENSOR_LOG_H\n#include \"sensor.h\"\nvoid sensor_log_all(int log[SENSOR_COUNT]);\n#endif\n"
+        }
+      )
+
+      expect( @result.types_h ).to be_nil
+      compile = compile_both_headers( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
+    # The mocked module's interface header declares its types, so it stands where the real
+    # header stood: ahead of the module's header, whose types use it
+    it "keeps a mocked Partial's interface header ahead of the module's types" do
+      @result = generate_partial(
+        module_name: 'host',
+        header: "#ifndef HOST_H\n#define HOST_H\ntypedef struct { guest_handle_t h; } host_t;\n#endif\n",
+        source: "#include \"guest.h\"\n#include \"host.h\"\n#include \"later.h\"\n",
+        source_includes: ['guest.h', 'host.h', 'later.h'],
+        partials: other_partial( 'guest', mocked: true ),
+        extra: {
+          'guest.h' => "#ifndef GUEST_H\n#define GUEST_H\ntypedef int guest_handle_t;\n#endif\n",
+          'later.h' => "#ifndef LATER_H\n#define LATER_H\n#endif\n"
+        }
+      )
+
+      body = @result.types_h.to_s
+      expect( body.index( 'ceedling_partial_guest_interface.h' ) ).to be < body.index( 'host_t;' )
+      expect( body.index( '"later.h"' ) ).to be > body.index( 'host_t;' )
+    end
+  end
+
 end
