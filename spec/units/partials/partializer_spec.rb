@@ -903,9 +903,9 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to eq([])
     end
@@ -915,9 +915,9 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('module.h'))
@@ -932,9 +932,9 @@ describe Partializer do
 
       result = @partializer.remap_implementation_header_includes(
         name: 'drivers/uart/config',
-        includes: includes,
+        source_includes: includes,
         partials: {}
-      )
+      ).to_a
 
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
@@ -944,10 +944,10 @@ describe Partializer do
 
       result = @partializer.remap_implementation_header_includes(
         name: 'drivers/uart/config',
-        includes: includes,
+        source_includes: includes,
         partials: {},
         types_header: 'drivers/uart/ceedling_partial_config_types.h'
-      )
+      ).to_a
 
       expect(result.map(&:filepath)).to eq(
         ['header1.h', 'drivers/uart/ceedling_partial_config_types.h', 'header2.h']
@@ -959,9 +959,9 @@ describe Partializer do
 
       result = @partializer.remap_implementation_header_includes(
         name: 'drivers/uart/config',
-        includes: includes,
+        source_includes: includes,
         partials: { 'drivers/spi/other' => nil }
-      )
+      ).to_a
 
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
@@ -973,9 +973,9 @@ describe Partializer do
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('partial_module.h'))
@@ -994,9 +994,9 @@ describe Partializer do
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('partial1.h'))
@@ -1015,9 +1015,9 @@ describe Partializer do
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array(
         [
@@ -1040,9 +1040,9 @@ describe Partializer do
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
@@ -1057,9 +1057,9 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('module.h'))
@@ -1080,9 +1080,9 @@ describe Partializer do
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
@@ -1092,9 +1092,9 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
@@ -1115,9 +1115,9 @@ describe Partializer do
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       
       expect(result).to match_array(
         [
@@ -1136,10 +1136,10 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials,
         types_header: 'ceedling_partial_module_types.h'
-      )
+      ).to_a
 
       expect(result).to include(UserInclude.new('ceedling_partial_module_types.h'))
     end
@@ -1149,9 +1149,9 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
 
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
@@ -1169,10 +1169,10 @@ describe Partializer do
       ]
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: {},
         types_header: 'ceedling_partial_module_types.h'
-      )
+      ).to_a
 
       expect(result).to eq([
         UserInclude.new('header1.h'),
@@ -1185,10 +1185,10 @@ describe Partializer do
       includes = [UserInclude.new('header1.h')]
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: {},
         types_header: 'ceedling_partial_module_types.h'
-      )
+      ).to_a
 
       expect(result).to eq([
         UserInclude.new('header1.h'),
@@ -1202,12 +1202,24 @@ describe Partializer do
   ###
 
   context "#remap_interface_header_includes" do
+    # The types header carries the header's own content, so it stands where the header was
+    it "puts the types header where the module's header was, ahead of the following group" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'module',
+        source_includes: [UserInclude.new( 'config.h' ), UserInclude.new( 'module.h' ), UserInclude.new( 'log.h' )],
+        header_includes: [UserInclude.new( 'base.h' )], partials: {}, types_header: 'module_types.h'
+      )
+
+      expect( groups.leading.map( &:filename ) ).to eq( ['config.h', 'module_types.h', 'base.h'] )
+      expect( groups.following.map( &:filename ) ).to eq( ['log.h'] )
+    end
+
     it "returns empty array when input is empty and no partials" do
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: [],
+        source_includes: [],
         partials: {}
-      )
+      ).to_a
       expect(result).to eq([])
     end
 
@@ -1215,9 +1227,9 @@ describe Partializer do
       includes = [UserInclude.new('header1.h'), UserInclude.new('module.h'), UserInclude.new('header2.h')]
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: {}
-      )
+      ).to_a
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('module.h'))
     end
@@ -1227,9 +1239,9 @@ describe Partializer do
       partials = { 'partial_module' => nil }
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('partial_module.h'))
     end
@@ -1244,9 +1256,9 @@ describe Partializer do
       partials = { 'partial1' => nil, 'partial2' => nil }
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('partial1.h'))
       expect(result).not_to include(UserInclude.new('partial2.h'))
@@ -1262,9 +1274,9 @@ describe Partializer do
       partials = { 'partial_module' => nil }
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       expect(result).to match_array([
         UserInclude.new('header1.h'),
         UserInclude.new('header2.h'),
@@ -1282,9 +1294,9 @@ describe Partializer do
       partials = { 'partial_module' => nil }
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
 
@@ -1297,9 +1309,9 @@ describe Partializer do
       ]
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: {}
-      )
+      ).to_a
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
       expect(result).not_to include(UserInclude.new('module.h'))
       expect(result).not_to include(UserInclude.new('MODULE.H'))
@@ -1315,9 +1327,9 @@ describe Partializer do
       partials = { 'partial1' => nil, 'partial2' => nil, 'partial3' => nil }
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
 
@@ -1325,9 +1337,9 @@ describe Partializer do
       includes = [UserInclude.new('header1.h'), UserInclude.new('header2.h'), UserInclude.new('module.h')]
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: {}
-      )
+      ).to_a
       expect(result).to match_array([UserInclude.new('header1.h'), UserInclude.new('header2.h')])
     end
 
@@ -1344,9 +1356,9 @@ describe Partializer do
       partials = { 'partial1' => nil, 'partial2' => nil }
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
       expect(result).to match_array([
         UserInclude.new('header1.h'),
         UserInclude.new('header2.h'),
@@ -1362,10 +1374,10 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials,
         types_header: 'ceedling_partial_module_types.h'
-      )
+      ).to_a
 
       expect(result).to include(UserInclude.new('ceedling_partial_module_types.h'))
     end
@@ -1375,9 +1387,9 @@ describe Partializer do
       partials = {}
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: partials
-      )
+      ).to_a
 
       expect(result).to match_array([UserInclude.new('header1.h')])
     end
@@ -1392,10 +1404,10 @@ describe Partializer do
       ]
       result = @partializer.remap_interface_header_includes(
         name: 'module',
-        includes: includes,
+        source_includes: includes,
         partials: {},
         types_header: 'ceedling_partial_module_types.h'
-      )
+      ).to_a
 
       expect(result).to eq([
         UserInclude.new('header1.h'),
@@ -1888,14 +1900,76 @@ describe Partializer do
   ###
 
   context "#remap_types_header_includes" do
+    # The source meets its later includes only after the module header, so they follow
+    # whatever the header supplies
+    context "grouping includes where the source includes the module's header" do
+      def types_groups(source, header = [], partials: {})
+        @partializer.remap_types_header_includes(
+          name: 'module', source_includes: source.map { |name| UserInclude.new( name ) },
+          header_includes: header.map { |name| UserInclude.new( name ) }, partials: partials
+        )
+      end
+
+      def filenames(groups)
+        [groups.leading.map( &:filename ), groups.following.map( &:filename )]
+      end
+
+      it "puts the header's includes after the source's earlier ones, and the rest after them" do
+        groups = types_groups( ['config.h', 'module.h', 'log.h'], ['base.h'] )
+
+        expect( filenames( groups ) ).to eq( [['config.h', 'base.h'], ['log.h']] )
+      end
+
+      it "keeps an include named in both groups in its earlier place" do
+        groups = types_groups( ['module.h', 'base.h'], ['base.h'] )
+
+        expect( filenames( groups ) ).to eq( [['base.h'], []] )
+      end
+
+      it "leaves nothing to follow when the source never includes the module's header" do
+        groups = types_groups( ['a.h', 'b.h'], ['c.h'] )
+
+        expect( filenames( groups ) ).to eq( [['a.h', 'b.h', 'c.h'], []] )
+      end
+
+      it "keeps a system include ahead of everything" do
+        groups = @partializer.remap_types_header_includes(
+          name: 'module', source_includes: [UserInclude.new( 'module.h' ), SystemInclude.new( 'stdint.h' )],
+          header_includes: [], partials: {}
+        )
+
+        expect( filenames( groups ) ).to eq( [['stdint.h'], []] )
+      end
+
+      it "redirects a mocked dependency within the following group" do
+        allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+          .with('other').and_return('ceedling_partial_other_interface.h')
+
+        groups = types_groups( ['module.h', 'other.h'], partials: { 'other' => make_partial_config(mocks_type: :public) } )
+
+        expect( filenames( groups ) ).to eq( [[], ['ceedling_partial_other_interface.h']] )
+      end
+
+      it "logs every include and no boundary" do
+        expect(@loginator).to receive(:log_list).with(
+          [UserInclude.new( 'config.h' ), UserInclude.new( 'log.h' )], anything, Verbosity::OBNOXIOUS
+        )
+
+        @partializer.remap_types_header_includes(
+          name: 'module', source_includes: [UserInclude.new( 'config.h' ), UserInclude.new( 'module.h' ), UserInclude.new( 'log.h' )],
+          partials: {}, test: 'a_test'
+        )
+      end
+    end
+
     # Nothing replaces this module's own header here. The types header cannot include itself, so
     # its own entry is simply dropped.
     it "drops the module's own header without substituting anything" do
       result = @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
+        source_includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
         partials: {}
-      )
+      ).to_a
 
       expect( result ).to eq([UserInclude.new('foundation.h')])
     end
@@ -1903,9 +1977,9 @@ describe Partializer do
     it "keeps every other include in its original relative order" do
       result = @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('first.h'), UserInclude.new('module.h'), UserInclude.new('last.h')],
+        source_includes: [UserInclude.new('first.h'), UserInclude.new('module.h'), UserInclude.new('last.h')],
         partials: {}
-      )
+      ).to_a
 
       expect( result.map( &:filename ) ).to eq(['first.h', 'last.h'])
     end
@@ -1920,9 +1994,9 @@ describe Partializer do
 
       result = @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
+        source_includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
         partials: { 'other' => make_partial_config(mocks_type: :public) }
-      )
+      ).to_a
 
       expect( result.map( &:filename ) ).to eq(['ceedling_partial_other_interface.h'])
     end
@@ -1936,9 +2010,9 @@ describe Partializer do
 
       result = @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('first.h'), UserInclude.new('other.h'), UserInclude.new('last.h'), UserInclude.new('module.h')],
+        source_includes: [UserInclude.new('first.h'), UserInclude.new('other.h'), UserInclude.new('last.h'), UserInclude.new('module.h')],
         partials: { 'other' => make_partial_config(mocks_type: :public) }
-      )
+      ).to_a
 
       expect( result.map( &:filename ) ).to eq(['first.h', 'ceedling_partial_other_interface.h', 'last.h'])
     end
@@ -1946,9 +2020,9 @@ describe Partializer do
     it "drops a partialized dependency that is not mocked" do
       result = @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
+        source_includes: [UserInclude.new('module.h'), UserInclude.new('other.h')],
         partials: { 'other' => make_partial_config(tests_type: :public) }
-      )
+      ).to_a
 
       expect( result ).to be_empty
     end
@@ -1958,9 +2032,9 @@ describe Partializer do
     it "leaves a header whose name only extends a partialized module's name" do
       result = @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('module.h'), UserInclude.new('other_extra.h'), UserInclude.new('other.h')],
+        source_includes: [UserInclude.new('module.h'), UserInclude.new('other_extra.h'), UserInclude.new('other.h')],
         partials: { 'other' => make_partial_config(tests_type: :public) }
-      )
+      ).to_a
 
       expect( result.map( &:filename ) ).to eq(['other_extra.h'])
     end
@@ -1974,9 +2048,9 @@ describe Partializer do
 
       result = @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
+        source_includes: [UserInclude.new('module.h'), UserInclude.new('foundation.h')],
         partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
-      )
+      ).to_a
 
       expect( result.map( &:filename ) ).to eq(['foundation.h'])
     end
@@ -1990,10 +2064,10 @@ describe Partializer do
 
       @partializer.remap_types_header_includes(
         name: 'module',
-        includes: [UserInclude.new('foundation.h')],
+        source_includes: [UserInclude.new('foundation.h')],
         partials: {},
         test: 'a_test'
-      )
+      ).to_a
     end
   end
 

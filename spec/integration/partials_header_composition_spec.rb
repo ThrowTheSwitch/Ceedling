@@ -55,13 +55,15 @@ describe 'Partial header composition' do
   # ---------------------------------------------------------------------------
 
     # Issue #1319, first reporter. Types live in the module header and reference types
-    # from a header the source includes after the module's own header.
+    # from a header the module header includes. The source includes that header again,
+    # after the module's own header.
     it 'compiles when the module header is included before its dependency' do
       @result = generate_partial(
         module_name: 'lm75b',
         header: <<~C,
           #ifndef LM75B_H
           #define LM75B_H
+          #include "foundation.h"
           typedef struct {
               S16 os_over_temperature_deci_c;
               U8  pin_state;
@@ -70,6 +72,7 @@ describe 'Partial header composition' do
           #endif
         C
         source: "#include <string.h>\n#include \"lm75b.h\"\n#include \"foundation.h\"\n",
+        header_includes: ['foundation.h'],
         source_includes: ['<string.h>', 'lm75b.h', 'foundation.h'],
         extra: { 'foundation.h' => FOUNDATION_H }
       )
@@ -195,10 +198,12 @@ describe 'Partial header composition' do
         header: <<~C,
           #ifndef ALERTMANAGER_H
           #define ALERTMANAGER_H
+          #include "foundation.h"
           typedef struct { S16 level; } AlertEntry_t;
           #endif
         C
         source: "#include \"alertmanager.h\"\n#include \"facade.h\"\n#include \"foundation.h\"\n",
+        header_includes: ['foundation.h'],
         source_includes: ['alertmanager.h', 'facade.h', 'foundation.h'],
         extra: {
           'foundation.h' => FOUNDATION_H,
@@ -505,8 +510,9 @@ describe 'Partial header composition' do
     it 'compiles with a system header ahead of the module header' do
       @result = generate_partial(
         module_name: 'lm75b',
-        header: "#ifndef LM75B_H\n#define LM75B_H\ntypedef struct { U8 pin; } lm75b_t;\n#endif\n",
+        header: "#ifndef LM75B_H\n#define LM75B_H\n#include \"foundation.h\"\ntypedef struct { U8 pin; } lm75b_t;\n#endif\n",
         source: "#include <string.h>\n#include \"lm75b.h\"\n#include \"foundation.h\"\n",
+        header_includes: ['foundation.h'],
         source_includes: ['<string.h>', 'lm75b.h', 'foundation.h'],
         extra: { 'foundation.h' => FOUNDATION_H }
       )

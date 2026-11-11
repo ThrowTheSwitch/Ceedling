@@ -19,6 +19,10 @@ require 'ceedling/encodinator'
 
 class Partializer
 
+  # Holds the place between a generated header's include groups while a list is remapped.
+  # Matched by identity, and named so no real include or module can match it.
+  INCLUDE_BOUNDARY = UserInclude.new( '<ceedling include group boundary>' ) unless const_defined?(:INCLUDE_BOUNDARY, false)
+
   # Explains helpers a Partial leaves behind because the module header has no include guard
   UNGUARDED_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_HELPERS_NOTICE, false)
     Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
@@ -199,15 +203,16 @@ class Partializer
     )
   end
 
-  # Includes for the generated implementation header. This module's own header is replaced by
-  # the shared types header at its original list position; every other partialized module's
-  # include is dropped.
+  # Includes for the generated implementation header, in groups (see _remap_include_groups). This
+  # module's own header is replaced by the shared types header at its original list position;
+  # every other partialized module's include is dropped.
   #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_implementation_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
-    _remap_includes(
+  def remap_implementation_header_includes(name:, source_includes:, partials:, header_includes: [], types_header: nil, test: nil)
+    _remap_include_groups(
       name:        name,
-      includes:    includes,
+      source:      source_includes,
+      header:      header_includes,
       partials:    partials,
       replacement: types_header,
       others:      :drop,
@@ -221,10 +226,11 @@ class Partializer
   # in one test file still gets exactly one definition of each of its types.
   #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_interface_header_includes(name:, includes:, partials:, types_header: nil, test: nil)
-    _remap_includes(
+  def remap_interface_header_includes(name:, source_includes:, partials:, header_includes: [], types_header: nil, test: nil)
+    _remap_include_groups(
       name:        name,
-      includes:    includes,
+      source:      source_includes,
+      header:      header_includes,
       partials:    partials,
       replacement: types_header,
       others:      :drop,
@@ -258,10 +264,11 @@ class Partializer
   # very content that module's own Partial replaced.
   #
   # When `test:` is provided, logs the resulting includes at OBNOXIOUS.
-  def remap_types_header_includes(name:, includes:, partials:, test: nil)
-    _remap_includes(
+  def remap_types_header_includes(name:, source_includes:, partials:, header_includes: [], test: nil)
+    _remap_include_groups(
       name:        name,
-      includes:    includes,
+      source:      source_includes,
+      header:      header_includes,
       partials:    partials,
       replacement: nil,
       others:      :mock_or_drop,
@@ -737,6 +744,24 @@ class Partializer
   # own header, what becomes of other partialized modules, and the noun it logs under -- the
   # splice, the sanitize, and the logging are identical in every case.
   #
+  # A generated header's includes in the order the source compiles them: the source's includes
+  # ahead of the module's header, the header's own, then the source's after it. The last make
+  # up the following group (see Partials::IncludeGroups). A source that never includes its own
+  # header leaves that group empty.
+  #
+  # The whole list is remapped at once, so deduplication, redirects, and sorting see every
+  # include. An include in both groups keeps its earlier place. A marker holds the boundary.
+  def _remap_include_groups(name:, source:, header:, **remap)
+    index     = source.index { |include| include.filename.ext().downcase() == module_basename( name ) }
+    leading   = index ? source[0..index] + header : source + header
+    following = index ? source[(index + 1)..] : []
+
+    remapped = _remap_includes( name: name, includes: leading + [INCLUDE_BOUNDARY] + following, **remap )
+    split    = remapped.index { |include| include.equal?( INCLUDE_BOUNDARY ) }
+
+    return Partials::IncludeGroups.new( leading: remapped[0...split], following: remapped[(split + 1)..] )
+  end
+
   # `others` selects the treatment of every OTHER partialized module in the same test file:
   #   :drop         -- remove its include outright, with no substitute
   #   :mock_or_keep -- redirect to its interface header when mocked, else leave its real header
@@ -782,7 +807,7 @@ class Partializer
     Includes.sanitize!(_includes)
 
     @loginator.log_list(
-      _includes,
+      _includes.reject { |include| include.equal?( INCLUDE_BOUNDARY ) },
       "#{noun} #{test}::#{name}:",
       Verbosity::OBNOXIOUS
     ) if test

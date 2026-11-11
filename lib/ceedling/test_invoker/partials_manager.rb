@@ -105,10 +105,10 @@ class PartialsManager
         partials:     @configurator.get_partials_config,
         selection:    { tests: config.tests.to_h, mocks: config.mocks.to_h },
         include_guard: module_include_guard,
-        types_includes:       record_includes[:types].map( &:to_s ),
-        impl_header_includes: record_includes[:impl_header].map( &:to_s ),
+        types_includes:       record_includes[:types].to_record,
+        impl_header_includes: record_includes[:impl_header].to_record,
         impl_source_includes: record_includes[:impl_source].map( &:to_s ),
-        interface_includes:   record_includes[:interface].map( &:to_s )
+        interface_includes:   record_includes[:interface].to_record
       }
 
       record = { files: antecedent_files, meta: antecedent_meta, name: name, partial: config.module }
@@ -155,9 +155,10 @@ class PartialsManager
             name:          name,
             partial:       config.module,
             c_module:      module_contents,
-            output_path:   testable.paths[:partials],
-            includes:      includes[:types],
-            include_guard: module_include_guard
+            output_path:        testable.paths[:partials],
+            includes:           includes[:types].leading,
+            following_includes: includes[:types].following,
+            include_guard:      module_include_guard
           )
         end
         state.lock.synchronize { skipped[:types] += 1 } if unchanged
@@ -205,17 +206,18 @@ class PartialsManager
           )
 
           @generator.generate_partial_implementation(
-            test:                     name,
-            partial:                  config.module,
-            function_definitions:     implementation,
-            c_module:                 module_contents,
-            header_includes:          includes[:impl_header],
-            source_includes:          includes[:impl_source],
-            output_path:              testable.paths[:partials],
-            include_guard:            module_include_guard,
-            carry:                    carry,
-            suppress_redundant_decls: @configurator.partials_suppress_redundant_decls,
-            extern_variables:         @configurator.partials_extern_variables
+            test:                      name,
+            partial:                   config.module,
+            function_definitions:      implementation,
+            c_module:                  module_contents,
+            header_includes:           includes[:impl_header].leading,
+            header_following_includes: includes[:impl_header].following,
+            source_includes:           includes[:impl_source],
+            output_path:               testable.paths[:partials],
+            include_guard:             module_include_guard,
+            carry:                     carry,
+            suppress_redundant_decls:  @configurator.partials_suppress_redundant_decls,
+            extern_variables:          @configurator.partials_extern_variables
           )
         end
 
@@ -231,7 +233,8 @@ class PartialsManager
             test:                  name,
             partial:               config.module,
             function_declarations: interface,
-            includes:              includes[:interface],
+            includes:              includes[:interface].leading,
+            following_includes:    includes[:interface].following,
             c_module:              module_contents,
             output_path:           testable.paths[:partials],
             include_guard:         module_include_guard
@@ -349,15 +352,18 @@ class PartialsManager
   end
 
   # The includes of each file this module's Partial can generate, keyed by file. The impl and
-  # interface headers carry the shared types header when the module has one.
+  # interface headers carry the shared types header when the module has one. Each generated
+  # header gets its includes in groups (Partials::IncludeGroups), split where the source
+  # includes the module's header.
   def remap_partial_includes(config, partials, types_header, test)
-    common = { name: config.module, includes: config.source.includes + config.header.includes, partials: partials, test: test }
+    common = { name: config.module, partials: partials, test: test }
+    split  = { **common, source_includes: config.source.includes, header_includes: config.header.includes }
 
     return {
-      types:       @partializer.remap_types_header_includes( **common ),
-      impl_header: @partializer.remap_implementation_header_includes( **common, types_header: types_header ),
-      impl_source: @partializer.remap_implementation_source_includes( **common ),
-      interface:   @partializer.remap_interface_header_includes( **common, types_header: types_header )
+      types:       @partializer.remap_types_header_includes( **split ),
+      impl_header: @partializer.remap_implementation_header_includes( **split, types_header: types_header ),
+      impl_source: @partializer.remap_implementation_source_includes( **common, includes: config.source.includes + config.header.includes ),
+      interface:   @partializer.remap_interface_header_includes( **split, types_header: types_header )
     }
   end
 
