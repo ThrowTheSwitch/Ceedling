@@ -467,6 +467,8 @@ describe TestBuildExecutor do
 
     context "sibling-header isolation retry" do
       before(:each) do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
         allow(@file_wrapper).to receive(:extname).with( 'test/a_test.c' ).and_return( '.c' )
         allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
         allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( true )
@@ -707,6 +709,9 @@ describe TestBuildExecutor do
         :paths => { build: 'build/test/out/a_test' }
       )
 
+      # CMock writes a same-name copy of each mocked header only under inline handling
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
       allow(@file_wrapper).to receive(:read).with( 'build/deps' ).and_return( '' )
     end
 
@@ -828,6 +833,18 @@ describe TestBuildExecutor do
         expect(@loginator).to_not have_received(:log).with( a_string_including( '/project/other' ), anything, anything )
       end
 
+      # Without CMock's same-name copy, the sibling's quoted #include finds the real header
+      # through the search paths too, so isolating it would change nothing
+      it "isolates nothing when inline handling excludes inline functions" do
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+        allow(@gcc_dependency_parser).to receive(:parse).and_return(
+          { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
+        )
+
+        expect(@quote_include_isolator).to_not receive(:isolate)
+        expect( call_it() ).to be_nil
+      end
+
       it "logs nothing at all when there is no risk anywhere in the dependency list" do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h'] }
@@ -839,8 +856,10 @@ describe TestBuildExecutor do
       end
     end
 
+    # A Partial writes no file under its module header's name, so the sibling's quoted
+    # #include would find the real header through the search paths too
     context "with a Partialized header" do
-      it "isolates a real header sharing a directory with the Partial's own header" do
+      it "isolates nothing beside the Partial's own header" do
         @testable.partials = TestInvokerTypes::TestablePartials.new(
           configs: { moduleA: double( "PartialConfig", header: double( "HeaderFile", filepath: '/project/library/moduleA.h' ) ) },
           tests: [], mocks: []
@@ -851,11 +870,9 @@ describe TestBuildExecutor do
         )
         allow(@file_wrapper).to receive(:exist?).with( '/project/library/driverlib.h' ).and_return( true )
         allow(@file_wrapper).to receive(:read).with( '/project/library/driverlib.h' ).and_return( "#include \"moduleA.h\"\n" )
-        allow(@quote_include_isolator).to receive(:isolate)
-          .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( isolation_in( 'isolated/dir' ) )
 
-        expect( call_it() ).to_not be_nil
+        expect(@quote_include_isolator).to_not receive(:isolate)
+        expect( call_it() ).to be_nil
       end
     end
   end

@@ -10,8 +10,8 @@ require 'ceedling/constants'
 # Knows which real headers a test substitutes and where Ceedling's own content lives.
 #
 # Sibling-header isolation and the build step doctor's collision diagnoses both weigh a
-# test's reachable headers against these two answers (see HEADER_COLLISIONS.md). The
-# class keeps no state, so one instance serves every thread.
+# test's reachable headers against these answers (see HEADER_COLLISIONS.md). The class
+# keeps no state, so one instance serves every thread.
 class TestSubstitutions
 
   constructor :configurator
@@ -21,6 +21,17 @@ class TestSubstitutions
   # `source` is its generated interface header, not a project header, so it is left out.
   def real_headers(testable)
     return mocked_headers( testable ).merge( partialized_headers( testable ) )
+  end
+
+  # `{ basename => real path }` for every mocked header CMock also writes under its own
+  # name. With `:treat_inlines: :include`, CMock writes an inline-stripped copy of each real
+  # header it mocks into the mocks directory, ahead of the real header on the search path.
+  # These are the only headers a quoted #include can reach in place of the real one.
+  def shadowed_headers(testable)
+    return {} unless @configurator.project_use_mocks
+    return {} unless @configurator.cmock_treat_inlines == :include
+
+    return mocked_headers( testable )
   end
 
   # Whether `real_path` is a header this test Partializes, rather than mocks

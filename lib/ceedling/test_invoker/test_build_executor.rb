@@ -548,7 +548,7 @@ class TestBuildExecutor
   #
   # A test file's own C compile (only) gets one extra check: isolate_sibling_headers
   # inspects its freshly-written .d file for a real header sharing a directory with
-  # one this test mocks or Partializes, and retries with corrected search paths if
+  # one this test mocks under inline handling, and retries with corrected search paths if
   # it finds one. A failure still standing afterward, with nothing to isolate or a
   # retry that failed too, goes to the build step doctor before it is raised.
   #
@@ -840,25 +840,29 @@ class TestBuildExecutor
   # it, mocked/Partialized or not, which is enough to know where that risk exists
   # even though it says nothing about whether any given occurrence actually won.
   #
-  # For each header this test mocks or Partializes, any other file sharing its real
-  # directory in that dependency list, that itself actually #includes the real
-  # header by name, is staged, alone, into an isolated directory -- with nothing
-  # else there for its own #include of the real header to find, that #include is
-  # forced through the search paths that list the mock/Partial first. Actually
-  # #including the real header is the deciding signal, not mere co-residency: most
-  # real projects keep every header in one shared directory as a matter of
-  # ordinary convention, so "shares a directory" alone would flag nearly every
+  # Isolation can only redirect a quoted #include to a file of the same name earlier on the
+  # search path. CMock writes one for each header it mocks under `:treat_inlines: :include`,
+  # and nothing else does, so only those headers are considered (see
+  # TestSubstitutions#shadowed_headers).
+  #
+  # For each such header, any other file sharing its real directory in that dependency
+  # list, that itself actually #includes the real header by name, is staged, alone, into
+  # an isolated directory -- with nothing else there for its own #include of the real
+  # header to find, that #include is forced through the search paths that list CMock's
+  # copy first. Actually #including the real header is the deciding signal, not mere
+  # co-residency: most real projects keep every header in one shared directory as a
+  # matter of ordinary convention, so "shares a directory" alone would flag nearly every
   # file in the project. Only one level deep: a directory elsewhere in the same
-  # dependency list that shares no header with any of this test's own mocks or
-  # Partials is shaped the same way, but nothing designates which of its occupants
-  # should win, so nothing there is acted on. Should the compilation fail with a
-  # collision there, the build step doctor's shared-directory diagnosis explains it.
+  # dependency list that shares no header with any of those mocks is shaped the same way,
+  # but nothing designates which of its occupants should win, so nothing there is acted
+  # on. Should the compilation fail with a collision there, the build step doctor's
+  # shared-directory diagnosis explains it.
   #
   # Returns nil when nothing needs isolating; otherwise a hash of the search
   # paths to compile with (isolation directory listed first) and that directory's
   # own path, for the caller to track and eventually clean up.
   def isolate_sibling_headers(testable:, dependencies_filepath:)
-    mocked_headers = @test_substitutions.real_headers( testable )
+    mocked_headers = @test_substitutions.shadowed_headers( testable )
     return nil if mocked_headers.empty?
 
     parsed       = @gcc_dependency_parser.parse( @file_wrapper.read( dependencies_filepath ) )

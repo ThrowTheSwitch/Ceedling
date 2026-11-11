@@ -63,6 +63,37 @@ describe TestSubstitutions do
     end
   end
 
+  describe '#shadowed_headers' do
+    before(:each) do
+      allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
+      allow( @configurator ).to receive( :cmock_treat_inlines ).and_return( :include )
+      @testable.mocks = { gpio: mock( '/project/library/gpio.h' ) }
+    end
+
+    it 'maps each mocked header CMock copies by name under inline handling' do
+      expect( @substitutions.shadowed_headers( @testable ) ).to eq( 'gpio.h' => '/project/library/gpio.h' )
+    end
+
+    it 'leaves out a Partialized header and a mock Partial' do
+      @testable.mocks[:partial_mock] = mock( 'build/test/partials/a_test/moduleA_interface.h', partial: true )
+      @testable.partials.configs = { moduleA: partial_config( '/project/src/moduleA.h' ) }
+
+      expect( @substitutions.shadowed_headers( @testable ) ).to eq( 'gpio.h' => '/project/library/gpio.h' )
+    end
+
+    it 'is empty when inline handling excludes inline functions' do
+      allow( @configurator ).to receive( :cmock_treat_inlines ).and_return( :exclude )
+
+      expect( @substitutions.shadowed_headers( @testable ) ).to eq( {} )
+    end
+
+    it 'is empty when mocks are disabled' do
+      allow( @configurator ).to receive( :project_use_mocks ).and_return( false )
+
+      expect( @substitutions.shadowed_headers( @testable ) ).to eq( {} )
+    end
+  end
+
   describe '#partialized?' do
     it 'tells a Partialized header from a mocked one' do
       @testable.mocks = { gpio: mock( '/project/library/gpio.h' ) }
