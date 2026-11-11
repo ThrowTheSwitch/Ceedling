@@ -44,11 +44,19 @@ describe CExtractorTypes::CModule do
       expect( c_module.stamp_origin!( :header ) ).to equal( c_module )
     end
 
-    # Nothing decides by where a variable or statement came from, so neither records it
-    it "leaves variables and statements without an origin" do
-      expect { module_of( variable, statement ).stamp_origin!( :header ) }.not_to raise_error
-      expect( variable ).not_to respond_to( :origin )
-      expect( statement ).not_to respond_to( :origin )
+    # A generated header places the source's later includes where the header's items end
+    it "stamps variables and statements too" do
+      module_of( variable, statement ).stamp_origin!( :header )
+
+      expect( [variable, statement].map( &:origin ) ).to all( eq( :header ) )
+    end
+
+    it "stamps a statement that only element_sequence holds" do
+      c_module = CExtractorTypes::CModule.new( type_definitions: [statement], element_sequence: [statement] )
+
+      c_module.stamp_origin!( :source )
+
+      expect( statement.origin ).to eq( :source )
     end
   end
 
@@ -63,9 +71,11 @@ describe CExtractorTypes::CModule do
 end
 
 describe 'C extractor item origins' do
-  it "defaults every function origin to nil" do
+  it "defaults every origin to nil" do
     expect( CExtractorTypes::CFunctionDefinition.new.origin ).to be_nil
     expect( CExtractorTypes::CFunctionDeclaration.new.origin ).to be_nil
+    expect( CExtractorTypes::CVariableDeclaration.new.origin ).to be_nil
+    expect( CExtractorTypes::CStatement.new.origin ).to be_nil
   end
 
   it "tells a variable declared extern from one defined here" do

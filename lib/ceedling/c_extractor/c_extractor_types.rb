@@ -12,9 +12,10 @@ module CExtractorTypes
   CStatement = Struct.new(
     :text,     # String  — raw extracted statement text (comments replaced with spaces)
     :line_num, # Integer — 1-based line number where the statement begins in the source file
+    :origin,   # :header or :source when the caller knows the file's role, otherwise nil
     keyword_init: true
   ) do
-    def initialize(text: nil, line_num: nil)
+    def initialize(text: nil, line_num: nil, origin: nil)
       super
     end
   end unless const_defined?(:CStatement, false)
@@ -53,11 +54,11 @@ module CExtractorTypes
       )
     end
 
-    # Records which file of a module each function came from.
+    # Records which file of a module each item came from.
     # CExtractor reads text alone and cannot know a file's role, so the caller stamps it.
     # element_sequence references these same objects and so reflects the stamp too.
     def stamp_origin!(origin)
-      (function_definitions + function_declarations).each { |item| item.origin = origin }
+      (function_definitions + function_declarations + element_sequence).each { |item| item.origin = origin }
       return self
     end
   end unless const_defined?(:CModule, false)
@@ -116,10 +117,11 @@ module CExtractorTypes
     :declarator,    # A parenthesized declarator from its '(' onward (e.g., "(*hook)(int)" after type "int"), or nil
     :asm_label,     # An asm label naming the symbol (e.g., '__asm__("g_symbol")'), or nil. :text and :original hold it too.
                     # A file-scope basic asm statement, such as `asm(".globl x");`, has no name and holds itself here.
+    :origin,        # :header or :source when the caller knows the file's role, otherwise nil
     keyword_init: true
   ) do
     def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, declarator: nil,
-                   asm_label: nil)
+                   asm_label: nil, origin: nil)
       super
     end
 
