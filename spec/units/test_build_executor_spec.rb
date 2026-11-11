@@ -326,14 +326,6 @@ describe TestBuildExecutor do
       )
     end
 
-    # A test's own file compile is the one point where its full, transitive dependency
-    # closure is freshly known -- reached headers a mock or Partial never sees directly,
-    # since substitution only ever looks at what the test file itself #includes. When
-    # that closure reveals a real header sharing a directory with one this test mocks or
-    # Partializes, quote-include's own same-directory-first rule could let that real
-    # content slip past the substitution entirely; isolating the sibling and retrying
-    # with corrected search paths closes that gap without ever touching the original
-    # compile's own registered dependencies.
     # A source beside a header mocked under :treat_inlines :include would find the real
     # header first and run its inline bodies. It compiles from an isolated copy instead.
     context "a source sharing a directory with a header mocked with inline shadowing" do
@@ -465,6 +457,14 @@ describe TestBuildExecutor do
       end
     end
 
+    # A test's own file compile is the one point where its full, transitive dependency
+    # closure is freshly known -- reached headers a mock never sees directly, since
+    # substitution only ever looks at what the test file itself #includes. When that
+    # closure reveals a real header sharing a directory with one CMock copies by name,
+    # quote-include's own same-directory-first rule could let that real content slip past
+    # the substitution entirely; isolating the sibling and retrying with corrected search
+    # paths closes that gap without ever touching the original compile's own registered
+    # dependencies.
     context "sibling-header isolation retry" do
       before(:each) do
         allow(@configurator).to receive(:project_use_mocks).and_return( true )
@@ -697,6 +697,70 @@ describe TestBuildExecutor do
         )
 
         expect(@build_step_doctor).not_to have_received(:diagnose)
+      end
+    end
+
+    # The isolation directory takes a new name every build. A later object's staleness
+    # weighs the isolated originals in its place, so an unchanged rebuild compiles nothing.
+    context "an object compiled after its test's header isolation" do
+      let(:isolation) do
+        QuoteIncludeIsolator::Isolation.new(
+          'build/test/out/a_test/d1', { '/project/library/driverlib.h' => 'build/test/out/a_test/d1/driverlib.h' }
+        )
+      end
+
+      before(:each) do
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( true )
+        allow(@configurator).to receive(:collection_paths_support).and_return( [] )
+        allow(@generator).to receive(:generate_object_file_c)
+        allow(@generator).to receive(:generate_object_file_asm)
+        allow(@quote_include_isolator).to receive(:restore_dependencies)
+
+        @state.testables[:a_test].filepath         = 'test/a_test.c'
+        @state.testables[:a_test].search_paths     = ['build/test/out/a_test/d1', 'test/support']
+        @state.testables[:a_test].header_isolation = isolation
+      end
+
+      def compile(source)
+        @executor.send(
+          :compile_test_component,
+          :context => :test, :test => :a_test, :source => source, :object => 'build/other.o', :state => @state
+        )
+      end
+
+      it "registers the isolated originals in place of the isolation directory" do
+        expect(@dependinator).to receive(:register).with(
+          'build/other.o', files: ['src/other.c'],
+          meta: hash_including( search_paths: ['test/support'], isolated: ['/project/library/driverlib.h'] )
+        )
+
+        compile( 'src/other.c' )
+      end
+
+      it "registers the same for an assembly source" do
+        expect(@dependinator).to receive(:register).with(
+          'build/other.o', files: ['src/start.asm'],
+          meta: hash_including( search_paths: ['test/support'], isolated: ['/project/library/driverlib.h'] )
+        )
+
+        compile( 'src/start.asm' )
+      end
+
+      it "leaves the isolation out of an object whose search paths never held it" do
+        expect(@dependinator).to receive(:register) do |_object, meta:, **|
+          expect( meta ).not_to have_key( :isolated )
+        end
+
+        compile( File.join( PROJECT_BUILD_VENDOR_UNITY_PATH, UNITY_C_FILE ) )
+      end
+
+      it "restores the dependency file to the originals before registering it" do
+        allow(@file_wrapper).to receive(:exist_with_retry?).with( 'build/deps' ).and_return( true )
+
+        expect(@quote_include_isolator).to receive(:restore_dependencies).with( isolation, 'build/deps' ).ordered
+        expect(@dependinator).to receive(:register_gcc_deps_file).with( 'build/deps' ).ordered
+
+        compile( 'src/other.c' )
       end
     end
   end

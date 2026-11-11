@@ -572,7 +572,7 @@ class TestBuildExecutor
         context: context, operation: OPERATION_COMPILE_SYM, tool: @configurator.tools_test_compiler,
         flags: flags, defines: defines, module_name: test, source: source, object: object
       )
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool, isolation: testable.header_isolation )
 
       unless stale
         # A skipped compile still needs this test's search paths corrected the same
@@ -630,7 +630,10 @@ class TestBuildExecutor
       # the shell-out exits (a raw miss here silently drops this compile's discovered
       # header dependencies -- self-correcting into one extra recompile next run, but
       # worth riding out directly).
-      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
+      if @file_wrapper.exist_with_retry?( dependencies )
+        restore_isolated_dependencies( testable, dependencies )
+        @dependinator.register_gcc_deps_file( dependencies )
+      end
 
       # Only the test file's own compile is ever checked here directly -- every other
       # object in the same test's build already sees whatever search paths that check
@@ -651,7 +654,7 @@ class TestBuildExecutor
         context: context, operation: OPERATION_ASSEMBLE_SYM, tool: @configurator.tools_test_assembler,
         flags: flags, defines: defines, module_name: test, source: source, object: object
       )
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool, isolation: testable.header_isolation )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -912,10 +915,35 @@ class TestBuildExecutor
   # if headers changed, that's exactly what makes this stale. Nothing has just
   # written that file, so one look suffices: a clean build has none, and a missed
   # one leaves the object stale, forcing a recompile.
-  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
-    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths, tools: [tool] ) )
+  #
+  # A header isolation's directory takes a new name every build, so an object compiled
+  # with it weighs the isolated originals in its place (see isolation_meta).
+  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:, isolation: nil)
+    meta = dependency_meta( flags: flags, defines: defines, tools: [tool], **isolation_meta( search_paths, isolation ) )
+
+    @dependinator.register( object, files: [source], meta: meta )
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
+  end
+
+  # The search paths and isolated originals an object's staleness weighs.
+  #
+  # The isolated originals stand in for the isolation directory, so a change to which
+  # files are isolated still rebuilds the object while the directory's own name never
+  # counts. The originals' contents are tracked through the object's restored .d file.
+  def isolation_meta(search_paths, isolation)
+    return { search_paths: search_paths } unless isolation && search_paths.include?( isolation.dir )
+
+    return { search_paths: search_paths - [isolation.dir], isolated: isolation.copies.keys.sort }
+  end
+
+  # Rewrites a compile's .d file to name each isolated original in place of its copy.
+  # The copies are removed once the compile stage ends, so a .d file naming one would
+  # read as a vanished dependency on the next build.
+  def restore_isolated_dependencies(testable, dependencies)
+    return if testable.header_isolation.nil?
+
+    @quote_include_isolator.restore_dependencies( testable.header_isolation, dependencies )
   end
 
   # Each framework/support source needs its own vendor path (and, for CMock and a

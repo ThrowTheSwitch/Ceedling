@@ -56,11 +56,13 @@ module TestPipelineHelpers
   # between runs, with nothing else changed, should still invalidate whatever a
   # preprocessing pass produced.
   #
-  # `partials:` is left out of the returned hash entirely when not given, so a
-  # caller with nothing to do with Partials never carries a meaningless `nil`.
-  def dependency_meta(flags:, defines:, search_paths:, tools: [], preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback, partials: nil)
+  # `partials:` and `isolated:` are left out of the returned hash entirely when not given,
+  # so a caller with nothing to do with Partials or header isolation never carries a
+  # meaningless `nil`.
+  def dependency_meta(flags:, defines:, search_paths:, tools: [], preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback, partials: nil, isolated: nil)
     meta = { flags: flags, defines: defines, search_paths: search_paths, tools: tools, preprocess_force_fallback: preprocess_force_fallback }
     meta[:partials] = partials unless partials.nil?
+    meta[:isolated] = isolated unless isolated.nil?
     meta
   end
 
