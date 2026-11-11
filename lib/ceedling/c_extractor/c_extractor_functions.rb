@@ -202,6 +202,9 @@ class CExtractorFunctions
       when ';'
         return _declaration_end( scanner, start_pos, type, found_opening_paren )
       when '['
+        # A C23 attribute passes whole, so its brackets and literals don't count
+        next @code_text.collect_balanced(scanner, '[', ']') if @code_text.c23_attribute_at?(scanner)
+
         # Found opening bracket - this could be an array declaration
         # If we haven't found any opening parenthesis yet, this is likely a variable
         unless found_opening_paren

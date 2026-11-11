@@ -2032,6 +2032,19 @@ describe CExtractorCodeText do
   end
 
   ###
+  ### strip_c23_attributes()
+  ###
+  describe "#strip_c23_attributes" do
+    it "removes C23 attributes and keeps everything else as written" do
+      expect(CExtractorCodeText.new.strip_c23_attributes('[[maybe_unused]] static int  buf [[x("]]")]] [4]')).to eq(' static int  buf  [4]')
+    end
+
+    it "keeps nested array subscripts and GCC attributes" do
+      expect(CExtractorCodeText.new.strip_c23_attributes('int a[b[1]] __attribute__((unused))')).to eq('int a[b[1]] __attribute__((unused))')
+    end
+  end
+
+  ###
   ### strip_compiler_extensions()
   ###
   describe "#strip_compiler_extensions" do
@@ -2061,6 +2074,22 @@ describe CExtractorCodeText do
 
     it "strips __attribute__ with deeply nested arguments" do
       expect(strip_ext.call("__attribute__((format(printf,1,2))) int foo(char *fmt, ...)")).to eq("int foo(char *fmt, ...)")
+    end
+
+    it "strips a leading C23 attribute" do
+      expect(strip_ext.call("[[maybe_unused]] int count")).to eq("int count")
+    end
+
+    it "strips a C23 attribute after a name, keeping the array size" do
+      expect(strip_ext.call("int buf [[maybe_unused]] [4]")).to eq("int buf [4]")
+    end
+
+    it "strips a C23 attribute whose argument holds brackets" do
+      expect(strip_ext.call("[[deprecated(\"a]]b\")]] [[gnu::aligned(8)]] int x")).to eq("int x")
+    end
+
+    it "keeps nested array subscripts" do
+      expect(strip_ext.call("int a[b[1]]")).to eq("int a[b[1]]")
     end
 
     it "strips __cdecl calling convention" do

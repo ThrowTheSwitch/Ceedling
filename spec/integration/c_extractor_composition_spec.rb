@@ -1303,6 +1303,24 @@ describe CExtractor do
 
     # An asm label's ')' ends a declaration as a parameter list does. A variable with one must
     # still arrive as a variable, and a function with one as a function.
+    context "with C23 attributes" do
+      it "reads each feature a C23 attribute leads and every feature after it" do
+        content = <<~CONTENTS
+          [[nodiscard]] static int f(void) { return 0; }
+          [[nodiscard]] int g(void);
+          [[maybe_unused]] static int count;
+          int h(void) { return 1; }
+        CONTENTS
+
+        expect( sequence_of( content ) ).to eq [
+          ['CFunctionDefinition',  '[[nodiscard]] static int f(void)'],
+          ['CFunctionDeclaration', '[[nodiscard]] int g(void);'],
+          ['CVariableDeclaration', '[[maybe_unused]] int count;'],
+          ['CFunctionDefinition',  'int h(void)']
+        ]
+      end
+    end
+
     context "with asm labels" do
       it "extracts each declaration as the element it declares" do
         content = "int g_s asm(\"g_sym\");\nint f(void) __asm(\"f_sym\");\nint f2(void) MY_API asm(\"f2_sym\");\n" \

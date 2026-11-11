@@ -1893,6 +1893,23 @@ describe CExtractorFunctions do
       end
     end
 
+    # A C23 attribute may lead a definition, ahead of its storage class. The signature keeps it
+    # in place, and the storage class is a decorator.
+    context "C23 attributes" do
+      [
+        ['[[nodiscard]] static int f(void) { return 0; }',          ['static'], '[[nodiscard]] int f(void)'],
+        ['[[deprecated("a]]b")]] int f(void) { return 0; }',        [],         '[[deprecated("a]]b")]] int f(void)'],
+        ['[[maybe_unused]] [[nodiscard]] static int f(int x[2]) { return x[0]; }', ['static'], '[[maybe_unused]] [[nodiscard]] int f(int x[2])']
+      ].each do |content, decorators, signature_stripped|
+        it "extracts `#{content}`" do
+          success, func, _pos, rest = try_extract.call( content )
+
+          expect( success ).to be true
+          expect( [func.name, func.decorators, func.signature_stripped, rest] ).to eq ['f', decorators, signature_stripped, '']
+        end
+      end
+    end
+
     context "function extraction with various body styles" do
       it "extracts function with empty body" do
         content = "void empty(void) {}"
