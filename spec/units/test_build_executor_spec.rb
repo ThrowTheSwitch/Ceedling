@@ -515,7 +515,7 @@ describe TestBuildExecutor do
 
         expect( @generator ).to have_received( :generate_object_file_c ).twice
         expect( @state.testables[:a_test].search_paths ).to include( 'build/test/out/a_test/isolated_headers/xyz' )
-        expect( @state.testables[:a_test].isolated_headers_path ).to eq( 'build/test/out/a_test/isolated_headers/xyz' )
+        expect( @state.testables[:a_test].header_isolation.dir ).to eq( 'build/test/out/a_test/isolated_headers/xyz' )
       end
 
       it "retries against a separate, throwaway dependencies path, and registers only the original .d file" do
@@ -621,7 +621,7 @@ describe TestBuildExecutor do
         )
 
         expect( @state.testables[:a_test].search_paths ).to include( 'build/test/out/a_test/isolated_headers/xyz' )
-        expect( @state.testables[:a_test].isolated_headers_path ).to eq( 'build/test/out/a_test/isolated_headers/xyz' )
+        expect( @state.testables[:a_test].header_isolation.dir ).to eq( 'build/test/out/a_test/isolated_headers/xyz' )
       end
 
       it "does not attempt isolation on a skip when there is no existing .d file yet" do
@@ -775,15 +775,14 @@ describe TestBuildExecutor do
         allow(@gcc_dependency_parser).to receive(:parse).and_return(
           { 'a.o' => ['test/a_test.c', '/project/library/gpio.h', '/project/library/driverlib.h'] }
         )
+        isolation = isolation_in( 'build/test/out/a_test/isolated_headers/xyz' )
         allow(@quote_include_isolator).to receive(:isolate)
           .with( parent: 'build/test/out/a_test', files: ['/project/library/driverlib.h'] )
-          .and_return( isolation_in( 'build/test/out/a_test/isolated_headers/xyz' ) )
+          .and_return( isolation )
 
-        result = call_it()
-
-        expect( result ).to eq(
-          search_paths:   ['build/test/out/a_test/isolated_headers/xyz', 'test/support'],
-          isolation_dir:  'build/test/out/a_test/isolated_headers/xyz'
+        expect( call_it() ).to eq(
+          search_paths: ['build/test/out/a_test/isolated_headers/xyz', 'test/support'],
+          isolation:    isolation
         )
       end
 
@@ -943,12 +942,23 @@ describe TestBuildExecutor do
     end
 
     it "removes a testable's isolated headers directory once, after both batches complete" do
-      @testable.isolated_headers_path = 'build/test/out/a_test/isolated_headers/xyz'
+      @testable.header_isolation = isolation_in( 'build/test/out/a_test/isolated_headers/xyz' )
       allow(@dependinator).to receive(:stale?).and_return( false )
 
       expect(@quote_include_isolator).to receive(:release).with( 'build/test/out/a_test/isolated_headers/xyz' ).once
 
       @executor.stage_build_objects( @state )
+    end
+
+    it "removes a testable's isolated headers directory when a compile fails" do
+      @testable.header_isolation = isolation_in( 'build/test/out/a_test/isolated_headers/xyz' )
+      allow(@generator).to receive(:generate_object_file_c).and_raise(
+        ShellException.new( shell_result: { output: 'error' }, name: 'compiler' )
+      )
+
+      expect(@quote_include_isolator).to receive(:release).with( 'build/test/out/a_test/isolated_headers/xyz' ).once
+
+      expect { @executor.stage_build_objects( @state ) }.to raise_error( ShellException )
     end
 
     it "attempts no cleanup for a testable that never isolated anything" do

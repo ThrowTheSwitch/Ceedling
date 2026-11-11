@@ -231,7 +231,7 @@ class TestBuildExecutor
   # `compile_pass.call( test_file_pairs )` fully drains (Parallel.map blocks until
   # every thread in that call is done) before `compile_pass.call( other_pairs )`
   # even starts. That's what makes apply_sibling_isolation's unguarded writes to
-  # testable.search_paths/isolated_headers_path safe: the only thread that ever
+  # testable.search_paths/header_isolation safe: the only thread that ever
   # writes them is the one compiling that test's own file, in the first batch, and
   # every thread reading them afterward starts only once that write has already
   # happened. Merging or reordering these two calls -- e.g. to parallelize them
@@ -265,19 +265,25 @@ class TestBuildExecutor
       end
     end
 
-    compile_pass.call( test_file_pairs )
-    compile_pass.call( other_pairs )
-
-    # Any isolated sibling-header copy staged for a testable during either batch
-    # above was scoped to this one build and never registered as a tracked
-    # dependency in its own right (see isolate_sibling_headers) -- nothing past
-    # this point still needs it to exist.
-    state.testables.each_value do |testable|
-      next if testable.isolated_headers_path.nil?
-      @quote_include_isolator.release( testable.isolated_headers_path )
+    begin
+      compile_pass.call( test_file_pairs )
+      compile_pass.call( other_pairs )
+    ensure
+      release_header_isolations( state )
     end
 
     log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
+  end
+
+  # Any isolated sibling-header copy staged for a testable during either compile batch
+  # was scoped to this one build and is never a tracked dependency in its own right (see
+  # isolate_sibling_headers). Nothing past the compile stage still needs it, whether the
+  # stage finished or failed.
+  def release_header_isolations(state)
+    state.testables.each_value do |testable|
+      next if testable.header_isolation.nil?
+      @quote_include_isolator.release( testable.header_isolation.dir )
+    end
   end
 
   # Stage 16: Link test executables.
@@ -814,7 +820,7 @@ class TestBuildExecutor
   # skipped one share, so search_paths reads the same way regardless of which one
   # happened this run. Returns whatever isolate_sibling_headers itself returned.
   # BARRIER INVARIANT (see also stage_build_objects's own note): the writes below to
-  # testable.search_paths/isolated_headers_path are completely unguarded -- no mutex --
+  # testable.search_paths/header_isolation are completely unguarded -- no mutex --
   # which is only safe because this method is only ever called while compiling a
   # test's own file, and stage_build_objects's two-pass split guarantees every other
   # object belonging to that same test compiles in a later, separate batch that starts
@@ -826,8 +832,8 @@ class TestBuildExecutor
     isolation = isolate_sibling_headers( testable: testable, dependencies_filepath: dependencies_filepath )
     return nil if isolation.nil?
 
-    testable.search_paths          = isolation[:search_paths]
-    testable.isolated_headers_path = isolation[:isolation_dir]
+    testable.search_paths     = isolation[:search_paths]
+    testable.header_isolation = isolation[:isolation]
 
     isolation
   end
@@ -858,9 +864,9 @@ class TestBuildExecutor
   # on. Should the compilation fail with a collision there, the build step doctor's
   # shared-directory diagnosis explains it.
   #
-  # Returns nil when nothing needs isolating; otherwise a hash of the search
-  # paths to compile with (isolation directory listed first) and that directory's
-  # own path, for the caller to track and eventually clean up.
+  # Returns nil when nothing needs isolating; otherwise a hash of the search paths to
+  # compile with (isolation directory listed first) and the isolation itself, for the
+  # caller to track and eventually clean up.
   def isolate_sibling_headers(testable:, dependencies_filepath:)
     mocked_headers = @test_substitutions.shadowed_headers( testable )
     return nil if mocked_headers.empty?
@@ -896,7 +902,7 @@ class TestBuildExecutor
 
     isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq )
 
-    { search_paths: [isolation.dir] + testable.search_paths, isolation_dir: isolation.dir }
+    { search_paths: [isolation.dir] + testable.search_paths, isolation: isolation }
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers
