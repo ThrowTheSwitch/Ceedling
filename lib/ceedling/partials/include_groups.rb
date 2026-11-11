@@ -18,6 +18,12 @@ module Partials
       super
     end
 
+    # Splits a list at `boundary`, matched by identity, and leaves the boundary out
+    def self.split(includes, boundary)
+      index = includes.index { |include| include.equal?( boundary ) }
+      return new( leading: includes[0...index], following: includes[(index + 1)..] )
+    end
+
     # Every include, in order
     def to_a()
       return leading + following

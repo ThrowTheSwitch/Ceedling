@@ -743,19 +743,20 @@ class Partializer
   # A generated header's includes in the order the source compiles them: the source's includes
   # ahead of the module's header, the header's own, then the source's after it. The last make
   # up the following group (see Partials::IncludeGroups). A source that never includes its own
-  # header leaves that group empty.
+  # header leaves that group empty, as if its header came last.
   #
   # The whole list is remapped at once, so deduplication, redirects, and sorting see every
   # include. An include in both groups keeps its earlier place. A marker holds the boundary.
   def _remap_include_groups(name:, source:, header:, **remap)
-    index     = source.index { |include| include.filename.ext().downcase() == module_basename( name ) }
-    leading   = index ? source[0..index] + header : source + header
-    following = index ? source[(index + 1)..] : []
+    index    = _own_header_index( name, source )
+    remapped = _remap_includes( name: name, includes: source[0..index] + header + [INCLUDE_BOUNDARY] + source[(index + 1)..], **remap )
 
-    remapped = _remap_includes( name: name, includes: leading + [INCLUDE_BOUNDARY] + following, **remap )
-    split    = remapped.index { |include| include.equal?( INCLUDE_BOUNDARY ) }
+    return Partials::IncludeGroups.split( remapped, INCLUDE_BOUNDARY )
+  end
 
-    return Partials::IncludeGroups.new( leading: remapped[0...split], following: remapped[(split + 1)..] )
+  # Where the source includes the module's own header, or its last include when it never does
+  def _own_header_index(name, source)
+    return source.index { |include| include.filename.ext().downcase() == module_basename( name ) } || (source.size - 1)
   end
 
   # One body behind all four public remaps. Each differs only in what replaces this module's
