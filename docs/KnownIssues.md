@@ -66,6 +66,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. A mock `#include` written relative to the test file that climbs with `..` to a directory the mock search paths do not reach, such as `#include "../src/drivers/mock_foo.h"`, fails to compile, as in earlier releases. Include the mock relative to a search path instead, such as `#include "drivers/mock_foo.h"`.
 1. On Windows, a source far outside the project lengthens its build paths, since each `..` in its path from the project adds `_up_/`. Ceedling warns as a path nears Windows’ 260-character limit.
 1. With `:bullseye` ↳ `:report_task: TRUE`, a `report:bullseye` task on the same command line as a fresh `bullseye:` build writes HTML and XML reports that include Unity, generated test runners, and test files. Run `report:bullseye` again, or run it as its own command after the build ([#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385)).
+1. A test whose build logs “Isolated ‘…’ into its own directory” recompiles some of its objects on every build, though nothing changed. Each build gives the isolated header’s copy a directory with a new name, and those objects track it. Builds stay correct, and no setting avoids the recompiles. The isolation helps only with `:cmock` ↳ `:treat_inlines: :include`. With other mocks and with Partials it changes nothing ([#1408](https://github.com/ThrowTheSwitch/Ceedling/issues/1408)).
 
 ### Partials
 
@@ -84,7 +85,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. Exposing a module’s file-scope variables and functions removes what kept their names private to that module. Two Partialized modules in one test file that each use the same name for a file-scope variable collide at link time.
 1. Partials cannot generate a module that text-only fallback preprocessing is unable to resolve — a module with an `#include` naming a macro, or with a type behind a conditional expression that cannot be evaluated without a real preprocessor. Ceedling stops the build and names the file and line rather than generating something subtly wrong. Fallback preprocessing is only used where your compiler does not support `-fdirectives-only`, older Apple Clang releases most notably, or where you force it with `:test_build` ↳ `:preprocess_force_fallback`.
 
-Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, and a Partial failing for a module whose source includes its own header before a header that uses its types.
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, a Partial failing for a module whose source includes its own header before a header that uses its types, and an isolated header recompiling a test’s objects on every build.
 
 ---
 
@@ -109,6 +110,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. `~` in a configured path names a directory called `~`, not your home directory. Write the full path instead.
 1. A `:files` glob such as `+:**/*.c` collects the build directory’s own mocks, runners, and vendored Unity and CMock sources, and test files, and a release build then stops compiling them. Write the glob below your own source directories, such as `+:src/**/*.c`. A source root holding the test root also collects test files into a release build; add a `-:` `:files` entry for them.
 1. With `:bullseye` ↳ `:report_task: TRUE`, a `report:bullseye` task on the same command line as a fresh `bullseye:` build writes HTML and XML reports that include Unity, generated test runners, and test files. Run `report:bullseye` again, or run it as its own command after the build ([#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385)).
+1. A test whose build logs “Isolated ‘…’ into its own directory” recompiles some of its objects on every build, though nothing changed. Each build gives the isolated header’s copy a directory with a new name, and those objects track it. Builds stay correct, and no setting avoids the recompiles. The isolation helps only with `:cmock` ↳ `:treat_inlines: :include`. With other mocks and with Partials it changes nothing ([#1408](https://github.com/ThrowTheSwitch/Ceedling/issues/1408)).
 
 ### Partials
 
@@ -129,7 +131,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
 Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. Also resolved: a directory left in `build/vendor/` for a file `lstat` misreported failing every build. The [Changelog](Changelog.md) lists every other fix since this release.
 
-Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, and a Partial failing for a module whose source includes its own header before a header that uses its types.
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, a Partial failing for a module whose source includes its own header before a header that uses its types, and an isolated header recompiling a test’s objects on every build.
 
 ---
 
@@ -154,6 +156,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 1. `~` in a configured path names a directory called `~`, not your home directory. Write the full path instead.
 1. A `:files` glob such as `+:**/*.c` collects the build directory’s own mocks, runners, and vendored Unity and CMock sources, and test files, and a release build then stops compiling them. Write the glob below your own source directories, such as `+:src/**/*.c`. A source root holding the test root also collects test files into a release build; add a `-:` `:files` entry for them.
 1. With `:bullseye` ↳ `:report_task: TRUE`, a `report:bullseye` task on the same command line as a fresh `bullseye:` build writes HTML and XML reports that include Unity, generated test runners, and test files. Run `report:bullseye` again, or run it as its own command after the build ([#1385](https://github.com/ThrowTheSwitch/Ceedling/issues/1385)).
+1. A test whose build logs “Isolated ‘…’ into its own directory” recompiles some of its objects on every build, though nothing changed. Each build gives the isolated header’s copy a directory with a new name, and those objects track it. Builds stay correct, and no setting avoids the recompiles. The isolation helps only with `:cmock` ↳ `:treat_inlines: :include`. With other mocks and with Partials it changes nothing ([#1408](https://github.com/ThrowTheSwitch/Ceedling/issues/1408)).
 
 ### Partials
 
@@ -174,7 +177,7 @@ Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
 Resolved in 1.2.2: the mixing of two installations’ code, `./ceedling` failing in a `--local` project, delta builds not relinking a changed library, most shell characters in a path stopping a test from running, and the path handling problems above: mocks written outside the build directory, same-named sources sharing an object, `clobber` emptying a project under a `.` build root, `-:` entries keeping the directories below them, and `~`. Also resolved: frameworks vendor copying failing on files `lstat` misreports as directories. The [Changelog](Changelog.md) lists every other fix since this release.
 
-Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, and a Partial failing for a module whose source includes its own header before a header that uses its types.
+Resolved in 1.2.3: `report:bullseye` reports including framework and test sources when run beside a fresh `bullseye:` build, a Partial misreading a declaration that a C23 attribute leads, a Partial failing for a module whose source includes its own header before a header that uses its types, and an isolated header recompiling a test’s objects on every build.
 
 ---
 

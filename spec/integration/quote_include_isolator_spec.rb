@@ -164,4 +164,60 @@ describe 'QuoteIncludeIsolator (integration)' do
       end
     end
   end
+
+  # Sibling-header isolation stages a header, not the file a compiler is handed. A test
+  # file elsewhere reaches the copy through the search path that lists it first.
+  context 'including a location-preserving header copy with a real gcc' do
+    include_context 'requires gcc'
+
+    def compile(tree)
+      with_source_tree(tree) do |dir|
+        header    = File.join( dir, 'src', 'driverlib.h' )
+        deps      = File.join( dir, 'main.d' )
+        program   = File.join( dir, 'main' )
+        isolation = @isolator.isolate( parent: dir, files: [header], preserve_location: true )
+
+        search = ['-I', isolation.dir, '-I', File.join( dir, 'shadow' ), '-I', File.join( dir, 'src' )]
+        _, status = Open3.capture2e( 'gcc', *search, '-MMD', '-MF', deps, File.join( dir, 'test', 'main.c' ), '-o', program )
+        raise 'compile failed' unless status.success?
+
+        @isolator.restore_dependencies( isolation, deps )
+        run, = Open3.capture2e( program )
+
+        @isolator.release( isolation.dir )
+        yield header, run, File.read( deps ), isolation.dir
+      end
+    end
+
+    let(:tree) do
+      {
+        'test/main.c'     => %(#include <stdio.h>\n#include "driverlib.h"\n) +
+                             %(int main(void) { printf("%s %d\\n", driverlib_file, BOARD); return 0; }\n),
+        'src/driverlib.h' => %(#include "board.h"\nstatic const char *driverlib_file = __FILE__;\n),
+        'src/board.h'     => %(#define BOARD 1\n),
+        'shadow/board.h'  => %(#define BOARD 2\n)
+      }
+    end
+
+    # The #line directive names the original's directory, but a quoted #include still
+    # starts from the directory the copy really sits in
+    it "resolves the copy's quoted #include through the search path, not the original's directory" do
+      compile( tree ) do |_, run|
+        expect( run.split[1] ).to eq( '2' )
+      end
+    end
+
+    it 'reports the original header as __FILE__' do
+      compile( tree ) do |header, run|
+        expect( run.split[0] ).to eq( header )
+      end
+    end
+
+    it 'leaves the restored dependency file naming the original header, never the copy' do
+      compile( tree ) do |header, _, deps, staged_dir|
+        expect( deps ).to include( header )
+        expect( deps ).to_not include( staged_dir )
+      end
+    end
+  end
 end

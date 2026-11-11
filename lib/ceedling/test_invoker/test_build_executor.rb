@@ -231,7 +231,7 @@ class TestBuildExecutor
   # `compile_pass.call( test_file_pairs )` fully drains (Parallel.map blocks until
   # every thread in that call is done) before `compile_pass.call( other_pairs )`
   # even starts. That's what makes apply_sibling_isolation's unguarded writes to
-  # testable.search_paths/isolated_headers_path safe: the only thread that ever
+  # testable.search_paths/header_isolation safe: the only thread that ever
   # writes them is the one compiling that test's own file, in the first batch, and
   # every thread reading them afterward starts only once that write has already
   # happened. Merging or reordering these two calls -- e.g. to parallelize them
@@ -265,19 +265,25 @@ class TestBuildExecutor
       end
     end
 
-    compile_pass.call( test_file_pairs )
-    compile_pass.call( other_pairs )
-
-    # Any isolated sibling-header copy staged for a testable during either batch
-    # above was scoped to this one build and never registered as a tracked
-    # dependency in its own right (see isolate_sibling_headers) -- nothing past
-    # this point still needs it to exist.
-    state.testables.each_value do |testable|
-      next if testable.isolated_headers_path.nil?
-      @quote_include_isolator.release( testable.isolated_headers_path )
+    begin
+      compile_pass.call( test_file_pairs )
+      compile_pass.call( other_pairs )
+    ensure
+      release_header_isolations( state )
     end
 
     log_skip_summary( task: "compilation", count: skipped, noun: "objects" )
+  end
+
+  # Any isolated sibling-header copy staged for a testable during either compile batch
+  # was scoped to this one build and is never a tracked dependency in its own right (see
+  # isolate_sibling_headers). Nothing past the compile stage still needs it, whether the
+  # stage finished or failed.
+  def release_header_isolations(state)
+    state.testables.each_value do |testable|
+      next if testable.header_isolation.nil?
+      @quote_include_isolator.release( testable.header_isolation.dir )
+    end
   end
 
   # Stage 16: Link test executables.
@@ -548,7 +554,7 @@ class TestBuildExecutor
   #
   # A test file's own C compile (only) gets one extra check: isolate_sibling_headers
   # inspects its freshly-written .d file for a real header sharing a directory with
-  # one this test mocks or Partializes, and retries with corrected search paths if
+  # one this test mocks under inline handling, and retries with corrected search paths if
   # it finds one. A failure still standing afterward, with nothing to isolate or a
   # retry that failed too, goes to the build step doctor before it is raised.
   #
@@ -566,7 +572,7 @@ class TestBuildExecutor
         context: context, operation: OPERATION_COMPILE_SYM, tool: @configurator.tools_test_compiler,
         flags: flags, defines: defines, module_name: test, source: source, object: object
       )
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool, isolation: testable.header_isolation )
 
       unless stale
         # A skipped compile still needs this test's search paths corrected the same
@@ -624,7 +630,10 @@ class TestBuildExecutor
       # the shell-out exits (a raw miss here silently drops this compile's discovered
       # header dependencies -- self-correcting into one extra recompile next run, but
       # worth riding out directly).
-      @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist_with_retry?( dependencies )
+      if @file_wrapper.exist_with_retry?( dependencies )
+        restore_isolated_dependencies( testable, dependencies )
+        @dependinator.register_gcc_deps_file( dependencies )
+      end
 
       # Only the test file's own compile is ever checked here directly -- every other
       # object in the same test's build already sees whatever search paths that check
@@ -645,7 +654,7 @@ class TestBuildExecutor
         context: context, operation: OPERATION_ASSEMBLE_SYM, tool: @configurator.tools_test_assembler,
         flags: flags, defines: defines, module_name: test, source: source, object: object
       )
-      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool )
+      stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool, isolation: testable.header_isolation )
 
       return log_compile_skip( test: test, source: source ) unless stale
 
@@ -814,7 +823,7 @@ class TestBuildExecutor
   # skipped one share, so search_paths reads the same way regardless of which one
   # happened this run. Returns whatever isolate_sibling_headers itself returned.
   # BARRIER INVARIANT (see also stage_build_objects's own note): the writes below to
-  # testable.search_paths/isolated_headers_path are completely unguarded -- no mutex --
+  # testable.search_paths/header_isolation are completely unguarded -- no mutex --
   # which is only safe because this method is only ever called while compiling a
   # test's own file, and stage_build_objects's two-pass split guarantees every other
   # object belonging to that same test compiles in a later, separate batch that starts
@@ -826,8 +835,8 @@ class TestBuildExecutor
     isolation = isolate_sibling_headers( testable: testable, dependencies_filepath: dependencies_filepath )
     return nil if isolation.nil?
 
-    testable.search_paths          = isolation[:search_paths]
-    testable.isolated_headers_path = isolation[:isolation_dir]
+    testable.search_paths     = isolation[:search_paths]
+    testable.header_isolation = isolation[:isolation]
 
     isolation
   end
@@ -840,25 +849,29 @@ class TestBuildExecutor
   # it, mocked/Partialized or not, which is enough to know where that risk exists
   # even though it says nothing about whether any given occurrence actually won.
   #
-  # For each header this test mocks or Partializes, any other file sharing its real
-  # directory in that dependency list, that itself actually #includes the real
-  # header by name, is staged, alone, into an isolated directory -- with nothing
-  # else there for its own #include of the real header to find, that #include is
-  # forced through the search paths that list the mock/Partial first. Actually
-  # #including the real header is the deciding signal, not mere co-residency: most
-  # real projects keep every header in one shared directory as a matter of
-  # ordinary convention, so "shares a directory" alone would flag nearly every
-  # file in the project. Only one level deep: a directory elsewhere in the same
-  # dependency list that shares no header with any of this test's own mocks or
-  # Partials is shaped the same way, but nothing designates which of its occupants
-  # should win, so nothing there is acted on. Should the compilation fail with a
-  # collision there, the build step doctor's shared-directory diagnosis explains it.
+  # Isolation can only redirect a quoted #include to a file of the same name earlier on the
+  # search path. CMock writes one for each header it mocks under `:treat_inlines: :include`,
+  # and nothing else does, so only those headers are considered (see
+  # TestSubstitutions#shadowed_headers).
   #
-  # Returns nil when nothing needs isolating; otherwise a hash of the search
-  # paths to compile with (isolation directory listed first) and that directory's
-  # own path, for the caller to track and eventually clean up.
+  # For each such header, any other file sharing its real directory in that dependency
+  # list, that itself actually #includes the real header by name, is staged, alone, into
+  # an isolated directory -- with nothing else there for its own #include of the real
+  # header to find, that #include is forced through the search paths that list CMock's
+  # copy first. Actually #including the real header is the deciding signal, not mere
+  # co-residency: most real projects keep every header in one shared directory as a
+  # matter of ordinary convention, so "shares a directory" alone would flag nearly every
+  # file in the project. Only one level deep: a directory elsewhere in the same
+  # dependency list that shares no header with any of those mocks is shaped the same way,
+  # but nothing designates which of its occupants should win, so nothing there is acted
+  # on. Should the compilation fail with a collision there, the build step doctor's
+  # shared-directory diagnosis explains it.
+  #
+  # Returns nil when nothing needs isolating; otherwise a hash of the search paths to
+  # compile with (isolation directory listed first) and the isolation itself, for the
+  # caller to track and eventually clean up.
   def isolate_sibling_headers(testable:, dependencies_filepath:)
-    mocked_headers = @test_substitutions.real_headers( testable )
+    mocked_headers = @test_substitutions.shadowed_headers( testable )
     return nil if mocked_headers.empty?
 
     parsed       = @gcc_dependency_parser.parse( @file_wrapper.read( dependencies_filepath ) )
@@ -890,9 +903,11 @@ class TestBuildExecutor
 
     return nil if isolated.empty?
 
-    isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq )
+    # Each copy names its original through #line, so diagnostics, __FILE__, debug info and
+    # coverage data report the original
+    isolation = @quote_include_isolator.isolate( parent: testable.paths[:build], files: isolated.uniq, preserve_location: true )
 
-    { search_paths: [isolation.dir] + testable.search_paths, isolation_dir: isolation.dir }
+    { search_paths: [isolation.dir] + testable.search_paths, isolation: isolation }
   end
 
   # Registers `object`'s antecedents (its source file, plus whatever headers
@@ -902,10 +917,35 @@ class TestBuildExecutor
   # if headers changed, that's exactly what makes this stale. Nothing has just
   # written that file, so one look suffices: a clean build has none, and a missed
   # one leaves the object stale, forcing a recompile.
-  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:)
-    @dependinator.register( object, files: [source], meta: dependency_meta( flags: flags, defines: defines, search_paths: search_paths, tools: [tool] ) )
+  #
+  # A header isolation's directory takes a new name every build, so an object compiled
+  # with it weighs the isolated originals in its place (see isolation_meta).
+  def register_and_check_object_staleness(object:, source:, dependencies:, flags:, defines:, search_paths:, tool:, isolation: nil)
+    meta = dependency_meta( flags: flags, defines: defines, tools: [tool], **isolation_meta( search_paths, isolation ) )
+
+    @dependinator.register( object, files: [source], meta: meta )
     @dependinator.register_gcc_deps_file( dependencies ) if @file_wrapper.exist?( dependencies )
     @dependinator.stale?( object )
+  end
+
+  # The search paths and isolated originals an object's staleness weighs.
+  #
+  # The isolated originals stand in for the isolation directory, so a change to which
+  # files are isolated still rebuilds the object while the directory's own name never
+  # counts. The originals' contents are tracked through the object's restored .d file.
+  def isolation_meta(search_paths, isolation)
+    return { search_paths: search_paths } unless isolation && search_paths.include?( isolation.dir )
+
+    return { search_paths: search_paths - [isolation.dir], isolated: isolation.copies.keys.sort }
+  end
+
+  # Rewrites a compile's .d file to name each isolated original in place of its copy.
+  # The copies are removed once the compile stage ends, so a .d file naming one would
+  # read as a vanished dependency on the next build.
+  def restore_isolated_dependencies(testable, dependencies)
+    return if testable.header_isolation.nil?
+
+    @quote_include_isolator.restore_dependencies( testable.header_isolation, dependencies )
   end
 
   # Each framework/support source needs its own vendor path (and, for CMock and a

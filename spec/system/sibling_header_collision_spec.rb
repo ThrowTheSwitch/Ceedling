@@ -204,6 +204,31 @@ ceedling_system_tests do
           expect(output).to match(/Isolated '.*driverlib\.h'.*shares a directory with '.*gpio\.h'/)
         end
       end
+
+      # The isolation directory takes a new name every build and is removed afterward.
+      # Dependency tracking weighs the isolated originals, so nothing it names ever changes.
+      it "compiles nothing on an unchanged rebuild" do
+        in_project do
+          @c.ceedling_build_exec("test:all")
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to_not match(/^Compiling /)
+          expect(output).to match(/Skipping compilation for \d+ objects/)
+        end
+      end
+
+      # moduleA.c reaches driverlib.h through board.h, by way of the isolated copy
+      it "recompiles an object that reaches the isolated original when the original changes" do
+        in_project do
+          @c.ceedling_build_exec("test:all")
+          File.write('library/driverlib.h', DRIVERLIB_HEADER_C + "// edited\n")
+          output = @c.ceedling_build_exec("test:all")
+
+          expect(@c.last_exit_status).to eq(0)
+          expect(output).to match(/^Compiling .*moduleA\.c/)
+        end
+      end
     end
 
     # =========================================================================

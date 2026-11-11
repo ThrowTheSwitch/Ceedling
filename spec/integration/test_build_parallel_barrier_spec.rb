@@ -7,7 +7,7 @@
 
 # Integration coverage for Fix 5 (Stage 2 of the concurrency/file-presence work,
 # Finding 4): TestBuildExecutor#apply_sibling_isolation's unguarded writes to
-# testable.search_paths/isolated_headers_path are safe only because
+# testable.search_paths/header_isolation are safe only because
 # stage_build_objects's two-pass split is a real barrier -- every test's own file
 # compiles in one Batchinator batch, fully drained, before any other object in
 # that same test's build starts in a second batch. This is a canary, not a
