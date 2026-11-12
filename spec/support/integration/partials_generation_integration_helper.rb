@@ -501,7 +501,10 @@ module PartialsGenerationHelpers
 
     partials_comment_stripper.strip_file( raw )
 
-    contents = File.open( raw, 'rb' ) do |file|
+    # Text mode, as PreprocessinatorFileAssembler#collect_file_contents_from_directives_only_preprocessing
+    # reads it. On Windows, GCC's directives-only output of a CRLF source ends each line in
+    # "\r\r\n", and the text-mode read is what keeps that one line break, not two.
+    contents = File.open( raw, 'r' ) do |file|
       partials_reconstructor.extract_file_as_array_from_expansion( file, path, rejoin: false )
     end
 
