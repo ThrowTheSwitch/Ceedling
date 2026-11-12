@@ -114,6 +114,28 @@ module GcovPartialsTestCases
     end
   end
 
+  # A promoted static that defines its type spans three lines, which its no-ops keep, so the
+  # lines after it stay aligned with their original line numbers
+  def gcov_partials_coverage_promoted_type
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+
+        asset_base = test_asset_path("tests_with_partials_coverage")
+        FileUtils.cp "#{asset_base}/src/tally.h",       'src/'
+        FileUtils.cp "#{asset_base}/src/tally.c",       'src/'
+        FileUtils.cp "#{asset_base}/test/test_tally.c", 'test/'
+
+        hits = partials_cobertura_hits_by_line('src/tally.c')
+
+        expect(hits[7]).to be > 0
+        expect(hits[9]).to be > 0
+        expect(hits[6]).to be_nil
+        expect(hits[8]).to be_nil
+      end
+    end
+  end
+
   # Coverage reporting has to tell two same-basename modules apart. A Partial replaces one
   # module, so the other keeps reporting its own coverage. Matching on basename alone drops
   # both, and the module nobody Partialized disappears from the report.
