@@ -623,7 +623,7 @@ describe 'Declarations in a Partial' do
       @result = ticker( header: "int ticker_get(void);\n", source: source )
 
       body = @result.impl_c[/int ticker_get\(void\) \{.*?\n\}/m]
-      expect( body.count( "\n" ) ).to eq( source.count( "\n" ) - 1 )
+      expect( body.count( "\n" ) ).to eq( source.count( "\n" ) - 1 ), "the function as generated: #{body.inspect}"
     end
   end
 
