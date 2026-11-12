@@ -70,13 +70,16 @@ class Partializer
     )
   end
 
-  def sanitize(c_module)
-    # Remove macro definitions carrying a generated include guard. Ceedling writes these into
-    # the headers it generates, and they belong to those headers, not the module.
-    removed = c_module.macro_definitions.select { |m| m.text.match?(GENERATED_INCLUDE_GUARD_PATTERN) }
-    # Remove from both the macro_definitions list and the element_sequence that references it
-    c_module.macro_definitions.reject! { |m| removed.include?(m) }
-    c_module.element_sequence.reject!  { |e| removed.include?(e) }
+  # Removes the include guards the module's macros carry, from both macro_definitions and the
+  # element_sequence that references them. A generated guard belongs to a header Ceedling wrote.
+  # The real header's own guard survives preprocessing too, and every generated file already
+  # states it deliberately, so a carried copy would only repeat it. Only a guard defined bare
+  # counts, so a macro whose name merely begins with the guard's, or one giving it a value, stays.
+  def sanitize(c_module, include_guard: nil)
+    real    = include_guard && /\A\s*#\s*define\s+#{Regexp.escape( include_guard )}\s*\z/
+    removed = c_module.macro_definitions.select { |m| m.text.match?( GENERATED_INCLUDE_GUARD_PATTERN ) or (real and m.text.match?( real )) }.to_set
+    c_module.macro_definitions.reject! { |m| removed.include?( m ) }
+    c_module.element_sequence.reject!  { |e| removed.include?( e ) }
   end
 
   # Decides what the Partial's implementation source carries beyond its selected functions.

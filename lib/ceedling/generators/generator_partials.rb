@@ -11,6 +11,7 @@ require 'ceedling/partials/partials'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/generators/partial_source_writer'
+require 'ceedling/generators/partial_header_writer'
 
 class GeneratorPartials
 
@@ -36,41 +37,27 @@ class GeneratorPartials
       suppress_redundant_decls: true,
       extern_variables: :weak
     )
-    source = @file_path_utils.form_partial_implementation_source_filename(name)
     header = @file_path_utils.form_partial_implementation_header_filename(name)
+    source = File.join(output_path, @file_path_utils.form_partial_implementation_source_filename(name))
 
-    header_filepath = _prepare( File.join(output_path, header) )
-    source_filepath = _prepare( File.join(output_path, source) )
-
-    # Binary mode: the function bodies written below may already contain their
-    # own line endings verbatim. Windows text mode rewrites every "\n" on
-    # write, which would alter any line ending already present in that
-    # content instead of passing it through unchanged.
-    @file_wrapper.open(header_filepath, 'wb') do |file|
+    _write( File.join(output_path, header) ) do |file|
       generate_header(file, header, header_includes, function_definitions, c_module,
                       include_variables: true, include_guard: include_guard, following_includes: header_following_includes)
     end
 
-    @file_wrapper.open(source_filepath, 'wb') do |file|
-      generate_source(file, source_includes, function_definitions, c_module,
-                      carry: carry, suppress_redundant_decls: suppress_redundant_decls,
-                      extern_variables: extern_variables, filepath: source_filepath)
+    return _write( source ) do |file|
+      generate_source(file, source_includes, function_definitions, c_module, carry: carry,
+                      suppress_redundant_decls: suppress_redundant_decls, extern_variables: extern_variables, filepath: source)
     end
-
-    return source_filepath
   end
 
   def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, following_includes: [], include_guard: nil)
     header = @file_path_utils.form_partial_interface_header_filename(name)
-    filepath = _prepare( File.join(output_path, header) )
 
-    # Binary mode: see generate_implementation above.
-    @file_wrapper.open(filepath, 'wb') do |file|
+    return _write( File.join(output_path, header) ) do |file|
       generate_header(file, header, includes, function_declarations, c_module,
                       include_variables: false, include_guard: include_guard, following_includes: following_includes)
     end
-
-    return filepath
   end
 
   # A module's typedefs and aggregate (struct/enum/union) definitions are the same
@@ -87,21 +74,17 @@ class GeneratorPartials
   # @param output_path [String] Directory shared with the implementation and interface headers
   # @param includes [Array] Includes ahead of the module's types
   # @param following_includes [Array] The source's includes after the module header, written where
-  #   the header's items end (see write_following_includes)
+  #   the header's items end (see PartialHeaderWriter#following_includes)
   # @return [String, nil] The bare filename (for use as a sibling #include), or nil if nothing was generated
   def generate_types(name:, c_module:, output_path:, includes: [], following_includes: [], include_guard: nil)
-    return nil if c_module.type_definitions.empty? && c_module.aggregate_definitions.empty?
+    return nil unless c_module.types?
 
     header = @file_path_utils.form_partial_types_header_filename(name)
-    filepath = _prepare( File.join(output_path, header) )
-
-    # Binary mode: see generate_implementation above.
-    @file_wrapper.open(filepath, 'wb') do |file|
-      guard = FileWrapper.generate_include_guard( header )
-      emit_preamble( file, guard, include_guard, includes )
-
-      write_types( file, c_module, include_guard, following_includes.dup )
-      file << "#endif // #{guard}\n\n"
+    _write( File.join(output_path, header) ) do |file|
+      writer = PartialHeaderWriter.new( io: file, name: header )
+      writer.preamble( include_guard, includes )
+      write_types( writer, c_module, following_includes.dup )
+      writer.finish
     end
 
     return header
@@ -109,103 +92,45 @@ class GeneratorPartials
 
   private
 
-  # Everything above a generated header's own content: the file's include guard, the spoof of the
-  # real module header's guard, and the includes that header carries. Shared by all three
-  # generated headers, which open identically.
-  #
-  # The order of the last two is the whole point. A carried header can transitively reach the
-  # real module header, so the spoof has to be satisfied before any include is processed rather
-  # than after. And relocated content names things a generated file does not define, so without
-  # the includes it compiles only where something earlier in the translation unit happened to
-  # supply those names -- which is what made the types header's placement a conflict between two
-  # correct requirements rather than a choice.
-  def emit_preamble(io, guard, include_guard, includes)
-    io << "#ifndef #{guard}\n"
-    io << "#define #{guard}\n\n"
+  # The statement kinds that establish a type. C treats a second definition of the same type in
+  # one translation unit as a redefinition even when the two are textually identical, unlike an
+  # identical #define, which may legally repeat. So these live in the shared types header alone.
+  TYPE_KINDS = [:typedef, :aggregate].freeze unless const_defined?(:TYPE_KINDS, false)
 
-    # A module header with no guard of its own supplies nothing to spoof.
-    io << "#define #{include_guard}\n\n" if include_guard
-
-    return if includes.empty?
-
-    includes.each { |include| io << "#{include}\n" }
-    io << "\n"
+  # Writes a generated file, creating the directory a module named by directory needs. Binary
+  # mode: the function bodies written may already contain their own line endings verbatim.
+  # Windows text mode rewrites every "\n" on write, which would alter any line ending already
+  # present in that content instead of passing it through unchanged. Returns the file's path.
+  def _write(filepath, &block)
+    @file_wrapper.open( _prepare( filepath ), 'wb', &block )
+    return filepath
   end
 
   # The types header's content: each type in element_sequence order, any macro ahead of it,
   # and the source's later includes where the header's items end. `following` is consumed.
-  def write_types(io, c_module, include_guard, following)
-    anything_emitted = false
-    pending_macros = []
-
+  #
+  # A type moved here may depend on a macro, such as an array-size constant, that preceded it in
+  # the original source. This header is included before any macro generate_header writes inline,
+  # so such a macro is carried just ahead of the type that follows it. An identical #define may
+  # legally repeat, so generate_header's own copy causes no redefinition.
+  def write_types(writer, c_module, following)
+    held = []
     c_module.element_sequence.each do |item|
-      if item.origin == :source and following.any?
-        write_following_includes( io, following, macros: pending_macros, separate: anything_emitted )
-        anything_emitted = false
-      end
-
-      next unless item.is_a?(CExtractorTypes::CStatement)
-
-      if c_module.macro_definitions.include?(item)
-        # The guard emitted above also arrives among the extracted macros, since the real
-        # header's own `#define` survives preprocessing. Carrying it a second time is legal
-        # but puts a pointless duplicate in every generated types header.
-        pending_macros << item unless guard_macro?(item, include_guard)
-        next
-      end
-
-      next unless type_defining?(item, c_module)
-
-      # A typedef/struct/enum moved here may depend on a macro (e.g. an array-size
-      # constant) that preceded it in the original source -- this header is #included
-      # before any macro generate_header later emits inline into the non-shared
-      # header, so that macro would otherwise be undefined here. Carrying it forward
-      # is safe: an identical #define may legally repeat, so generate_header's own
-      # unmodified inline copy causes no redefinition conflict.
-      pending_macros.each { |macro| io << macro.text << "\n" }
-      pending_macros.clear
-
-      io << _type_text( item ) << "\n"
-      anything_emitted = true
+      writer.following_includes( following, macros: held ) if item.origin == :source
+      _write_type_item( writer, item, held )
     end
 
-    return write_following_includes( io, following, macros: pending_macros, separate: anything_emitted ) if following.any?
-
-    io << "\n" if anything_emitted
+    writer.following_includes( following, macros: held )
   end
 
-  # The source's includes after the module header, written where the header's items end, as the
-  # source meets them when it compiles. The spoof keeps the real header out, so these includes
-  # find its types and macros only in what a generated header writes ahead of them. The types
-  # header has held back its header macros no type followed, so they come first. The includes
-  # are consumed. Returns true, since the output then ends in a blank line.
-  def write_following_includes(io, includes, macros: [], separate: false)
-    io << macros.map { |macro| "#{macro.text}\n" }.join
-    io << "\n" if separate or macros.any?
-    macros.clear
-    includes.each { |include| io << "#{include}\n" }
-    includes.clear
-    io << "\n"
-    return true
-  end
+  # A macro is held until a type follows it. A type is written after the macros held for it.
+  def _write_type_item(writer, item, held)
+    return unless item.is_a?( CExtractorTypes::CStatement )
+    return held << item if item.kind == :macro
+    return unless TYPE_KINDS.include?( item.kind )
 
-  # Whether a macro statement is nothing but the definition of `include_guard`. Anchored so a
-  # macro whose name merely begins with the guard's name is never mistaken for it, and so a
-  # guard-named macro carrying an actual value is left alone.
-  def guard_macro?(item, include_guard)
-    return false if include_guard.nil?
-
-    item.text.match?(/\A\s*#\s*define\s+#{Regexp.escape( include_guard )}\s*\z/)
-  end
-
-  # A typedef or a non-typedef struct/enum/union tag definition establishes a type; C treats
-  # a second definition of the same type in one translation unit as a redefinition error even
-  # when the two definitions are textually identical. A macro statement carries no such
-  # restriction -- an identical #define may legally repeat -- so only membership in
-  # type_definitions or aggregate_definitions marks a CStatement as type-defining content
-  # that belongs in the shared types header instead of being emitted inline.
-  def type_defining?(item, c_module)
-    c_module.type_definitions.include?(item) || c_module.aggregate_definitions.include?(item)
+    held.each { |macro| writer.line( macro.text ) }.clear
+    writer.line( _type_text( item ) )
   end
 
   # A type statement as the types header writes it. A type a declaration defines, as
@@ -224,21 +149,19 @@ class GeneratorPartials
     return var.defined_type ? "#{var.defined_type.type_name} #{var.type}".rstrip : var.type
   end
 
-  def _declaration_text(var)
-    return var.defined_type ? "#{var.defined_type.type_name} #{var.text}" : var.text
+  # A variable's definition as the implementation source writes it, less any storage class.
+  #
+  # A `CVariableDeclaration`'s `decorators` mixes storage-class specifiers (`static`, `extern`)
+  # with base-type qualifiers (`const`, `volatile`, `restrict`) in their original source order,
+  # since both kinds of keyword lead a declaration the same way. The extern and the definition
+  # both need the qualifiers -- omitting them gives a type that disagrees with the variable's
+  # other declarations -- and neither may carry a storage class: `static` would contradict the
+  # external linkage the Partial establishes, and an extern supplies `extern` itself.
+  def _definition(var)
+    text = var.defined_type ? "#{var.defined_type.type_name} #{var.text}" : var.text
+    return "#{qualifier_prefix( var )}#{text}"
   end
 
-  # A `CVariableDeclaration`'s `decorators` mixes storage-class specifiers (`static`,
-  # `extern`) with base-type qualifiers (`const`, `volatile`, `restrict`) in their
-  # original source order, since both kinds of keyword lead a declaration the same
-  # way. An `extern` declaration and the variable's own definition both need the
-  # qualifiers reasserted -- omitting them produces a type that disagrees with any
-  # other declaration of the same variable elsewhere in the same translation unit --
-  # but neither may carry a storage-class specifier: `static` would contradict the
-  # external linkage the Partial is establishing, and `extern` is supplied literally
-  # by the caller. Filtering to TYPE_QUALIFIER_KEYWORDS keeps only what belongs on
-  # both forms.
-  #
   # @param decl [CExtractorTypes::CVariableDeclaration]
   # @return [String] e.g. "volatile " / "const volatile " / "" (trailing space when non-empty)
   def qualifier_prefix(decl)
@@ -250,18 +173,35 @@ class GeneratorPartials
   # when nothing else defines the variable and yields to a real definition without a duplicate
   # symbol. A compiler without GCC's weak attribute gets a plain definition.
   def weak_definition(decl)
-    text = "#{qualifier_prefix(decl)}#{_declaration_text( decl )}"
+    text = _definition( decl )
     return "#if defined(__GNUC__)\n__attribute__((weak)) #{text}\n#else\n#{text}\n#endif\n"
+  end
+
+  # What generation consults about a module's variables: each variable's defining declaration,
+  # which knows its full type, such as an array's size, and each one's asm label, which any of
+  # its declarations may hold
+  Variables = Struct.new( :defining, :labels, keyword_init: true ) unless const_defined?(:Variables, false)
+
+  def _variables(c_module)
+    return Variables.new(
+      defining: c_module.variable_declarations.reject( &:extern? ).group_by( &:name ).transform_values( &:first ),
+      labels:   c_module.variable_declarations.select( &:asm_label ).to_h { |v| [v.name, v.asm_label] }
+    )
   end
 
   # Emit a partial header file.
   #
-  # Iterates c_module.element_sequence to emit non-function items (macros, typedefs,
-  # aggregates, and optionally variable extern declarations) in their original extraction
-  # order. Function items in element_sequence are matched by name against function_list
-  # (pre-filtered Partials::FunctionDeclaration or Partials::FunctionDefinition objects)
-  # and emitted at their natural position. An entry element_sequence never names is not
-  # written.
+  # Iterates c_module.element_sequence to emit non-function items (macros, and optionally
+  # variable extern declarations) in their original extraction order. Function items in
+  # element_sequence are matched by name against function_list (pre-filtered
+  # Partials::FunctionDeclaration or Partials::FunctionDefinition objects) and emitted at their
+  # natural position. An entry element_sequence never names is not written.
+  #
+  # Types live in the shared types header generated by generate_types, so a type is defined
+  # exactly once no matter how many of a module's generated headers one test file includes. A
+  # bare macro invocation expands to real code, typically a function definition, once compiled.
+  # Each generated header is included by several separately compiled sources of one test build,
+  # so the invocation belongs only in the implementation source (see generate_source).
   #
   # @param io              [IO]     Output file handle
   # @param name            [String] Header filename (used for include guard)
@@ -272,99 +212,66 @@ class GeneratorPartials
   # @param include_guard [String, nil] The real module header's own guard, spoofed so a transitive
   #   reach at that header finds it already satisfied. nil when the header has no guard.
   # @param following_includes [Array] The source's includes after the module header, written where
-  #   the header's items end (see write_following_includes)
+  #   the header's items end (see PartialHeaderWriter#following_includes)
   def generate_header(io, name, includes, function_list, c_module, include_variables:, include_guard: nil, following_includes: [])
-    guard = FileWrapper.generate_include_guard( name )
-    emit_preamble( io, guard, include_guard, includes )
-
-    # A function leaves this lookup once written, so a later declaration or definition writes nothing
-    func_by_name = function_list.to_h { |f| [f.name, f] }
-    emitted_vars = Set.new
-    # A variable's definition knows its full type, such as an array's size, so its extern comes from there
-    defining_vars = c_module.variable_declarations.reject( &:extern? ).group_by( &:name ).transform_values( &:first )
-    # Any of a variable's declarations may hold its asm label (see _header_extern)
-    labels = c_module.variable_declarations.select( &:asm_label ).to_h { |v| [v.name, v.asm_label] }
-    last_was_func = false
-    anything_emitted = false
+    context   = _header_context( io, name, function_list, include_variables ? _variables( c_module ) : nil )
     following = following_includes.dup
 
+    context.writer.preamble( include_guard, includes )
     c_module.element_sequence.each do |item|
-      # The includes end in a blank line, as a function does
-      if item.origin == :source and following.any?
-        last_was_func = anything_emitted = write_following_includes( io, following, separate: anything_emitted && !last_was_func )
-      end
-
-      case item
-      when CExtractorTypes::CStatement
-        # Typedefs and aggregate definitions live in the shared types header generated by
-        # generate_types instead of here, so that content defines a type exactly once no
-        # matter how many of a module's generated headers end up in the same test file.
-        next if type_defining?(item, c_module)
-        # A bare macro invocation expands to real executable code (typically a function
-        # definition) once actually compiled. Unlike a #define (safe to repeat
-        # identically across translation units) or an extern declaration (no symbol of
-        # its own), a real function definition violates the one-definition rule the
-        # moment more than one compiled object contains it -- and both of this method's
-        # callers' generated headers routinely get #include'd into more than one
-        # separately-compiled source for one test build (the implementation source
-        # file, the test file itself, and the generated test runner all #include the
-        # implementation header). Never emitted here, in any header; see generate_source
-        # for where it actually belongs -- the one file that compiles to the one object
-        # the real definition can safely live in.
-        next if c_module.macro_invocations.include?(item)
-        # The spoof above already states this one deliberately; carrying it again would put a
-        # pointless duplicate in the file.
-        next if guard_macro?(item, include_guard)
-        io << item.text << "\n"
-        last_was_func = false
-        anything_emitted = true
-      when CExtractorTypes::CVariableDeclaration
-        extern = include_variables && _header_extern( item, emitted_vars, defining_vars, labels )
-        next unless extern
-
-        io << extern << "\n"
-        last_was_func = false
-        anything_emitted = true
-      when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration
-        func = func_by_name.delete( item.name )
-        next unless func
-
-        # Blank line before a function when preceded by a non-function item
-        io << "\n" if anything_emitted && !last_was_func
-        io << func.signature << ";\n\n"
-        last_was_func = true
-        anything_emitted = true
-      end
+      context.writer.following_includes( following ) if item.origin == :source
+      _write_header_item( item, context )
     end
+    context.writer.following_includes( following )
+    context.writer.finish
+  end
 
-    if following.any?
-      last_was_func = anything_emitted = write_following_includes( io, following, separate: anything_emitted && !last_was_func )
+  # What header generation consults about the module as it writes each item. A function leaves
+  # `functions` once written, so a later declaration or definition of it writes nothing.
+  HeaderContext = Struct.new( :writer, :variables, :emitted, :functions, keyword_init: true ) unless const_defined?(:HeaderContext, false)
+
+  def _header_context(io, name, function_list, variables)
+    return HeaderContext.new(
+      writer: PartialHeaderWriter.new( io: io, name: name ), variables: variables, emitted: Set.new,
+      functions: function_list.to_h { |f| [f.name, f] }
+    )
+  end
+
+  def _write_header_item(item, context)
+    case item
+    when CExtractorTypes::CStatement
+      context.writer.line( item.text ) if item.kind == :macro
+    when CExtractorTypes::CVariableDeclaration
+      _write_extern( item, context )
+    when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration
+      func = context.functions.delete( item.name )
+      context.writer.function( func.signature ) if func
     end
+  end
 
-    # Non-function items end with \n; add one more for a blank line before #endif.
-    # Function items already end with \n\n, so no extra newline needed.
-    io << "\n" if anything_emitted && !last_was_func
-
-    io << "#endif // #{guard}\n\n"
+  # An interface header writes no variables, so its context holds none
+  def _write_extern(item, context)
+    extern = context.variables && _header_extern( item, context )
+    context.writer.line( extern ) if extern
   end
 
   # The extern a header writes for a variable, or nil when it writes none.
   # - A variable the extractor read no name from, such as one a macro declares, has no extern.
   # - A header's extern and the source's definition name one variable, so it gets one line.
   # - The definition knows the full type, such as an array's size, so the extern comes from there.
-  # - A leading const, volatile or restrict is part of the type (see qualifier_prefix), so the
+  # - A leading const, volatile or restrict is part of the type (see _definition), so the
   #   extern agrees with every other declaration of the variable.
   # - A function pointer or a pointer to an array has its name inside a parenthesized
   #   declarator, which the extern writes whole.
   # - An asm label names the variable's symbol, so the extern carries it to reach that symbol.
   #   Any of the variable's declarations may hold it. The implementation source includes the
   #   extern ahead of the definition, so the Partial's symbol takes the label too.
-  def _header_extern(item, emitted, defining, labels)
+  def _header_extern(item, context)
     name = item.name
-    return nil unless name and emitted.add?( name )
+    return nil unless name and context.emitted.add?( name )
 
-    var      = defining[name] || item
-    declared = [var.declarator || "#{name}#{var.array_suffix}", labels[name]].compact
+    var      = context.variables.defining[name] || item
+    declared = [var.declarator || "#{name}#{var.array_suffix}", context.variables.labels[name]].compact
     return "extern #{qualifier_prefix( var )}#{_declared_type( var )} #{declared.join( ' ' )};"
   end
 
@@ -393,9 +300,8 @@ class GeneratorPartials
                       suppress_redundant_decls: true, extern_variables: :weak, filepath: nil)
     writer  = PartialSourceWriter.new( io: io, filepath: filepath, suppress_redundant_decls: suppress_redundant_decls )
     context = SourceContext.new(
-      c_module: c_module, carry: carry, extern_variables: extern_variables, weak: Set.new,
-      selected: function_definitions.to_h { |f| [f.name, f] },
-      defined:  Set.new( c_module.variable_declarations.reject( &:extern? ).map( &:name ) )
+      carry: carry, extern_variables: extern_variables, weak: Set.new, variables: _variables( c_module ),
+      selected: function_definitions.to_h { |f| [f.name, f] }
     )
 
     writer.preamble( includes )
@@ -404,37 +310,41 @@ class GeneratorPartials
   end
 
   # What source generation consults about the module as it writes each item
-  SourceContext = Struct.new( :c_module, :carry, :extern_variables, :selected, :defined, :weak, keyword_init: true ) unless const_defined?(:SourceContext, false)
+  SourceContext = Struct.new( :carry, :extern_variables, :selected, :variables, :weak, keyword_init: true ) unless const_defined?(:SourceContext, false)
 
   def _write_source_item(writer, item, context)
     case item
     when CExtractorTypes::CStatement
-      writer.text( "#{item.text}\n" ) if context.c_module.macro_invocations.include?( item )
+      writer.text( "#{item.text}\n" ) if item.kind == :invocation
     when CExtractorTypes::CVariableDeclaration
-      text = _source_variable( item, context )
-      writer.text( text ) if text
+      _write_variable( writer, item, context )
     when CExtractorTypes::CFunctionDefinition
-      writer.function( context.selected[item.name] || context.carry.helper( item.name ) )
+      writer.function( _selected_or_carried( item, context ) )
     when CExtractorTypes::CFunctionDeclaration
       writer.prototype( item ) if context.carry.prototype?( item )
     end
+  end
+
+  def _write_variable(writer, var, context)
+    text = _source_variable( var, context )
+    writer.text( text ) if text
+  end
+
+  # A function's selected definition, or the helper the carry plan carries by its name, or nil
+  def _selected_or_carried(func, context)
+    return context.selected[func.name] || context.carry.helper( func.name )
   end
 
   # A variable's definition, or nil. A variable the module defines is written where it does.
   # One it only declares `extern` gets a weak definition, once, unless `extern_variables` leaves
   # it to the test or its type is never completed, which no definition could compile with.
   def _source_variable(var, context)
-    # `var.text` is the declaration with its leading decorator run removed (see
-    # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict qualifier on the
-    # base type is reapplied here via qualifier_prefix -- this definition's type must match the
-    # extern declaration emitted for the same variable in generate_header.
-    return "#{qualifier_prefix(var)}#{_declaration_text( var )}\n" unless var.extern?
+    return "#{_definition( var )}\n" unless var.extern?
     return nil if context.extern_variables != :weak
-    return nil if context.defined.include?( var.name ) or context.carry.incomplete?( var.name )
+    return nil if context.variables.defining.key?( var.name ) or context.carry.incomplete?( var.name )
     return nil unless context.weak.add?( var.name )
 
     return weak_definition( var )
   end
-
 
 end

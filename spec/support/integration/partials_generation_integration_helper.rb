@@ -295,8 +295,8 @@ module PartialsGenerationHelpers
     # Generated-file boilerplate carried in from the reconstituted files is stripped before
     # generation, exactly as PartialsManager#stage_generate_partials does. Skipping this
     # leaves synthetic include guards in the extracted macros and misreports what a real
-    # build would emit.
-    partializer.sanitize( c_module )
+    # build would emit. The real header's own guard goes too, since every generated file states it.
+    partializer.sanitize( c_module, include_guard: partializer.extract_module_include_guard( File.join( dir, "#{module_name}.h" ) ) )
 
     # The header remaps take the source's and the header's lists apart, as partials_manager
     # hands them. The implementation source's remap takes them joined, source first.

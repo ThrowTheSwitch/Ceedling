@@ -10,7 +10,8 @@ module CExtractorTypes
 
   # Pairs a raw C statement string with its 1-based source line number.
   # Used for macro_definitions, type_definitions, aggregate_definitions and macro_invocations in
-  # CModule. `kind` says which, as :macro, :typedef, :aggregate or :invocation.
+  # CModule. `kind` says which, as :macro, :typedef, :aggregate or :invocation. A CModule gives
+  # each statement its list's kind (see STATEMENT_KINDS).
   CStatement = Struct.new(
     :text,      # String  — raw extracted statement text (comments replaced with spaces)
     :line_num,  # Integer — 1-based line number where the statement begins in the source file

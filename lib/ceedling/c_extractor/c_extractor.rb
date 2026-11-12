@@ -130,7 +130,7 @@ class CExtractor
           _compute_line_info(io, call_start, dir_start, cumulative_newlines)
         macro_def = @preprocessing.filter_directive(directive, CExtractorPreprocessing::MACRO_DEFINITION)
         if macro_def
-          stmt = CStatement.new(text: macro_def, line_num: line_num, kind: :macro)
+          stmt = CStatement.new(text: macro_def, line_num: line_num)
           macro_definitions << stmt
           sequence << stmt
         end
@@ -147,7 +147,7 @@ class CExtractor
       if typedef_def
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, td_start, cumulative_newlines)
-        stmt = CStatement.new(text: typedef_def, line_num: line_num, kind: :typedef, **CExtractorDefinedType.names( typedef_def ))
+        stmt = CStatement.new(text: typedef_def, line_num: line_num, **CExtractorDefinedType.names( typedef_def ))
         type_definitions << stmt
         sequence << stmt
         next
@@ -177,7 +177,7 @@ class CExtractor
       if agg_def
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, agg_start, cumulative_newlines)
-        stmt = CStatement.new(text: agg_def, line_num: line_num, kind: :aggregate, **CExtractorDefinedType.names( agg_def ))
+        stmt = CStatement.new(text: agg_def, line_num: line_num, **CExtractorDefinedType.names( agg_def ))
         aggregate_definitions << stmt
         sequence << stmt
         next

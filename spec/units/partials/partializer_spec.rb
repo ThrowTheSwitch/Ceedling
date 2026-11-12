@@ -473,6 +473,30 @@ describe Partializer do
       expect(mod.macro_definitions).to eq(lookalikes)
     end
 
+    # The real header's own guard survives preprocessing too, and every generated file states it
+    # deliberately. A carried copy would only repeat it.
+    it "removes the real header's own guard when given it" do
+      guard = make_macro('#define MY_MODULE_H')
+      kept  = make_macro('#define MY_DEFINE 1')
+      mod   = make_module(macros: [guard, kept])
+
+      @partializer.sanitize(mod, include_guard: 'MY_MODULE_H')
+
+      expect(mod.macro_definitions).to eq([kept])
+      expect(mod.element_sequence).to eq([kept])
+    end
+
+    # A macro whose name merely begins with the guard's, and a guard-named macro carrying a
+    # value, are neither of them the guard statement
+    it "keeps a macro whose name only resembles the real header's guard" do
+      lookalikes = [make_macro('#define MY_MODULE_H_LIMIT 8'), make_macro('#define MY_MODULE_H 2')]
+      mod        = make_module(macros: lookalikes)
+
+      @partializer.sanitize(mod, include_guard: 'MY_MODULE_H')
+
+      expect(mod.macro_definitions).to eq(lookalikes)
+    end
+
     it "does not remove non-macro elements from element_sequence" do
       generated  = make_macro('#ifndef GEN0123ABCD_C_H_CEEDLING')
       other_elem = double('CFunction', text: 'void foo(void){}')

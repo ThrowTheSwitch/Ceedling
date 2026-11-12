@@ -9,6 +9,10 @@ require 'ceedling/c_extractor/c_extractor_statement'
 
 module CExtractorTypes
 
+  # Each CModule statement list's kind, which a statement in it takes (see CStatement#kind)
+  STATEMENT_KINDS = { macro_definitions: :macro, type_definitions: :typedef, aggregate_definitions: :aggregate,
+                      macro_invocations: :invocation }.freeze unless const_defined?(:STATEMENT_KINDS, false)
+
   # Data class representing all extracted content of C module
   CModule = Struct.new(
     :variable_declarations, # Array of CVariableDeclaration structs (each with :line_num)
@@ -22,10 +26,17 @@ module CExtractorTypes
     :element_sequence,      # Array of references to all items above in extraction order (cross-type ordering index)
     keyword_init: true
   ) do
-    # Constructor to set unassigned fields to empty arrays for convenience
+    # Constructor to set unassigned fields to empty arrays for convenience. A statement without a
+    # kind takes its list's, so a statement's kind always says which list holds it.
     def initialize(variable_declarations: [], function_definitions: [], function_declarations: [], macro_definitions: [],
                    type_definitions: [], aggregate_definitions: [], macro_invocations: [], element_sequence: [])
       super
+      STATEMENT_KINDS.each { |list, kind| self[list].each { |statement| statement.kind ||= kind } }
+    end
+
+    # Whether the module defines or names any type, which a Partial's types header then holds
+    def types?
+      return !(type_definitions.empty? and aggregate_definitions.empty?)
     end
 
     # Concatenate two CModule instances.
