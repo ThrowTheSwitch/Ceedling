@@ -73,7 +73,8 @@ class FffCMockWrapper
   # :mock_name_include_folder, the folder below the mock root comes first, so two
   # same-named fakes stay distinct and match the runner's calls. A leading ./ is
   # dropped, and characters a C identifier can't hold become `_`, as Unity's
-  # TypeSanitizer does.
+  # TypeSanitizer does. Unity's rule, not CIdentifier's, since the runner Unity
+  # generates must call the very names this forms.
   def c_name_for(mock_name, folder)
     mock_folder = [@cm_config.subdir, folder].compact
     return mock_name unless @cm_config.mock_name_include_folder && !mock_folder.empty?
