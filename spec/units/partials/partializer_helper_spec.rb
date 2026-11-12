@@ -694,6 +694,21 @@ describe PartializerHelper do
         expect(func.code_block).to include('return partial_calc_x + partial_calc_a + partial_calc_b;')
       end
 
+      # The body opens at the first brace outside a literal, and an attribute's string may hold one
+      it "promotes a static in a function whose signature holds a brace in a string" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{ static int n = 0; return n; }",
+          code_block: "__attribute__((section(\"t{x}\"))) int calc(void) { static int n = 0; return n; }"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:name)).to eq ['partial_calc_n']
+        expect(func.code_block).to start_with('__attribute__((section("t{x}"))) int calc(void) { (void)0;')
+        expect(func.code_block).to end_with('return partial_calc_n; }')
+      end
+
       it "promotes a static whose name holds '$'" do
         func = OpenStruct.new(
           name:       'calc',

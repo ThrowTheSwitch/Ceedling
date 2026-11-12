@@ -293,9 +293,12 @@ class PartializerHelper
     return statements
   end
 
-  # The byte at which a function's body opens in its code block. A signature holds no brace.
+  # The byte at which a function's body opens in its code block: the first brace outside a
+  # literal or comment, since an attribute's string in the signature may hold one
   def _body_start(func)
-    return func.code_block.b.index( '{' )
+    scanner = StringScanner.new( func.code_block )
+    nil until scanner.skip_until( CExtractorDeclarator::BALANCE_TOKEN ).nil? or scanner.matched == '{'
+    return scanner.pos - 1
   end
 
   # The variables of one statement share its decorators
