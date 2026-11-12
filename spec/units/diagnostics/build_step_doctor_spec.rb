@@ -23,7 +23,8 @@ describe BuildStepDoctor do
       loginator:                   @loginator,
       header_collision_specialist: specialist( *diagnoses ),
       missing_symbol_specialist:   specialist( *others ),
-      duplicate_symbol_specialist: specialist
+      duplicate_symbol_specialist: specialist,
+      partial_name_specialist:     specialist
     )
   end
 

@@ -48,10 +48,10 @@ class BuildStepDoctor
   # `inputs` holds whatever the step ran with, such as its tool, source, and search paths.
   Case = Struct.new( :step, :outcome, :output, :symptoms, :inputs, keyword_init: true )
 
-  constructor :loginator, :header_collision_specialist, :missing_symbol_specialist, :duplicate_symbol_specialist
+  constructor :loginator, :header_collision_specialist, :missing_symbol_specialist, :duplicate_symbol_specialist, :partial_name_specialist
 
   def setup()
-    specialists = [@header_collision_specialist, @missing_symbol_specialist, @duplicate_symbol_specialist]
+    specialists = [@header_collision_specialist, @missing_symbol_specialist, @duplicate_symbol_specialist, @partial_name_specialist]
 
     @diagnoses = specialists.flat_map( &:diagnoses ).freeze
     @diagnoses.each { |diagnosis| check_scope( diagnosis.steps, diagnosis.outcomes, diagnosis.name ) }
