@@ -282,18 +282,16 @@ module PartialsGenerationHelpers
     # own subject without this step. Function line-number association is skipped, so selected
     # bodies and helpers carry no `#line`. Carried prototypes are located in their files'
     # text with the real code finder, as production locates them.
-    promoted = partials_helper.extract_function_scope_static_vars(
-      c_module.function_definitions,
-      name: 'PartialsGenerationTest', module_name: module_name, file_type: 'source'
-    )
-    c_module.variable_declarations.concat( promoted )
-    c_module.element_sequence.concat( promoted ) unless promoted.empty?
+    partials_helper.promote_function_scope_statics( c_module, name: 'PartialsGenerationTest', module_name: module_name, file_type: 'source' )
+
+    # A type a declaration defines is named once promotion is done, as production names it
+    Partials.name_defined_types( c_module, module_name )
 
     # Generated-file boilerplate carried in from the reconstituted files is stripped before
     # generation, exactly as PartialsManager#stage_generate_partials does. Skipping this
     # leaves synthetic include guards in the extracted macros and misreports what a real
-    # build would emit.
-    partializer.sanitize( c_module )
+    # build would emit. The real header's own guard goes too, since every generated file states it.
+    partializer.sanitize( c_module, include_guard: partializer.extract_module_include_guard( File.join( dir, "#{module_name}.h" ) ) )
 
     # The header remaps take the source's and the header's lists apart, as partials_manager
     # hands them. The implementation source's remap takes them joined, source first.

@@ -13,6 +13,7 @@ require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_config'
 require 'ceedling/reportinator'
 require 'ceedling/c_extractor/c_extractor_types'
+require 'ceedling/c_extractor/c_extractor_defined_type'
 require 'ostruct'
 
 describe Partializer do
@@ -472,6 +473,30 @@ describe Partializer do
       expect(mod.macro_definitions).to eq(lookalikes)
     end
 
+    # The real header's own guard survives preprocessing too, and every generated file states it
+    # deliberately. A carried copy would only repeat it.
+    it "removes the real header's own guard when given it" do
+      guard = make_macro('#define MY_MODULE_H')
+      kept  = make_macro('#define MY_DEFINE 1')
+      mod   = make_module(macros: [guard, kept])
+
+      @partializer.sanitize(mod, include_guard: 'MY_MODULE_H')
+
+      expect(mod.macro_definitions).to eq([kept])
+      expect(mod.element_sequence).to eq([kept])
+    end
+
+    # A macro whose name merely begins with the guard's, and a guard-named macro carrying a
+    # value, are neither of them the guard statement
+    it "keeps a macro whose name only resembles the real header's guard" do
+      lookalikes = [make_macro('#define MY_MODULE_H_LIMIT 8'), make_macro('#define MY_MODULE_H 2')]
+      mod        = make_module(macros: lookalikes)
+
+      @partializer.sanitize(mod, include_guard: 'MY_MODULE_H')
+
+      expect(mod.macro_definitions).to eq(lookalikes)
+    end
+
     it "does not remove non-macro elements from element_sequence" do
       generated  = make_macro('#ifndef GEN0123ABCD_C_H_CEEDLING')
       other_elem = double('CFunction', text: 'void foo(void){}')
@@ -672,6 +697,11 @@ describe Partializer do
         CExtractorTypes::CVariableDeclaration.new( name: name, type: type, decorators: ['extern'], text: "#{type} #{name};" )
       end
 
+      # A typedef as the extractor records it, with the tag and the name it reads
+      def typedef(text)
+        CExtractorTypes::CStatement.new( text: text, kind: :typedef, **CExtractorDefinedType.names( text ) )
+      end
+
       # Each file's raw directives-only copy, present only where `copies` gives its text. Files and
       # copies are read as bytes, since the search needs nothing more.
       def stub_texts(header:, source:, copies: {})
@@ -706,7 +736,7 @@ describe Partializer do
             extern_var( 'shared', '_Atomic struct handle_s' ),
             extern_var( 'named', '__thread _Atomic handle_t' )
           ],
-          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef struct handle_s handle_t;' )]
+          type_definitions:      [typedef( 'typedef struct handle_s handle_t;' )]
         )
 
         expect( incomplete_for( c_module ) ).to eq( Set['local', 'shared', 'named'] )
@@ -727,7 +757,7 @@ describe Partializer do
         stub_texts( header: "typedef struct handle_s handle_t;\nextern handle_t handle;\n", source: '' )
         c_module = CExtractorTypes::CModule.new(
           variable_declarations: [extern_var( 'handle', 'handle_t' )],
-          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef struct handle_s handle_t;' )]
+          type_definitions:      [typedef( 'typedef struct handle_s handle_t;' )]
         )
 
         expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
@@ -737,7 +767,7 @@ describe Partializer do
         stub_texts( header: "typedef union word_u word_t;\nextern word_t word;\n", source: '' )
         c_module = CExtractorTypes::CModule.new(
           variable_declarations: [extern_var( 'word', 'word_t' )],
-          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef union word_u word_t;' )]
+          type_definitions:      [typedef( 'typedef union word_u word_t;' )]
         )
 
         expect( incomplete_for( c_module ) ).to eq( Set['word'] )
@@ -2085,7 +2115,7 @@ describe Partializer do
       allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
       allow(@file_wrapper).to receive(:exist?).and_return(false)
       # static var extraction/promotion called for every file processed; stub by default
-      allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
+      allow(@partializer_helper).to receive(:promote_function_scope_statics)
       allow(@partializer_helper).to receive(:validate_function_names_readable)
     end
 
@@ -2104,7 +2134,7 @@ describe Partializer do
       expect(@partializer_helper).to receive(:validate_function_names_readable)
         .with(source_contents, @name, 'module1').and_raise(CeedlingException, 'unreadable')
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
-      expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
+      expect(@partializer_helper).not_to receive(:promote_function_scope_statics)
 
       expect { @partializer.extract_module_contents(@name, config, fallback: false) }
         .to raise_error(CeedlingException, 'unreadable')
@@ -2119,7 +2149,7 @@ describe Partializer do
 
       expect(@c_extractor).not_to receive(:from_file)
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
-      expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
+      expect(@partializer_helper).not_to receive(:promote_function_scope_statics)
 
       result = @partializer.extract_module_contents(@name, config, fallback: false)
 
@@ -2267,10 +2297,8 @@ describe Partializer do
       expect(result.variable_declarations).to eq([])
     end
 
-    it "appends promoted function-scope static variables to element_sequence" do
-      promoted_var1 = CExtractorTypes::CVariableDeclaration.new(text: 'static int counter = 0;', type: 'int', name: 'counter')
-      promoted_var2 = CExtractorTypes::CVariableDeclaration.new(text: 'static bool flag = false;', type: 'bool', name: 'flag')
-
+    # Promotion adds to the file's own module, ahead of each function, before the module merges
+    it "promotes function-scope statics in each file's module" do
       source_contents = CExtractorTypes::CModule.new(function_definitions: [], variable_declarations: [])
 
       config = PartializerConfig::Config.new(
@@ -2280,13 +2308,10 @@ describe Partializer do
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
-      allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([promoted_var1, promoted_var2])
+      expect(@partializer_helper).to receive(:promote_function_scope_statics)
+        .with(source_contents, name: @name, module_name: 'module1', file_type: 'source')
 
-      result = @partializer.extract_module_contents(@name, config, fallback: false)
-
-      expect(result.element_sequence).to eq([promoted_var1, promoted_var2])
-      expect(result.element_sequence[0]).to equal(promoted_var1)
-      expect(result.element_sequence[1]).to equal(promoted_var2)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on source" do

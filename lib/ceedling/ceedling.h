@@ -24,6 +24,14 @@
 // Create a unique namespaced variable name
 #define PARTIAL_LOCAL_VAR(namespace, var) partial_##namespace##_##var
 
+// Name the type a Partial gives a variable declared together with its type, as in
+// `static struct { int count; } s_ctx;`. PARTIAL_LOCAL_TYPE names a promoted function-scope
+// static's. The module is its name alone, without any directory, each character a C identifier
+// cannot hold written as `_`. The module and variable paste before anything expands, so neither
+// is taken for a macro, and the outer join expands the prefix.
+#define PARTIAL_TYPE(module, var) __PARTIALS_JOIN(CEEDLING_PARTIALS_PREFIX, module##_##var##_t)
+#define PARTIAL_LOCAL_TYPE(module, function, var) __PARTIALS_JOIN(CEEDLING_PARTIALS_PREFIX, module##_##function##_##var##_t)
+
 //
 // NOTE: These macros expect symbols CMOCK_MOCK_PREFIX and CEEDLING_PARTIALS_PREFIX to be defined at compilation
 //

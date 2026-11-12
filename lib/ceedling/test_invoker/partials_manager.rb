@@ -130,18 +130,15 @@ class PartialsManager
         c_module: module_contents, config: config, name: name, fallback: !directives_only
       )
 
-      @partializer.sanitize( module_contents )
+      @partializer.sanitize( module_contents, include_guard: module_include_guard )
 
       # Generated once and shared by the implementation and interface headers below (via
       # their own includes lists), so a module tested and mocked in the same test file gets
       # exactly one C definition of each of its typedefs and aggregate types. A module with no
       # typedefs or aggregate definitions gets none, and one an earlier build left is removed.
-      # The bare filename is computed the same deterministic way GeneratorPartials#generate_types
+      # The filename is computed the same deterministic way GeneratorPartials#generate_types
       # computes it, so the includes remapping below knows what to #include.
-      types_header = nil
-      if !module_contents.type_definitions.empty? || !module_contents.aggregate_definitions.empty?
-        types_header = @file_path_utils.form_partial_types_header_filename( config.module )
-      end
+      types_header = module_contents.types? ? @file_path_utils.form_partial_types_header_filename( config.module ) : nil
       discard_leftover_types( paths[:types] ) if types_header.nil?
 
       includes = remap_partial_includes( config, testable.partials.configs, types_header, name )

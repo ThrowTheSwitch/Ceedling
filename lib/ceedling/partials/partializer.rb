@@ -23,6 +23,9 @@ class Partializer
   # Matched by identity, and named so no real include or module can match it.
   INCLUDE_BOUNDARY = UserInclude.new( '<ceedling include group boundary>' ) unless const_defined?(:INCLUDE_BOUNDARY, false)
 
+  # A typedef of a struct or union, whose type a variable may hold before it is complete
+  AGGREGATE_TYPEDEF = /\Atypedef\s+(?:struct|union)(?![\w$])/ unless const_defined?(:AGGREGATE_TYPEDEF, false)
+
   # Explains helpers a Partial leaves behind because the module header has no include guard
   UNGUARDED_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_HELPERS_NOTICE, false)
     Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
@@ -67,13 +70,16 @@ class Partializer
     )
   end
 
-  def sanitize(c_module)
-    # Remove macro definitions carrying a generated include guard. Ceedling writes these into
-    # the headers it generates, and they belong to those headers, not the module.
-    removed = c_module.macro_definitions.select { |m| m.text.match?(GENERATED_INCLUDE_GUARD_PATTERN) }
-    # Remove from both the macro_definitions list and the element_sequence that references it
-    c_module.macro_definitions.reject! { |m| removed.include?(m) }
-    c_module.element_sequence.reject!  { |e| removed.include?(e) }
+  # Removes the include guards the module's macros carry, from both macro_definitions and the
+  # element_sequence that references them. A generated guard belongs to a header Ceedling wrote.
+  # The real header's own guard survives preprocessing too, and every generated file already
+  # states it deliberately, so a carried copy would only repeat it. Only a guard defined bare
+  # counts, so a macro whose name merely begins with the guard's, or one giving it a value, stays.
+  def sanitize(c_module, include_guard: nil)
+    real    = include_guard && /\A\s*#\s*define\s+#{Regexp.escape( include_guard )}\s*\z/
+    removed = c_module.macro_definitions.select { |m| m.text.match?( GENERATED_INCLUDE_GUARD_PATTERN ) or (real and m.text.match?( real )) }.to_set
+    c_module.macro_definitions.reject! { |m| removed.include?( m ) }
+    c_module.element_sequence.reject!  { |e| removed.include?( e ) }
   end
 
   # Decides what the Partial's implementation source carries beyond its selected functions.
@@ -469,6 +475,7 @@ class Partializer
     _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.full_expansion_filepath
     _locate_contents( name, c_file, fallback, c_module )
     _promote_function_scope_statics( name, config, file_type, c_module )
+    Partials.name_defined_types( c_module, config.module )
 
     return c_module.stamp_origin!( file_type.to_sym )
   end
@@ -530,12 +537,7 @@ class Partializer
   # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
   # 3. Promote the function-scoped variables to be module-level variables.
   def _promote_function_scope_statics(name, config, file_type, c_module)
-    promoted = @helper.extract_function_scope_static_vars(
-      c_module.function_definitions,
-      name: name, module_name: config.module, file_type: file_type
-    )
-    c_module.variable_declarations.concat(promoted)
-    c_module.element_sequence.concat(promoted) unless promoted.empty?
+    @helper.promote_function_scope_statics( c_module, name: name, module_name: config.module, file_type: file_type )
   end
 
   # A mock interface only ever needs a signature, never a body, so a declaration-only
@@ -595,8 +597,7 @@ class Partializer
       tags[Partials.named_type( v )] = tag if tag
     end
     c_module.type_definitions.each do |typedef|
-      match = typedef.text.match( /\Atypedef\s+(?:struct|union)\s+([\w$]+)\s+([\w$]+)\s*;/ )
-      tags[match[2]] = match[1] if match
+      tags[typedef.type_name] = typedef.tag if typedef.tag and typedef.type_name and typedef.text.match?( AGGREGATE_TYPEDEF )
     end
 
     return tags

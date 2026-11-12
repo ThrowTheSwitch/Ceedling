@@ -15,6 +15,7 @@ require 'tmpdir'
 # which Digest's lazy autoload does not survive under contention.
 require 'digest/sha2'
 require 'set'
+require 'ceedling/c_identifier'
 require 'ceedling/constants'
 require 'ceedling/system_wrapper'
 require 'ceedling/exceptions'
@@ -99,7 +100,7 @@ class FileWrapper
   # at both ends (GENERATED_INCLUDE_GUARD_PATTERN).
   def self.generate_include_guard(name)
     base = name.sub(/\.[^.\/\\]*\z/, '') # Remove any extension, keeping any path
-    base = base.gsub(/\W/, '_').squeeze('_').delete_prefix('_').delete_suffix('_')
+    base = CIdentifier.fold( base ).squeeze('_').delete_prefix('_').delete_suffix('_')
 
     head = GENERATED_INCLUDE_GUARD_PREFIX + include_guard_hash( name )
 

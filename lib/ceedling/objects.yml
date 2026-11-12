@@ -645,6 +645,7 @@ build_step_doctor:
     - header_collision_specialist
     - missing_symbol_specialist
     - duplicate_symbol_specialist
+    - partial_name_specialist
 
 header_collision_specialist:
   compose:
@@ -660,6 +661,11 @@ missing_symbol_specialist:
 duplicate_symbol_specialist:
   compose:
     - configurator
+
+partial_name_specialist:
+  compose:
+    - configurator
+    - file_wrapper
 
 quote_include_isolator:
   compose:

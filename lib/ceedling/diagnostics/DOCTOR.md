@@ -34,6 +34,7 @@ An examination that raises is a bug in guidance, never a reason to hide a build'
 | `HeaderCollisionSpecialist` | compilation | `:substituted_header_collision`: a header the test mocks or Partializes collides with its own real content. `:shared_directory_collision`: a header collides in a directory it shares with other headers, none of them substituted (see `test_invoker/HEADER_COLLISIONS.md`). |
 | `MissingSymbolSpecialist` | linking | `:missing_symbols`: a symbol no linked object defines. |
 | `DuplicateSymbolSpecialist` | linking | `:duplicate_symbols`: a symbol more than one linked object defines. The guidance names a mock linked beside the source it stands in for. |
+| `PartialNameSpecialist` | compilation | `:partial_local_var` and `:partial_type`: a name that `PARTIAL_LOCAL_VAR()`, or `PARTIAL_TYPE()` or `PARTIAL_LOCAL_TYPE()`, builds and nothing declares, in the test file of a build with Partials. The guidance lists the names the test's generated Partial headers provide. |
 
 `TestSubstitutions` (`test_invoker/test_substitutions.rb`) answers two questions both sibling-header isolation and the collision diagnoses ask: which real headers a test substitutes, and which directories hold Ceedling's own generated content.
 
@@ -112,3 +113,17 @@ Header paths are read in each location format: `a.h:12:3` (GCC, Clang), `"a.h",1
 | Arm armlink | `Error: L6200E: Symbol … multiply defined` | vendor forums |
 | TI | `error #10056: symbol … redefined: first defined in` | vendor forums |
 | Green Hills, TASKING, SDCC, others | generic: `multiple definition`, `multiply defined`, `duplicate symbol`, `duplicate definition`, `already defined` | expected |
+
+### Undeclared names at compilation
+
+A wording alone matches any undeclared name, so `PartialNameSpecialist` also asks for a name its macros build, `partial_…` or `ceedling_partial_…_t`, or for a note naming one of the macros.
+
+| Family | Wordings | Evidence |
+|---|---|---|
+| GCC, Microchip XC16 and XC32 | `'x' undeclared (first use in this function)`, `unknown type name` | real toolchain |
+| Clang, armclang, Microchip XC8 v2 and later | `use of undeclared identifier`, `unknown type name` | real toolchain (Clang) |
+| IAR | `Error[Pe020]: identifier "x" is undefined` | expected |
+| Arm armcc, TI, Green Hills | `error #20: identifier "x" is undefined` | expected |
+| MSVC | `C2065` `undeclared identifier`, `C2061`, `C4430`, `C2146` | expected |
+| SDCC | `Undefined identifier` | expected |
+| TASKING, others | generic: `undefined identifier`, `not declared`, `unknown type`, `is not a type` | expected |

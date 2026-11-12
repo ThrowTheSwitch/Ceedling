@@ -7,6 +7,8 @@
 
 require 'set'
 require 'strscan'
+require 'ceedling/constants'
+require 'ceedling/c_identifier'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_declarator'
 require 'ceedling/partials/carry_plan'
@@ -27,10 +29,6 @@ module Partials
   # A string or character literal, or a comment. One pattern finds both, so whichever starts
   # first wins, as it does for the compiler.
   LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:LITERAL_OR_COMMENT)
-
-  # Space between a statement's tokens in a function's code block. Under fallback preprocessing
-  # it may hold a comment where the function's comment-blanked body holds a space.
-  STATEMENT_GAP = %r{(?:\s|/\*.*?\*/|//[^\n]*)+}m unless const_defined?(:STATEMENT_GAP)
 
   # Data class representing a source or header file to be partialized
   ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
@@ -69,22 +67,24 @@ module Partials
     end
   end unless const_defined?(:FunctionDefinition, false)
 
-  # The text with its first copy of `statement` replaced by what the block returns, or the text
-  # as it was. The statement is read from a function's body, whose comments are blanked to
-  # spaces. The text usually holds it exactly, and a plain search finds that copy fastest. Under
-  # fallback preprocessing the text may keep a comment inside the statement, so then each gap
-  # between its tokens matches whitespace and comments alike.
-  def self.replace_statement(text, statement, &replacement)
-    return text.sub( statement, &replacement ) if text.include?( statement )
-
-    found = _statement_pattern( statement ).match( text )
-    return found ? found.pre_match + yield + found.post_match : text
+  # The name a Partial gives a type a declaration defines, as `struct { int count; }` in
+  # `static struct { int count; } s_ctx;`. The parts name its variable: the variable alone at file
+  # scope, or a promoted static's function and variable. The module's name is folded as
+  # CIdentifier.fold does, and a directory a module is named by takes no part. ceedling.h's
+  # PARTIAL_TYPE and PARTIAL_LOCAL_TYPE build the same name.
+  #   type_name( 'ticker', 's_ctx' )              --> ceedling_partial_ticker_s_ctx_t
+  #   type_name( 'drivers/my-uart', 'tick', 'n' ) --> ceedling_partial_my_uart_tick_n_t
+  def self.type_name(module_name, *parts)
+    return "#{PARTIAL_FILENAME_PREFIX}#{CIdentifier.fold( File.basename( module_name ) )}_#{parts.join( '_' )}_t"
   end
 
-  # The statement with any whitespace or comments between its tokens
-  def self._statement_pattern(statement)
-    tokens = statement.strip.split( /\s+/ ).map { |part| Regexp.escape( part ) }
-    return Regexp.new( tokens.join( STATEMENT_GAP.source ), Regexp::MULTILINE )
+  # Names each type a declaration defines after the first of its variables with a name. A type
+  # already named, as a promoted static's is, keeps its name.
+  def self.name_defined_types(c_module, module_name)
+    c_module.variable_declarations.each do |var|
+      type = var.defined_type
+      type.type_name ||= type_name( module_name, var.name ) if type and var.name
+    end
   end
 
   # The type a variable holds by value, less a keyword ahead of it that changes only how it's
@@ -160,22 +160,34 @@ module Partials
     # The text with each identifier `renames` maps replaced, in one pass whatever the number of
     # names. Literals and comments stay as written, and so do member access and tags. A name a
     # local struct or union body holds is renamed in member access and tags too (see
-    # _names_in_bodies). The exception is a string's asm operand references, which must follow the
-    # operand names they refer to.
-    def self.identifiers(text, renames)
-      shared = _names_in_bodies( text, renames )
+    # names_in_bodies). `shared` gives those names when the bodies sit elsewhere too, and `tags`
+    # renames tags by name. The exception is a string's asm operand references, which must follow
+    # the operand names they refer to.
+    def self.identifiers(text, renames, shared: nil, tags: {})
+      shared ||= names_in_bodies( text, renames )
       return text.gsub( TOKEN ) do |token|
-        next token.sub( /[A-Za-z_$][\w$]*\z/ ) { |name| shared.include?( name ) ? renames[name] : name } if token.match?( MEMBER_OR_TAG_START )
+        next _member_or_tag( token, renames, shared, tags ) if token.match?( MEMBER_OR_TAG_START )
         next renames.fetch( token, token ) unless token.start_with?( '"' )
 
         token.gsub( ASM_OPERAND_REFERENCE ) { |name| renames.fetch( name, name ) }
       end
     end
 
+    # A member access or tag token, renamed. A tag `tags` renames takes its new name. Otherwise a
+    # name a local body holds takes its variable's.
+    def self._member_or_tag(token, renames, shared, tags)
+      tag = token.match?( /\A(?:struct|union|enum)\s/ )
+      return token.sub( /[A-Za-z_$][\w$]*\z/ ) do |name|
+        next tags[name] if tag and tags.key?( name )
+
+        shared.include?( name ) ? renames[name] : name
+      end
+    end
+
     # The names `renames` maps that a struct or union body in the text holds, as a member or in
     # use. Such a body is local to the function, so its members and their uses take the new name
     # alike, wherever they sit.
-    def self._names_in_bodies(text, renames)
+    def self.names_in_bodies(text, renames)
       names = Set.new
       text.scan( BODY_HEAD ) do
         body = _body_after( text, Regexp.last_match )

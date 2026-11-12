@@ -57,6 +57,43 @@ C
 
 PARTIALS_DELTA_PREAMBLE = "#include \"unity.h\"\n#include \"ceedling.h\"\n"
 
+# Variables declared together with their types, at file scope and inside a function
+PARTIALS_DELTA_STATEFUL_SOURCE = <<~C
+  #include "engine.h"
+
+  static struct { int count; } s_ctx;
+  static enum { IDLE, RUN } s_state;
+
+  int engine_get(void)
+  {
+      static struct step { int n; } last;
+      struct step *at = &last;
+      at->n++;
+      s_ctx.count++;
+      s_state = RUN;
+      return last.n;
+  }
+C
+
+# Each type is reached through the variable, its members and values, and the name ceedling.h gives it
+PARTIALS_DELTA_STATEFUL_TEST = PARTIALS_DELTA_PREAMBLE + <<~C
+  #include TEST_PARTIAL_PUBLIC_MODULE(engine)
+  void setUp(void) { s_ctx.count = 0; s_state = IDLE; }
+  void tearDown(void) {}
+  void test_get(void)
+  {
+      PARTIAL_TYPE(engine, s_ctx) saved;
+      PARTIAL_LOCAL_TYPE(engine, engine_get, last) step;
+
+      TEST_ASSERT_EQUAL_INT(1, engine_get());
+      saved = s_ctx;
+      step  = PARTIAL_LOCAL_VAR(engine_get, last);
+      TEST_ASSERT_EQUAL_INT(1, saved.count);
+      TEST_ASSERT_EQUAL_INT(1, step.n);
+      TEST_ASSERT_EQUAL_INT(RUN, s_state);
+  }
+C
+
 # Only engine_get(), which the public selection holds
 PARTIALS_DELTA_PUBLIC_TEST = PARTIALS_DELTA_PREAMBLE + <<~C
   #include TEST_PARTIAL_PUBLIC_MODULE(engine)
@@ -124,6 +161,17 @@ ceedling_system_tests do
       output = build_passing( 1 )
       expect(output).to match(/Generating shared Partial types for .*engine/)
       expect(types).to all( satisfy { |path| File.exist?( path ) } )
+    end
+  end
+
+  it "tests a module whose variables define their types, and regenerates nothing on an unchanged rebuild" do
+    in_project do
+      File.write( 'src/engine.c', PARTIALS_DELTA_STATEFUL_SOURCE )
+      File.write( 'test/test_engine.c', PARTIALS_DELTA_STATEFUL_TEST )
+      build_passing( 1 )
+
+      output = build_passing( 1 )
+      expect(output).to_not match(/Generating (?:Partial implementation|shared Partial types) for/)
     end
   end
 

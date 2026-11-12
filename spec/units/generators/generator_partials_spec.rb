@@ -569,50 +569,6 @@ describe GeneratorPartials do
       expect( buf.string.scan(/^#define /).length ).to eq(1) # the generated guard alone
     end
 
-    # The real header's own guard also arrives among the extracted macros, since it survives
-    # preprocessing. Stating it deliberately and carrying it too would duplicate it.
-    it "drops the carried copy of the guard it states itself" do
-      buf = types_buffer( 'my_module', 'my_module_types.h' )
-      guard_macro  = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H", line_num: 1)
-      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 2)
-
-      @generator.generate_types(
-        name: 'my_module',
-        c_module: CExtractorTypes::CModule.new(
-          type_definitions:  [typedef_stmt],
-          macro_definitions: [guard_macro],
-          element_sequence:  [guard_macro, typedef_stmt]
-        ),
-        output_path: '/path/to/output',
-        include_guard: 'MY_MODULE_H'
-      )
-
-      expect( buf.string.scan(/^#define MY_MODULE_H$/).length ).to eq(1)
-    end
-
-    # GH #1266's shape, one level over: a macro whose name merely begins with the guard's, and
-    # a guard-named macro that actually carries a value. Neither is the guard statement.
-    it "keeps a macro whose name only resembles the guard" do
-      buf = types_buffer( 'my_module', 'my_module_types.h' )
-      near_macro   = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H_LIMIT 8", line_num: 1)
-      valued_macro = CExtractorTypes::CStatement.new(text: "#define MY_MODULE_H 2", line_num: 2)
-      typedef_stmt = CExtractorTypes::CStatement.new(text: "typedef uint8_t Byte;", line_num: 3)
-
-      @generator.generate_types(
-        name: 'my_module',
-        c_module: CExtractorTypes::CModule.new(
-          type_definitions:  [typedef_stmt],
-          macro_definitions: [near_macro, valued_macro],
-          element_sequence:  [near_macro, valued_macro, typedef_stmt]
-        ),
-        output_path: '/path/to/output',
-        include_guard: 'MY_MODULE_H'
-      )
-
-      expect( buf.string ).to include('#define MY_MODULE_H_LIMIT 8')
-      expect( buf.string ).to include('#define MY_MODULE_H 2')
-    end
-
     it "carries a macro forward directly before the single typedef it immediately precedes" do
       output_path = '/path/to/output'
       name = 'my_module'

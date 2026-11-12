@@ -5,20 +5,13 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/c_extractor/c_extractor_statement'
+
 module CExtractorTypes
 
-  # Pairs a raw C statement string with its 1-based source line number.
-  # Used for macro_definitions, type_definitions, and aggregate_definitions in CModule.
-  CStatement = Struct.new(
-    :text,     # String  — raw extracted statement text (comments replaced with spaces)
-    :line_num, # Integer — 1-based line number where the statement begins in the source file
-    :origin,   # :header or :source when the caller knows the file's role, otherwise nil
-    keyword_init: true
-  ) do
-    def initialize(text: nil, line_num: nil, origin: nil)
-      super
-    end
-  end unless const_defined?(:CStatement, false)
+  # Each CModule statement list's kind, which a statement in it takes (see CStatement#kind)
+  STATEMENT_KINDS = { macro_definitions: :macro, type_definitions: :typedef, aggregate_definitions: :aggregate,
+                      macro_invocations: :invocation }.freeze unless const_defined?(:STATEMENT_KINDS, false)
 
   # Data class representing all extracted content of C module
   CModule = Struct.new(
@@ -27,15 +20,23 @@ module CExtractorTypes
     :function_declarations, # Array of CFunctionDeclaration structs (each with :line_num)
     :macro_definitions,     # Array of CStatement — raw #define text with source line number
     :type_definitions,      # Array of CStatement — raw typedef text with source line number
-    :aggregate_definitions, # Array of CStatement — raw non-typedef struct/enum/union text with source line number
+    :aggregate_definitions, # Array of CStatement — raw non-typedef struct/enum/union text with source line number, a struct or
+                            # union forward declaration, or a type a variable declaration defines (see CVariableDeclaration#defined_type)
     :macro_invocations,     # Array of CStatement — raw bare, top-level, semicolon-less macro-invocation text (e.g. an x-macro call) with source line number
     :element_sequence,      # Array of references to all items above in extraction order (cross-type ordering index)
     keyword_init: true
   ) do
-    # Constructor to set unassigned fields to empty arrays for convenience
+    # Constructor to set unassigned fields to empty arrays for convenience. A statement without a
+    # kind takes its list's, so a statement's kind always says which list holds it.
     def initialize(variable_declarations: [], function_definitions: [], function_declarations: [], macro_definitions: [],
                    type_definitions: [], aggregate_definitions: [], macro_invocations: [], element_sequence: [])
       super
+      STATEMENT_KINDS.each { |list, kind| self[list].each { |statement| statement.kind ||= kind } }
+    end
+
+    # Whether the module defines or names any type, which a Partial's types header then holds
+    def types?
+      return !(type_definitions.empty? and aggregate_definitions.empty?)
     end
 
     # Concatenate two CModule instances.
@@ -109,19 +110,23 @@ module CExtractorTypes
     :name,          # Variable name (e.g., "x") -- array subscripts stripped
     :type,          # Type without decorator keywords (e.g., "int", "char*") -- array subscripts stripped.
                     # With a declarator, only the text ahead of it (e.g., "int" for "int (*hook)(int)").
+                    # Only what follows the type when the declaration defines it (see :defined_type), as "*" or "".
     :array_suffix,  # Array subscript string (e.g., "[8]", "[M][N]", "" for scalars). "" with a
                     # declarator, which keeps any subscripts itself.
     :decorators,    # Array of decorator keyword strings (e.g., ["static", "const"])
-    :text,          # Cleaned declaration without decorators, whitespace normalized (e.g., "int x;")
+    :text,          # Cleaned declaration without decorators, whitespace normalized (e.g., "int x;"). Without
+                    # its type when the declaration defines one (e.g., "s_ctx = { 1 };").
     :line_num,      # Integer — 1-based line number in source file where declaration begins
     :declarator,    # A parenthesized declarator from its '(' onward (e.g., "(*hook)(int)" after type "int"), or nil
     :asm_label,     # An asm label naming the symbol (e.g., '__asm__("g_symbol")'), or nil. :text and :original hold it too.
                     # A file-scope basic asm statement, such as `asm(".globl x");`, has no name and holds itself here.
     :origin,        # :header or :source when the caller knows the file's role, otherwise nil
+    :defined_type,  # The CStatement for a type the declaration defines, as `struct { int count; }` in
+                    # `static struct { int count; } s_ctx;`, shared by every variable it declares. Otherwise nil.
     keyword_init: true
   ) do
     def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, declarator: nil,
-                   asm_label: nil, origin: nil)
+                   asm_label: nil, origin: nil, defined_type: nil)
       super
     end
 

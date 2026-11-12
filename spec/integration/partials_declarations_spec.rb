@@ -482,4 +482,162 @@ describe 'Declarations in a Partial' do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  context 'a declaration that defines its type' do
+  # ---------------------------------------------------------------------------
+
+    # The type is written once, in the types header, and each variable names it. Two copies of
+    # one tagged body are a redefinition, and two anonymous bodies are two different types.
+    it 'declares a static of an anonymous struct by the name the Partial gives its type' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "static struct { int count; } s_ctx;\nint ticker_get(void) { return s_ctx.count; }\n" )
+
+      expect( @result.types_h ).to include( 'typedef struct { int count; } ceedling_partial_ticker_s_ctx_t;' )
+      expect( @result.impl_h ).to include( 'extern ceedling_partial_ticker_s_ctx_t s_ctx;' )
+      expect_types_header_compiles( @result )
+      expect_link( @result, ['s_ctx', 'ticker_get'], stubs: "void reset(void) { s_ctx.count = 0; }\n" )
+    end
+
+    # The test sees an anonymous enum's values, since the types header defines them
+    it 'declares a static of an anonymous enum whose values the test can name' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "static enum { IDLE, RUN } s_state;\nint ticker_get(void) { return s_state == RUN; }\n" )
+
+      expect_link( @result, ['s_state', 'ticker_get'], stubs: "void start(void) { s_state = RUN; }\n" )
+    end
+
+    it 'defines a tagged type once for a variable with an initializer' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "struct ops { int a; } g_ops = { 1 };\nint ticker_get(void) { return g_ops.a; }\n" )
+
+      expect( @result.impl_c ).to include( 'ceedling_partial_ticker_g_ops_t g_ops = { 1 };' )
+      expect_link( @result, ['g_ops', 'ticker_get'], stubs: "int copy(void) { struct ops o = g_ops; return o.a; }\n" )
+    end
+
+    # A member's array size belongs to the type, and every variable of the statement shares it
+    it 'shares one type among the variables of a compound declaration' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "struct pair { int a[2]; } g_p1, g_p2;\nint ticker_get(void) { return g_p1.a[1] + g_p2.a[0]; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern ceedling_partial_ticker_g_p1_t g_p1;', 'extern ceedling_partial_ticker_g_p1_t g_p2;' )
+      expect_link( @result, ['g_p1', 'g_p2'], stubs: "_Static_assert( sizeof( g_p2.a ) == 2 * sizeof( int ), \"member size\" );\n" )
+    end
+
+    # An attribute after the body belongs to the type, so the layout stays the module's
+    it 'keeps an attribute after the body on the type' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "static struct { char c; int i; } __attribute__((packed)) s_pk;\nint ticker_get(void) { return s_pk.i; }\n"
+      )
+
+      expect_link( @result, ['s_pk'], stubs: "_Static_assert( sizeof( s_pk ) == 5, \"packed\" );\n" )
+    end
+
+    it 'declares a const variable and a pointer of one type' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "static const struct { int a; } k = { 3 }, *kp = &k;\nint ticker_get(void) { return kp->a; }\n"
+      )
+
+      expect( @result.impl_h ).to include( 'extern const ceedling_partial_ticker_k_t k;', 'extern const ceedling_partial_ticker_k_t * kp;' )
+      expect_link( @result, ['k', 'kp', 'ticker_get'] )
+    end
+
+    # A header's extern of an anonymous type matches its definition in another module, since a
+    # typedef leaves the type anonymous. The weak definition yields to it.
+    it 'links a header extern of an anonymous struct against its definition in another module' do
+      @result = ticker( header: "extern struct { int a; } g_x;\nint ticker_get(void);\n", source: "int ticker_get(void) { return g_x.a; }\n" )
+      board = File.join( @result.dir, 'board.c' )
+      File.write( board, "struct { int a; } g_x = { 5 };\n" )
+
+      expect( @result.impl_c ).to include( '__attribute__((weak)) ceedling_partial_ticker_g_x_t g_x;' )
+      expect_link( @result, ['g_x', 'ticker_get'], flags: board )
+    end
+
+    it 'writes a forward declaration to the types header as written' do
+      @result = ticker(
+        header: "struct node;\ntypedef struct node *node_ref_t;\nint ticker_get(void);\n",
+        source: "struct node { int value; };\nstatic node_ref_t head;\nint ticker_get(void) { return head ? head->value : 0; }\n"
+      )
+
+      expect( @result.types_h ).to include( "struct node;\n" )
+      expect( @result.impl_h ).not_to include( 'extern struct node;' )
+      expect_link( @result, ['head', 'ticker_get'] )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context 'a function-scope static that defines its type' do
+  # ---------------------------------------------------------------------------
+
+    # Promotion moves the static to module scope, so its type moves too, named for the function
+    # and the variable
+    it 'promotes a static of an anonymous struct with its type' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "int ticker_get(void) { static struct { int n; } st; return ++st.n; }\n" )
+
+      expect( @result.types_h ).to include( 'typedef struct { int n; } ceedling_partial_ticker_ticker_get_st_t;' )
+      expect( @result.impl_h ).to include( 'extern ceedling_partial_ticker_ticker_get_st_t partial_ticker_get_st;' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_st'], stubs: "void reset(void) { partial_ticker_get_st.n = 0; }\n" )
+    end
+
+    it 'promotes a static of an anonymous enum whose values the test can name' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "int ticker_get(void) { static enum { IDLE, RUN } mode; mode = RUN; return mode; }\n" )
+
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_mode'], stubs: "int idle(void) { return partial_ticker_get_mode == IDLE; }\n" )
+    end
+
+    # A tag local to a function may shadow a file-scope tag, so the promoted type takes the name
+    # the Partial gives it, and the function's later uses of the tag follow
+    it 'renames a local tag that shadows a file-scope one' do
+      @result = ticker(
+        header: "struct st { int a; };\nint ticker_get(void);\n",
+        source: "int ticker_get(void) { static struct st { int n; } s; struct st *p = &s; return p->n; }\n"
+      )
+
+      expect( @result.types_h ).to include( 'struct st { int a; };', 'typedef struct ceedling_partial_ticker_ticker_get_s_t { int n; } ceedling_partial_ticker_ticker_get_s_t;' )
+      expect( @result.impl_c ).to include( 'struct ceedling_partial_ticker_ticker_get_s_t *p = &partial_ticker_get_s;' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_s'] )
+    end
+
+    it 'renames the same local tag in two functions apart' do
+      @result = ticker(
+        header: "int f1(void);\nint f2(void);\n",
+        source: "int f1(void) { static struct state { int a; } s; return s.a; }\nint f2(void) { static struct state { char c; } s; return s.c; }\n"
+      )
+
+      expect_link( @result, ['f1', 'f2', 'partial_f1_s', 'partial_f2_s'] )
+    end
+
+    # A member sharing a promoted static's name is renamed alike in the type and in its uses
+    it 'promotes a static whose type has a member sharing another static name' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) {\n  static int count;\n  static struct st { int count; } s;\n  s.count++;\n  return count + s.count;\n}\n"
+      )
+
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_count', 'partial_ticker_get_s'] )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  context "ceedling.h's names for a Partial's types" do
+  # ---------------------------------------------------------------------------
+
+    # The macros need ceedling.h and the prefix a test build defines with Partials enabled
+    let(:ceedling_h) { "-I#{File.expand_path( '../../lib/ceedling', __dir__ )} -DCEEDLING_PARTIALS_PREFIX=ceedling_partial_" }
+
+    it 'names the type of a variable declared together with its type' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "static struct { int count; } s_ctx;\nint ticker_get(void) { return s_ctx.count; }\n" )
+
+      expect_link( @result, ['s_ctx'], flags: ceedling_h,
+                   stubs: "#include \"ceedling.h\"\nint saved(void) { PARTIAL_TYPE(ticker, s_ctx) copy = s_ctx; return copy.count; }\n" )
+    end
+
+    it 'names the type of a promoted static declared together with its type' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "int ticker_get(void) { static struct st { int n; } st; return st.n; }\n" )
+
+      expect_link( @result, ['partial_ticker_get_st'], flags: ceedling_h,
+                   stubs: "#include \"ceedling.h\"\nint saved(void) { PARTIAL_LOCAL_TYPE(ticker, ticker_get, st) copy = PARTIAL_LOCAL_VAR(ticker_get, st); return copy.n; }\n" )
+    end
+  end
+
 end

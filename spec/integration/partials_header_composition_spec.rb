@@ -350,6 +350,34 @@ describe 'Partial header composition' do
       expect( @result.types_h.to_s ).to include('typedef unsigned char counter_t;')
       expect( @result.types_h.to_s ).not_to include('unsigned long')
     end
+
+    # An aggregate carrying a declarator defines its type once, in the types header. The extern
+    # and the definition both name it, since C treats two anonymous structs as unrelated types.
+    it 'keeps one type for an aggregate defined inline on a variable' do
+      @result = generate_partial(
+        module_name: 'slotted',
+        header: "#ifndef SLOTTED_H\n#define SLOTTED_H\n#endif\n",
+        source: "#include \"slotted.h\"\nstatic struct { int depth; } slot;\n",
+        source_includes: ['slotted.h']
+      )
+
+      compile = compile_partial( @result, prelude: "#include \"ceedling_partial_slotted_impl.c\"\n" )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
+    # A tag-only forward declaration is a type statement. Read as a variable, it would become
+    # `extern struct node;`, an empty declaration with a storage class, which is a diagnostic in
+    # its own right and an error under -Werror.
+    it 'preserves a forward declaration as a forward declaration' do
+      @result = generate_partial(
+        module_name: 'fwd',
+        header: "#ifndef FWD_H\n#define FWD_H\nstruct node;\ntypedef struct node* node_ref_t;\n#endif\n",
+        source: "#include \"fwd.h\"\nstruct node { int value; };\nstatic node_ref_t head;\n",
+        source_includes: ['fwd.h']
+      )
+
+      expect( @result.impl_h.to_s ).not_to include('extern struct node;')
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -912,39 +940,6 @@ describe 'Partial header composition' do
 
       compile = compile_partial( @result )
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
-    end
-
-    # An aggregate carrying a declarator is not a standalone type definition, so it reaches
-    # the variable extractor whole. Re-emitting it as both an extern and a definition states
-    # an anonymous struct twice, and C treats two anonymous structs as unrelated types.
-    it 'keeps one type for an aggregate defined inline on a variable' do
-      pending 'an aggregate carrying a declarator is classified as a variable -- follow-on work'
-
-      @result = generate_partial(
-        module_name: 'slotted',
-        header: "#ifndef SLOTTED_H\n#define SLOTTED_H\n#endif\n",
-        source: "#include \"slotted.h\"\nstatic struct { int depth; } slot;\n",
-        source_includes: ['slotted.h']
-      )
-
-      compile = compile_partial( @result, prelude: "#include \"ceedling_partial_slotted_impl.c\"\n" )
-      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
-    end
-
-    # A tag-only forward declaration has no declarator, and reaching the variable extractor
-    # turns it into `extern struct node;`. That is an empty declaration with a storage class,
-    # which is a diagnostic in its own right and an error under -Werror.
-    it 'preserves a forward declaration as a forward declaration' do
-      pending 'a tag-only forward declaration is classified as a variable -- follow-on work'
-
-      @result = generate_partial(
-        module_name: 'fwd',
-        header: "#ifndef FWD_H\n#define FWD_H\nstruct node;\ntypedef struct node* node_ref_t;\n#endif\n",
-        source: "#include \"fwd.h\"\nstruct node { int value; };\nstatic node_ref_t head;\n",
-        source_includes: ['fwd.h']
-      )
-
-      expect( @result.impl_h.to_s ).not_to include('extern struct node;')
     end
 
     # Directives-only preprocessing passes both #define and #undef through, and extraction

@@ -22,12 +22,8 @@ class CExtractorDefinitions
   # A group only a function's head ends with, `(void)` or one around a pointer as in `(*get(void))`
   FUNCTION_GROUP = /\A(?:\(\s*void\s*\)\z|#{CExtractorDeclarator::POINTER_GROUP.source})/ unless const_defined?(:FUNCTION_GROUP, false)
 
-  # A word C reserves for the implementation with no arguments after it, as an attribute macro
-  # such as `__packed` is
-  BARE_EXTENSION = /__[\w$]*+(?!\s*\()/ unless const_defined?(:BARE_EXTENSION, false)
-
-  # An attribute whose arguments come next, as in `__attribute__((packed))` and `__aligned(8)`
-  ATTRIBUTE_CALL = /(?:__attribute__|__attribute|__aligned)(?![\w$])\s*(?=\()/ unless const_defined?(:ATTRIBUTE_CALL, false)
+  # A tag named but not defined, as in `struct node;`, ending its statement
+  FORWARD_DECLARATION = /\A(?:struct|union)\s+#{CExtractorConstants::IDENTIFIER.source}\s*;\z/ unless const_defined?(:FORWARD_DECLARATION, false)
 
   # Extracts a typedef from its keyword through the ';' that ends it. Called as a feature
   # extractor by CExtractor#extract_next_feature. A ';' inside a struct, union or enum body, a
@@ -53,8 +49,9 @@ class CExtractorDefinitions
     [false, nil]
   end
 
-  # Extracts a file-scope struct, enum or union type definition that has no typedef. Called as
-  # a feature extractor by CExtractor#extract_next_feature.
+  # Extracts a file-scope struct, enum or union type definition that has no typedef, or a
+  # struct or union forward declaration. Called as a feature extractor by
+  # CExtractor#extract_next_feature.
   #
   # The same keyword can lead a variable or a function. A variable's initializer and a
   # function's body are braced too, so the text ahead of the first '{' must head a type (see
@@ -66,12 +63,12 @@ class CExtractorDefinitions
   #   struct [attributes] [tag] { member-list } [extensions];
   #   enum   [attributes] [tag] [: type] { enumerator-list } [extensions];
   #   union  [attributes] [tag] { member-list } [extensions];
+  #   struct tag;                        a forward declaration, which names the tag only
   #
   # Declines, leaving the scanner where it was, so a later extractor reads the statement:
   #   struct ops g = { 1 };              a variable with an initializer
   #   struct ops *make(void) { ... };    a function
-  #   struct ops { int a; } g;           a type with a variable
-  #   struct ops;                        a forward declaration
+  #   struct ops { int a; } g;           a type with a variable, which the variable extractor splits
   #
   # @param scanner [StringScanner] positioned at a potential aggregate definition
   # @return [Array(Boolean, String|nil)]
@@ -95,7 +92,7 @@ class CExtractorDefinitions
 
     until scanner.eos?
       token = _take_token( scanner, text )
-      return nil if depth.zero? and _not_a_type_body?( token, text )
+      return _bodiless( scanner, token, text ) if depth.zero? and _not_a_type_body?( token, text )
 
       depth += BRACE_DEPTH.fetch( token, 0 )
       return _type_end( scanner, text ) if token == '}' and depth.zero?
@@ -111,6 +108,12 @@ class CExtractorDefinitions
     return true if token == ';'
 
     return (token == '{' and !_type_head?( text.chop ))
+  end
+
+  # A statement that ends its search for a body without one. Only a tag alone, ended by ';',
+  # declares a type.
+  def _bodiless(scanner, token, text)
+    return (token == ';' and text.strip.match?( FORWARD_DECLARATION )) ? _finish( scanner, text ) : nil
   end
 
   # Whether the text ahead of a body's '{' heads a type. A type's head never holds an '=' or a
@@ -175,8 +178,8 @@ class CExtractorDefinitions
   def _skip_type_extensions(scanner)
     loop do
       @c_extractor_code_text.skip_deadspace( scanner )
-      next if scanner.skip( BARE_EXTENSION )
-      return true unless scanner.skip( ATTRIBUTE_CALL )
+      next if scanner.skip( CExtractorConstants::BARE_EXTENSION )
+      return true unless scanner.skip( CExtractorConstants::ATTRIBUTE_CALL )
       return false unless CExtractorDeclarator._skip_balanced( scanner )
     end
   end

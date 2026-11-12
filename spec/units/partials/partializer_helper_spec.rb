@@ -427,11 +427,9 @@ describe PartializerHelper do
         allow(@c_extractor_declarations).to receive(:try_extract_variable)
           .and_return([false, nil])
 
-        expect(@partializer_utils).not_to receive(:replace_compound_declaration_with_noops)
-        expect(@partializer_utils).not_to receive(:rename_c_identifiers)
-
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
+        expect(func.code_block).to eq('void simple(void) { return; }')
       end
 
       it "returns empty array when variable is found but is non-static" do
@@ -451,87 +449,11 @@ describe PartializerHelper do
         allow(@c_extractor_declarations).to receive(:try_extract_variable)
           .and_return([true, [non_static_var]], [false, nil])
 
-        expect(@partializer_utils).not_to receive(:replace_compound_declaration_with_noops)
-        expect(@partializer_utils).not_to receive(:rename_c_identifiers)
-
         result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
         expect(result).to eq([])
+        expect(func.code_block).to eq('void simple(void) { int x; return x; }')
       end
 
-      it "delegates noop and rename calls to utils for a static variable" do
-        func = OpenStruct.new(
-          name: 'process',
-          code_block: 'void process(void) { static int count; count = 0; }',
-          body: '{ static int count; count = 0; }'
-        )
-
-        var = OpenStruct.new(
-          original:    'static int count',
-          name:        'count',
-          decorators:  ['static'],
-          text: 'int count;'
-        )
-
-        allow(@c_extractor_declarations).to receive(:try_extract_variable)
-          .and_return([true, [var]], [false, nil])
-
-        placeholder = '__CEEDLING_NOOP_PROCESS_COUNT__'
-        noop_text   = "(void)0; /* `#{placeholder}` ... */"
-
-        allow(@partializer_utils).to receive(:replace_compound_declaration_with_noops)
-          .with(anything, 'static int count', placeholder, 1).and_return(noop_text)
-        allow(@partializer_utils).to receive(:rename_c_identifiers)
-          .and_return('')
-
-        result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
-
-        expect(@partializer_utils).to have_received(:replace_compound_declaration_with_noops).exactly(2).times
-        expect(@partializer_utils).to have_received(:rename_c_identifiers).exactly(3).times
-        expect(result.first.name).to eq('partial_process_count')
-      end
-
-      it "delegates compound noop and rename calls to utils for a compound static declaration" do
-        func = OpenStruct.new(
-          name: 'calc',
-          code_block: 'void calc(void) { static int a, b; a = 0; b = 1; }',
-          body: '{ static int a, b; a = 0; b = 1; }'
-        )
-
-        shared_original = 'static int a, b;'
-        var_a = OpenStruct.new(
-          original:    shared_original,
-          name:        'a',
-          decorators:  ['static'],
-          text: 'int a;'
-        )
-        var_b = OpenStruct.new(
-          original:    shared_original,
-          name:        'b',
-          decorators:  ['static'],
-          text: 'int b;'
-        )
-
-        # Scanner returns both vars in one call, then fails
-        allow(@c_extractor_declarations).to receive(:try_extract_variable)
-          .and_return([true, [var_a, var_b]], [false, nil])
-
-        placeholder = '__CEEDLING_NOOP_CALC_A__'
-        noops       = "(void)0; (void)0; /* `#{placeholder}` ... */"
-
-        allow(@partializer_utils).to receive(:replace_compound_declaration_with_noops)
-          .and_return(noops)
-        allow(@partializer_utils).to receive(:rename_c_identifiers)
-          .and_return('')
-
-        result = @helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
-
-        expect(@partializer_utils).to have_received(:replace_compound_declaration_with_noops)
-          .with(anything, shared_original, placeholder, 2)
-          .exactly(2).times
-        # One pass renames each variable's text, then the function's code block and body
-        expect(@partializer_utils).to have_received(:rename_c_identifiers).exactly(4).times
-        expect(result.map(&:name)).to contain_exactly('partial_calc_a', 'partial_calc_b')
-      end
     end
 
     context "end-to-end happy day tests" do
@@ -770,6 +692,36 @@ describe PartializerHelper do
         expect(func.code_block.scan('(void)0;').length).to eq(3)
         expect(func.code_block).not_to match(/^\s*static int/)
         expect(func.code_block).to include('return partial_calc_x + partial_calc_a + partial_calc_b;')
+      end
+
+      # Each no-op stands where its statement did, and a statement over several lines keeps them,
+      # comments included, so coverage lines stay aligned. Line endings pass through as written.
+      ["\n", "\r\n"].each do |ending|
+        it "keeps a function to its line count with #{ending.inspect} line endings" do
+          code = ["int f(void) {", "  static struct {", "    int n; /* a", "    b */", "  } st;", "  return st.n;", "}"].join( ending )
+          func = OpenStruct.new( name: 'f', body: '', code_block: code )
+
+          real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+          expect( func.code_block ).to include( 'return partial_f_st.n;' )
+          expect( func.code_block.count( "\n" ) ).to eq( code.count( "\n" ) )
+          expect( func.code_block.scan( ending ).size ).to eq( code.scan( ending ).size )
+        end
+      end
+
+      # The body opens at the first brace outside a literal, and an attribute's string may hold one
+      it "promotes a static in a function whose signature holds a brace in a string" do
+        func = OpenStruct.new(
+          name:       'calc',
+          body:       "{ static int n = 0; return n; }",
+          code_block: "__attribute__((section(\"t{x}\"))) int calc(void) { static int n = 0; return n; }"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:name)).to eq ['partial_calc_n']
+        expect(func.code_block).to start_with('__attribute__((section("t{x}"))) int calc(void) { (void)0;')
+        expect(func.code_block).to end_with('return partial_calc_n; }')
       end
 
       it "promotes a static whose name holds '$'" do

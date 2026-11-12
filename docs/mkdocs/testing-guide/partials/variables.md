@@ -132,7 +132,7 @@ both to module scope without renaming would produce a duplicate symbol error
 at compilation.
 
 Ceedling resolves this by prepending a prefix of `partial_` and the containing
-function's name to each promoted variable's name:
+function’s name to each promoted variable’s name:
 
 ```
 partial_<function_name>_<variable_name>
@@ -254,16 +254,92 @@ in the source file).
 
 ## A variable declared together with its type
 
-A Partial can’t yet copy a variable declared in the same statement that defines
-its type, such as `static struct { int count; } s_ctx;` or
-`static enum { IDLE, RUN } s_state;`. The generated files repeat the type’s
-body, and the build fails with conflicting types or a redefinition. A
-function-scoped `static` of this form fails the same way. Define the type on
-its own, then declare the variable by the type’s name:
+A Partial reads a statement that defines a type and declares a variable as two
+things. Embedded modules often keep private state this way, as in
+`static struct { int count; } s_ctx;` or `static enum { IDLE, RUN } s_state;`.
+The Partial defines the type once, in its generated types header, and declares
+and defines each variable by the type’s name. A test reaches the variable, the
+type’s members and an anonymous enum’s values as it does any other.
+
+The Partial names the type after its first variable. Each name takes the
+module’s name and the variable’s, and a function-scoped `static` adds its
+function’s name:
+
+```
+ceedling_partial_<module>_<variable>_t
+ceedling_partial_<module>_<function>_<variable>_t
+```
+
+| Declaration | Module | Function | Type name |
+|---|---|---|---|
+| `static struct { int count; } s_ctx;` | `ticker` | | `ceedling_partial_ticker_s_ctx_t` |
+| `struct pair { int a; } g_p1, g_p2;` | `ticker` | | `ceedling_partial_ticker_g_p1_t` |
+| `static struct { int n; } last;` | `ticker` | `ticker_get` | `ceedling_partial_ticker_ticker_get_last_t` |
+
+The module’s name is its name alone, without a directory. A character a C
+identifier can't hold is written as `_`, so module `my-sensor` gives
+`ceedling_partial_my_sensor_…`. Variables declared in one statement share one
+type, named for the first of them, as `g_p1` and `g_p2` do above.
+
+A tagged type keeps its tag at file scope, so `struct pair` still names it. A
+tag a function defines takes the type’s name as its tag instead, since the tag
+could otherwise collide with another at file scope. A struct member sharing a
+promoted variable’s name is renamed with it, in the type and wherever the
+function uses it.
+
+### `PARTIAL_TYPE()` and `PARTIAL_LOCAL_TYPE()` macros to name a type
+
+`ceedling.h` builds these names for you. Use them to declare another object of
+the type, such as a copy of a module’s state saved before a call.
 
 ```c
-struct ctx { int count; };
-static struct ctx s_ctx;
+PARTIAL_TYPE(module, variable)
+// Expands to: ceedling_partial_<module>_<variable>_t
+
+PARTIAL_LOCAL_TYPE(module, function, variable)
+// Expands to: ceedling_partial_<module>_<function>_<variable>_t
 ```
+
+Like `PARTIAL_LOCAL_VAR()`, each macro pastes its arguments into one identifier.
+Each argument is a literal identifier spelled as the module spells it.
+
+```c
+// ticker.c -----------------------------------------------
+static struct { int count; } s_ctx;
+
+int ticker_get(void)
+{
+    static struct { int n; } last;
+    last.n++;
+    s_ctx.count++;
+    return last.n;
+}
+```
+
+```c
+// test_ticker.c ------------------------------------------
+#include "unity.h"
+#include "ceedling.h"
+#include TEST_PARTIAL_PUBLIC_MODULE(ticker)
+
+void test_ticker_get_counts_each_call(void)
+{
+    PARTIAL_TYPE(ticker, s_ctx) before = s_ctx;
+    PARTIAL_LOCAL_TYPE(ticker, ticker_get, last) step;
+
+    ticker_get();
+    step = PARTIAL_LOCAL_VAR(ticker_get, last);
+
+    TEST_ASSERT_EQUAL_INT(before.count + 1, s_ctx.count);
+    TEST_ASSERT_EQUAL_INT(1, step.n);
+}
+```
+
+!!! tip "When a macro names nothing"
+    A misspelled argument builds a name nothing declares, and the compiler
+    will report an error with that mysterious name. With Partials enabled, 
+    Ceedling recognizes a name that one of these macros or `PARTIAL_LOCAL_VAR()`
+    builds from a compilation error. It explains how to correct the macro’s
+    arguments and lists the names your test’s Partials provide.
 
 <br/><br/>

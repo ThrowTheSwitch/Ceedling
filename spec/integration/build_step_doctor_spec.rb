@@ -28,6 +28,7 @@ require 'ceedling/diagnostics/build_step_doctor'
 require 'ceedling/diagnostics/header_collision_specialist'
 require 'ceedling/diagnostics/missing_symbol_specialist'
 require 'ceedling/diagnostics/duplicate_symbol_specialist'
+require 'ceedling/diagnostics/partial_name_specialist'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH      = 'build/vendor/unity'      unless defined?( PROJECT_BUILD_VENDOR_UNITY_PATH )
 PROJECT_BUILD_VENDOR_CMOCK_PATH      = 'build/vendor/cmock'      unless defined?( PROJECT_BUILD_VENDOR_CMOCK_PATH )
@@ -43,7 +44,7 @@ describe 'BuildStepDoctor (integration)' do
   before(:each) do
     @root = Dir.mktmpdir
 
-    loginator    = double( 'loginator' )
+    loginator    = @loginator = double( 'loginator' )
     verbosinator = double( 'verbosinator', should_output?: false )
     allow( loginator ).to receive( :log )
     @logged = []
@@ -65,7 +66,8 @@ describe 'BuildStepDoctor (integration)' do
         configurator: configurator, test_substitutions: substitutions, gcc_dependency_parser: GccDependencyParser.new, file_wrapper: file_wrapper
       ),
       missing_symbol_specialist:   MissingSymbolSpecialist.new( configurator: configurator ),
-      duplicate_symbol_specialist: DuplicateSymbolSpecialist.new( configurator: configurator )
+      duplicate_symbol_specialist: DuplicateSymbolSpecialist.new( configurator: configurator ),
+      partial_name_specialist:     PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper )
     ).tap( &:setup )
 
     @testable = TestInvokerTypes::Testable.new( name: 'a_test', paths: { build: File.join( @root, 'build' ) } )
@@ -190,6 +192,61 @@ describe 'BuildStepDoctor (integration)' do
         diagnose_compile( *compile_failing( compiler, source, includes: ['include'] ) )
 
         expect( @logged ).to eq( [] )
+      end
+    end
+  end
+
+  # A test file whose Partials macro builds a name nothing declares, compiled against the real
+  # ceedling.h. The compiler reports the built name, which the specialist recognizes.
+  context "a Partials macro naming nothing, with Partials enabled" do
+    before(:each) do
+      configurator = double( 'configurator', project_use_partials: true )
+      nobody       = double( 'specialist', diagnoses: [] )
+      file_wrapper = FileWrapper.new( loginator: double( 'loginator' ).as_null_object, verbosinator: double( 'verbosinator', should_output?: false ) )
+
+      @doctor = BuildStepDoctor.new(
+        loginator: @loginator, header_collision_specialist: nobody, missing_symbol_specialist: nobody,
+        duplicate_symbol_specialist: nobody, partial_name_specialist: PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper )
+      ).tap( &:setup )
+    end
+
+    def compile_test(compiler, body)
+      source = write( 'test/a_test.c', "#include \"ceedling.h\"\n#{body}" )
+      output, status = Open3.capture2e(
+        compiler, "-I#{File.expand_path( '../../lib/ceedling', __dir__ )}", '-DCEEDLING_PARTIALS_PREFIX=ceedling_partial_', '-c', source, '-o', File.join( @root, 'a_test.o' )
+      )
+      expect( status.success? ).to be( false ), "expected #{compiler} to fail on #{source}, but it compiled:\n#{output}"
+
+      @doctor.diagnose( step: :compile, output: output, inputs: { testable: @testable, source: source } )
+    end
+
+    before(:each) { @testable = TestInvokerTypes::Testable.new( name: 'a_test', filepath: File.join( @root, 'test', 'a_test.c' ), paths: {} ) }
+
+    %w[gcc clang].each do |compiler|
+      context "compiling with #{compiler}" do
+        before(:each) do
+          skip "#{compiler} is not installed or not in PATH" unless self.class.compiler_available?( compiler )
+        end
+
+        it 'explains a promoted variable PARTIAL_LOCAL_VAR() misspells' do
+          compile_test( compiler, "int f(void) { return PARTIAL_LOCAL_VAR(tick, cnt); }\n" )
+
+          expect( @logged.size ).to eq( 1 )
+          expect( @logged.first ).to include( 'PARTIAL_LOCAL_VAR() builds' )
+        end
+
+        it 'explains a type PARTIAL_TYPE() misspells' do
+          compile_test( compiler, "int f(void) { PARTIAL_TYPE(ticker, ctx) copy; return sizeof( copy ); }\n" )
+
+          expect( @logged.size ).to eq( 1 )
+          expect( @logged.first ).to include( 'PARTIAL_TYPE() or PARTIAL_LOCAL_TYPE() names' )
+        end
+
+        it 'prescribes nothing for an ordinary undeclared name' do
+          compile_test( compiler, "int f(void) { return undeclared; }\n" )
+
+          expect( @logged ).to eq( [] )
+        end
       end
     end
   end

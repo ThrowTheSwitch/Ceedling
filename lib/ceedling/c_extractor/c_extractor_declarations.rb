@@ -10,6 +10,7 @@ require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/c_extractor/c_extractor_declarator'
+require 'ceedling/c_extractor/c_extractor_defined_type'
 
 class CExtractorDeclarations
 
@@ -161,12 +162,33 @@ class CExtractorDeclarations
   # declaration that can't be split stays one record with no name, like any declaration whose
   # name can't be read.
   #
+  # A declaration that defines its type, as `static struct { int count; } s_ctx;` does, is read
+  # without that type. Each of its records names the definition, one CStatement they share, in
+  # `defined_type`. Its `type` and `text` hold only what follows the type, such as the `*` of
+  # `struct { int n; } *p;`.
+  #
   # Parameters:
   #   text:     A complete declaration with its comments blanked (e.g., "static int x, y;")
   #   raw_text: The same declaration as written, which each record keeps as its `original`
   #
   # Returns: Array<CVariableDeclaration>
   def expand_and_parse(text, raw_text)
+    split = _defined_type( text )
+    return _expand_and_parse( text, raw_text ) if split.nil?
+
+    defined = CStatement.new( text: "#{split.type};", kind: :aggregate, tag: split.tag )
+    return _expand_and_parse( split.declarators, raw_text ).each { |var| var.defined_type = defined }
+  end
+
+  # The type the declaration defines ahead of its declarators, or nil. The type's keyword
+  # follows the declaration's leading run of decorators and attributes.
+  def _defined_type(text)
+    rest = text.lstrip
+    rest = rest.match( LEADING_RUN_ITEM ).post_match while rest.match?( LEADING_RUN_ITEM )
+    return CExtractorDefinedType.split( text, text.bytesize - rest.bytesize )
+  end
+
+  def _expand_and_parse(text, raw_text)
     pieces = expand_compound(text)
     return [parse_declaration(text, raw_text).tap { |var| var.name = var.type = var.declarator = nil }] if pieces.nil?
 

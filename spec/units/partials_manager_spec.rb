@@ -317,6 +317,8 @@ describe PartialsManager do
         type_definitions:        [],
         aggregate_definitions:   []
       )
+      # Whether the module has types follows from its lists, which an example may stub
+      allow(@module_contents).to receive(:types?) { !(@module_contents.type_definitions.empty? and @module_contents.aggregate_definitions.empty?) }
       allow(@partializer).to receive(:extract_module_contents).and_return( @module_contents )
       allow(@partializer).to receive(:validate_config)
       allow(@partializer).to receive(:sanitize)
@@ -737,6 +739,16 @@ describe PartialsManager do
       expect(@generator).to receive(:generate_partial_interface).with(
         hash_including( include_guard: 'FOO_H' )
       )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Every generated file states the guard, so extraction's copy of it is removed
+    it "hands the guard to sanitizing the extracted module" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [] )
+
+      expect(@partializer).to receive(:sanitize).with( @module_contents, include_guard: 'FOO_H' )
 
       @manager.stage_generate_partials( @state )
     end

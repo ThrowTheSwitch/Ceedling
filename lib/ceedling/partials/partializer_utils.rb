@@ -77,62 +77,6 @@ class PartializerUtils
     return stripped == signature ? signature : stripped.squeeze( ' ' )
   end
 
-  # Replace a C variable declaration in a text block with a no-op expression.
-  #
-  # Substitutes the first occurrence of `original_decl` in `text` with:
-  #   (void)0; /* <placeholder> */
-  # The caller supplies a unique `placeholder` token for the comment slot. Once every
-  # rename is done, the caller restores `original_decl` in place of the placeholder, so no
-  # rename can reach the restored text.
-  #
-  # Block form of `sub` is used so that `\` and `&` in the declaration are not
-  # interpreted as regex replacement backreferences.
-  #
-  # @param text          [String] Code text to modify (e.g., a function code_block or body)
-  # @param original_decl [String] Declaration text to replace (should be stripped of surrounding whitespace)
-  # @param placeholder   [String] Opaque token to embed in the comment (caller replaces it afterwards)
-  # @return [String] Modified text with declaration replaced by a no-op expression
-  def replace_declaration_with_noop(text, original_decl, placeholder)
-    replace_compound_declaration_with_noops(text, original_decl, placeholder, 1)
-  end
-
-  # Replace a C compound variable declaration with N no-op expressions and a single comment.
-  #
-  # Generates `count` `(void)0;` expressions where the final one carries a comment
-  # containing `placeholder`. The result replaces the first occurrence of `original_decl`
-  # in `text`. The caller supplies `count` = number of variables in the compound statement
-  # and a single unique `placeholder` token. After all variable renames are complete, the
-  # caller restores `original_decl` by replacing the placeholder with the original text.
-  #
-  # The declaration comes from a function's body, where comments are blanked, so the text's
-  # copy may hold comments between its tokens. See Partials.replace_statement.
-  #
-  # @param text          [String] Code text to modify (e.g., a function code_block or body)
-  # @param original_decl [String] Declaration text to replace (should be stripped of surrounding whitespace)
-  # @param placeholder   [String] Opaque token to embed in the single trailing comment
-  # @param count         [Integer] Number of no-op expressions to insert (one per variable)
-  # @return [String] Modified text
-  def replace_compound_declaration_with_noops(text, original_decl, placeholder, count)
-    noops   = "(void)0; " * (count - 1)
-    comment = "(void)0; /* `#{placeholder}` replaced with no-op plus variable renamed & promoted to module-scope */"
-    Partials.replace_statement( text, original_decl ) { noops + comment }
-  end
-
-  # Rename C identifiers throughout a text block, each as a whole token.
-  #
-  # Renaming `count` changes `count = 0`, `(count)`, `count==5`, `*count` and `count[0]`, but
-  # not `count_down`, `up_count` or `recount`. A literal's text is data the program uses, such
-  # as a format string naming the variable, so it stays, and so does a comment. A member or a
-  # tag sharing the name stays too, unless a struct or union body in the text holds the name.
-  # See Partials::Rename.
-  #
-  # @param text    [String] Code text to process
-  # @param renames [Hash{String => String}] Each identifier to replace, with its replacement
-  # @return [String] Modified text with every mapped identifier renamed
-  def rename_c_identifiers(text, renames)
-    return Partials::Rename.identifiers( text, renames )
-  end
-
   # Stamp the originating source filepath onto each function in a collection.
   #
   # Mutates each element of `funcs` in place by assigning `filepath` to its
