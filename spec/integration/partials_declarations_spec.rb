@@ -627,4 +627,26 @@ describe 'Declarations in a Partial' do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  context "ceedling.h's names for a Partial's types" do
+  # ---------------------------------------------------------------------------
+
+    # The macros need ceedling.h and the prefix a test build defines with Partials enabled
+    let(:ceedling_h) { "-I#{File.expand_path( '../../lib/ceedling', __dir__ )} -DCEEDLING_PARTIALS_PREFIX=ceedling_partial_" }
+
+    it 'names the type of a variable declared together with its type' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "static struct { int count; } s_ctx;\nint ticker_get(void) { return s_ctx.count; }\n" )
+
+      expect_link( @result, ['s_ctx'], flags: ceedling_h,
+                   stubs: "#include \"ceedling.h\"\nint saved(void) { PARTIAL_TYPE(ticker, s_ctx) copy = s_ctx; return copy.count; }\n" )
+    end
+
+    it 'names the type of a promoted static declared together with its type' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "int ticker_get(void) { static struct st { int n; } st; return st.n; }\n" )
+
+      expect_link( @result, ['partial_ticker_get_st'], flags: ceedling_h,
+                   stubs: "#include \"ceedling.h\"\nint saved(void) { PARTIAL_LOCAL_TYPE(ticker, ticker_get, st) copy = PARTIAL_LOCAL_VAR(ticker_get, st); return copy.n; }\n" )
+    end
+  end
+
 end
