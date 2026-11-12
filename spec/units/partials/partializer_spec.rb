@@ -2115,7 +2115,7 @@ describe Partializer do
       allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
       allow(@file_wrapper).to receive(:exist?).and_return(false)
       # static var extraction/promotion called for every file processed; stub by default
-      allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([])
+      allow(@partializer_helper).to receive(:promote_function_scope_statics)
       allow(@partializer_helper).to receive(:validate_function_names_readable)
     end
 
@@ -2134,7 +2134,7 @@ describe Partializer do
       expect(@partializer_helper).to receive(:validate_function_names_readable)
         .with(source_contents, @name, 'module1').and_raise(CeedlingException, 'unreadable')
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
-      expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
+      expect(@partializer_helper).not_to receive(:promote_function_scope_statics)
 
       expect { @partializer.extract_module_contents(@name, config, fallback: false) }
         .to raise_error(CeedlingException, 'unreadable')
@@ -2149,7 +2149,7 @@ describe Partializer do
 
       expect(@c_extractor).not_to receive(:from_file)
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
-      expect(@partializer_helper).not_to receive(:extract_function_scope_static_vars)
+      expect(@partializer_helper).not_to receive(:promote_function_scope_statics)
 
       result = @partializer.extract_module_contents(@name, config, fallback: false)
 
@@ -2297,10 +2297,8 @@ describe Partializer do
       expect(result.variable_declarations).to eq([])
     end
 
-    it "appends promoted function-scope static variables to element_sequence" do
-      promoted_var1 = CExtractorTypes::CVariableDeclaration.new(text: 'static int counter = 0;', type: 'int', name: 'counter')
-      promoted_var2 = CExtractorTypes::CVariableDeclaration.new(text: 'static bool flag = false;', type: 'bool', name: 'flag')
-
+    # Promotion adds to the file's own module, ahead of each function, before the module merges
+    it "promotes function-scope statics in each file's module" do
       source_contents = CExtractorTypes::CModule.new(function_definitions: [], variable_declarations: [])
 
       config = PartializerConfig::Config.new(
@@ -2310,13 +2308,10 @@ describe Partializer do
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
-      allow(@partializer_helper).to receive(:extract_function_scope_static_vars).and_return([promoted_var1, promoted_var2])
+      expect(@partializer_helper).to receive(:promote_function_scope_statics)
+        .with(source_contents, name: @name, module_name: 'module1', file_type: 'source')
 
-      result = @partializer.extract_module_contents(@name, config, fallback: false)
-
-      expect(result.element_sequence).to eq([promoted_var1, promoted_var2])
-      expect(result.element_sequence[0]).to equal(promoted_var1)
-      expect(result.element_sequence[1]).to equal(promoted_var2)
+      @partializer.extract_module_contents(@name, config, fallback: false)
     end
 
     it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on source" do

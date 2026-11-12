@@ -537,12 +537,7 @@ class Partializer
   # 2. Replace them in function definitions with no-ops (for proper coverage reporting).
   # 3. Promote the function-scoped variables to be module-level variables.
   def _promote_function_scope_statics(name, config, file_type, c_module)
-    promoted = @helper.extract_function_scope_static_vars(
-      c_module.function_definitions,
-      name: name, module_name: config.module, file_type: file_type
-    )
-    c_module.variable_declarations.concat(promoted)
-    c_module.element_sequence.concat(promoted) unless promoted.empty?
+    @helper.promote_function_scope_statics( c_module, name: name, module_name: config.module, file_type: file_type )
   end
 
   # A mock interface only ever needs a signature, never a body, so a declaration-only

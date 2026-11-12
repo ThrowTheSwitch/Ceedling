@@ -565,4 +565,66 @@ describe 'Declarations in a Partial' do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  context 'a function-scope static that defines its type' do
+  # ---------------------------------------------------------------------------
+
+    # Promotion moves the static to module scope, so its type moves too, named for the function
+    # and the variable
+    it 'promotes a static of an anonymous struct with its type' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "int ticker_get(void) { static struct { int n; } st; return ++st.n; }\n" )
+
+      expect( @result.types_h ).to include( 'typedef struct { int n; } ceedling_partial_ticker_ticker_get_st_t;' )
+      expect( @result.impl_h ).to include( 'extern ceedling_partial_ticker_ticker_get_st_t partial_ticker_get_st;' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_st'], stubs: "void reset(void) { partial_ticker_get_st.n = 0; }\n" )
+    end
+
+    it 'promotes a static of an anonymous enum whose values the test can name' do
+      @result = ticker( header: "int ticker_get(void);\n", source: "int ticker_get(void) { static enum { IDLE, RUN } mode; mode = RUN; return mode; }\n" )
+
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_mode'], stubs: "int idle(void) { return partial_ticker_get_mode == IDLE; }\n" )
+    end
+
+    # A tag local to a function may shadow a file-scope tag, so the promoted type takes the name
+    # the Partial gives it, and the function's later uses of the tag follow
+    it 'renames a local tag that shadows a file-scope one' do
+      @result = ticker(
+        header: "struct st { int a; };\nint ticker_get(void);\n",
+        source: "int ticker_get(void) { static struct st { int n; } s; struct st *p = &s; return p->n; }\n"
+      )
+
+      expect( @result.types_h ).to include( 'struct st { int a; };', 'typedef struct ceedling_partial_ticker_ticker_get_s_t { int n; } ceedling_partial_ticker_ticker_get_s_t;' )
+      expect( @result.impl_c ).to include( 'struct ceedling_partial_ticker_ticker_get_s_t *p = &partial_ticker_get_s;' )
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_s'] )
+    end
+
+    it 'renames the same local tag in two functions apart' do
+      @result = ticker(
+        header: "int f1(void);\nint f2(void);\n",
+        source: "int f1(void) { static struct state { int a; } s; return s.a; }\nint f2(void) { static struct state { char c; } s; return s.c; }\n"
+      )
+
+      expect_link( @result, ['f1', 'f2', 'partial_f1_s', 'partial_f2_s'] )
+    end
+
+    # A member sharing a promoted static's name is renamed alike in the type and in its uses
+    it 'promotes a static whose type has a member sharing another static name' do
+      @result = ticker(
+        header: "int ticker_get(void);\n",
+        source: "int ticker_get(void) {\n  static int count;\n  static struct st { int count; } s;\n  s.count++;\n  return count + s.count;\n}\n"
+      )
+
+      expect_link( @result, ['ticker_get', 'partial_ticker_get_count', 'partial_ticker_get_s'] )
+    end
+
+    # Each no-op stands on the line its statement did, and a statement over several lines keeps them
+    it 'keeps the function to its line count' do
+      source = "int ticker_get(void) {\n  static struct {\n    int n;\n  } st;\n  return st.n;\n}\n"
+      @result = ticker( header: "int ticker_get(void);\n", source: source )
+
+      body = @result.impl_c[/int ticker_get\(void\) \{.*?\n\}/m]
+      expect( body.count( "\n" ) ).to eq( source.count( "\n" ) - 1 )
+    end
+  end
+
 end

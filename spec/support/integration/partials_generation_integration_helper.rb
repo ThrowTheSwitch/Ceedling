@@ -282,12 +282,7 @@ module PartialsGenerationHelpers
     # own subject without this step. Function line-number association is skipped, so selected
     # bodies and helpers carry no `#line`. Carried prototypes are located in their files'
     # text with the real code finder, as production locates them.
-    promoted = partials_helper.extract_function_scope_static_vars(
-      c_module.function_definitions,
-      name: 'PartialsGenerationTest', module_name: module_name, file_type: 'source'
-    )
-    c_module.variable_declarations.concat( promoted )
-    c_module.element_sequence.concat( promoted ) unless promoted.empty?
+    partials_helper.promote_function_scope_statics( c_module, name: 'PartialsGenerationTest', module_name: module_name, file_type: 'source' )
 
     # A type a declaration defines is named once promotion is done, as production names it
     Partials.name_defined_types( c_module, module_name )

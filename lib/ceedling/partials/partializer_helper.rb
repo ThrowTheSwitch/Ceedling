@@ -23,9 +23,9 @@ class PartializerHelper
   # to be decided rather than assumed.
   #
   # Deliberately narrow: a leading type-definition keyword, which is how a file-scope type
-  # definition opens. It does not reach an aggregate written directly on a variable
-  # (`static struct { int a; } slot;`) nor a declaration behind a storage class. Widening it far
-  # enough to catch those would also match an ordinary local declaration inside a function body,
+  # definition opens. A type written directly on a variable (`static struct { int a; } slot;`)
+  # is relocated too, but behind a storage class this pattern does not reach. Widening it far
+  # enough to catch that would also match an ordinary local declaration inside a function body,
   # turning a resolvable module into a refused one -- and telling the two apart needs brace
   # tracking this check does not do. Under-reaching leaves a shape unrefused; over-reaching
   # breaks a working build.
@@ -208,8 +208,26 @@ class PartializerHelper
     end
   end
 
-  # Excise function-scoped static variable declarations from function bodies (to be
-  # promoted to module-scope).
+  # Promotes each function's statics to module scope, where the generated files can reach them
+  # (see extract_function_scope_static_vars). Each function's promoted items join the module
+  # just ahead of the function, a type a statement defines ahead of that statement's variables.
+  def promote_function_scope_statics(c_module, name:, module_name:, file_type:)
+    c_module.function_definitions.each do |func|
+      vars = extract_function_scope_static_vars( [func], name: name, module_name: module_name, file_type: file_type )
+      _add_promoted( c_module, func, vars ) unless vars.empty?
+    end
+  end
+
+  def _add_promoted(c_module, func, vars)
+    items = _with_defined_types( vars )
+    c_module.aggregate_definitions.concat( items.grep( CExtractorTypes::CStatement ) )
+    c_module.variable_declarations.concat( vars )
+    at = c_module.element_sequence.index { |item| item.equal?( func ) } || c_module.element_sequence.size
+    c_module.element_sequence.insert( at, *items )
+  end
+
+  # Lifts function-scoped static variables out of function bodies, to be promoted to module
+  # scope.
   #
   # C functions may contain local `static` variable declarations. These variables have
   # file-level storage duration but function-level scope. When generating partials, they
@@ -217,109 +235,174 @@ class PartializerHelper
   # linker and coverage tooling see them correctly.
   #
   # For each function in `funcs`, this method:
-  #   1. Scans the function body for variable declarations bearing a private keyword
-  #      (i.e. any keyword in `CExtractorConstants::PRIVATE_KEYWORDS`, e.g. `static`).
-  #   2. Replaces each such declaration in the function's `code_block` and `body` with a
-  #      no-op expression of the form `(void)0; /* <original text> */` so that coverage
-  #      line mappings remain valid without re-declaring the variable inside the body.
-  #   3. Renames each private function-scoped declaration to be prepended with the 
-  #      containing function name to prevent name collisions at module-scope.
-  #   4. Collects all promoted declarations and returns them for inclusion at module scope.
+  #   1. Reads the declarations that open the function's body, keeping each statement whose
+  #      variables bear a private keyword (any of `CExtractorConstants::PRIVATE_KEYWORDS`,
+  #      e.g. `static`). Reading stops at the first statement that declares nothing.
+  #   2. Puts one no-op per variable where each statement stood, followed by a comment holding
+  #      the statement, so the function keeps its line count for coverage. Each statement is
+  #      found by position, so its text needs no search.
+  #   3. Renames each promoted variable to `partial_<function>_<variable>` everywhere else in
+  #      the function, so promoted variables of different functions can't collide.
+  #   4. Names a type a statement defines (see Partials.type_name). A tagged one takes that
+  #      name as its tag too, since a tag local to the function may collide at module scope.
   #
   # @param funcs       [Array<CFunctionDefinition>] Function definitions to scan. Each matched
   #   function's `code_block` and `body` fields are mutated in place.
   # @param name        [String] Test name, used in log messages.
-  # @param module_name [String] Module name, used in log messages.
+  # @param module_name [String] Module name, which names a promoted type and appears in log messages.
   # @param file_type   [String] "source" or "header", used in log messages.
   #
   # @return [Array<CVariableDeclaration>] All function-scoped static variable declarations
-  #   found across all supplied functions, suitable for emission at module scope.
+  #   found across all supplied functions, suitable for emission at module scope. A variable's
+  #   `defined_type` holds a type its statement defines.
   def extract_function_scope_static_vars(funcs, name:, module_name:, file_type:)
-    decls = []
+    return funcs.flat_map do |func|
+      statements = _static_statements( func )
+      next [] if statements.empty?
 
-    # Process each function definition looking for function-scoped static variables.
-    # If found, collect them and remove from function `body` and `code_block`.
-    funcs.each do |func|
-      # Remove containing brackets of function body
-      func_body = func.body.dup
-      func_body.delete_prefix!( '{' )
-      func_body.delete_suffix!( '}' )
+      _promote( func, statements, module_name ).tap { |vars| _log_promoted( func, vars, "#{file_type} to be promoted for Partial #{name}::#{module_name}" ) }
+    end
+  end
 
-      scanner = StringScanner.new( func_body )
-      _decls = []
+  def _log_promoted(func, vars, context)
+    @loginator.log_list( vars.map { |var| "`#{var.original.strip}`" }, "Function-scope static variables in #{func.name}() in #{context}:", Verbosity::OBNOXIOUS )
+  end
 
-      loop do
-        # `try_extract_variable` returns an array of declarations.
-        # A compound declaration (e.g. int x, y) yields multiple declaration Structs
-        success, var_decls = @declaration_extractor.try_extract_variable( scanner )
-        break unless success
-        _decls.concat( var_decls.select { |var| var.decorators.any? { |d| CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) } } )
-      end
+  # A statement of a function's statics: where it sits in the function's code block, by byte,
+  # and the variables it declares
+  StaticStatement = Struct.new( :from, :to, :vars, keyword_init: true ) unless const_defined?(:StaticStatement, false)
 
-      # Group declarations by statement. The variables of a compound declaration, such as
-      # `static int a, b;`, share one statement, which becomes one no-op per variable.
-      groups = _decls.group_by { |var| var.original.strip }
+  # Space and comments ahead of a statement
+  DEADSPACE = %r{(?:\s|/\*.*?\*/|//[^\n]*)*}m unless const_defined?(:DEADSPACE, false)
 
-      # A static the extractor read no name from, such as one a macro declares, can't be renamed.
-      # Its whole statement stays in the body, still a valid local, and nothing of it is promoted.
-      groups.reject! { |_original, vars| vars.any? { |var| var.name.nil? } }
-      _decls = groups.values.flatten
+  # The statements opening a function's body that declare statics. A static the extractor read
+  # no name from, such as one a macro declares, can't be renamed. Its whole statement stays in
+  # the body, still a valid local, and nothing of it is promoted.
+  def _static_statements(func)
+    scanner    = StringScanner.new( func.code_block ).tap { |opened| opened.pos = _body_start( func ) + 1 }
+    statements = []
+    loop do
+      scanner.skip( DEADSPACE )
+      from = scanner.pos
+      success, vars = @declaration_extractor.try_extract_variable( scanner )
+      break unless success
 
-      _promote_statements( func, groups ) unless groups.empty?
-
-      _decls_log = _decls.map { |d| "`#{d.original.strip}`" }
-      @loginator.log_list(
-        _decls_log,
-        "Function-scope static variables in #{func.name}() in #{file_type} to be promoted for Partial #{name}::#{module_name}:",
-        Verbosity::OBNOXIOUS
-      ) unless _decls_log.empty?
-
-      decls += _decls
+      statements << StaticStatement.new( from: from, to: scanner.pos, vars: vars ) if _promotable?( vars )
     end
 
-    return decls
+    return statements
   end
 
-  # Promotes a function's statics to module scope under new names. Each statement becomes one
-  # no-op per variable, with its text kept in a comment behind a placeholder. Every statement is
-  # replaced before any rename, since a rename would change the text a later statement is found
-  # by. Each variable's text, declarator and array size then take every rename, because one
-  # static's initializer may name another, as in `static int a = 1, *p = &a;`. The placeholders
-  # are restored last, so no rename reaches the restored text.
-  def _promote_statements(func, groups)
-    vars         = groups.values.flatten
-    renames      = vars.to_h { |var| [var.name, "partial_#{func.name}_#{var.name}"] }
-    placeholders = groups.map { |original, group| [original, _replace_statement( func, original, group )] }
-
-    vars.each { |var| _rename_variable( var, renames ) }
-    _in_function( func ) { |text| _restored( @utils.rename_c_identifiers( text, renames ), placeholders ) }
+  # The byte at which a function's body opens in its code block. A signature holds no brace.
+  def _body_start(func)
+    return func.code_block.b.index( '{' )
   end
 
-  # The text with each statement's original put back in place of its placeholder
-  def _restored(text, placeholders)
-    return placeholders.reduce( text ) { |restored, (original, placeholder)| restored.sub( placeholder ) { original } }
+  # The variables of one statement share its decorators
+  def _promotable?(vars)
+    return false unless vars.first.decorators.any? { |d| CExtractorConstants::PRIVATE_KEYWORDS.include?( d ) }
+
+    return vars.none? { |var| var.name.nil? }
   end
 
-  # Puts one no-op per variable where the statement stood, followed by a placeholder comment,
-  # and returns the placeholder. It's keyed on the statement's first variable.
-  def _replace_statement(func, original, vars)
-    placeholder = "__CEEDLING_NOOP_#{func.name.upcase}_#{vars.first.name.upcase}__"
-    _in_function( func ) { |text| @utils.replace_compound_declaration_with_noops( text, original, placeholder, vars.size ) }
-    return placeholder
+  # Promotes a function's statics under new names. Each variable's text, declarator and array
+  # size take every rename, because one static's initializer may name another, as in
+  # `static int a = 1, *p = &a;`. A struct or union body holding a renamed name renames its
+  # members alike wherever they're used (see Partials::Rename), and a promoted type's body
+  # counts, although it no longer sits in the function.
+  def _promote(func, statements, module_name)
+    vars    = statements.flat_map( &:vars )
+    renames = vars.to_h { |var| [var.name, "partial_#{func.name}_#{var.name}"] }
+    types   = _local_types( func, statements, module_name )
+    rename  = _renamer( func, renames, types )
+
+    _rewrite_function( func, statements, rename )
+    _rename_promoted( types, vars, renames, rename )
+
+    return vars
   end
 
-  # Gives a promoted variable its new name. Its text, declarator and array size take the new
-  # name of every promoted variable they mention.
-  def _rename_variable(var, renames)
-    var.text, var.declarator, var.array_suffix = [var.text, var.declarator, var.array_suffix].map { |text| text && @utils.rename_c_identifiers( text, renames ) }
+  # Each promoted type takes the renames in its body and its new tag, and each variable its name
+  def _rename_promoted(types, vars, renames, rename)
+    types.each { |type, tag| type.text, type.tag = rename.( type.text ), rename.tags.fetch( tag, tag ) }
+    vars.each { |var| _rename_variable( var, renames, rename ) }
+  end
+
+  # The function's code block with its statics' statements replaced and the rest renamed, and its
+  # body read from that code block as extraction reads one
+  def _rewrite_function(func, statements, rename)
+    func.code_block = _spliced( func.code_block, statements, rename )
+    func.body       = _blanked( _between( func.code_block, _body_start( func ), func.code_block.bytesize ) )
+  end
+
+  # Renames text for one function's promotion. It knows the tags it renames, and the names the
+  # function's local bodies hold, its promoted types' included.
+  Renamer = Struct.new( :renames, :shared, :tags ) do
+    def call(text)
+      return text && Partials::Rename.identifiers( text, renames, shared: shared, tags: tags )
+    end
+  end unless const_defined?(:Renamer, false)
+
+  def _renamer(func, renames, types)
+    tags   = types.filter_map { |type, tag| [tag, type.type_name] if tag }.to_h
+    bodies = [func.code_block, *types.keys.map( &:text )].join( "\n" )
+    return Renamer.new( renames, Partials::Rename.names_in_bodies( bodies, renames ), tags )
+  end
+
+  # A promoted variable's text, declarator and array size name it, and maybe another promoted one
+  def _rename_variable(var, renames, rename)
+    var.text, var.declarator, var.array_suffix = [var.text, var.declarator, var.array_suffix].map { |text| rename.( text ) }
     var.name = renames[var.name]
   end
 
-  # Changes the function's code block and its body alike, as the block does each one. Each
-  # promoted statement and each rename must reach both.
-  def _in_function(func)
-    func.code_block = yield( func.code_block )
-    func.body       = yield( func.body )
+  # Each type a promoted statement defines, named for the statement's first variable, paired
+  # with its tag as written
+  def _local_types(func, statements, module_name)
+    return statements.filter_map do |statement|
+      type = statement.vars.first.defined_type
+      next unless type
+
+      type.type_name = Partials.type_name( module_name, func.name, statement.vars.first.name )
+      [type, type.tag]
+    end.to_h
+  end
+
+  # The code block with each statement replaced by its no-ops and the text around them renamed
+  def _spliced(text, statements, rename)
+    spliced = +''
+    at      = statements.reduce( 0 ) do |from, statement|
+      spliced << rename.( _between( text, from, statement.from ) ) << _noops( text, statement )
+      statement.to
+    end
+
+    return spliced << rename.( _between( text, at, text.bytesize ) )
+  end
+
+  def _between(text, from, to)
+    return text.byteslice( from, to - from )
+  end
+
+  # One no-op per variable, the last followed by a comment holding the statement
+  def _noops(text, statement)
+    written = _commented( _between( text, statement.from, statement.to ) )
+    return "#{'(void)0; ' * (statement.vars.size - 1)}(void)0; /* `#{written}` replaced with no-op plus variable renamed & promoted to module-scope */"
+  end
+
+  # A statement as a comment can hold it. Its own comments become spaces, keeping their line
+  # breaks, so the function's line count holds, and a `*/` in a literal can't close the comment.
+  def _commented(text)
+    return text.gsub( Partials::LITERAL_OR_COMMENT ) { |found| found.start_with?( '/' ) ? found.gsub( /[^\n]/, ' ' ) : found }.gsub( '*/', '* /' )
+  end
+
+  # A function body with its comments blanked to a space each, as extraction reads one
+  def _blanked(body)
+    return body.gsub( Partials::LITERAL_OR_COMMENT ) { |found| found.start_with?( '/' ) ? ' ' : found }
+  end
+
+  # The variables, each statement's type ahead of the first of them
+  def _with_defined_types(vars)
+    seen = Set.new.compare_by_identity
+    return vars.flat_map { |var| (var.defined_type and seen.add?( var.defined_type )) ? [var.defined_type, var] : [var] }
   end
 
   # Refuses a module whose shape fallback preprocessing cannot resolve.
