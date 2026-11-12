@@ -392,9 +392,10 @@ class PartializerHelper
   end
 
   # A statement as a comment can hold it. Its own comments become spaces, keeping their line
-  # breaks, so the function's line count holds, and a `*/` in a literal can't close the comment.
+  # breaks as written, so the function's line count holds, and a `*/` in a literal can't close
+  # the comment.
   def _commented(text)
-    return text.gsub( Partials::LITERAL_OR_COMMENT ) { |found| found.start_with?( '/' ) ? found.gsub( /[^\n]/, ' ' ) : found }.gsub( '*/', '* /' )
+    return text.gsub( Partials::LITERAL_OR_COMMENT ) { |found| found.start_with?( '/' ) ? found.gsub( /[^\r\n]/, ' ' ) : found }.gsub( '*/', '* /' )
   end
 
   # A function body with its comments blanked to a space each, as extraction reads one

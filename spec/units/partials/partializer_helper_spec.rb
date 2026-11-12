@@ -694,6 +694,21 @@ describe PartializerHelper do
         expect(func.code_block).to include('return partial_calc_x + partial_calc_a + partial_calc_b;')
       end
 
+      # Each no-op stands where its statement did, and a statement over several lines keeps them,
+      # comments included, so coverage lines stay aligned. Line endings pass through as written.
+      ["\n", "\r\n"].each do |ending|
+        it "keeps a function to its line count with #{ending.inspect} line endings" do
+          code = ["int f(void) {", "  static struct {", "    int n; /* a", "    b */", "  } st;", "  return st.n;", "}"].join( ending )
+          func = OpenStruct.new( name: 'f', body: '', code_block: code )
+
+          real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+          expect( func.code_block ).to include( 'return partial_f_st.n;' )
+          expect( func.code_block.count( "\n" ) ).to eq( code.count( "\n" ) )
+          expect( func.code_block.scan( ending ).size ).to eq( code.scan( ending ).size )
+        end
+      end
+
       # The body opens at the first brace outside a literal, and an attribute's string may hold one
       it "promotes a static in a function whose signature holds a brace in a string" do
         func = OpenStruct.new(

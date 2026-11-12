@@ -616,15 +616,6 @@ describe 'Declarations in a Partial' do
 
       expect_link( @result, ['ticker_get', 'partial_ticker_get_count', 'partial_ticker_get_s'] )
     end
-
-    # Each no-op stands on the line its statement did, and a statement over several lines keeps them
-    it 'keeps the function to its line count' do
-      source = "int ticker_get(void) {\n  static struct {\n    int n;\n  } st;\n  return st.n;\n}\n"
-      @result = ticker( header: "int ticker_get(void);\n", source: source )
-
-      body = @result.impl_c[/int ticker_get\(void\) \{.*?\n\}/m]
-      expect( body.count( "\n" ) ).to eq( source.count( "\n" ) - 1 ), "the function as generated: #{body.inspect}"
-    end
   end
 
   # ---------------------------------------------------------------------------
