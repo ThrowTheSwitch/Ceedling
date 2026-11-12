@@ -257,12 +257,18 @@ describe CExtractorDefinitions do
       expect(scanner.pos).to eq 0
     end
 
-    it "returns [false, nil] for a forward declaration without body (struct Foo;)" do
+    # A tag alone declares a struct or union type, so it reads as one rather than as a variable
+    it "extracts a forward declaration without body (struct Foo;)" do
       result, pos = try_aggregate('struct Foo;')
-      expect(result).to eq [false, nil]
-      expect(pos).to eq 0
+      expect(result).to eq [true, 'struct Foo;']
+      expect(pos).to eq 11
     end
 
+    it "extracts a forward declaration without body (union Word;)" do
+      expect( try_aggregate('union Word;')[0] ).to eq [true, 'union Word;']
+    end
+
+    # C has no forward declaration of an enum
     it "returns [false, nil] for a forward declaration without body (enum Color;)" do
       result, pos = try_aggregate('enum Color;')
       expect(result).to eq [false, nil]

@@ -955,22 +955,24 @@ describe CExtractorDeclarations do
                      text: 'struct Point my_point __attribute__((aligned(4)));')
       end
 
+      # An attribute after the name belongs to the variable, so it stays with the variable's text
       it "extracts name and type from anonymous-struct variable with trailing __attribute__" do
         content = "struct { int x; int y; } coords __attribute__((aligned(8)));"
         success, variable, _, _ = extract_variable.call(content)
         expect(success).to be true
         expect(variable[0].name).to eq('coords')
-        expect(variable[0].type).to eq('struct { int x; int y; }')
-        expect(variable[0].text).to eq('struct { int x; int y; } coords __attribute__((aligned(8)));')
+        expect(variable[0].defined_type.text).to eq('struct { int x; int y; };')
+        expect(variable[0].text).to eq('coords __attribute__((aligned(8)));')
       end
 
+      # A member's attribute belongs to the type, which keeps it as written
       it "extracts name and type when __attribute__ appears on a struct member inside the body" do
         content = "struct Point { int x __attribute__((aligned(4))); int y; } my_point;"
         success, variable, _, _ = extract_variable.call(content)
         expect(success).to be true
         expect(variable[0].name).to eq('my_point')
-        expect(variable[0].type).to eq('struct Point { int x ; int y; }')
-        expect(variable[0].text).to eq('struct Point { int x __attribute__((aligned(4))); int y; } my_point;')
+        expect(variable[0].defined_type.text).to eq('struct Point { int x __attribute__((aligned(4))); int y; };')
+        expect(variable[0].text).to eq('my_point;')
       end
     end
 
@@ -1326,10 +1328,8 @@ describe CExtractorDeclarations do
         success, variables, _, _ = extract_variable.call( "static struct ops { int (*open)(void); } s_ops, s_ops2;" )
 
         expect( success ).to be true
-        expect( variables.map { |v| [v.name, v.text] } ).to eq [
-          ['s_ops',  'struct ops { int (*open)(void); } s_ops;'],
-          ['s_ops2', 'struct ops { int (*open)(void); } s_ops2;']
-        ]
+        expect( variables.map { |v| [v.name, v.text] } ).to eq [['s_ops', 's_ops;'], ['s_ops2', 's_ops2;']]
+        expect( variables.map( &:defined_type ).uniq.map( &:text ) ).to eq ['struct ops { int (*open)(void); };']
       end
 
       # A lookup table may run to many kilobytes, and its declaration must still read quickly. A

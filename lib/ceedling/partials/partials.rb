@@ -7,6 +7,8 @@
 
 require 'set'
 require 'strscan'
+require 'ceedling/constants'
+require 'ceedling/c_identifier'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_declarator'
 require 'ceedling/partials/carry_plan'
@@ -85,6 +87,26 @@ module Partials
   def self._statement_pattern(statement)
     tokens = statement.strip.split( /\s+/ ).map { |part| Regexp.escape( part ) }
     return Regexp.new( tokens.join( STATEMENT_GAP.source ), Regexp::MULTILINE )
+  end
+
+  # The name a Partial gives a type a declaration defines, as `struct { int count; }` in
+  # `static struct { int count; } s_ctx;`. The parts name its variable: the variable alone at file
+  # scope, or a promoted static's function and variable. The module's name is folded as
+  # CIdentifier.fold does, and a directory a module is named by takes no part. ceedling.h's
+  # PARTIAL_TYPE and PARTIAL_LOCAL_TYPE build the same name.
+  #   type_name( 'ticker', 's_ctx' )              --> ceedling_partial_ticker_s_ctx_t
+  #   type_name( 'drivers/my-uart', 'tick', 'n' ) --> ceedling_partial_my_uart_tick_n_t
+  def self.type_name(module_name, *parts)
+    return "#{PARTIAL_FILENAME_PREFIX}#{CIdentifier.fold( File.basename( module_name ) )}_#{parts.join( '_' )}_t"
+  end
+
+  # Names each type a declaration defines after the first of its variables with a name. A type
+  # already named, as a promoted static's is, keeps its name.
+  def self.name_defined_types(c_module, module_name)
+    c_module.variable_declarations.each do |var|
+      type = var.defined_type
+      type.type_name ||= type_name( module_name, var.name ) if type and var.name
+    end
   end
 
   # The type a variable holds by value, less a keyword ahead of it that changes only how it's

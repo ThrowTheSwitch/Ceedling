@@ -289,6 +289,9 @@ module PartialsGenerationHelpers
     c_module.variable_declarations.concat( promoted )
     c_module.element_sequence.concat( promoted ) unless promoted.empty?
 
+    # A type a declaration defines is named once promotion is done, as production names it
+    Partials.name_defined_types( c_module, module_name )
+
     # Generated-file boilerplate carried in from the reconstituted files is stripped before
     # generation, exactly as PartialsManager#stage_generate_partials does. Skipping this
     # leaves synthetic include guards in the extracted macros and misreports what a real

@@ -11,6 +11,7 @@ require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_preprocessing'
 require 'ceedling/c_extractor/c_extractor_definitions'
+require 'ceedling/c_extractor/c_extractor_defined_type'
 require 'ceedling/c_extractor/c_extractor_types'
 
 class CExtractor
@@ -129,7 +130,7 @@ class CExtractor
           _compute_line_info(io, call_start, dir_start, cumulative_newlines)
         macro_def = @preprocessing.filter_directive(directive, CExtractorPreprocessing::MACRO_DEFINITION)
         if macro_def
-          stmt = CStatement.new(text: macro_def, line_num: line_num)
+          stmt = CStatement.new(text: macro_def, line_num: line_num, kind: :macro)
           macro_definitions << stmt
           sequence << stmt
         end
@@ -146,7 +147,7 @@ class CExtractor
       if typedef_def
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, td_start, cumulative_newlines)
-        stmt = CStatement.new(text: typedef_def, line_num: line_num)
+        stmt = CStatement.new(text: typedef_def, line_num: line_num, kind: :typedef, **CExtractorDefinedType.names( typedef_def ))
         type_definitions << stmt
         sequence << stmt
         next
@@ -176,7 +177,7 @@ class CExtractor
       if agg_def
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, agg_start, cumulative_newlines)
-        stmt = CStatement.new(text: agg_def, line_num: line_num)
+        stmt = CStatement.new(text: agg_def, line_num: line_num, kind: :aggregate, **CExtractorDefinedType.names( agg_def ))
         aggregate_definitions << stmt
         sequence << stmt
         next
@@ -254,6 +255,14 @@ class CExtractor
         line_num, cumulative_newlines =
           _compute_line_info(io, call_start, vars_start, cumulative_newlines)
         vars.each { |v| v.line_num = line_num }
+        # A declaration defining its type, as `static struct { int n; } s;` does, defines it
+        # ahead of its variables, which share it
+        defined = vars.first.defined_type
+        if defined
+          defined.line_num = line_num
+          aggregate_definitions << defined
+          sequence << defined
+        end
         variable_declarations.concat(vars)
         sequence.concat(vars)
         next

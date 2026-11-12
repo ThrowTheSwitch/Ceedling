@@ -176,7 +176,8 @@ describe CExtractor do
 
       expect( contents.variable_declarations[2].name ).to eq 'instance'
       expect( contents.variable_declarations[2].decorators ).to eq []
-      expect( contents.variable_declarations[2].text ).to eq 'struct foo { int x; } instance;'
+      expect( contents.variable_declarations[2].text ).to eq 'instance;'
+      expect( contents.variable_declarations[2].defined_type.text ).to eq 'struct foo { int x; };'
 
       expect( contents.variable_declarations[3].name ).to eq 'array'
       expect( contents.variable_declarations[3].type ).to eq 'int'
@@ -777,7 +778,7 @@ describe CExtractor do
           float f;
         };
 
-        /* struct with declarator — stays in variable_declarations, not aggregate_definitions */
+        /* struct with declarator — the type joins aggregate_definitions, the variable variable_declarations */
         struct Foo { int val; } foo_instance;
 
         typedef struct { int a; int b; } Pair;
@@ -791,7 +792,7 @@ describe CExtractor do
 
       contents = extract_from.call(file_contents)
 
-      expect( contents.aggregate_definitions.length ).to eq 3
+      expect( contents.aggregate_definitions.length ).to eq 4
       expect( contents.aggregate_definitions[0].text ).to start_with('struct Point')
       expect( contents.aggregate_definitions[0].text ).to include('int x;')
       expect( contents.aggregate_definitions[0].line_num ).to eq 3
@@ -800,9 +801,12 @@ describe CExtractor do
       expect( contents.aggregate_definitions[2].text ).to start_with('union Number')
       expect( contents.aggregate_definitions[2].line_num ).to eq 10
 
-      # struct Foo { int val; } foo_instance; stays in variable_declarations
+      # struct Foo { int val; } foo_instance; defines the type its variable names
+      expect( contents.aggregate_definitions[3].text ).to eq 'struct Foo { int val; };'
+      expect( contents.aggregate_definitions[3].line_num ).to eq 16
       expect( contents.variable_declarations.length ).to eq 2
       expect( contents.variable_declarations[0].name ).to eq 'foo_instance'
+      expect( contents.variable_declarations[0].defined_type ).to equal( contents.aggregate_definitions[3] )
       expect( contents.variable_declarations[1].name ).to eq 'some_global'
 
       expect( contents.type_definitions.length ).to eq 1
@@ -1362,6 +1366,91 @@ describe CExtractor do
           expect( sequence_of( "int g_last; // trailing; comment\nint after;\n", chunk_size: chunk_size ) ).to eq [['CVariableDeclaration', 'int g_last;'], ['CVariableDeclaration', 'int after;']]
           expect( sequence_of( "int g_last; /* trailing; comment */\nint after;\n", chunk_size: chunk_size ) ).to eq [['CVariableDeclaration', 'int g_last;'], ['CVariableDeclaration', 'int after;']]
         end
+      end
+    end
+
+    # A declaration that defines its type holds two things. The type is defined once, ahead of its
+    # variables in element_sequence, and every variable of the statement names that one record.
+    context "a declaration that defines its type" do
+      it "records the type as an aggregate ahead of the variables that share it" do
+        contents = extract_from.call( "int before;\nstatic struct pair { int a[2]; } g_p1, *g_p2 = &g_p1;\n" )
+        type     = contents.aggregate_definitions.first
+
+        expect( type ).to have_attributes( text: 'struct pair { int a[2]; };', kind: :aggregate, tag: 'pair', line_num: 2 )
+        expect( contents.element_sequence.map( &:class ) ).to eq [
+          CExtractorTypes::CVariableDeclaration, CExtractorTypes::CStatement,
+          CExtractorTypes::CVariableDeclaration, CExtractorTypes::CVariableDeclaration
+        ]
+        expect( contents.variable_declarations.drop( 1 ).map( &:defined_type ) ).to all( equal( type ) )
+      end
+
+      # The type held a member's array size, which no longer reads as the variable's own
+      it "reads each variable of the statement without the type's body" do
+        vars = extract_from.call( "static struct pair { int a[2]; } g_p1, *g_p2 = &g_p1;\n" ).variable_declarations
+
+        expect( vars.map { |v| [v.name, v.type, v.text, v.array_suffix, v.decorators] } ).to eq [
+          ['g_p1', '', 'g_p1;', '', ['static']],
+          ['g_p2', '*', '*g_p2 = &g_p1;', '', ['static']]
+        ]
+      end
+
+      it "reads an anonymous struct, union or enum with no tag" do
+        contents = extract_from.call( "static struct { int n; } s;\nunion { int i; float f; } u;\nstatic enum { IDLE, RUN } e;\n" )
+
+        expect( contents.aggregate_definitions.map { |t| [t.text, t.tag] } ).to eq [
+          ['struct { int n; };', nil], ['union { int i; float f; };', nil], ['enum { IDLE, RUN };', nil]
+        ]
+        expect( contents.variable_declarations.map( &:name ) ).to eq ['s', 'u', 'e']
+      end
+
+      # An extension after the body belongs to the type, and one after the name to the variable
+      it "keeps each extension with what it follows" do
+        vars = extract_from.call( "struct { char c; int i; } __attribute__((packed)) s_pk __attribute__((unused));\n" ).variable_declarations
+
+        expect( vars.first.defined_type.text ).to eq 'struct { char c; int i; } __attribute__((packed));'
+        expect( vars.first.text ).to eq 's_pk __attribute__((unused));'
+      end
+
+      it "keeps an initializer, an asm label and a qualifier with the variable" do
+        var = extract_from.call( "static const struct ops { int a; } g_ops asm(\"sym\") = { 1 };\n" ).variable_declarations.first
+
+        expect( var ).to have_attributes( name: 'g_ops', decorators: ['static', 'const'], asm_label: 'asm("sym")', text: 'g_ops asm("sym") = { 1 };' )
+      end
+
+      it "reads a struct whose members are function pointers" do
+        var = extract_from.call( "static struct drv { int (*read)(void); void (*write)(int); } s_drv;\n" ).variable_declarations.first
+
+        expect( var ).to have_attributes( name: 's_drv', declarator: nil )
+        expect( var.defined_type.tag ).to eq 'drv'
+      end
+
+      it "reads an enum with an underlying type" do
+        type = extract_from.call( "enum mode : unsigned char { OFF, ON } g_mode;\n" ).aggregate_definitions.first
+
+        expect( type ).to have_attributes( text: 'enum mode : unsigned char { OFF, ON };', tag: 'mode' )
+      end
+    end
+
+    context "a statement that names a type" do
+      it "reads a forward declaration as a type statement, never a variable" do
+        contents = extract_from.call( "struct node;\nunion word;\n" )
+
+        expect( contents.aggregate_definitions.map { |t| [t.text, t.tag] } ).to eq [['struct node;', 'node'], ['union word;', 'word']]
+        expect( contents.variable_declarations ).to be_empty
+      end
+
+      it "records the tag and the name a typedef gives a struct" do
+        contents = extract_from.call( "typedef struct node node_t;\ntypedef struct item { int v; } item_t;\ntypedef int count_t;\n" )
+
+        expect( contents.type_definitions.map { |t| [t.kind, t.tag, t.type_name] } ).to eq [
+          [:typedef, 'node', 'node_t'], [:typedef, 'item', 'item_t'], [:typedef, nil, nil]
+        ]
+      end
+
+      it "records each statement's kind" do
+        contents = extract_from.call( "#define N 1\ntypedef int n_t;\nstruct s { int a; };\nint n;\n" )
+
+        expect( contents.element_sequence.grep( CExtractorTypes::CStatement ).map( &:kind ) ).to eq [:macro, :typedef, :aggregate]
       end
     end
 

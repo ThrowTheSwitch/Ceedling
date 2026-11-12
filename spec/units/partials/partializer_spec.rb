@@ -13,6 +13,7 @@ require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_config'
 require 'ceedling/reportinator'
 require 'ceedling/c_extractor/c_extractor_types'
+require 'ceedling/c_extractor/c_extractor_defined_type'
 require 'ostruct'
 
 describe Partializer do
@@ -672,6 +673,11 @@ describe Partializer do
         CExtractorTypes::CVariableDeclaration.new( name: name, type: type, decorators: ['extern'], text: "#{type} #{name};" )
       end
 
+      # A typedef as the extractor records it, with the tag and the name it reads
+      def typedef(text)
+        CExtractorTypes::CStatement.new( text: text, kind: :typedef, **CExtractorDefinedType.names( text ) )
+      end
+
       # Each file's raw directives-only copy, present only where `copies` gives its text. Files and
       # copies are read as bytes, since the search needs nothing more.
       def stub_texts(header:, source:, copies: {})
@@ -706,7 +712,7 @@ describe Partializer do
             extern_var( 'shared', '_Atomic struct handle_s' ),
             extern_var( 'named', '__thread _Atomic handle_t' )
           ],
-          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef struct handle_s handle_t;' )]
+          type_definitions:      [typedef( 'typedef struct handle_s handle_t;' )]
         )
 
         expect( incomplete_for( c_module ) ).to eq( Set['local', 'shared', 'named'] )
@@ -727,7 +733,7 @@ describe Partializer do
         stub_texts( header: "typedef struct handle_s handle_t;\nextern handle_t handle;\n", source: '' )
         c_module = CExtractorTypes::CModule.new(
           variable_declarations: [extern_var( 'handle', 'handle_t' )],
-          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef struct handle_s handle_t;' )]
+          type_definitions:      [typedef( 'typedef struct handle_s handle_t;' )]
         )
 
         expect( incomplete_for( c_module ) ).to eq( Set['handle'] )
@@ -737,7 +743,7 @@ describe Partializer do
         stub_texts( header: "typedef union word_u word_t;\nextern word_t word;\n", source: '' )
         c_module = CExtractorTypes::CModule.new(
           variable_declarations: [extern_var( 'word', 'word_t' )],
-          type_definitions:      [CExtractorTypes::CStatement.new( text: 'typedef union word_u word_t;' )]
+          type_definitions:      [typedef( 'typedef union word_u word_t;' )]
         )
 
         expect( incomplete_for( c_module ) ).to eq( Set['word'] )

@@ -45,7 +45,7 @@ class CExtractorPreprocessing
     end
 
     scanner.pos = finish
-    return [true, CExtractorTypes::CStatement.new(text: scanner.string.byteslice(start_pos, finish - start_pos))]
+    return [true, CExtractorTypes::CStatement.new(text: scanner.string.byteslice(start_pos, finish - start_pos), kind: :invocation)]
   end
 
   # Where a bare invocation at the scanner ends, or nil when there is none. Only the

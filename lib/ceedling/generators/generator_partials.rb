@@ -165,7 +165,7 @@ class GeneratorPartials
       pending_macros.each { |macro| io << macro.text << "\n" }
       pending_macros.clear
 
-      io << item.text << "\n"
+      io << _type_text( item ) << "\n"
       anything_emitted = true
     end
 
@@ -208,6 +208,26 @@ class GeneratorPartials
     c_module.type_definitions.include?(item) || c_module.aggregate_definitions.include?(item)
   end
 
+  # A type statement as the types header writes it. A type a declaration defines, as
+  # `struct { int count; }` in `static struct { int count; } s_ctx;`, is written once here, as a
+  # typedef naming it for its variables (see Partials.type_name). That keeps an anonymous type
+  # one type, and gives a tagged one a name a test can write too.
+  def _type_text(item)
+    return item.text unless item.kind == :aggregate and item.type_name
+
+    return "typedef #{item.text.chomp( ';' ).rstrip} #{item.type_name};"
+  end
+
+  # The type a variable is declared with, and its declaration's text from there on. A type the
+  # declaration defines is written once in the types header, so the variable names it.
+  def _declared_type(var)
+    return var.defined_type ? "#{var.defined_type.type_name} #{var.type}".rstrip : var.type
+  end
+
+  def _declaration_text(var)
+    return var.defined_type ? "#{var.defined_type.type_name} #{var.text}" : var.text
+  end
+
   # A `CVariableDeclaration`'s `decorators` mixes storage-class specifiers (`static`,
   # `extern`) with base-type qualifiers (`const`, `volatile`, `restrict`) in their
   # original source order, since both kinds of keyword lead a declaration the same
@@ -230,7 +250,7 @@ class GeneratorPartials
   # when nothing else defines the variable and yields to a real definition without a duplicate
   # symbol. A compiler without GCC's weak attribute gets a plain definition.
   def weak_definition(decl)
-    text = "#{qualifier_prefix(decl)}#{decl.text}"
+    text = "#{qualifier_prefix(decl)}#{_declaration_text( decl )}"
     return "#if defined(__GNUC__)\n__attribute__((weak)) #{text}\n#else\n#{text}\n#endif\n"
   end
 
@@ -345,7 +365,7 @@ class GeneratorPartials
 
     var      = defining[name] || item
     declared = [var.declarator || "#{name}#{var.array_suffix}", labels[name]].compact
-    return "extern #{qualifier_prefix( var )}#{var.type} #{declared.join( ' ' )};"
+    return "extern #{qualifier_prefix( var )}#{_declared_type( var )} #{declared.join( ' ' )};"
   end
 
   # Emit a partial source file.
@@ -408,7 +428,7 @@ class GeneratorPartials
     # CExtractorDeclarations#extract_decorators), so a const/volatile/restrict qualifier on the
     # base type is reapplied here via qualifier_prefix -- this definition's type must match the
     # extern declaration emitted for the same variable in generate_header.
-    return "#{qualifier_prefix(var)}#{var.text}\n" unless var.extern?
+    return "#{qualifier_prefix(var)}#{_declaration_text( var )}\n" unless var.extern?
     return nil if context.extern_variables != :weak
     return nil if context.defined.include?( var.name ) or context.carry.incomplete?( var.name )
     return nil unless context.weak.add?( var.name )

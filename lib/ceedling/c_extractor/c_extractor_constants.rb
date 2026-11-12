@@ -36,4 +36,11 @@ module CExtractorConstants
 
   # Keywords stripped when producing a variable's clean `text`
   DECORATOR_KEYWORDS = (PRIVATE_KEYWORDS + TYPE_QUALIFIER_KEYWORDS + ['extern']).freeze unless const_defined?(:DECORATOR_KEYWORDS, false)
+
+  # A word C reserves for the implementation with no arguments after it, as an attribute macro
+  # such as `__packed` is. After a type's body, one belongs to the type.
+  BARE_EXTENSION = /__[\w$]*+(?!\s*\()/ unless const_defined?(:BARE_EXTENSION, false)
+
+  # An attribute whose arguments come next, as in `__attribute__((packed))` and `__aligned(8)`
+  ATTRIBUTE_CALL = /(?:__attribute__|__attribute|__aligned)(?![\w$])\s*(?=\()/ unless const_defined?(:ATTRIBUTE_CALL, false)
 end
