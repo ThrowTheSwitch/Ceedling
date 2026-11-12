@@ -31,8 +31,9 @@ directive macros:
 #include "ceedling.h" // Required -- defines all Partial directive macros
 ```
 
-`ceedling.h` defines the `TEST_PARTIAL_*`, `MOCK_PARTIAL_*`, `*_CONFIG`, and
-`PARTIAL_LOCAL_VAR()` macros. Without this include, the macros are undefined.
+`ceedling.h` defines the `TEST_PARTIAL_*`, `MOCK_PARTIAL_*`, `*_CONFIG`,
+`PARTIAL_LOCAL_VAR()`, `PARTIAL_TYPE()` and `PARTIAL_LOCAL_TYPE()` macros.
+Without this include, the macros are undefined.
 
 ## Partials macro categories
 
@@ -63,5 +64,12 @@ from the base set established by the module selection macro.
 
 Accesses a function-scoped `static` variable that Ceedling has promoted to
 module scope in a generated Partial.
+
+### [Variable type names](../../reference/partials-macros.md#variable-type-names)
+
+`PARTIAL_TYPE(module, variable)` / `PARTIAL_LOCAL_TYPE(module, function, variable)`
+
+Name the type a Partial gives a variable declared together with its type, as in
+`static struct { int count; } s_ctx;`.
 
 <br/><br/>

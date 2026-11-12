@@ -86,4 +86,31 @@ identifier `partial_<function_name>_<variable_name>`.
 - Can appear anywhere a variable name is legal: expressions, assertions,
   assignments
 
+---
+
+## Variable type names
+
+!!! tip
+    For how a Partial names the type of a variable declared together with its
+    type, see
+    [A variable declared together with its type](../testing-guide/partials/variables.md#a-variable-declared-together-with-its-type).
+
+**`PARTIAL_TYPE(module_name, variable_name)`**
+
+Names the type a Partial gives a variable declared together with its type, as
+in `static struct { int count; } s_ctx;`. The macro expands to
+`ceedling_partial_<module_name>_<variable_name>_t`.
+
+**`PARTIAL_LOCAL_TYPE(module_name, function_name, variable_name)`**
+
+Names the type of a promoted function-scoped `static` declared together with
+its type. The macro expands to
+`ceedling_partial_<module_name>_<function_name>_<variable_name>_t`.
+
+- Defined in `ceedling.h`; requires `#include "ceedling.h"` above its use
+- Every argument must be a literal C identifier — not a string or runtime value
+- The module name is the name alone, without a directory, with `_` for each
+  character a C identifier can't hold
+- Can appear anywhere a type name is legal: declarations, casts, `sizeof`
+
 <br/><br/>
