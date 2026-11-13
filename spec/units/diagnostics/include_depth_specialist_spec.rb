@@ -86,6 +86,14 @@ describe IncludeDepthSpecialist do
     expect( notice ).not_to include( 'is later in the search paths' )
   end
 
+  it 'names the header by its search path, not by the spelling the compiler output uses' do
+    spelled = 'vendor/esp32/include/./freertos/timers.h'
+    @files[spelled] = @files[FORWARDING]
+    notice = prescriptions( "#{spelled}:1:10: error: #include nested too deeply\n" ).first
+
+    expect( notice ).to include( "'#{FORWARDING}' includes <timers.h>" )
+  end
+
   it 'reads a header holding bytes invalid in its encoding' do
     @files[FORWARDING] = (+"/* \xFF */\n#include <timers.h>\n").force_encoding( Encoding::UTF_8 )
 

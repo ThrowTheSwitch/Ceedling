@@ -81,7 +81,9 @@ class IncludeDepthSpecialist
     return ToolchainOutput.headers( line ).first
   end
 
-  # Explains the first #include in `header` that the search reaches it through again, or nil
+  # Explains the first #include in `header` that the search reaches it through again, or nil.
+  # The explanation names the header as the search found it. The output may spell it
+  # another way, such as Clang on Windows joining a search path and a name with '\'.
   def self_inclusion(header, search_paths)
     return nil if header.nil? || !@file_wrapper.exist?( header )
 
@@ -89,7 +91,7 @@ class IncludeDepthSpecialist
       found = search( header, delimiter, name, search_paths )
       next unless same_file?( found.first, header )
 
-      return looping_explanation( header, delimiter, name, found )
+      return looping_explanation( found.first, delimiter, name, found )
     end
 
     return nil
