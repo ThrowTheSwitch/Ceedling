@@ -92,7 +92,7 @@ describe 'Default tools quoting validation' do
     Object.constants.grep( /\ADEFAULT_\w+_TOOL\z/ ).map { |name| [name.to_s, Object.const_get( name )] } +
     Dir[File.expand_path( '../../../plugins/*/config/*.yml', __dir__ )].flat_map do |filepath|
       tools = YAML.load_file( filepath, symbolize_names: true )&.dig( :tools ) || {}
-      tools.map { |key, tool| ["#{File.basename( File.dirname( filepath, 2 ) )} :#{key}", tool] }
+      tools.map { |key, tool| ["#{File.basename( File.dirname( File.dirname( filepath ) ) )} :#{key}", tool] }
     end
   ).freeze
 
