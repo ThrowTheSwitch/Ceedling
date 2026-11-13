@@ -12,6 +12,8 @@ require 'ceedling/preprocess/preprocessinator_file_assembler'
 require 'ceedling/preprocess/preprocessinator_reconstructor'
 require 'ceedling/parsing_parcels'
 require 'ceedling/encodinator'
+require 'ceedling/exceptions'
+require 'ceedling/diagnostics/build_step_doctor'
 
 RSpec.describe PreprocessinatorFileAssembler do
   include IncludeGuardHelper
@@ -36,6 +38,22 @@ RSpec.describe PreprocessinatorFileAssembler do
 
     allow(@loginator).to receive(:log)
     allow(@reportinator).to receive(:generate_module_progress).and_return('')
+
+    # A real doctor whose one diagnosis records each preprocessing case it examines
+    @examined = []
+    recorder  = BuildStepDoctor::Diagnosis.new(
+      name: :recorder, steps: [:preprocess], symptoms: /nested/, examination: ->(kase) { @examined << kase; 'guidance' }
+    )
+    specialists = %i[header_collision_specialist missing_symbol_specialist duplicate_symbol_specialist partial_name_specialist]
+                  .to_h { |name| [name, double( name.to_s, diagnoses: [] )] }
+    @build_step_doctor = BuildStepDoctor.new(
+      loginator: @loginator, include_depth_specialist: double( 'specialist', diagnoses: [recorder] ), **specialists
+    ).tap( &:setup )
+  end
+
+  # The failure the full preprocessor raises for a self-including header
+  def nesting_failure()
+    ShellException.new( shell_result: { exit_code: 1, output: "a.h:1:20: error: #include nested too deeply\n" }, name: 'gcc' )
   end
 
   subject do
@@ -48,7 +66,8 @@ RSpec.describe PreprocessinatorFileAssembler do
         file_wrapper:    @file_wrapper,
         parsing_parcels: real_parsing_parcels,
         loginator:       @loginator,
-        reportinator:    @reportinator
+        reportinator:    @reportinator,
+        build_step_doctor: @build_step_doctor
       }
     )
   end
@@ -302,6 +321,29 @@ RSpec.describe PreprocessinatorFileAssembler do
         include_paths: include_paths,
         extras: extras
       )
+    end
+
+    context 'when the full preprocessor fails' do
+
+      let(:include_paths) { ['vendor/include'] }
+
+      it 'diagnoses the failure as preprocessing and raises the same exception' do
+        failure = nesting_failure()
+        allow(@tool_executor).to receive(:exec).and_raise(failure)
+
+        expect { call_collect_mockable(fallback: true, extras: false) }.to raise_error( failure )
+        expect(@examined.map( &:step )).to eq( [:preprocess] )
+        expect(@examined.first.inputs).to eq(
+          { tool: :full_preprocessor, source: filepath, search_paths: include_paths, flags: flags, defines: defines }
+        )
+        expect(@loginator).to have_received(:log).with( 'guidance', Verbosity::ERRORS, LogLabels::NOTICE )
+      end
+
+    end
+
+    it 'diagnoses nothing when the full preprocessor succeeds' do
+      call_collect_mockable(fallback: true, extras: false)
+      expect(@examined).to be_empty
     end
 
     context 'when extras are not requested' do
@@ -808,6 +850,21 @@ RSpec.describe PreprocessinatorFileAssembler do
         'void test_ShouldDoSomething(void) {}'
       ].join("\n")
       stub_file_open('/build/full_expansion/test_widget.c', full_expansion, 'r')
+    end
+
+    it 'diagnoses a full preprocessor failure as preprocessing and raises the same exception' do
+      failure = nesting_failure()
+      allow(@tool_executor).to receive(:exec).and_raise(failure)
+
+      expect {
+        subject.collect_test_file_contents(
+          test: 'test_widget', filepath: filepath, directives_only_filepath: '/build/directives_only/test_widget.c',
+          fallback: true, flags: ['-w'], defines: ['TEST'], include_paths: ['vendor/include']
+        )
+      }.to raise_error( failure )
+      expect(@examined.first.inputs).to eq(
+        { tool: {}, source: filepath, search_paths: ['vendor/include'], flags: ['-w'], defines: ['TEST'] }
+      )
     end
 
     it 'extracts contents from the full expansion and test directives via the fallback text scan when fallback: true' do

@@ -83,6 +83,7 @@ describe TestBuildExecutor do
     real_isolator = QuoteIncludeIsolator.new( { :file_wrapper => @file_wrapper, :loginator => @loginator } )
     allow(@quote_include_isolator).to receive(:includes_by_name?) { |file, name| real_isolator.includes_by_name?( file, name ) }
     allow(@build_step_doctor).to receive(:diagnose).and_return( [] )
+    allow(@build_step_doctor).to receive(:attend) { |**, &step| step.call }
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_progress).and_return( '' )
@@ -156,7 +157,7 @@ describe TestBuildExecutor do
   # stubbed to synchronously yield every `things` entry to the given block,
   # matching its real per-item iteration contract without pulling in Parallel.
   def stub_batchinator_exec
-    allow(@batchinator).to receive(:exec) do |workload:, things:, &block|
+    allow(@batchinator).to receive(:exec) do |things:, **, &block|
       things.each { |k, v| block.call(k, v) }
     end
   end
@@ -1141,7 +1142,7 @@ describe TestBuildExecutor do
       allow(@dependinator).to receive(:stale?).and_return( false )
       @testable.objects = FileList.new.tap { |list| list << 'build/foo.o' }
 
-      expect(@dependinator).to receive(:register).with( 'build/a_test.out', files: ['build/foo.o'], meta: hash_including( objects: ['build/foo.o'] ) ) do |_, files:, meta:|
+      expect(@dependinator).to receive(:register).with( 'build/a_test.out', files: ['build/foo.o'], meta: hash_including( objects: ['build/foo.o'] ) ) do |_, meta:, **|
         expect(meta[:objects]).to be_an_instance_of( Array )
       end
 
@@ -1178,17 +1179,16 @@ describe TestBuildExecutor do
       }
     end
 
-    it "asks the doctor about a failed link, with its inputs, then re-raises" do
+    it "links under the doctor's attention, with its inputs, and raises a failed link" do
       ex = ShellException.new( shell_result: { output: 'undefined reference to symbol foo' }, name: 'linker' )
       allow(@generator).to receive(:generate_executable_file).and_raise( ex )
 
       expect {
         @executor.generate_executable( **build_args )
-      }.to raise_error( ShellException )
+      }.to raise_error( ex )
 
-      expect(@build_step_doctor).to have_received(:diagnose).with(
+      expect(@build_step_doctor).to have_received(:attend).with(
         step: :link,
-        output: 'undefined reference to symbol foo',
         inputs: {
           tool: { name: 'fake linker' }, objects: ['build/foo.o'], executable: 'build/a_test.out',
           flags: [], lib_args: [], lib_paths: [], testable: @testable
@@ -1196,11 +1196,10 @@ describe TestBuildExecutor do
       )
     end
 
-    it "asks the doctor nothing when the linker succeeds" do
-      allow(@generator).to receive(:generate_executable_file)
+    it "links once when the linker succeeds" do
+      expect(@generator).to receive(:generate_executable_file).once
 
       expect { @executor.generate_executable( **build_args ) }.to_not raise_error
-      expect(@build_step_doctor).not_to have_received(:diagnose)
     end
   end
 
