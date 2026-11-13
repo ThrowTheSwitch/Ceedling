@@ -9,13 +9,15 @@ require 'rake' # For ext()
 require 'ceedling/constants'
 require 'ceedling/filename_extension'
 require 'ceedling/exceptions'
+require 'ceedling/tools/tool_quoting'
 
 # Confirms a tool's configuration can run before a build depends on it.
 #
-# A tool is valid when its executable can be found and its stderr redirect is a known
-# option. The executable is an explicit path or a bare name searched on PATH, and either
-# may omit the extension its file carries on disk. An executable built at run time, from
-# an argument or a Ruby expansion, is left for the shell to resolve.
+# A tool is valid when its executable and each argument close the quotes they open, its
+# executable can be found and its stderr redirect is a known option. The executable is an
+# explicit path or a bare name searched on PATH, and either may omit the extension its file
+# carries on disk. An executable built at run time, from an argument or a Ruby expansion,
+# is left for the shell to resolve.
 class ToolValidator
 
   constructor :file_wrapper, :loginator, :system_wrapper, :ruby_expandinator
@@ -63,15 +65,24 @@ class ToolValidator
     name = tool[:name] if name.nil? or name.empty?
     extension ||= default_extension()
 
-    valid = validate_executable( tool:tool, name:name, extension:extension, respect_optional:respect_optional, boom:boom )
-
-    # Both checks run, so a tool with two problems reports both
+    # Every check runs, so a tool with several problems reports each. An executable whose
+    # quote is unclosed can't be found, and saying so would only repeat the quoting error.
+    findings = ToolQuoting.findings( tool, name:name, windows:@system_wrapper.windows? )
+    valid    = validate_quoting( findings, boom )
+    valid   &= validate_executable( tool:tool, name:name, extension:extension, respect_optional:respect_optional, boom:boom ) unless findings.any?( &:unclosed_executable? )
     return valid & validate_stderr_redirect( tool:tool, name:name, boom:boom )
   end
 
   ### Private ###
 
   private
+
+  # An unclosed quote fails validation, and a typographic quote only warns
+  def validate_quoting(findings, boom)
+    findings.reject( &:error ).each { |finding| @loginator.log( finding.message, Verbosity::COMPLAIN ) }
+
+    return findings.select( &:error ).map { |finding| fail_validation( finding.message, boom ) }.all?
+  end
 
   def validate_executable(tool:, name:, extension:, respect_optional:, boom:)
     command    = tool[:executable]

@@ -10,6 +10,14 @@ A release has a section only if it breaks something. Each section lists what cha
 
 ---
 
+# [1.2.3] — Unreleased
+
+## Each tool argument closes its own quotes
+
+Tool validation now fails a tool whose `:executable` or argument leaves a quote open ([tool definitions](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/tools/#tool-definition-configurable-elements)). A tool that opens a quote in one `:arguments` entry and closes it in a later one worked before and now fails. Join such entries into one, as in `- -DMSG="a b"` in place of `- -DMSG="a` and `- b"`.
+
+---
+
 # [1.2.2] — 2026-10-31
 
 ## Test build output is organized by each test’s path from the project root

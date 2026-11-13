@@ -10,13 +10,13 @@
 # Whether a candidate file exists, how a quoted path with spaces resolves, and what PATH
 # a process actually searches are facts a doubled file layer cannot prove. A real
 # FileWrapper and SystemWrapper run here against real temp directories, with PATH set
-# per example. The unit spec at spec/units/tool_validator_spec.rb owns every decision
+# per example. The unit spec at spec/units/tools/tool_validator_spec.rb owns every decision
 # observable through doubles alone.
 
 require 'spec_helper'
 require 'spec_integration_helper'
 require 'fileutils'
-require 'ceedling/tool_validator'
+require 'ceedling/tools/tool_validator'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/system_wrapper'
 require 'ceedling/ruby_expandinator'

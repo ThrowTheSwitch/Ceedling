@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/tool_executor'
+require 'ceedling/tools/tool_executor'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/exceptions'
 
