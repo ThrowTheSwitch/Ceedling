@@ -12,9 +12,10 @@ require 'ceedling/defaults'
 require 'ceedling/tools/tool_executor'
 require 'ceedling/ruby_expandinator'
 
-load File.expand_path( '../../../plugins/gcov/config/defaults_gcov.rb', __dir__ )
-load File.expand_path( '../../../plugins/bullseye/config/defaults_bullseye.rb', __dir__ )
-load File.expand_path( '../../../plugins/cppcheck/config/defaults_cppcheck.rb', __dir__ )
+require 'ceedling/tools/tool_validator'
+require 'ceedling/filename_extension'
+
+Dir[File.expand_path( '../../../plugins/*/config/defaults_*.rb', __dir__ )].each { |defaults| load defaults }
 
 # GH #1373: the default tools that run a test executable named it unquoted, so a path holding
 # an apostrophe or a space broke the shell command. Each command here is split as a POSIX
@@ -79,5 +80,38 @@ describe 'Default tools' do
 
   it 'names the archive as one word for the Dependencies zip unarchiver' do
     expect( words( DEPENDENCIES_TOOLS[:deps_zip], 'vendor/my dir/x.zip' ) ).to eq( ['unzip', '-o', 'vendor/my dir/x.zip'] )
+  end
+end
+
+# Tool validation checks every tool's quoting on every build, Ceedling's own tools included,
+# so none of them may draw an error or a warning on any platform
+describe 'Default tools quoting validation' do
+  # Every tool Ceedling and its plugins define: each constant holding one, and each tool in
+  # a plugin's YAML defaults
+  BUILT_IN_TOOLS = (
+    Object.constants.grep( /\ADEFAULT_\w+_TOOL\z/ ).map { |name| [name.to_s, Object.const_get( name )] } +
+    Dir[File.expand_path( '../../../plugins/*/config/*.yml', __dir__ )].flat_map do |filepath|
+      tools = YAML.load_file( filepath, symbolize_names: true )&.dig( :tools ) || {}
+      tools.map { |key, tool| ["#{File.basename( File.dirname( filepath, 2 ) )} :#{key}", tool] }
+    end
+  ).freeze
+
+  [false, true].each do |windows|
+    it "finds every built-in tool's quoting closed and straight #{windows ? 'on' : 'off'} Windows" do
+      loginator = double( 'loginator' )
+      system_wrapper = double( 'system_wrapper', windows?: windows, search_paths: ['/bin'] )
+      file_wrapper = double( 'file_wrapper', exist?: true )
+      validator = ToolValidator.new( file_wrapper: file_wrapper, loginator: loginator, system_wrapper: system_wrapper, ruby_expandinator: RubyExpandinator.new )
+
+      complaints = []
+      allow( loginator ).to receive( :log ) { |message, *| complaints << message }
+
+      # 50 core and plugin tools, so a narrowed collection fails here, not silently
+      expect( BUILT_IN_TOOLS.size ).to be >= 50
+      BUILT_IN_TOOLS.each do |name, tool|
+        expect( validator.validate( tool: Marshal.load( Marshal.dump( tool ) ), name: name, extension: FilenameExtension.new( '' ) ) ).to be( true ), name
+      end
+      expect( complaints ).to eq( [] )
+    end
   end
 end

@@ -336,4 +336,113 @@ describe ToolValidator do
       expect( validate( tool('gcc') ) ).to be(true)
     end
   end
+
+  # Which quotes open and close is ShellQuoting's to decide, and its spec covers the rules.
+  # Here, which entries are checked and what each finding does.
+  describe 'quoting' do
+    before(:each) { exists( '/usr/bin/gcc' ) }
+
+    # A typographic quote ends an otherwise straight-quoted path, as copied from a web page
+    let(:pasted) { "-I\"${5}”" }
+
+    it 'logs an unclosed quote in an argument and returns false' do
+      expect(@loginator).to receive(:log).with(
+        "my_tool ↳ :arguments ➡️ `-I\"src` leaves a \" quote unclosed. Enclose the argument with \" quotes.", Verbosity::ERRORS
+      )
+      expect( validate( tool('gcc', :arguments => ['-g', '-I"src']) ) ).to be(false)
+    end
+
+    it 'raises on an unclosed quote under boom' do
+      expect { validate( tool('gcc', :arguments => ['-I"src']), boom: true ) }.to raise_error(CeedlingException, /leaves a " quote unclosed/)
+    end
+
+    it 'names a typographic quote as the likely cause of an unclosed one' do
+      expect(@loginator).to receive(:log).with(
+        "my_tool ↳ :arguments ➡️ `#{pasted}` leaves a \" quote unclosed. Enclose the argument with \" quotes. " \
+        "It holds ”, a typographic quote that a shell treats as an ordinary character. Replace it with \".", Verbosity::ERRORS
+      )
+      validate( tool('gcc', :arguments => [pasted]) )
+    end
+
+    # Closing quotes here would pair with an opening one in the next entry
+    it 'checks each argument on its own' do
+      expect( validate( tool('gcc', :arguments => ['-DMSG="a', 'b"']) ) ).to be(false)
+    end
+
+    it 'warns on a typographic quote in closed quoting and leaves the tool valid' do
+      expect(@loginator).to receive(:log).with(
+        "my_tool ↳ :arguments ➡️ `-D“x”` holds “ ”, typographic quotes that a shell treats as ordinary characters. " \
+        "Use \" or ' unless the characters are meant literally.", Verbosity::COMPLAIN
+      )
+      expect( validate( tool('gcc', :arguments => ["-D“x”"]) ) ).to be(true)
+    end
+
+    it "checks a hash argument's substitution string and values" do
+      expect( validate( tool('gcc', :arguments => [{ pasted => 'COLLECTION_PATHS' }]) ) ).to be(false)
+      expect( validate( tool('gcc', :arguments => [{ '-I"$"' => ['a', ['-D"b']] }]) ) ).to be(false)
+    end
+
+    it 'checks a substitution string given as a symbol' do
+      expect( validate( tool('gcc', :arguments => [{ :'-I"$' => 'COLLECTION_PATHS' }]) ) ).to be(false)
+    end
+
+    # ToolExecutor expands only a hash's first key, and only strings among its values
+    it 'checks only what a hash argument adds to the command line' do
+      expect( validate( tool('gcc', :arguments => [{ '-I"$"' => ['a', 8], '-D"b' => 'c' }]) ) ).to be(true)
+    end
+
+    # ToolExecutor drops an argument that is neither a string nor a hash
+    it 'skips a symbol argument' do
+      expect( validate( tool('gcc', :arguments => [:'-I"src']) ) ).to be(true)
+    end
+
+    it "reads past a Ruby expansion's own quotes" do
+      expect( validate( tool('gcc', :arguments => ['-D"NAME=#{ENV[\'USER\']}"']) ) ).to be(true)
+    end
+
+    it 'warns on a typographic quote in :executable and still looks for its file' do
+      expect(@loginator).to receive(:log).with(/:executable ➡️ `“cc”` holds “ ”/, Verbosity::COMPLAIN)
+      expect(@loginator).to receive(:log).with(/`“cc”` does not exist/, Verbosity::ERRORS)
+      expect( validate( tool("“cc”") ) ).to be(false)
+    end
+
+    it 'logs the warnings for a tool before raising on its error under boom' do
+      expect(@loginator).to receive(:log).with(/holds ”/, Verbosity::COMPLAIN)
+      expect { validate( tool('gcc', :arguments => ["-D\"x”\"", '-I"src']), boom: true ) }.to raise_error(CeedlingException, /`-I"src`/)
+    end
+
+    it 'checks an argument inside a nested list, as a YAML alias makes' do
+      expect( validate( tool('gcc', :arguments => [['-g', ['-I"src']]]) ) ).to be(false)
+    end
+
+    it 'checks an optional tool' do
+      expect( validate( tool('gcc', :optional => true, :arguments => ['-I"src']), respect_optional: true ) ).to be(false)
+    end
+
+    it 'reports an unclosed executable once, without looking for its file' do
+      expect(@file_wrapper).to_not receive(:exist?)
+      expect(@loginator).to receive(:log).once.with(
+        "my_tool ↳ :executable ➡️ `\"Code Cruncher”` leaves a \" quote unclosed. Enclose the executable with \" quotes. " \
+        "It holds ”, a typographic quote that a shell treats as an ordinary character. Replace it with \".", Verbosity::ERRORS
+      )
+      expect( validate( tool("\"Code Cruncher”") ) ).to be(false)
+    end
+
+    it 'reports every unclosed entry, and the other checks too' do
+      expect(@loginator).to receive(:log).with(/:arguments ➡️ `-I"a`/, Verbosity::ERRORS)
+      expect(@loginator).to receive(:log).with(/:arguments ➡️ `-I"b`/, Verbosity::ERRORS)
+      expect(@loginator).to receive(:log).with(/:stderr_redirect/, Verbosity::ERRORS)
+      validate( tool('gcc', :arguments => ['-I"a', '-I"b'], :stderr_redirect => :bogus) )
+    end
+
+    it 'reads a single quote as an ordinary character on Windows' do
+      allow(@system_wrapper).to receive(:windows?).and_return(true)
+      exists( '/usr/bin/gcc.exe' )
+      expect( validate( tool('gcc', :arguments => ["-IC:/Users/O'Brien"]) ) ).to be(true)
+    end
+
+    it 'passes arguments that are not strings' do
+      expect( validate( tool('gcc', :arguments => [8, nil]) ) ).to be(true)
+    end
+  end
 end
