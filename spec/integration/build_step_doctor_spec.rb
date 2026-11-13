@@ -164,7 +164,7 @@ describe 'BuildStepDoctor (integration)' do
         search_paths = includes.map { |dir| File.join( @root, dir ) }
         @doctor.diagnose( step: :compile, output: output, inputs: { testable: @testable, search_paths: search_paths } )
 
-        expect( @logged.size ).to eq( 1 )
+        expect( @logged.size ).to eq( 1 ), "expected one prescription from #{compiler}'s output:\n#{output}"
         expect( @logged.first ).to include( "'#{forwarding}' includes <timers.h>", "'#{kernel}' is later in the search paths." )
       end
 
