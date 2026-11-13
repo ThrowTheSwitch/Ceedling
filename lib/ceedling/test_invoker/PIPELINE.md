@@ -143,7 +143,7 @@ The three Partials stages and the two mock stages carry a second check. A projec
 
 A failed compilation or link in stages 15 and 16 gets an explanation, where Ceedling can offer one, before its error is raised. `TestBuildExecutor` hands the tool's output and the inputs it ran with to `BuildStepDoctor` (see `diagnostics/DOCTOR.md`). Specialists recognize failures whose cause lies in Ceedling's conventions: a header colliding with its own substitute, headers colliding in a shared directory, a missing symbol, or a symbol defined twice. Each one that applies logs a notice, so one failure can draw several. The tool's error is still raised.
 
-A compilation is diagnosed with its first attempt's `.d` file, whose paths are the real headers, even when sibling-header isolation's retry produced the failure. Preprocessing isn't connected. Its runs are many, and several are expected to fail and fall back, so their failures yield little useful guidance.
+A compilation is diagnosed with its first attempt's `.d` file, whose paths are the real headers, even when sibling-header isolation's retry produced the failure. Preprocessing is connected only where a failure stops the build: the full expansions of a test file and of a header to be mocked. Ceedling's other preprocessor runs are expected to fail at times and fall back, so their failures yield little useful guidance.
 
 Stage 15's compilation threads share one doctor without a lock. The doctor fixes its diagnoses when it is built and only reads them afterward.
 
