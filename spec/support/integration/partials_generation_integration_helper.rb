@@ -772,7 +772,7 @@ module PartialsGenerationHelpers
     )
   end
 
-  # Of the eight collaborators, the assemble and fallback-collect methods used here consult
+  # Of the nine collaborators, the assemble and fallback-collect methods used here consult
   # only the reconstructor, the file wrapper, and parsing parcels; the rest serve collection
   # methods the harness drives itself.
   def partials_file_assembler
@@ -785,7 +785,8 @@ module PartialsGenerationHelpers
         file_wrapper:                   partials_file_wrapper,
         parsing_parcels:                ParsingParcels.new,
         loginator:                      partials_null_loginator,
-        reportinator:                   RSpec::Mocks::Double.new( 'Reportinator' ).as_null_object
+        reportinator:                   RSpec::Mocks::Double.new( 'Reportinator' ).as_null_object,
+        build_step_doctor:              RSpec::Mocks::Double.new( 'BuildStepDoctor' ).as_null_object
       }
     )
   end

@@ -24,7 +24,8 @@ describe BuildStepDoctor do
       header_collision_specialist: specialist( *diagnoses ),
       missing_symbol_specialist:   specialist( *others ),
       duplicate_symbol_specialist: specialist,
-      partial_name_specialist:     specialist
+      partial_name_specialist:     specialist,
+      include_depth_specialist:    specialist
     )
   end
 
@@ -127,5 +128,43 @@ describe BuildStepDoctor do
     doctor = doctor_with( diagnosis( :any ) )
 
     expect( doctor.diagnose( step: :compile, output: nil, inputs: {} ) ).to eq( [] )
+  end
+
+  describe '#attend' do
+    def tool_failure(output)
+      ShellException.new( shell_result: { exit_code: 1, output: output }, name: 'gcc' )
+    end
+
+    it 'returns what the step returns and diagnoses nothing when it succeeds' do
+      doctor = doctor_with( diagnosis( :any ) )
+
+      expect( doctor.attend( step: :compile, inputs: {} ) { :built } ).to eq( :built )
+      expect( @loginator ).not_to have_received( :log )
+    end
+
+    it 'diagnoses a tool failure with its output and the step and inputs given, then raises the same failure' do
+      seen    = nil
+      doctor  = doctor_with( diagnosis( :curious, steps: [:preprocess] ) { |kase| seen = kase; 'guidance' } )
+      failure = tool_failure( 'a boom' )
+
+      expect { doctor.attend( step: :preprocess, inputs: { source: 'a.c' } ) { raise failure } }.to raise_error( failure )
+      expect( [seen.step, seen.output, seen.inputs] ).to eq( [:preprocess, 'a boom', { source: 'a.c' }] )
+      expect( @loginator ).to have_received( :log ).with( 'guidance', Verbosity::ERRORS, LogLabels::NOTICE )
+    end
+
+    it 'refuses an unknown step before running the step' do
+      doctor = doctor_with( diagnosis( :any ) )
+      ran    = false
+
+      expect { doctor.attend( step: :preprocces, inputs: {} ) { ran = true } }.to raise_error( ::ArgumentError, /preprocces/ )
+      expect( ran ).to be false
+    end
+
+    it 'leaves any other error undiagnosed' do
+      doctor = doctor_with( diagnosis( :any ) )
+
+      expect { doctor.attend( step: :compile, inputs: {} ) { raise 'boom' } }.to raise_error( RuntimeError, 'boom' )
+      expect( @loginator ).not_to have_received( :log )
+    end
   end
 end

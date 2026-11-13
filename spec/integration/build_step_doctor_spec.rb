@@ -29,6 +29,7 @@ require 'ceedling/diagnostics/header_collision_specialist'
 require 'ceedling/diagnostics/missing_symbol_specialist'
 require 'ceedling/diagnostics/duplicate_symbol_specialist'
 require 'ceedling/diagnostics/partial_name_specialist'
+require 'ceedling/diagnostics/include_depth_specialist'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH      = 'build/vendor/unity'      unless defined?( PROJECT_BUILD_VENDOR_UNITY_PATH )
 PROJECT_BUILD_VENDOR_CMOCK_PATH      = 'build/vendor/cmock'      unless defined?( PROJECT_BUILD_VENDOR_CMOCK_PATH )
@@ -67,7 +68,8 @@ describe 'BuildStepDoctor (integration)' do
       ),
       missing_symbol_specialist:   MissingSymbolSpecialist.new( configurator: configurator ),
       duplicate_symbol_specialist: DuplicateSymbolSpecialist.new( configurator: configurator ),
-      partial_name_specialist:     PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper )
+      partial_name_specialist:     PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper ),
+      include_depth_specialist:    IncludeDepthSpecialist.new( file_wrapper: file_wrapper )
     ).tap( &:setup )
 
     @testable = TestInvokerTypes::Testable.new( name: 'a_test', paths: { build: File.join( @root, 'build' ) } )
@@ -152,6 +154,20 @@ describe 'BuildStepDoctor (integration)' do
         expect( @logged ).not_to include( a_string_including( 'shares the directory' ) )
       end
 
+      it 'explains a forwarding header whose own directory comes first in the search paths' do
+        forwarding = write( 'esp32/freertos/timers.h', "#include <timers.h>\n" )
+        kernel     = write( 'kernel/timers.h', "int xTimerStart(int t);\n" )
+        source     = write( 'test/a_test.c', "#include \"timers.h\"\n" )
+        includes   = ['esp32/freertos', 'kernel']
+
+        output, = compile_failing( compiler, source, includes: includes )
+        search_paths = includes.map { |dir| File.join( @root, dir ) }
+        @doctor.diagnose( step: :compile, output: output, inputs: { testable: @testable, search_paths: search_paths } )
+
+        expect( @logged.size ).to eq( 1 ), "expected one prescription from #{compiler}'s output:\n#{output}"
+        expect( @logged.first ).to include( "'#{forwarding}' includes <timers.h>", "'#{kernel}' is later in the search paths." )
+      end
+
       it 'explains a symbol no linked object defines' do
         test = write( 'build/a_test.c', "int gpio_init(void);\nint main(void) { return gpio_init(); }\n" )
 
@@ -206,7 +222,8 @@ describe 'BuildStepDoctor (integration)' do
 
       @doctor = BuildStepDoctor.new(
         loginator: @loginator, header_collision_specialist: nobody, missing_symbol_specialist: nobody,
-        duplicate_symbol_specialist: nobody, partial_name_specialist: PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper )
+        duplicate_symbol_specialist: nobody, partial_name_specialist: PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper ),
+        include_depth_specialist: nobody
       ).tap( &:setup )
     end
 

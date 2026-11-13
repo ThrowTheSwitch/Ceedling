@@ -4,7 +4,7 @@ The build step doctor explains a failed build step to the test developer. When a
 
 ## Why it exists
 
-Some toolchain errors have causes that only Ceedling's conventions explain. A redeclaration error can mean a mocked header's real content reached the compilation a second way. A missing symbol most often means a test's `#include` directives left out a source it needs. A duplicate symbol can mean a mock was linked beside the source it stands in for. The raw error names none of this. A developer reading only the compiler's words may spend a long time finding a cause Ceedling could have pointed to.
+Some toolchain errors have causes that only Ceedling's conventions explain. A redeclaration error can mean a mocked header's real content reached the compilation a second way. A missing symbol most often means a test's `#include` directives left out a source it needs. A duplicate symbol can mean a mock was linked beside the source it stands in for. An `#include` nested too deeply most often means a header that includes its own filename found itself first. The raw error names none of this. A developer reading only the compiler's words may spend a long time finding a cause Ceedling could have pointed to.
 
 Each kind of guidance follows the same pattern:
 
@@ -22,6 +22,7 @@ The doctor holds that pattern once. Each kind of guidance is a small diagnosis w
 - **The examination** is a callable that takes a `Case` and returns a prescription (a String), several (an Array), or nil when the case turns out not to be its own.
 - **`Case`** holds the `step`, the `outcome`, the tool's `output`, the `symptoms` MatchData, and the step's `inputs` Hash.
 - **`BuildStepDoctor#diagnose(step:, output:, inputs:, outcome: :failure)`** runs every diagnosis whose steps, outcomes, and symptoms fit, in the order the specialists were composed. It logs each prescription at `Verbosity::ERRORS` with `LogLabels::NOTICE`, and returns them.
+- **`BuildStepDoctor#attend(step:, inputs:) { … }`** runs a step's block. A `ShellException` the block raises goes to `diagnose` with the tool's output, and is then raised again.
 
 An examination that raises is a bug in guidance, never a reason to hide a build's real failure. The doctor logs the error at DEBUG and runs the remaining diagnoses. A step or outcome the doctor doesn't know raises `ArgumentError`, at `setup` or at `diagnose`, so a typo can't silently disable a diagnosis.
 
@@ -34,18 +35,20 @@ An examination that raises is a bug in guidance, never a reason to hide a build'
 | `HeaderCollisionSpecialist` | compilation | `:substituted_header_collision`: a header the test mocks or Partializes collides with its own real content. `:shared_directory_collision`: a header collides in a directory it shares with other headers, none of them substituted (see `test_invoker/HEADER_COLLISIONS.md`). |
 | `MissingSymbolSpecialist` | linking | `:missing_symbols`: a symbol no linked object defines. |
 | `DuplicateSymbolSpecialist` | linking | `:duplicate_symbols`: a symbol more than one linked object defines. The guidance names a mock linked beside the source it stands in for. |
+| `IncludeDepthSpecialist` | preprocessing, compilation | `:include_nested_too_deeply`: `#include` directives nested past the compiler's limit. The guidance names a header that includes its own filename and reaches itself first. It tells an angled `#include`, which the search path order decides, from a quoted one, which reaches its own directory first whatever that order. |
 | `PartialNameSpecialist` | compilation | `:partial_local_var` and `:partial_type`: a name that `PARTIAL_LOCAL_VAR()`, or `PARTIAL_TYPE()` or `PARTIAL_LOCAL_TYPE()`, builds and nothing declares, in the test file of a build with Partials. The guidance lists the names the test's generated Partial headers provide. |
 
 `TestSubstitutions` (`test_invoker/test_substitutions.rb`) answers two questions both sibling-header isolation and the collision diagnoses ask: which real headers a test substitutes, and which directories hold Ceedling's own generated content.
 
 ### Where the doctor is connected
 
-`TestBuildExecutor` calls the doctor from two places, each just before it raises the failure:
+The doctor sees a failure just before it is raised, at four places:
 
-- **`compile_test_component`**, for a C compilation, with `tool`, `source`, `object`, `search_paths`, `flags`, `defines`, `testable`, and `dependencies`. `dependencies` is the first attempt's `.d` file, whose paths are the real headers, even when an isolated retry produced the failure.
-- **`generate_executable`**, for a link, with `tool`, `objects`, `executable`, `flags`, `lib_args`, `lib_paths`, and `testable`.
+- **`TestBuildExecutor#compile_test_component`**, for a C compilation, with `tool`, `source`, `object`, `search_paths`, `flags`, `defines`, `testable`, and `dependencies`. `dependencies` is the first attempt's `.d` file, whose paths are the real headers, even when an isolated retry produced the failure. This site calls `diagnose` itself, after any isolated retry has failed too.
+- **`TestBuildExecutor#generate_executable`**, for a link, with `tool`, `objects`, `executable`, `flags`, `lib_args`, `lib_paths`, and `testable`. The link runs under `attend`.
+- **`PreprocessinatorFileAssembler`'s full expansions of a test file and of a header to be mocked**, with `tool`, `source`, `search_paths`, `flags`, and `defines`. Both run under `attend`. Neither has a fallback, so a failure there ends the build.
 
-Compilation and linking failures are where guidance helps a test developer most. Preprocessing isn't connected. Ceedling runs the preprocessor many times per test, and several runs are expected to fail and fall back by design. Useful guidance is harder to draw from those failures, and a misplaced prescription there would only add noise. Assembly and release builds aren't connected either. The engine accepts a `:preprocess` step and a `:warning` outcome, so connecting more needs only a call site.
+Compilation and linking failures are where guidance helps a test developer most. Ceedling runs the preprocessor many times per test. Most of those runs are expected to fail at times and fall back by design, so they aren't connected. A misplaced prescription there would only add noise. The full expansions of a test file and of a header to be mocked are the exception, since their failure stops the build. Assembly and release builds aren't connected either. The engine accepts a `:warning` outcome, so connecting more needs only a call site.
 
 ### Sharing the doctor without a lock
 
@@ -127,3 +130,13 @@ A wording alone matches any undeclared name, so `PartialNameSpecialist` also ask
 | MSVC | `C2065` `undeclared identifier`, `C2061`, `C4430`, `C2146` | expected |
 | SDCC | `Undefined identifier` | expected |
 | TASKING, others | generic: `undefined identifier`, `not declared`, `unknown type`, `is not a type` | expected |
+
+### Nested includes at preprocessing or compilation
+
+| Family | Wordings | Evidence |
+|---|---|---|
+| GCC 10 and later | `#include nested depth 200 exceeds maximum of 200`, with the directive quoted as `'#include'` or `‘#include’` in newer releases | real toolchain (GCC 14 unquoted, MSYS2 UCRT GCC quoted) |
+| Clang, armclang, GCC before 10 | `#include nested too deeply` | real toolchain (Clang) |
+| MSVC | `C1014` `too many include files` | expected |
+| IAR, Arm armcc, TI, Green Hills | `#include file … includes itself`, `include file nesting` | expected |
+| TASKING, SDCC, others | generic: `include depth`, `include nesting`, `nested include`, `nested too deep`, `too many include` | expected |

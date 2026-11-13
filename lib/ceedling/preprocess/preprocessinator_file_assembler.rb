@@ -20,7 +20,8 @@ class PreprocessinatorFileAssembler
     :file_wrapper,
     :parsing_parcels,
     :loginator,
-    :reportinator
+    :reportinator,
+    :build_step_doctor
   )
 
   def collect_mockable_header_file_contents(
@@ -39,18 +40,7 @@ class PreprocessinatorFileAssembler
 
     @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
-    # Run GCC with full preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_full_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      filepath,
-      preprocessed_filepath,
-      defines,
-      include_paths
-    )    
-    @tool_executor.exec( command )
+    expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths )
 
     # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
     # rides out the file briefly not yet being visible right after the shell-out exits.
@@ -253,18 +243,7 @@ class PreprocessinatorFileAssembler
 
     @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
-    # Run GCC with full preprocessor expansion
-    command = @tool_executor.build_command_line(
-      @configurator.tools_test_file_full_preprocessor,
-      # Additional arguments
-      flags,
-      # Argument replacement
-      filepath,
-      preprocessed_filepath,
-      defines,
-      include_paths
-    )
-    @tool_executor.exec( command )
+    expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths )
 
     # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
     # rides out the file briefly not yet being visible right after the shell-out exits.
@@ -312,6 +291,16 @@ class PreprocessinatorFileAssembler
   ### Private ###
 
   private
+
+  # Runs GCC with full preprocessor expansion. This run has no fallback, so a failure goes
+  # to the build step doctor before it is raised.
+  def expand_fully(filepath:, preprocessed_filepath:, flags:, defines:, include_paths:)
+    tool    = @configurator.tools_test_file_full_preprocessor
+    command = @tool_executor.build_command_line( tool, flags, filepath, preprocessed_filepath, defines, include_paths )
+    inputs  = { tool: tool, source: filepath, search_paths: include_paths, flags: flags, defines: defines }
+
+    @build_step_doctor.attend( step: :preprocess, inputs: inputs ) { @tool_executor.exec( command ) }
+  end
 
   # Returns the content string used to extract pragmas, macro definitions, and
   # test directives -- either by binary-mode-reading and conditional-filtering

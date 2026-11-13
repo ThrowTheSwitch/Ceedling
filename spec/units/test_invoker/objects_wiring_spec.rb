@@ -27,7 +27,9 @@ describe 'Test pipeline object wiring' do
     ['header_collision_specialist',      'ceedling/diagnostics/header_collision_specialist'],
     ['missing_symbol_specialist',        'ceedling/diagnostics/missing_symbol_specialist'],
     ['duplicate_symbol_specialist',      'ceedling/diagnostics/duplicate_symbol_specialist'],
-    ['partial_name_specialist',          'ceedling/diagnostics/partial_name_specialist']
+    ['partial_name_specialist',          'ceedling/diagnostics/partial_name_specialist'],
+    ['include_depth_specialist',         'ceedling/diagnostics/include_depth_specialist'],
+    ['preprocessinator_file_assembler',  'ceedling/preprocess/preprocessinator_file_assembler']
   ] ).each do |name, path|
     it "composes exactly what #{name}'s constructor takes" do
       require path

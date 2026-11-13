@@ -341,6 +341,7 @@ preprocessinator_file_assembler:
     - parsing_parcels
     - loginator
     - reportinator
+    - build_step_doctor
 
 preprocessinator_code_finder:
   compose:
@@ -646,6 +647,7 @@ build_step_doctor:
     - missing_symbol_specialist
     - duplicate_symbol_specialist
     - partial_name_specialist
+    - include_depth_specialist
 
 header_collision_specialist:
   compose:
@@ -665,6 +667,10 @@ duplicate_symbol_specialist:
 partial_name_specialist:
   compose:
     - configurator
+    - file_wrapper
+
+include_depth_specialist:
+  compose:
     - file_wrapper
 
 quote_include_isolator:

@@ -500,21 +500,20 @@ class TestBuildExecutor
 
   # A failed link goes to the build step doctor before it is raised
   def generate_executable(context:, build_path:, executable:, objects:, flags:, lib_args:, lib_paths:, tool:, testable:)
-    @generator.generate_executable_file(
-      tool,
-      context,
-      objects.map { |v| "\"#{v}\"" },
-      flags,
-      executable,
-      @file_path_utils.form_test_build_map_filepath( build_path, executable ),
-      lib_args,
-      lib_paths
-    )
-  rescue ShellException => ex
     inputs = { tool: tool, objects: objects, executable: executable, flags: flags, lib_args: lib_args, lib_paths: lib_paths, testable: testable }
-    @build_step_doctor.diagnose( step: :link, output: ex.shell_result[:output], inputs: inputs )
 
-    raise ex
+    @build_step_doctor.attend( step: :link, inputs: inputs ) do
+      @generator.generate_executable_file(
+        tool,
+        context,
+        objects.map { |v| "\"#{v}\"" },
+        flags,
+        executable,
+        @file_path_utils.form_test_build_map_filepath( build_path, executable ),
+        lib_args,
+        lib_paths
+      )
+    end
   end
 
   def clean_test_results(path, test)
