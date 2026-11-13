@@ -236,6 +236,14 @@ line such as `LongPathsEnabled    REG_DWORD    0x1` in its output.
         characters. On Linux and macOS, a path holding `"`, `$`, a backtick, or
         `\` can still break a command.
 
+    !!! note "Each argument closes its own quotes"
+        Ceedling checks the quoting in `:executable` and in each argument when it
+        validates a tool. A quote left open fails validation. Every argument must
+        close quotes it opens; a quoted value can’t span two entries in the list.
+        A typographic quote (e.g. `”`) pasted from elsewhere draws a warning. A
+        shell treats it as an ordinary character. On Windows, `'` is an ordinary
+        character too and is not checked.
+
 1. `:name` - Simple name (i.e. "nickname") of tool beyond its executable name.
    This is optional. If not explicitly set then Ceedling will form a name from
    the tool’s YAML entry key.
