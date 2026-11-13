@@ -135,7 +135,7 @@ A wording alone matches any undeclared name, so `PartialNameSpecialist` also ask
 
 | Family | Wordings | Evidence |
 |---|---|---|
-| GCC 10 and later | `#include nested depth 200 exceeds maximum of 200` | real toolchain (GCC 14) |
+| GCC 10 and later | `#include nested depth 200 exceeds maximum of 200`, with the directive quoted as `'#include'` or `‘#include’` in newer releases | real toolchain (GCC 14 unquoted, MSYS2 UCRT GCC quoted) |
 | Clang, armclang, GCC before 10 | `#include nested too deeply` | real toolchain (Clang) |
 | MSVC | `C1014` `too many include files` | expected |
 | IAR, Arm armcc, TI, Green Hills | `#include file … includes itself`, `include file nesting` | expected |
