@@ -46,6 +46,8 @@ describe IncludeDepthSpecialist do
 
   {
     'GCC 10 and later'          => GCC_NESTING,
+    'GCC quoting the directive' => "#{FORWARDING}:1:20: error: '#include' nested depth 200 exceeds maximum of 200\n",
+    'GCC quoting in UTF-8'      => "#{FORWARDING}:1:20: error: ‘#include’ nested depth 200 exceeds maximum of 200\n",
     'Clang and older GCC'       => CLANG_NESTING,
     'MSVC'                      => "#{FORWARDING}(1): fatal error C1014: too many include files : depth = 1024\n",
     'EDG front ends'            => "\"#{FORWARDING}\", line 1: catastrophic error: #include file \"#{FORWARDING}\" includes itself\n",

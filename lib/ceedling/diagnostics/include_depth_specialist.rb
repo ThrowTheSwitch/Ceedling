@@ -21,12 +21,14 @@ require 'ceedling/diagnostics/toolchain_output'
 # header, the path that loops, and any header of that name later in the search paths.
 class IncludeDepthSpecialist
 
-  # Each family's wording for nesting too deep, ending in a generic net
+  # Each family's wording for nesting too deep, ending in a generic net. Newer GCC quotes
+  # the directive, with curly quotes in a UTF-8 locale, so a few non-word characters may
+  # follow it.
   INCLUDE_DEPTH_SYMPTOMS = [
     # GCC 10 and later
-    /#include nested depth \d+ exceeds maximum/i,
+    /#include\W{1,4}nested depth \d+ exceeds maximum/i,
     # Clang, armclang, and GCC before 10
-    /#include nested too deeply/i,
+    /#include\W{1,4}nested too deeply/i,
     # MSVC
     /\bC1014\b|too many include files/i,
     # EDG front ends: IAR, Arm armcc, TI, and Green Hills
