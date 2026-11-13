@@ -9,12 +9,12 @@ require 'spec_helper'
 require 'shellwords'
 require 'yaml'
 require 'ceedling/defaults'
-require 'ceedling/tool_executor'
+require 'ceedling/tools/tool_executor'
 require 'ceedling/ruby_expandinator'
 
-load File.expand_path( '../../plugins/gcov/config/defaults_gcov.rb', __dir__ )
-load File.expand_path( '../../plugins/bullseye/config/defaults_bullseye.rb', __dir__ )
-load File.expand_path( '../../plugins/cppcheck/config/defaults_cppcheck.rb', __dir__ )
+load File.expand_path( '../../../plugins/gcov/config/defaults_gcov.rb', __dir__ )
+load File.expand_path( '../../../plugins/bullseye/config/defaults_bullseye.rb', __dir__ )
+load File.expand_path( '../../../plugins/cppcheck/config/defaults_cppcheck.rb', __dir__ )
 
 # GH #1373: the default tools that run a test executable named it unquoted, so a path holding
 # an apostrophe or a space broke the shell command. Each command here is split as a POSIX
@@ -24,7 +24,7 @@ describe 'Default tools' do
   OTHER_PATH   = "src/my dir/o'neil.c"
 
   DEPENDENCIES_TOOLS = YAML.load_file(
-    File.expand_path( '../../plugins/dependencies/config/defaults.yml', __dir__ ), symbolize_names: true
+    File.expand_path( '../../../plugins/dependencies/config/defaults.yml', __dir__ ), symbolize_names: true
   )[:tools]
 
   before(:each) do

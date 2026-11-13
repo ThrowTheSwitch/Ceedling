@@ -8,7 +8,7 @@
 require 'spec_helper'
 require 'ceedling/preprocess/preprocessinator'
 require 'ceedling/includes/includes'
-require 'ceedling/tool_executor'
+require 'ceedling/tools/tool_executor'
 
 RSpec.describe Preprocessinator do
 

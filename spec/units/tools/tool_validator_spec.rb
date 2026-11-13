@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/constants'
-require 'ceedling/tool_validator'
+require 'ceedling/tools/tool_validator'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/filename_extension'
 require 'ceedling/exceptions'

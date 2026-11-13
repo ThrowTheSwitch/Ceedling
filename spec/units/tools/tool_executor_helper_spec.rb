@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/constants'
-require 'ceedling/tool_executor_helper'
+require 'ceedling/tools/tool_executor_helper'
 require 'ceedling/system_wrapper'
 require 'ceedling/loginator'
 require 'ceedling/system_utils'

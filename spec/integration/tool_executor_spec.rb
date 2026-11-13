@@ -5,7 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# Unlike spec/units/tool_executor_spec.rb, this spec wires the REAL ToolExecutor +
+# Unlike spec/units/tools/tool_executor_spec.rb, this spec wires the REAL ToolExecutor +
 # ToolExecutorHelper + SystemWrapper + SystemUtils + Loginator + Verbosinator +
 # RubyExpandinator graph (see tool_executor_integration_helper.rb) and genuinely shells
 # out through SystemWrapper#shell_capture3 (Open3.capture3). The one external dependency

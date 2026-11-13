@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/defaults'
-require 'ceedling/tool_executor'
+require 'ceedling/tools/tool_executor'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/filesystem/win_long_paths'
 

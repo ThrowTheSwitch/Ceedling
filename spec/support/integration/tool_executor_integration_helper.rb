@@ -15,8 +15,8 @@
 
 require 'rbconfig'
 
-require 'ceedling/tool_executor'
-require 'ceedling/tool_executor_helper'
+require 'ceedling/tools/tool_executor'
+require 'ceedling/tools/tool_executor_helper'
 require 'ceedling/system_wrapper'
 require 'ceedling/system_utils'
 require 'ceedling/loginator'

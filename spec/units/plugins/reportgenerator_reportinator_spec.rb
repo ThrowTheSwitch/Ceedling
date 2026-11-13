@@ -6,7 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
-require 'ceedling/tool_executor'
+require 'ceedling/tools/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_path_utils'

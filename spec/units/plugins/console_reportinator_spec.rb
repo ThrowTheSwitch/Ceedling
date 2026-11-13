@@ -7,7 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/filename_extension'
-require 'ceedling/tool_executor'
+require 'ceedling/tools/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/path_mirror'
