@@ -101,6 +101,9 @@ module GcovPartialsTestCases
 
         hits = partials_cobertura_hits_by_line('src/private_macro.c')
 
+        # The function's line is its name's line (3), not the line `PRIVATE int` starts (2).
+        expect(hits[3]).to be > 0
+        expect(hits[2]).to be_nil
         # `return` is on source line 6 -- it must show as hit.
         expect(hits[6]).to be > 0
         # The blank line (5) must not appear as an executable/hit line.

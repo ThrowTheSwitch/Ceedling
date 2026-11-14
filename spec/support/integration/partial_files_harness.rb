@@ -5,10 +5,10 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-# Runs stages 6 and 7 the way a build does: the real PartialFilesPreprocessinator over the
-# real Preprocessinator graph, a real compiler, and a real dependency tracker whose store
-# persists between runs. Each run is one build. Configuration, path layout, batching,
-# logging and plugins are stand-ins.
+# Runs stage 7 for one Partial source the way a build does: the real
+# PartialFilesPreprocessinator over the real Preprocessinator graph, a real compiler, and a
+# real dependency tracker whose store persists between runs. Each run is one build.
+# Configuration, path layout, batching, logging and plugins are stand-ins.
 
 require 'spec_integration_helper'
 require 'test_includes_harness'

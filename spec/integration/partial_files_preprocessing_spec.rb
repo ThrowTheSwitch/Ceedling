@@ -10,7 +10,7 @@ require 'spec_integration_helper'
 require 'partial_files_harness'
 require 'dependency_tracker_integration_helper'
 
-# Stages 6 and 7 across successive builds, with a real compiler and dependency tracker. The
+# Stage 7 across successive builds, with a real compiler and dependency tracker. The
 # unit specs fix each decision with stand-ins. These prove the decisions hold together: what
 # one build records is what the next build trusts.
 describe 'Partial file preprocessing (integration)' do
@@ -89,19 +89,21 @@ describe 'Partial file preprocessing (integration)' do
     end
   end
 
+  # Only the full expansion meets the broken macro. Restoring the header is the one change
+  # before the next build, so only what the failed build left behind can make it expand again.
   it 'leaves no expansion behind when the full expansion fails, and expands on the next build' do
     in_project do
       build
-      paths = harness.artifact_paths( 'src/widget.c' )
+      paths  = harness.artifact_paths( 'src/widget.c' )
+      config = File.read( 'src/config.h' )
 
-      failed = harness( full_tool: IntegrationSpecHelpers.failing_tool( DEFAULT_TEST_FILE_FULL_PREPROCESSOR_TOOL ) )
-      File.write( 'src/widget.c', File.read( 'src/widget.c' ) + "\n" )
-      record = build( with: failed )
+      File.write( 'src/config.h', config.sub( '#define PRIVATE static', "#define WRAP(x) x\n#define PRIVATE WRAP(static" ) )
+      record = build
 
       expect( record ).to have_attributes( expansion_filepath: nil, raw_expansion_filepath: nil )
       expect( paths.values_at( :raw_expansion, :expanded_code ).select { |path| File.exist?( path ) } ).to be_empty
 
-      # A working toolchain expands it again
+      File.write( 'src/config.h', config )
       expect( expanded( build ) ).to include( 'static int helper(void)' )
     end
   end

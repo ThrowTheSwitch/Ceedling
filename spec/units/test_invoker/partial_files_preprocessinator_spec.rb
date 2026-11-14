@@ -49,7 +49,7 @@ describe PartialFilesPreprocessinator do
     allow(@file_path_utils).to receive(:form_preprocessed_file_expanded_code_filepath).and_return( expanded_code )
     allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( includes_list )
 
-    # Files on disk, by path; an example adds what an earlier run would have left
+    # Files on disk, by path. An example adds what an earlier run would have left.
     @on_disk = []
     allow(@file_wrapper).to receive(:exist?) { |path| @on_disk.include?( path ) }
     allow(@file_wrapper).to receive(:rm_f)

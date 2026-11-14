@@ -59,7 +59,7 @@ class PartialsManager
       # them regenerates what the previous ones produced:
       #  - The preprocessed copies stages 6/7 wrote, beside the originals. Generation reads the
       #    copies, so whatever rewrites them without touching the originals reaches this stage
-      #    through them. Forced fallback toggled and a different preprocessor are two such.
+      #    through them, as toggling forced fallback or changing the preprocessor does.
       #  - The test's selection, which decides what each generated file holds.
       #  - The real header's guard, spoofed deliberately in every generated file.
       #  - Each generated file's includes, which depend on the test's other Partial modules

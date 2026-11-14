@@ -236,9 +236,10 @@ module PartialsGenerationHelpers
     # what a link across two partialized modules needs.
     dir ||= Dir.mktmpdir( 'partials-generation-' )
 
-    File.write( File.join( dir, "#{module_name}.h" ), header )
-    File.write( File.join( dir, "#{module_name}.c" ), source )
-    extra.each { |name, text| File.write( File.join( dir, name ), text ) }
+    # Byte for byte, so a module's line endings are the same on every platform
+    File.binwrite( File.join( dir, "#{module_name}.h" ), header )
+    File.binwrite( File.join( dir, "#{module_name}.c" ), source )
+    extra.each { |name, text| File.binwrite( File.join( dir, name ), text ) }
 
     # Each file is preprocessed as stages 6 and 7 preprocess it, into the record they fill in
     header_file = preprocess_partial_file(

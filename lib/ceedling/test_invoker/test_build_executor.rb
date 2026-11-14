@@ -44,9 +44,8 @@ class TestBuildExecutor
     mocks           = state.mocks_list.reject { |mock| mock.details.partial }
     skipped         = 0
 
-    # Register each remaining mock's preprocessed-header target and settle its staleness
-    # up front (sequentially -- cheap, no subprocess work), since it gates both
-    # of the parallel batches below.
+    # Each remaining mock's target is registered and its staleness settled first. That
+    # staleness gates both parallel batches below, and settling it runs no subprocess.
     mocks.each do |mock|
       details  = mock.details
       testable = mock.testable

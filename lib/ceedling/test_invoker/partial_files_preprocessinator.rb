@@ -13,7 +13,7 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 #  1. A -fdirectives-only run keeps macros and records every file it entered. It is
 #     skipped in fallback, without -fdirectives-only.
 #  2. A bare-includes run, checked against that output or in fallback the file's own
-#     text, yields the reconciled #includes. The assembled copy extraction parses follows.
+#     text, yields the reconciled #includes. Assembly then writes the copy extraction parses.
 #  3. A full expansion shows what a macro hides. Its own lines are what reconciliation
 #     parses.
 #
@@ -91,8 +91,7 @@ class PartialFilesPreprocessinator
     return target
   end
 
-  # A record written before the expanded code was an output doesn't vouch for it, and
-  # reconciliation needs that file
+  # A fresh record without its expanded code reruns, since reconciliation needs that file
   def stale?(work, target)
     return (@dependinator.stale?( target ) or !@file_wrapper.exist?( path( work, :expanded_code ) ))
   end
