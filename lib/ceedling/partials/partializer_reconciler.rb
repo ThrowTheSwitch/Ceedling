@@ -56,8 +56,10 @@ class PartializerReconciler
   end
 
   # Everything about a definition that a macro can hide. Its code block stays as written, so
-  # line mapping still holds.
+  # line mapping still holds. The decorators its written head doesn't spell are noted, since
+  # that head can't be stripped of them.
   def _take_expanded(func, expanded)
+    func.hidden_decorators  = expanded.decorators - func.decorators
     func.signature          = expanded.signature
     func.decorators         = expanded.decorators
     func.signature_stripped = expanded.signature_stripped

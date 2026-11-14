@@ -99,6 +99,35 @@ class CExtractorFunctions
     return text.index( NAME_PATTERNS[name] )
   end
 
+  # How each bracket changes the nesting depth. A literal or a comment changes nothing.
+  BRACKET_DEPTH = { '(' => 1, '[' => 1, ')' => -1, ']' => -1 }.freeze unless const_defined?(:BRACKET_DEPTH, false)
+
+  # The byte at which a function's body opens in its code block: the first brace outside a
+  # literal or comment, since an attribute's string in the signature may hold one
+  def self.body_start(code_block)
+    scanner = StringScanner.new( code_block )
+    nil until scanner.skip_until( CExtractorDeclarator::BALANCE_TOKEN ).nil? or scanner.matched == '{'
+    return scanner.pos - 1
+  end
+
+  # The byte just past a function's declarator in its code block. That is the last ')' at the
+  # top level ahead of the body, which a GNU attribute after the parameter list moves past it.
+  # A C23 attribute or a comment may follow. Nil when the head has no parameter list.
+  def self.signature_end(code_block)
+    scanner = StringScanner.new( code_block )
+    depth   = 0
+    close   = nil
+
+    while scanner.skip_until( CExtractorDeclarator::BALANCE_TOKEN )
+      break if scanner.matched == '{' and depth.zero?
+
+      depth += BRACKET_DEPTH.fetch( scanner.matched, 0 )
+      close  = scanner.pos if scanner.matched == ')' and depth.zero?
+    end
+
+    return close
+  end
+
   # Removes each listed token once, matching whole whitespace-separated tokens only, so the
   # same word inside an attribute string or a longer name stays. Spaces after a removed token
   # go with it. A newline stays, because a caller may count the lines a decorator occupied.

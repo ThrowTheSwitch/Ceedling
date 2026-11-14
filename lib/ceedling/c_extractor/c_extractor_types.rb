@@ -94,11 +94,13 @@ module CExtractorTypes
     :signature_stripped, # Signature without decorators (e.g., "int foo(void)")
     :origin,             # :header or :source when the caller knows the file's role, otherwise nil
     :expanded_body,      # Body with every macro expanded, taken from the full expansion copy when one exists
+    :hidden_decorators,  # Decorators only the full expansion shows, since a macro spells them
     keyword_init: true
   ) do
     # Constructor to set unassigned fields to nil for convenience
     def initialize(name: nil, signature: nil, body: nil, code_block: nil, line_count: 0, source_filepath: nil,
-                   line_num: nil, decorators: [], signature_stripped: nil, origin: nil, expanded_body: nil)
+                   line_num: nil, decorators: [], signature_stripped: nil, origin: nil, expanded_body: nil,
+                   hidden_decorators: [])
       super
     end
   end unless const_defined?(:CFunctionDefinition, false)

@@ -138,6 +138,7 @@ describe PartializerUtils do
         source_filepath: 'src/code/myfile.c',
         line_num: 34,
         decorators: ['__pragma__', 'static'],
+        hidden_decorators: [],
         code_block: "__pragma__ static void testFunc(int x) {\n  return x * 2;\n}"
       )
     end
@@ -145,7 +146,7 @@ describe PartializerUtils do
     context "when output_type is :impl" do
       # A selected function's callers rely on it never returning
       it "keeps _Noreturn on a testable function" do
-        func = double('function', name: 'die', decorators: ['static'], source_filepath: 'src/m.c', line_num: 3,
+        func = double('function', name: 'die', decorators: ['static'], hidden_decorators: [], source_filepath: 'src/m.c', line_num: 3,
                       code_block: "static _Noreturn void die(void) { for (;;) {} }")
 
         result = @utils.transform_function(func, '_Noreturn void die(void)', :impl)
@@ -218,6 +219,103 @@ describe PartializerUtils do
           @utils.transform_function(mock_func, signature, :unknown)
         }.to raise_error(ArgumentError, /unknown/i)
       end
+    end
+  end
+
+  # A macro the module's header defines, such as `#define PRIVATE static`, hides a decorator the
+  # written head can't be stripped of. The implementation header declares the expanded,
+  # stripped signature, so the definition takes the same one.
+  context "#transform_function with decorators a macro hides" do
+    def definition(code_block, hidden:, line_num: 10, name: 'helper', decorators: hidden)
+      CExtractorTypes::CFunctionDefinition.new(
+        name: name, code_block: code_block, line_num: line_num, decorators: decorators, hidden_decorators: hidden
+      )
+    end
+
+    def transform(func, signature)
+      @utils.transform_function( func, signature, :impl )
+    end
+
+    it "writes the head from the signature and keeps the body as written" do
+      result = transform( definition( "PRIVATE int helper(void) {\n  return 41;\n}", hidden: ['static'] ), 'int helper(void)' )
+
+      expect( result.code_block ).to eq( "int helper(void) {\n  return 41;\n}" )
+      expect( result.line_num ).to eq( 10 )
+    end
+
+    it "rewrites a head a macro makes static and inline" do
+      result = transform( definition( "STATICINLINE int twice(int v) { return v * 2; }", hidden: ['static', 'inline'], name: 'twice' ), 'int twice(int v)' )
+
+      expect( result.code_block ).to eq( "int twice(int v) { return v * 2; }" )
+    end
+
+    # A macro that respells a keyword the head already names, as `#define inline __inline` does
+    it "rewrites a head whose written decorator a macro turns into another" do
+      func   = definition( "inline int tick(void) { return 1; }", hidden: ['__inline'], decorators: ['inline'], name: 'tick' )
+      result = transform( func, 'int tick(void)' )
+
+      expect( result.code_block ).to eq( "int tick(void) { return 1; }" )
+    end
+
+    # Coverage tools place a function at its name's line, and every body line keeps its own
+    it "keeps the name's line and every body line of a head spread over several lines" do
+      func   = definition( "PRIVATE int\nhelper(int a,\n       int b)\n{\n  return a + b;\n}", hidden: ['static'] )
+      result = transform( func, "int helper(int a,\n       int b)" )
+
+      expect( result.code_block ).to eq( "int helper(int a, int b)\n\n{\n  return a + b;\n}" )
+      expect( result.line_num ).to eq( 11 )
+    end
+
+    it "keeps what follows the parameter list as written" do
+      result = transform( definition( "PRIVATE int helper(void) /* note */ { return 1; }", hidden: ['static'] ), 'int helper(void)' )
+
+      expect( result.code_block ).to eq( "int helper(void) /* note */ { return 1; }" )
+    end
+
+    # Fallback keeps comments, so a ';' in one after the list says nothing of K&R
+    it "rewrites a head whose comment after the list holds a ';'" do
+      result = transform( definition( "PRIVATE int helper(void) /* adds; */ { return 1; }", hidden: ['static'] ), 'int helper(void)' )
+
+      expect( result.code_block ).to eq( "int helper(void) /* adds; */ { return 1; }" )
+    end
+
+    # Fallback keeps comments, so the name can sit apart from its list. The body's recursive
+    # call must not pass for the name.
+    it "finds the name in the head alone, past a comment ahead of the list" do
+      code   = "PRIVATE int helper /* c */ (int a) { return a ? helper( a - 1 ) : 0; }"
+      result = transform( definition( code, hidden: ['static'] ), 'int helper (int a)' )
+
+      expect( result.code_block ).to eq( "int helper (int a) { return a ? helper( a - 1 ) : 0; }" )
+    end
+
+    # A multibyte character ahead of the name counts as one character but several bytes
+    it "keeps the body intact behind a multibyte character ahead of the name" do
+      code   = "__attribute__((section(\"région\"))) PRIVATE int\nhelper(void)\n{ return 1; }"
+      result = transform( definition( code, hidden: ['static'] ), '__attribute__((section("région"))) int helper(void)' )
+
+      expect( result.code_block ).to eq( "__attribute__((section(\"région\"))) int helper(void)\n{ return 1; }" )
+      expect( result.line_num ).to eq( 11 )
+    end
+
+    # A K&R definition declares its parameters between the list and the body
+    it "strips as written when a ';' follows the parameter list" do
+      code   = "PRIVATE int helper(a)\n  int a;\n{ return a; }"
+      result = transform( definition( code, hidden: ['static'] ), 'int helper(a)' )
+
+      expect( result.code_block ).to eq( code )
+    end
+
+    it "strips as written when nothing is hidden" do
+      result = transform( definition( "static int helper(void) { return 1; }", hidden: [], decorators: ['static'] ), 'int helper(void)' )
+
+      expect( result.code_block ).to eq( "int helper(void) { return 1; }" )
+    end
+
+    it "keeps line breaks the head's CRLF endings hold" do
+      result = transform( definition( "PRIVATE int\r\nhelper(void)\r\n{\r\n  return 1;\r\n}", hidden: ['static'] ), 'int helper(void)' )
+
+      expect( result.code_block ).to eq( "int helper(void)\r\n{\r\n  return 1;\r\n}" )
+      expect( result.line_num ).to eq( 11 )
     end
   end
 

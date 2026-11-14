@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/partials/partials'
+require 'ceedling/partials/definition_head'
 require 'ceedling/partials/partializer_runtime'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_functions'
@@ -47,9 +48,12 @@ class PartializerUtils
   end
 
   # Strip decorators from the front of code_block and count how many newlines were removed.
-  # Adjust line_num upward so that emitted #line directives remain accurate.
+  # Adjust line_num upward so that emitted #line directives remain accurate. A head whose
+  # decorators a macro hides is written from the signature instead. The implementation header
+  # declares that same signature.
   def testable_definition(func, signature)
-    new_code_block, stripped_newlines = extract_code_block(func.code_block, func.decorators, func.name)
+    new_code_block, stripped_newlines =
+      Partials::DefinitionHead.rewrite( func, signature ) || extract_code_block( func.code_block, func.decorators, func.name )
 
     return Partials.manufacture_function_definition(
       name:            func.name,

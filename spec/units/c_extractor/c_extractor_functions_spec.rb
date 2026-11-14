@@ -3195,4 +3195,53 @@ describe CExtractorFunctions do
     end
   end
 
+  describe ".body_start" do
+    it "gives the byte of the brace that opens the body" do
+      expect( described_class.body_start( "int f(void) { return 0; }" ) ).to eq( 12 )
+    end
+
+    # An attribute string or a comment in the head may hold a brace
+    it "passes over braces in a literal or a comment" do
+      code = "__attribute__((section(\"{s}\"))) int f(void) /* { */ { return 0; }"
+      expect( code.byteslice( described_class.body_start( code ), 1 ) ).to eq( "{" )
+      expect( code.byteslice( described_class.body_start( code ) - 8, 8 ) ).to eq( "/* { */ " )
+    end
+  end
+
+  describe ".signature_end" do
+    def tail(code)
+      code.byteslice( described_class.signature_end( code )..)
+    end
+
+    it "gives the byte just past the parameter list" do
+      expect( tail( "int f(int a, int b) { return a; }" ) ).to eq( " { return a; }" )
+    end
+
+    it "passes over parentheses nested in the parameter list" do
+      expect( tail( "int f(int (*cb)(int)) { return cb( 1 ); }" ) ).to eq( " { return cb( 1 ); }" )
+    end
+
+    # A C23 attribute or a comment after the list belongs to what follows it
+    it "ends before a comment after the list" do
+      expect( tail( "int f(void) /* x( */ { return 0; }" ) ).to eq( " /* x( */ { return 0; }" )
+    end
+
+    # A GNU attribute after the list closes at the top level too, so the declarator ends after it
+    it "ends after a GNU attribute that follows the list" do
+      expect( tail( "int f(void) __attribute__((cold)) { return 0; }" ) ).to eq( " { return 0; }" )
+    end
+
+    it "ends after the declarator of a function returning a function pointer" do
+      expect( tail( "int (*get(int a))(int) { return 0; }" ) ).to eq( " { return 0; }" )
+    end
+
+    it "reads a parenthesis in a literal or a comment as text" do
+      expect( tail( "int f(const char *s /* ) */) { return s[0] == ')'; }" ) ).to eq( " { return s[0] == ')'; }" )
+    end
+
+    it "gives nil for a head with no parameter list" do
+      expect( described_class.signature_end( "{ return 0; }" ) ).to be_nil
+    end
+  end
+
 end

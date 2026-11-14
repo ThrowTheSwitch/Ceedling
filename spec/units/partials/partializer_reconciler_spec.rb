@@ -53,6 +53,7 @@ describe PartializerReconciler do
         signature_stripped: 'int helper(void)'
       )
       allow(func).to receive(:signature=)
+      allow(func).to receive(:hidden_decorators=)
       allow(func).to receive(:decorators=)
       allow(func).to receive(:signature_stripped=)
       allow(func).to receive(:expanded_body=)
@@ -115,6 +116,7 @@ describe PartializerReconciler do
         signature_stripped: 'void private_func(void)'
       )
       allow(func_match).to receive(:signature=)
+      allow(func_match).to receive(:hidden_decorators=)
       allow(func_match).to receive(:decorators=)
       allow(func_match).to receive(:signature_stripped=)
       allow(func_match).to receive(:expanded_body=)
@@ -178,6 +180,35 @@ describe PartializerReconciler do
 
       expect(func.expanded_body).to eq('{ return clamp(v); }')
       expect(func.body).to eq('{ return CLAMP(v); }')
+    end
+
+    # The written head can't be stripped of a decorator it doesn't spell
+    it "notes the decorators the expansion finds that the written head doesn't spell" do
+      hidden  = CExtractorTypes::CFunctionDefinition.new(name: 'helper', signature: 'PRIVATE int helper(void)', decorators: [])
+      written = CExtractorTypes::CFunctionDefinition.new(name: 'tick', signature: 'static int tick(void)', decorators: ['static'])
+      expanded = [
+        make_expanded_func( name: 'helper', signature: 'static int helper(void)', decorators: ['static'], signature_stripped: 'int helper(void)' ),
+        make_expanded_func( name: 'tick', signature: 'static int tick(void)', decorators: ['static'], signature_stripped: 'int tick(void)' )
+      ]
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_definitions: expanded))
+
+      reconcile(
+        funcs: [hidden, written], expansion_filepath: '/build/full_expansion/mod.c',
+        name: 'TestMod', module_name: 'mod', file_type: 'source'
+      )
+
+      expect(hidden.hidden_decorators).to eq(['static'])
+      expect(written.hidden_decorators).to eq([])
+    end
+
+    it "notes only the decorators the written head lacks" do
+      func = CExtractorTypes::CFunctionDefinition.new(name: 'tick', signature: 'static INLINE int tick(void)', decorators: ['static'])
+      expanded = make_expanded_func( name: 'tick', signature: 'static inline int tick(void)', decorators: ['static', 'inline'], signature_stripped: 'int tick(void)' )
+      allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_definitions: [expanded]))
+
+      reconcile( funcs: [func], expansion_filepath: '/build/full_expansion/mod.c', name: 'TestMod', module_name: 'mod', file_type: 'source' )
+
+      expect(func.hidden_decorators).to eq(['inline'])
     end
 
     # A carried prototype is written as the user spelled it, so only what the rules read changes
