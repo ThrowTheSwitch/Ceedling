@@ -408,4 +408,119 @@ describe PartializerReconciler do
       expect(@loginator).to have_received(:log_list).with( ["`counter` (variable)"], anything, Verbosity::DEBUG )
     end
   end
+
+  context "#reconcile with a type a macro ends" do
+    def type(text, tag:)
+      CExtractorTypes::CStatement.new( text: text, kind: :aggregate, tag: tag )
+    end
+
+    def variable(name, defined_type, text: "#{name};")
+      CExtractorTypes::CVariableDeclaration.new( name: name, type: "", text: text, defined_type: defined_type )
+    end
+
+    # The written module, whose types and variables both sit in element_sequence
+    def written(types, vars)
+      CExtractorTypes::CModule.new( aggregate_definitions: types, variable_declarations: vars, element_sequence: types + vars )
+    end
+
+    def reconcile_with(c_module, expanded)
+      allow(@c_extractor).to receive(:from_file).and_return( expanded )
+      @reconciler.reconcile( c_module: c_module, expansion_filepath: "/build/expanded_code/mod.h", name: "TestMod", module_name: "mod", file_type: "header" )
+    end
+
+    it "gives a tagged type back the macro the written text read as its variable" do
+      pk       = type( "struct pk { char c; int i; };", tag: "pk" )
+      macro    = variable( "PACKED", pk, text: "PACKED;" )
+      c_module = written( [pk], [macro] )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new( aggregate_definitions: [type( "struct pk { char c; int i; } __attribute__((packed));", tag: "pk" )] ) )
+
+      expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED;" )
+      expect( c_module.variable_declarations ).to be_empty
+      expect( c_module.element_sequence ).to eq( [pk] )
+    end
+
+    # The expansion holds the variable, and defines the type only through it
+    it "keeps a variable a macro names" do
+      pt       = type( "struct pt { int a; };", tag: "pt" )
+      named    = variable( "MY_VAR", pt )
+      c_module = written( [pt], [named] )
+      twin_pt  = type( "struct pt { int a; };", tag: "pt" )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new( aggregate_definitions: [twin_pt], variable_declarations: [variable( "g_var", twin_pt )] ) )
+
+      expect( c_module.variable_declarations ).to eq( [named] )
+      expect( pt.text ).to eq( "struct pt { int a; };" )
+    end
+
+    it "leaves an anonymous type alone" do
+      anonymous = type( "struct { int a; };", tag: nil )
+      c_module  = written( [anonymous], [variable( "PACKED", anonymous, text: "PACKED;" )] )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new( aggregate_definitions: [type( "struct { int a; } __attribute__((packed));", tag: nil )] ) )
+
+      expect( c_module.variable_declarations.size ).to eq( 1 )
+    end
+
+    it "leaves a type alone that defines more than one variable" do
+      pk       = type( "struct pk { int a; };", tag: "pk" )
+      c_module = written( [pk], [variable( "PACKED", pk, text: "PACKED;" ), variable( "other", pk )] )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new( aggregate_definitions: [type( "struct pk { int a; };", tag: "pk" )] ) )
+
+      expect( c_module.variable_declarations.size ).to eq( 2 )
+      expect( pk.text ).to eq( "struct pk { int a; };" )
+    end
+
+    # The expansion holding the name settles it, whatever it defines
+    it "keeps a variable the expansion also holds by name" do
+      pk       = type( "struct pk { int a; };", tag: "pk" )
+      c_module = written( [pk], [variable( "current", pk )] )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new(
+        aggregate_definitions: [type( "struct pk { int a; };", tag: "pk" )], variable_declarations: [variable( "current", nil )]
+      ) )
+
+      expect( c_module.variable_declarations.size ).to eq( 1 )
+    end
+
+    # A forward declaration defines nothing, so it never shows the tag defined alone
+    it "keeps a variable whose tag the expansion only declares ahead" do
+      pk       = type( "struct pk { int a; };", tag: "pk" )
+      named    = variable( "MY_VAR", pk )
+      c_module = written( [pk], [named] )
+      twin_pk  = type( "struct pk { int a; };", tag: "pk" )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new(
+        aggregate_definitions: [type( "struct pk;", tag: "pk" ), twin_pk], variable_declarations: [variable( "g_var", twin_pk )]
+      ) )
+
+      expect( c_module.variable_declarations ).to eq( [named] )
+    end
+
+    # A function-like macro, as `ALIGNED(8)`, reads as a variable with no name
+    it "rejoins a nameless macro while the expansion holds a nameless declaration of its own" do
+      al       = type( "struct al { char c; };", tag: "al" )
+      c_module = written( [al], [variable( nil, al, text: "ALIGNED(8);" )] )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new(
+        aggregate_definitions: [type( "struct al { char c; } __attribute__((aligned(8)));", tag: "al" )],
+        variable_declarations: [variable( nil, nil, text: "__asm__(\".globl x\");" )]
+      ) )
+
+      expect( al.text ).to eq( "struct al { char c; } ALIGNED(8);" )
+      expect( c_module.variable_declarations ).to be_empty
+    end
+
+    # `static struct pk { … } __attribute__((packed));` expands to a declaration with no variable name
+    it "rejoins a macro whose expanded type a nameless declaration defines" do
+      pk       = type( "struct pk { char c; int i; };", tag: "pk" )
+      c_module = written( [pk], [variable( "PACKED", pk, text: "PACKED;" )] )
+      twin_pk  = type( "struct pk { char c; int i; };", tag: "pk" )
+
+      reconcile_with( c_module, CExtractorTypes::CModule.new( aggregate_definitions: [twin_pk], variable_declarations: [variable( nil, twin_pk, text: ";" )] ) )
+
+      expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED;" )
+    end
+  end
 end

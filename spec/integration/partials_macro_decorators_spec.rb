@@ -155,6 +155,65 @@ describe 'Partial functions and variables whose decorators a macro supplies' do
     end
   end
 
+# A macro after a type's closing brace, as `struct pk { … } PACKED;`, reads as a variable in
+# the written text. The expansion shows the macro belongs to the type, so the type keeps it.
+[:accurate, :fallback].each do |mode|
+  context "a type a macro ends, with #{mode} preprocessing" do
+    before { skip 'directives-only preprocessing is unavailable' if mode == :accurate and !directives_only_supported? }
+
+    def ended_types(declarations, mode:, extra: {}, includes: [])
+      header = "#ifndef ENGINE_H\n#define ENGINE_H\n#{includes.map { |name| "#include \"#{name}\"\n" }.join}" \
+               "#define PACKED __attribute__((packed))\n#define ALIGNED(n) __attribute__((aligned(n)))\n" \
+               "#{declarations}int engine_get(void);\n#endif\n"
+      engine( "#include \"engine.h\"\nint engine_get(void) { return 0; }\n", mode: mode, header: header, extra: extra, header_includes: includes )
+    end
+
+    # The link's test translation unit asserts the layout through the generated headers
+    def link_holding(result, assertion)
+      link = link_partial( result, references: ['engine_get'], stubs: "_Static_assert( #{assertion}, \"layout kept\" );\n", flags: '-Wall -Werror' )
+      expect( link.ok ).to be( true ), "expected a clean link, got: #{link.first_diagnostic}"
+    end
+
+    it 'keeps the macro with its type, so the type keeps its layout' do
+      result = ended_types( "struct pk { char c; int i; } PACKED;\n", mode: mode )
+
+      expect( result.types_h ).to include( 'struct pk { char c; int i; } PACKED;' )
+      expect( result.impl_h ).not_to match( /\bPACKED;/ )
+      link_holding( result, 'sizeof( struct pk ) == 5' )
+    end
+
+    it 'keeps a function-like macro with its type' do
+      result = ended_types( "struct al { char c; } ALIGNED(8);\n", mode: mode )
+
+      expect( result.types_h ).to include( 'struct al { char c; } ALIGNED(8);' )
+      link_holding( result, '_Alignof( struct al ) == 8' )
+    end
+
+    it 'keeps the macro with a type a storage class declares alone' do
+      link_holding( ended_types( "static struct pk { char c; int i; } PACKED;\n", mode: mode ), 'sizeof( struct pk ) == 5' )
+    end
+
+    # The types header reaches the macro through the module header's own includes
+    it 'keeps a macro another header defines with its type' do
+      toolchain = "#ifndef TOOLCHAIN_H\n#define TOOLCHAIN_H\n#define TIGHT __attribute__((packed))\n#endif\n"
+      result    = ended_types( "struct pk { char c; int i; } TIGHT;\n", mode: mode, extra: { 'toolchain.h' => toolchain }, includes: ['toolchain.h'] )
+
+      link_holding( result, 'sizeof( struct pk ) == 5' )
+    end
+
+    # A macro that names a real variable leaves a variable behind in the expansion too, and a
+    # forward declaration of its tag defines nothing that says otherwise
+    it 'keeps a variable a macro names after a type it defines' do
+      header = "#ifndef ENGINE_H\n#define ENGINE_H\n#define MY_VAR g_var\nint engine_get(void);\n#endif\n"
+      result = engine( "#include \"engine.h\"\nstruct pt;\nstruct pt { int a; } MY_VAR;\nint engine_get(void) { return MY_VAR.a; }\n", mode: mode, header: header )
+
+      expect( result.types_h ).not_to include( '} MY_VAR;' )
+      link = link_partial( result, references: ['MY_VAR', 'engine_get'], flags: '-Wall -Werror -fno-common' )
+      expect( link.ok ).to be( true ), "expected a clean link, got: #{link.first_diagnostic}"
+    end
+  end
+end
+
   context 'with accurate preprocessing' do
     before { skip 'directives-only preprocessing is unavailable' unless directives_only_supported? }
 
