@@ -78,7 +78,6 @@ class PartializerHelper
 
   constructor(
     :partializer_utils,
-    :c_extractor,
     :c_extractor_declarations,
     :parsing_parcels,
     :loginator
@@ -213,11 +212,7 @@ class PartializerHelper
   end
 
   def _add_promoted(c_module, func, vars)
-    items = _with_defined_types( vars )
-    c_module.aggregate_definitions.concat( items.grep( CExtractorTypes::CStatement ) )
-    c_module.variable_declarations.concat( vars )
-    at = c_module.element_sequence.index { |item| item.equal?( func ) } || c_module.element_sequence.size
-    c_module.element_sequence.insert( at, *items )
+    c_module.insert_before!( func, _with_defined_types( vars ) )
   end
 
   # Lifts function-scoped static variables out of function bodies, to be promoted to module
@@ -464,77 +459,6 @@ class PartializerHelper
     line.match?( RELOCATED_CONTENT ) || line.match?( ANY_INCLUDE_DIRECTIVE )
   end
 
-
-  # For each function definition in funcs, find the matching function by name in the fully
-  # preprocessed expansion file and replace the three signature-related fields with their
-  # macro-expanded equivalents. The expanded body is kept alongside in expanded_body, where a
-  # call hidden in a macro is visible. All other fields — especially code_block — are preserved
-  # from the directives-only extraction so that line number mapping stays valid.
-  #
-  # Declarations get their decorators and stripped signature the same way, so a macro that
-  # hides `static` is seen for what it is. Their written signature stays as the user spelled
-  # it, because a carried prototype is written word for word.
-  #
-  # @param funcs [Array<CFunctionDefinition>] Definitions to update in place.
-  # @param expansion_filepath [String] Path to the file's own lines from its full
-  #   expansion, written by Preprocessinator#generate_partial_expansion.
-  # @param name [String] Test name, used in log messages.
-  # @param module_name [String] Partial module name, used in log messages.
-  # @param file_type [String] "source" or "header", used in log messages.
-  # @param decls [Array<CFunctionDeclaration>] Declarations to update in place.
-  def update_signatures_from_full_expansion(funcs:, expansion_filepath:, name:, module_name:, file_type:, decls: [])
-    expanded_module = @c_extractor.from_file( expansion_filepath )
-    entries         = _reconcile_definitions( funcs, expanded_module ) + _reconcile_declarations( decls, expanded_module )
-
-    @loginator.log_list(
-      entries,
-      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
-      Verbosity::DEBUG
-    ) unless entries.empty?
-  end
-
-  # Updates each definition from the expanded definition of the same name. Returns log entries
-  # for those it found.
-  def _reconcile_definitions(funcs, expanded_module)
-    expanded_by_name = expanded_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
-
-    return funcs.filter_map do |func|
-      expanded = expanded_by_name[func.name]
-      next unless expanded
-
-      _take_expanded( func, expanded )
-      "`#{func.name}`"
-    end
-  end
-
-  # Everything about a definition that a macro can hide. Its code block stays as written, so
-  # line mapping still holds.
-  def _take_expanded(func, expanded)
-    func.signature          = expanded.signature
-    func.decorators         = expanded.decorators
-    func.signature_stripped = expanded.signature_stripped
-    func.expanded_body      = expanded.body
-  end
-
-  # Matches each declaration to the expanded declaration of the same name, in order, since
-  # a name may be declared more than once. Returns log entries for those whose decorators changed.
-  def _reconcile_declarations(decls, expanded_module)
-    expanded_by_name = expanded_module.function_declarations.group_by( &:name )
-
-    return decls.group_by( &:name ).flat_map do |decl_name, same_name|
-      same_name.zip( expanded_by_name.fetch( decl_name, [] ) ).filter_map { |decl, expanded| _reconcile_declaration( decl, expanded ) }
-    end
-  end
-
-  # Updates one declaration from its expanded counterpart. Returns a log entry when its decorators changed.
-  def _reconcile_declaration(decl, expanded)
-    return nil if expanded.nil?
-
-    changed = decl.decorators != expanded.decorators
-    decl.decorators         = expanded.decorators
-    decl.signature_stripped = expanded.signature_stripped
-    return changed ? "`#{decl.name}` (declaration)" : nil
-  end
 
   # Marks each declaration whose function the text defines inline with external linkage. Given
   # a file's raw directives-only copy, which holds every header the file includes, a mark means

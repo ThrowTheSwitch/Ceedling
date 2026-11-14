@@ -385,10 +385,14 @@ partializer_utils:
     - preprocessinator_code_finder
     - loginator
 
+partializer_reconciler:
+  compose:
+    - c_extractor
+    - loginator
+
 partializer_helper:
   compose:
     - partializer_utils
-    - c_extractor
     - c_extractor_declarations
     - parsing_parcels
     - loginator
@@ -397,6 +401,7 @@ partializer:
   compose:
     - configurator
     - partializer_helper
+    - partializer_reconciler
     - file_finder
     - c_extractor
     - file_path_utils

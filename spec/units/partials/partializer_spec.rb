@@ -28,6 +28,7 @@ describe Partializer do
     # Guard extraction reads the module's own header text through these two.
     @preprocessinator_reconstructor = double("PreprocessinatorReconstructor")
     @file_wrapper                   = double("FileWrapper")
+    @partializer_reconciler         = double("PartializerReconciler")
 
     @configurator = double( "Configurator" )
     allow(@configurator).to receive(:paths_test).and_return( ['test'] )
@@ -37,15 +38,16 @@ describe Partializer do
 
     @partializer = described_class.new(
       {
-        :configurator       => @configurator,
-        :partializer_helper => @partializer_helper,
-        :file_finder        => @file_finder,
-        :c_extractor        => @c_extractor,
-        :file_path_utils    => @file_path_utils,
+        :configurator                   => @configurator,
+        :partializer_helper             => @partializer_helper,
+        :partializer_reconciler         => @partializer_reconciler,
+        :file_finder                    => @file_finder,
+        :c_extractor                    => @c_extractor,
+        :file_path_utils                => @file_path_utils,
         :preprocessinator_reconstructor => @preprocessinator_reconstructor,
-        :file_wrapper       => @file_wrapper,
-        :reportinator       => @reportinator,
-        :loginator          => @loginator
+        :file_wrapper                   => @file_wrapper,
+        :reportinator                   => @reportinator,
+        :loginator                      => @loginator
       }
     )
 
@@ -2337,7 +2339,7 @@ describe Partializer do
       @partializer.extract_module_contents(@name, config)
     end
 
-    it "calls update_signatures_from_full_expansion when expansion_filepath is set on source" do
+    it "reconciles the source's module with its expanded code when the record names one" do
       source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
@@ -2354,19 +2356,14 @@ describe Partializer do
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.i').and_return(source_contents)
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
 
-      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
-        funcs:                   source_funcs,
-        decls:                   [],
-        expansion_filepath:      '/build/preproc/full_expansion/module1.c',
-        name:                    @name,
-        module_name:             'module1',
-        file_type:               'source'
+      expect(@partializer_reconciler).to receive(:reconcile).with(
+        c_module: source_contents, expansion_filepath: '/build/preproc/full_expansion/module1.c', name: @name, module_name: 'module1', file_type: 'source'
       )
 
       @partializer.extract_module_contents(@name, config)
     end
 
-    it "calls update_signatures_from_full_expansion when expansion_filepath is set on header" do
+    it "reconciles the header's module with its expanded code when the record names one" do
       header_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
@@ -2383,19 +2380,14 @@ describe Partializer do
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/header.h').and_return(header_contents)
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
 
-      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
-        funcs:                   header_funcs,
-        decls:                   [],
-        expansion_filepath:      '/build/preproc/full_expansion/header.h',
-        name:                    @name,
-        module_name:             'module1',
-        file_type:               'header'
+      expect(@partializer_reconciler).to receive(:reconcile).with(
+        c_module: header_contents, expansion_filepath: '/build/preproc/full_expansion/header.h', name: @name, module_name: 'module1', file_type: 'header'
       )
 
       @partializer.extract_module_contents(@name, config)
     end
 
-    it "does not call update_signatures_from_full_expansion when expansion_filepath is nil" do
+    it "reconciles nothing when the record names no expanded code" do
       source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
@@ -2412,30 +2404,7 @@ describe Partializer do
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.i').and_return(source_contents)
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
 
-      expect(@partializer_helper).not_to receive(:update_signatures_from_full_expansion)
-
-      @partializer.extract_module_contents(@name, config)
-    end
-
-    it "passes each file's declarations to update_signatures_from_full_expansion" do
-      decls           = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
-      source_contents = CExtractorTypes::CModule.new(function_declarations: decls)
-
-      config = PartializerConfig::Config.new(
-        module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil),
-        source: Partials::ConfigFileInfo.new(
-          filepath:           '/src/module1.c',
-          assembled_filepath: '/build/preproc/module1.i',
-          expansion_filepath: '/build/preproc/full_expansion/module1.c'
-        )
-      )
-
-      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
-
-      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
-        hash_including( decls: decls )
-      )
+      expect(@partializer_reconciler).not_to receive(:reconcile)
 
       @partializer.extract_module_contents(@name, config)
     end

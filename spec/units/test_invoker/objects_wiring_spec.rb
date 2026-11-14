@@ -29,7 +29,12 @@ describe 'Test pipeline object wiring' do
     ['duplicate_symbol_specialist',      'ceedling/diagnostics/duplicate_symbol_specialist'],
     ['partial_name_specialist',          'ceedling/diagnostics/partial_name_specialist'],
     ['include_depth_specialist',         'ceedling/diagnostics/include_depth_specialist'],
-    ['preprocessinator_file_assembler',  'ceedling/preprocess/preprocessinator_file_assembler']
+    ['preprocessinator_file_assembler',  'ceedling/preprocess/preprocessinator_file_assembler'],
+    ['partializer',                      'ceedling/partials/partializer'],
+    ['partializer_helper',               'ceedling/partials/partializer_helper'],
+    ['partializer_reconciler',           'ceedling/partials/partializer_reconciler'],
+    ['partializer_utils',                'ceedling/partials/partializer_utils'],
+    ['generator_partials',               'ceedling/generators/generator_partials']
   ] ).each do |name, path|
     it "composes exactly what #{name}'s constructor takes" do
       require path

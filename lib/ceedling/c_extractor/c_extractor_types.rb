@@ -137,3 +137,6 @@ module CExtractorTypes
   end unless const_defined?(:CVariableDeclaration, false)
 
 end
+
+# Loaded last, since it reopens CModule above
+require 'ceedling/c_extractor/c_module_edits'

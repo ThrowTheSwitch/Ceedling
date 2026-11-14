@@ -48,6 +48,7 @@ require 'ceedling/c_extractor/c_extractor_definitions'
 require 'ceedling/generators/generator_partials'
 require 'ceedling/partials/partializer'
 require 'ceedling/partials/partializer_helper'
+require 'ceedling/partials/partializer_reconciler'
 require 'ceedling/partials/partializer_utils'
 require 'ceedling/partials/partializer_config'
 require 'ceedling/partials/partials'
@@ -684,15 +685,16 @@ module PartialsGenerationHelpers
   def build_partializer
     Partializer.new(
       {
-        configurator:       RSpec::Mocks::Double.new( 'Configurator' ).as_null_object,
-        partializer_helper: partials_helper,
-        file_finder:        RSpec::Mocks::Double.new( 'FileFinder' ).as_null_object,
-        c_extractor:        partials_c_extractor,
-        file_path_utils:    partials_file_path_utils,
+        configurator:                   RSpec::Mocks::Double.new( 'Configurator' ).as_null_object,
+        partializer_helper:             partials_helper,
+        partializer_reconciler:         PartializerReconciler.new( c_extractor: partials_c_extractor, loginator: partials_null_loginator ),
+        file_finder:                    RSpec::Mocks::Double.new( 'FileFinder' ).as_null_object,
+        c_extractor:                    partials_c_extractor,
+        file_path_utils:                partials_file_path_utils,
         preprocessinator_reconstructor: partials_reconstructor,
-        file_wrapper:       partials_file_wrapper,
-        reportinator:       RSpec::Mocks::Double.new( 'Reportinator' ).as_null_object,
-        loginator:          partials_null_loginator
+        file_wrapper:                   partials_file_wrapper,
+        reportinator:                   RSpec::Mocks::Double.new( 'Reportinator' ).as_null_object,
+        loginator:                      partials_null_loginator
       }
     )
   end
@@ -710,7 +712,6 @@ module PartialsGenerationHelpers
                                       loginator: partials_null_loginator
                                     }
                                   ),
-        c_extractor:              partials_c_extractor,
         c_extractor_declarations: CExtractorDeclarations.new(
                                     { c_extractor_code_text: CExtractorCodeText.new }
                                   ).tap( &:setup ),

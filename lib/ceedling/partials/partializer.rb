@@ -43,7 +43,7 @@ class Partializer
 
   include Partials
 
-  constructor :configurator, :partializer_helper, :file_finder, :c_extractor, :file_path_utils,
+  constructor :configurator, :partializer_helper, :partializer_reconciler, :file_finder, :c_extractor, :file_path_utils,
               :preprocessinator_reconstructor, :file_wrapper, :reportinator, :loginator
 
   def setup()
@@ -77,9 +77,7 @@ class Partializer
   # counts, so a macro whose name merely begins with the guard's, or one giving it a value, stays.
   def sanitize(c_module, include_guard: nil)
     real    = include_guard && /\A\s*#\s*define\s+#{Regexp.escape( include_guard )}\s*\z/
-    removed = c_module.macro_definitions.select { |m| m.text.match?( GENERATED_INCLUDE_GUARD_PATTERN ) or (real and m.text.match?( real )) }.to_set
-    c_module.macro_definitions.reject! { |m| removed.include?( m ) }
-    c_module.element_sequence.reject!  { |e| removed.include?( e ) }
+    c_module.remove!( c_module.macro_definitions.select { |m| m.text.match?( GENERATED_INCLUDE_GUARD_PATTERN ) or (real and m.text.match?( real )) } )
   end
 
   # Decides what the Partial's implementation source carries beyond its selected functions.
@@ -465,7 +463,7 @@ class Partializer
 
     _log_module_contents(name, config.module, file_type, c_module)
 
-    _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.expansion_filepath
+    _reconcile( name, config, c_file, file_type, c_module ) if c_file.expansion_filepath
     _locate_contents( c_file, c_module )
     _promote_function_scope_statics( name, config, file_type, c_module )
     Partials.name_defined_types( c_module, config.module )
@@ -473,19 +471,11 @@ class Partializer
     return c_module.stamp_origin!( file_type.to_sym )
   end
 
-  # Update function signatures from fully preprocessed output when available.
-  # Replaces signature/decorators/signature_stripped (but NOT code_block) so that
-  # macros wrapping `static` and `inline` are resolved before visibility filtering.
-  # Each definition also keeps its expanded body, where a call a macro hides is visible.
-  # Declarations take decorators and stripped signature while keeping their written text.
-  def _reconcile_with_full_expansion(name, config, c_file, file_type, c_module)
-    @helper.update_signatures_from_full_expansion(
-      funcs:                   c_module.function_definitions,
-      decls:                   c_module.function_declarations,
-      expansion_filepath: c_file.expansion_filepath,
-      name:                    name,
-      module_name:             config.module,
-      file_type:               file_type
+  # Each item takes from its twin in the file's expanded code what a macro can hide, before
+  # visibility filtering reads it. What line location reads stays as written.
+  def _reconcile(name, config, c_file, file_type, c_module)
+    @partializer_reconciler.reconcile(
+      c_module: c_module, expansion_filepath: c_file.expansion_filepath, name: name, module_name: config.module, file_type: file_type
     )
   end
 
