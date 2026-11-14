@@ -17,7 +17,7 @@ describe 'Test pipeline object wiring' do
 
   %w[
     test_invoker test_pipeline_manager test_build_setup test_includes_extractinator test_bare_includes_extractinator
-    test_includes_preprocessinator test_includes_reconcilinator test_build_planner partials_manager
+    test_includes_preprocessinator test_includes_reconcilinator test_build_planner partial_files_preprocessinator partials_manager
     test_build_executor test_file_preprocessinator test_runner_generatinator test_search_paths mock_locator
     standin_headerinator test_source_file_directive_resolver test_substitutions
   ].map { |name| [name, "ceedling/test_invoker/#{name}"] }.concat( [

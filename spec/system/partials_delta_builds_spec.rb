@@ -57,6 +57,32 @@ C
 
 PARTIALS_DELTA_PREAMBLE = "#include \"unity.h\"\n#include \"ceedling.h\"\n"
 
+# A storage class from a macro in a header the module includes, which decides whether a
+# public selection holds helper()
+PARTIALS_DELTA_CONFIG_HEADER = "#ifndef CONFIG_H\n#define CONFIG_H\n#define PRIVATE static\n#endif\n"
+
+PARTIALS_DELTA_CONFIGURED_HEADER = <<~C
+  #ifndef ENGINE_H
+  #define ENGINE_H
+  #include "config.h"
+  int engine_get(void);
+  #endif
+C
+
+PARTIALS_DELTA_CONFIGURED_SOURCE = <<~C
+  #include "engine.h"
+
+  PRIVATE int helper(void)
+  {
+      return 41;
+  }
+
+  int engine_get(void)
+  {
+      return 42;
+  }
+C
+
 # Variables declared together with their types, at file scope and inside a function
 PARTIALS_DELTA_STATEFUL_SOURCE = <<~C
   #include "engine.h"
@@ -182,6 +208,38 @@ ceedling_system_tests do
       output = build_passing( 1 )
       expect(output).to_not match(/Generating Partial implementation for/)
       expect(output).to match(/Skipping Partial implementation generation/)
+    end
+  end
+
+  # The module itself is unchanged. Only its preprocessing sees the header's new macro.
+  it "regenerates a Partial when a header its module includes changes a macro" do
+    in_project do
+      File.write( 'src/config.h', PARTIALS_DELTA_CONFIG_HEADER )
+      File.write( 'src/engine.h', PARTIALS_DELTA_CONFIGURED_HEADER )
+      File.write( 'src/engine.c', PARTIALS_DELTA_CONFIGURED_SOURCE )
+      build_passing( 1 )
+
+      implementation = Dir.glob( 'build/test/partials/**/ceedling_partial_engine_impl.h' )
+      expect(implementation).to_not be_empty
+      expect(File.read( implementation.first )).to_not include( 'helper(' )
+
+      File.write( 'src/config.h', PARTIALS_DELTA_CONFIG_HEADER.sub( '#define PRIVATE static', '#define PRIVATE' ) )
+      output = build_passing( 1 )
+      expect(output).to match(/Generating Partial implementation for .*engine/)
+      expect(File.read( implementation.first )).to match(/^int helper\(void\);/)
+    end
+  end
+
+  # Stage 8 stays fresh when preprocessing writes identical copies, so only the log shows a rerun
+  it "skips preprocessing a Partial's files when nothing changed" do
+    in_project do
+      File.write( 'src/config.h', PARTIALS_DELTA_CONFIG_HEADER )
+      File.write( 'src/engine.h', PARTIALS_DELTA_CONFIGURED_HEADER )
+      File.write( 'src/engine.c', PARTIALS_DELTA_CONFIGURED_SOURCE )
+      build_passing( 1 )
+
+      output = build_passing( 1 )
+      expect(output).to_not match(/Preprocessing partial (?:header|source) for/)
     end
   end
 

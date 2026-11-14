@@ -81,18 +81,13 @@ describe "TestInvokerTypes" do
   end
 
   describe TestInvokerTypes::PartialWork do
-    it "carries a partial file's config and owning testable, with staleness fields settable after construction" do
+    it "carries a partial file's config and owning testable" do
       config   = double("Config")
       testable = TestInvokerTypes::Testable.new( name: 'a_test' )
-      work     = TestInvokerTypes::PartialWork.new( config: config, testable: testable, directives_only_filepath: nil )
-
-      work.preprocessed_target = 'build/preprocess/Foo.h'
-      work.stale               = true
+      work     = TestInvokerTypes::PartialWork.new( config: config, testable: testable )
 
       expect(work.config).to equal( config )
       expect(work.testable).to equal( testable )
-      expect(work.preprocessed_target).to eq( 'build/preprocess/Foo.h' )
-      expect(work.stale).to be true
     end
   end
 

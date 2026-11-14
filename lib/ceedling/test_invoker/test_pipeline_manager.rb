@@ -21,6 +21,7 @@ class TestPipelineManager
     :test_build_setup,
     :test_includes_extractinator,
     :test_build_planner,
+    :partial_files_preprocessinator,
     :partials_manager,
     :test_build_executor,
     :test_file_preprocessinator,
@@ -189,7 +190,7 @@ class TestPipelineManager
             condition:       use_partials,
             empty_condition: ->(s) { s.partials_headers.empty? },
             empty_notice:    "no Partials to process",
-            body: ->(s) { @partials_manager.stage_preprocess_partial_headers(s) }
+            body: ->(s) { @partial_files_preprocessinator.preprocess_headers(s) }
       ),
 
       # Stage 7
@@ -197,7 +198,7 @@ class TestPipelineManager
             condition:       use_partials,
             empty_condition: ->(s) { s.partials_sources.empty? },
             empty_notice:    "no Partials to process",
-            body: ->(s) { @partials_manager.stage_preprocess_partial_sources(s) }
+            body: ->(s) { @partial_files_preprocessinator.preprocess_sources(s) }
       ),
 
       # Stage 8
