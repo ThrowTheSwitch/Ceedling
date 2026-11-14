@@ -215,10 +215,10 @@ class TestPipelineManager
             body: ->(s) { @test_build_planner.stage_flatten_mocks_list(s) }
       ),
 
-      # Stage 9
+      # Stage 9 — a Partial mock needs no preprocessing, so Partial mocks alone leave it empty.
       stage("Preprocessing for Mocks",
             condition:       use_mocks_preproc,
-            empty_condition: ->(s) { s.mocks_list.empty? },
+            empty_condition: ->(s) { s.mocks_list.all? { |mock| mock.details.partial } },
             empty_notice:    "no mocks to process",
             body: ->(s) { @test_build_executor.stage_preprocess_mocks(s) }
       ),

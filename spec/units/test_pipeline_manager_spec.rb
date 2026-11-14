@@ -76,12 +76,17 @@ describe TestPipelineManager do
     )
   end
 
+  # A flattened mock, a Partial's or a plain header's
+  def mock_work(partial: false)
+    TestInvokerTypes::MockWork.new( :details => TestInvokerTypes::MockDetails.new( :partial => partial ) )
+  end
+
   # Defaults every flattened list to non-empty, real-shaped-enough content, so every
   # existing test below exercises the "has work to do" path without having to know or
   # care about T1/T2's output -- exactly as it would if a project had at least one
   # Partial and one mock. Tests specifically about the "enabled but nothing to do this
   # run" case (below) override one or more of these to `[]`.
-  def state(options: [], partials_headers: [double("PartialWork")], partials_sources: [double("PartialWork")], mocks_list: [double("MockWork")])
+  def state(options: [], partials_headers: [double("PartialWork")], partials_sources: [double("PartialWork")], mocks_list: [mock_work])
     TestInvokerTypes::PipelineState.new(
       :testables        => {}, :context => :test, :options => options,
       :partials_headers => partials_headers, :partials_sources => partials_sources, :mocks_list => mocks_list,
@@ -399,6 +404,31 @@ describe TestPipelineManager do
           .with( "Mocking: no mocks to generate", Verbosity::OBNOXIOUS )
 
         @manager.run( state(options: [], mocks_list: []) )
+      end
+    end
+
+    # CMock reads a Partial mock's generated header itself, so stage 9 has nothing to do for one
+    context "when mocking is enabled and every mock is a Partial's" do
+      it "skips mock preprocessing with its notice but still generates the mocks" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Mocks: no mocks to process", Verbosity::OBNOXIOUS )
+
+        @manager.run( state(options: [], mocks_list: [mock_work(partial: true)]) )
+      end
+
+      it "runs mock preprocessing when a plain mock sits beside a Partial's" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+
+        expect(@test_build_executor).to receive(:stage_preprocess_mocks)
+
+        @manager.run( state(options: [], mocks_list: [mock_work(partial: true), mock_work]) )
       end
     end
 
