@@ -13,8 +13,8 @@ require 'spec_system_helper'
 ##
 ## A module may spell `static`, `static inline` or a type attribute through macros of its own.
 ## A Partial tests and mocks each function a macro makes static, and exposes each such variable.
-## A type keeps an attribute a macro writes after its closing brace. Forced fallback
-## preprocessing builds the same tests.
+## A type keeps an attribute a macro writes after its closing brace, with or without a variable
+## after it. Forced fallback preprocessing builds the same tests.
 ##
 
 PARTIALS_MACROS_CONFIG_HEADER = <<~C
@@ -39,6 +39,7 @@ PARTIALS_MACROS_WIDGET_SOURCE = <<~C
   #include "widget.h"
 
   PRIVATE int counter;
+  struct frame { char c; int i; } PACKED g_frame;
 
   // The name on its own line moves the rewritten head's line marker
   PRIVATE int
@@ -70,6 +71,7 @@ PARTIALS_MACROS_ALL_TEST = PARTIALS_MACROS_PREAMBLE + <<~C
   void test_twice(void) { TEST_ASSERT_EQUAL_INT(42, twice(21)); }
   void test_get_counts(void) { TEST_ASSERT_EQUAL_INT(42, widget_get()); TEST_ASSERT_EQUAL_INT(1, counter); }
   void test_packed(void) { TEST_ASSERT_EQUAL_size_t(sizeof(char) + sizeof(int), sizeof(struct pk)); }
+  void test_packed_variable(void) { TEST_ASSERT_EQUAL_size_t(sizeof(char) + sizeof(int), sizeof(g_frame)); }
 C
 
 # The public function under test calls its private neighbors through their mocks
@@ -111,7 +113,7 @@ ceedling_system_tests do
 
   it "tests and mocks the functions macros make static, and exposes the variable" do
     in_project do
-      build_passing( 5 )
+      build_passing( 6 )
     end
   end
 
@@ -119,7 +121,7 @@ ceedling_system_tests do
     in_project do
       @c.merge_project_yml_for_test( { :test_build => { :preprocess_force_fallback => true } } )
 
-      expect(build_passing( 5 )).to match(/Forcing best-effort fallback preprocessing/)
+      expect(build_passing( 6 )).to match(/Forcing best-effort fallback preprocessing/)
     end
   end
 end

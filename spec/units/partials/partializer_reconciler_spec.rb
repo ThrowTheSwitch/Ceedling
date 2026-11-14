@@ -522,5 +522,86 @@ describe PartializerReconciler do
 
       expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED;" )
     end
+    # Variables after the macro read it as the start of their type. Their twins' types lack it.
+    context "and variables follow" do
+      def typed(name, type_text, defined_type, text:)
+        CExtractorTypes::CVariableDeclaration.new( name: name, type: type_text, text: text, defined_type: defined_type )
+      end
+
+      def expanded_with(*vars, type_text: "struct pk { char c; int i; } __attribute__((packed))", decorators: [])
+        twin_pk = type( type_text, tag: "pk" )
+        twins   = vars.map { |name, rest| typed( name, rest, twin_pk, text: "#{name};" ).tap { |twin| twin.decorators = decorators } }
+        return CExtractorTypes::CModule.new( aggregate_definitions: [twin_pk], variable_declarations: twins )
+      end
+
+      it "gives the type the macro once, and takes it from every variable" do
+        pk       = type( "struct pk { char c; int i; }", tag: "pk" )
+        vars     = [typed( "i1", "PACKED", pk, text: "PACKED i1;" ), typed( "i2", "PACKED", pk, text: "PACKED i2;" )]
+        c_module = written( [pk], vars )
+
+        reconcile_with( c_module, expanded_with( ["i1", ""], ["i2", ""] ) )
+
+        expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED" )
+        expect( vars.map( &:type ) ).to eq( ["", ""] )
+        expect( vars.map( &:text ) ).to eq( ["i1;", "i2;"] )
+      end
+
+      it "keeps what follows the macro in the variable's type" do
+        pk  = type( "struct pk { char c; int i; }", tag: "pk" )
+        gp  = typed( "gp", "PACKED *", pk, text: "PACKED *gp;" )
+
+        reconcile_with( written( [pk], [gp] ), expanded_with( ["gp", "*"] ) )
+
+        expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED" )
+        expect( [gp.type, gp.text] ).to eq( ["*", "*gp;"] )
+      end
+
+      it "ends a type its statement ends before the semicolon" do
+        pk = type( "struct pk { char c; int i; };", tag: "pk" )
+
+        reconcile_with( written( [pk], [typed( "inst", "PACKED", pk, text: "PACKED inst;" )] ), expanded_with( ["inst", ""] ) )
+
+        expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED;" )
+      end
+
+      # A macro that stands for part of the declarator, as `#define PTR *`, is not the type's
+      it "leaves a variable alone whose written type doesn't end in its twin's" do
+        pk = type( "struct pk { char c; int i; }", tag: "pk" )
+        gp = typed( "gp", "PTR", pk, text: "PTR gp;" )
+
+        reconcile_with( written( [pk], [gp] ), expanded_with( ["gp", "*"] ) )
+
+        expect( [pk.text, gp.type, gp.text] ).to eq( ["struct pk { char c; int i; }", "PTR", "PTR gp;"] )
+      end
+
+      # A storage class after the brace, as `struct pk { … } PRIVATE inst;`, stays the variable's
+      it "leaves a macro alone that gives the variable a decorator" do
+        pk   = type( "struct pk { char c; int i; }", tag: "pk" )
+        inst = typed( "inst", "PRIVATE", pk, text: "PRIVATE inst;" )
+
+        reconcile_with( written( [pk], [inst] ), expanded_with( ["inst", ""], type_text: "struct pk { char c; int i; }", decorators: ['static'] ) )
+
+        expect( pk.text ).to eq( "struct pk { char c; int i; }" )
+      end
+
+      # A qualifier the compiler reads ahead of an attribute leaves the expanded type as written
+      it "leaves a macro alone that adds nothing after the twin's brace" do
+        pk   = type( "struct pk { char c; int i; }", tag: "pk" )
+        inst = typed( "inst", "VOLATILE_PACKED", pk, text: "VOLATILE_PACKED inst;" )
+
+        reconcile_with( written( [pk], [inst] ), expanded_with( ["inst", "__attribute__((packed))"], type_text: "struct pk { char c; int i; }" ) )
+
+        expect( [pk.text, inst.type] ).to eq( ["struct pk { char c; int i; }", "VOLATILE_PACKED"] )
+      end
+
+      it "leaves a variable alone whose written type matches its twin's" do
+        pk = type( "struct pk { char c; int i; }", tag: "pk" )
+        gp = typed( "gp", "*", pk, text: "*gp;" )
+
+        reconcile_with( written( [pk], [gp] ), expanded_with( ["gp", "*"] ) )
+
+        expect( [pk.text, gp.type] ).to eq( ["struct pk { char c; int i; }", "*"] )
+      end
+    end
   end
 end

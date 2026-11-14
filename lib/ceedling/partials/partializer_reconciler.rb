@@ -7,6 +7,7 @@
 
 require 'set'
 require 'ceedling/constants'
+require 'ceedling/partials/type_macros'
 
 # Pairs what a Partial extracts from a file's written text with its twin in the file's full
 # expansion, where no macro hides anything.
@@ -16,7 +17,8 @@ require 'ceedling/constants'
 # or a call. The full expansion shows them. A function or a declaration takes from its twin
 # what a macro can hide, and keeps its code as written, so line mapping still holds. A
 # variable whose storage class a macro supplies takes its whole declaration from its twin. A
-# type regains a macro after its closing brace that the written text read as a variable.
+# type regains a macro written after its closing brace. The written text reads that macro as a
+# variable, or as the start of the variables' type.
 #
 # Definitions pair by name. Declarations and file-scope variables pair by name and then by
 # order, since a name may be declared more than once.
@@ -39,7 +41,7 @@ class PartializerReconciler
   # @param file_type          [String] "source" or "header", used in log messages
   def reconcile(c_module:, expansion_filepath:, name:, module_name:, file_type:)
     expanded = @c_extractor.from_file( expansion_filepath )
-    _rejoin_trailing_macros( c_module, expanded )
+    Partials::TypeMacros.rejoin_trailing( c_module, expanded )
     entries  = _reconcile_definitions( c_module.function_definitions, expanded ) +
                _reconcile_declarations( c_module.function_declarations, expanded ) +
                _reconcile_variables( c_module, expanded )
@@ -100,50 +102,29 @@ class PartializerReconciler
     return changed ? "`#{decl.name}` (declaration)" : nil
   end
 
-  # Gives a type back the macro after its closing brace, as `PACKED` in `struct pk { … } PACKED;`.
-  # The written text reads that macro as a variable the type defines. The expansion shows the
-  # macro belongs to the type. It holds no variable of that name, and it defines the tag on its
-  # own. A type with no tag, or with more than one variable, is left alone, since its expansion
-  # can't be matched.
-  def _rejoin_trailing_macros(c_module, expanded_module)
-    names   = Set.new( expanded_module.variable_declarations.filter_map( &:name ) )
-    tags    = _standalone_tags( expanded_module )
-    misread = c_module.variable_declarations.select { |var| _misread?( c_module, var, names, tags ) }
-
-    misread.each { |var| var.defined_type.text = "#{var.defined_type.text.chomp( ';' )} #{var.text}" }
-    c_module.remove!( misread )
-  end
-
-  # Whether a written variable is a macro that ends its type
-  def _misread?(c_module, var, names, tags)
-    tag = var.defined_type&.tag
-    return false if tag.nil? or names.include?( var.name ) or !tags.include?( tag )
-
-    return c_module.variable_declarations.none? { |other| !other.equal?( var ) and other.defined_type.equal?( var.defined_type ) }
-  end
-
-  # The tags of the types a module defines with a body, apart from any named variable. A
-  # forward declaration defines nothing. A declaration with no variable name, as
-  # `static struct pk { … } __attribute__((packed));` expands, still defines its type alone.
-  def _standalone_tags(c_module)
-    named   = c_module.variable_declarations.select( &:name ).filter_map( &:defined_type )
-    defined = Set.new.compare_by_identity.merge( named )
-    bodied  = c_module.aggregate_definitions.select { |type| type.text.include?( '{' ) and !defined.include?( type ) }
-    return Set.new( bodied.filter_map( &:tag ) )
-  end
-
   # Pairs each file-scope variable with its twin by name, then order. A name pairs only where it
   # appears as often in both copies, since fallback can keep both branches of a conditional. A
   # variable with no name it can be read by never pairs. Returns log entries for those reconciled.
   def _reconcile_variables(c_module, expanded_module)
+    ended = Set.new.compare_by_identity
+    return _variable_pairs( c_module, expanded_module ).filter_map { |var, twin| _reconcile_pair( c_module, var, twin, ended ) }
+  end
+
+  # Each written variable with its twin, for the names both copies hold equally often
+  def _variable_pairs(c_module, expanded_module)
     expanded_by_name = expanded_module.variable_declarations.group_by( &:name )
 
     return c_module.variable_declarations.group_by( &:name ).flat_map do |var_name, same_name|
       twins = expanded_by_name.fetch( var_name, [] )
-      next [] if var_name.nil? or twins.size != same_name.size
-
-      same_name.zip( twins ).filter_map { |var, twin| _reconcile_variable( c_module, var, twin ) }
+      (var_name.nil? or twins.size != same_name.size) ? [] : same_name.zip( twins )
     end
+  end
+
+  # A variable's type takes back a macro after its closing brace, then the variable takes what
+  # a macro hid. `ended` holds the types already given their macro.
+  def _reconcile_pair(c_module, var, twin, ended)
+    Partials::TypeMacros.rejoin_leading( var, twin, ended )
+    return _reconcile_variable( c_module, var, twin )
   end
 
   # A variable whose storage class a macro supplies takes every parsed field from its twin. Its
