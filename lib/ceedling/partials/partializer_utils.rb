@@ -91,8 +91,7 @@ class PartializerUtils
 
   # Locate each function's line number by searching the original C source file once.
   #
-  # Used when the global fallback mode is active — i.e., preprocessed output is
-  # unavailable for all functions in the current context.
+  # Used for a file preprocessed in fallback, which has no raw directives-only copy to search.
   #
   # @param code_blocks [Array<String>] Function definition texts to search for
   # @param filepath    [String] Path to the C source file to search

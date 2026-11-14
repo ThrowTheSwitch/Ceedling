@@ -80,7 +80,6 @@ class PartializerHelper
     :partializer_utils,
     :c_extractor,
     :c_extractor_declarations,
-    :file_path_utils,
     :parsing_parcels,
     :loginator
   )
@@ -149,23 +148,18 @@ class PartializerHelper
   # 
   # `source_filepath` is always updated.
   #
-  # @param name [String]Name of the containing test, used to construct the path to 
-  # the preprocessor expansion file for that test context.
   # @param funcs [Array<FunctionDefinition>] Function definitions whose source 
   # locations are to be resolved. Matched entries are mutated in place.
   # @param filepath [String] Path to the original C source file that was 
   # preprocessed, written into each matched FunctionDefinition as source_filepath.
-  # @param fallback [bool] Whether to immediately use simple source file scanning
-  # instead of preprocessed output (because preprocessed output is not available)
-  def associate_function_line_numbers(name:, funcs:, filepath:, fallback:)
-    # File path of directives-only preprocessor output
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, name )
-
+  # @param raw_filepath [String, nil] The file's raw directives-only output. Without one, as
+  # in fallback, the original source is searched instead.
+  def associate_function_line_numbers(funcs:, filepath:, raw_filepath:)
     @utils.stamp_source_filepaths( funcs, filepath )
 
     # Every function is located with one read of each file searched
     code_blocks = funcs.map( &:code_block )
-    if fallback
+    if raw_filepath.nil?
       msg = "Using fallback C function location search for #{filepath}"
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
@@ -173,7 +167,7 @@ class PartializerHelper
     else
       # Searches the original source for any function the preprocessed copy lacks
       lines = @utils.locate_functions_via_preprocessed(
-        code_blocks: code_blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath
+        code_blocks: code_blocks, filepath: filepath, preprocessed_filepath: raw_filepath
       )
     end
     funcs.zip( lines ) { |func, line_num| func.line_num = line_num }

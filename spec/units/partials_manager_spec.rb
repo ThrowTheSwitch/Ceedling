@@ -66,8 +66,6 @@ describe PartialsManager do
     before(:each) do
       stub_batchinator_exec()
 
-      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
-
       @module_contents = double( "CModule",
         function_definitions:    [],
         function_declarations:   [],
@@ -147,15 +145,14 @@ describe PartialsManager do
       expect( @testable.partials.mocks ).to eq( %w[Alpha Beta Gamma] )
     end
 
-    it "plans what the implementation carries from both selections, the preprocessing mode and the guard" do
+    it "plans what the implementation carries from both selections, the Partial and the guard" do
       impl  = [double("FunctionDefinition")]
       iface = [double("FunctionDeclaration")]
       allow(@partializer).to receive(:extract_implementation_functions).and_return( impl )
       allow(@partializer).to receive(:extract_interface_functions).and_return( iface )
 
       expect(@partializer).to receive(:plan_carry).with(
-        test: 'a_test', partial: 'Foo', c_module: @module_contents, impl: impl, interface: iface,
-        fallback: true, header_guarded: true, header_filepath: 'src/Foo.h', source_filepath: 'src/Foo.c'
+        test: 'a_test', c_module: @module_contents, impl: impl, interface: iface, header_guarded: true, config: @config
       ).and_return( Partials::CarryPlan.new )
 
       @manager.stage_generate_partials( @state )
@@ -449,7 +446,7 @@ describe PartialsManager do
     # Generation reads the preprocessed copies, not the originals. A change that rewrites the
     # copies without touching the originals -- forced fallback toggled, a different
     # preprocessor -- has to regenerate.
-    it "registers the preprocessed copies extraction reads as antecedent files" do
+    it "registers the preprocessed copies generation reads as antecedent files" do
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
@@ -457,12 +454,13 @@ describe PartialsManager do
       @config.header.expansion_filepath = 'build/pp/expanded_code/src/Foo.h'
       @config.source.assembled_filepath = 'build/pp/src/Foo.c'
       @config.source.expansion_filepath = 'build/pp/expanded_code/src/Foo.c'
+      @config.header.raw_directives_only_filepath = 'build/pp/directives_only/raw/src/Foo.h'
 
       expect(@dependinator).to receive(:register).exactly(3).times do |_target, files: [], **|
         expect( files ).to contain_exactly(
           'src/Foo.h', 'src/Foo.c',
           'build/pp/src/Foo.h', 'build/pp/expanded_code/src/Foo.h',
-          'build/pp/src/Foo.c', 'build/pp/expanded_code/src/Foo.c'
+          'build/pp/src/Foo.c', 'build/pp/expanded_code/src/Foo.c', 'build/pp/directives_only/raw/src/Foo.h'
         )
       end
 
@@ -520,12 +518,12 @@ describe PartialsManager do
     end
 
     # Fallback resolves strictly less than the accurate pass, and validate_config refuses the
-    # shapes it cannot handle. The stage has to tell it which path ran.
-    it "tells config validation whether preprocessing fell back" do
+    # shapes it cannot handle. The Partial's own files record which path ran.
+    it "hands config validation the Partial whose files record how they were preprocessed" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [] )
 
-      expect(@partializer).to receive(:validate_config).with( hash_including( fallback: true ) )
+      expect(@partializer).to receive(:validate_config).with( c_module: @module_contents, config: @config, name: 'a_test' )
 
       @manager.stage_generate_partials( @state )
     end

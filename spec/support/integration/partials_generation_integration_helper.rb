@@ -195,9 +195,9 @@ module PartialsGeneration
     end
   end
 
-  # Raised when the accurate preprocessing pass fails outright. Production falls back to a
-  # text scan here; a case that cannot preprocess is a broken case, so the harness refuses
-  # rather than silently measuring a different path than the one asked for.
+  # Raised when a preprocessor run fails outright. Production falls back for that file. A
+  # case that cannot preprocess is a broken case, so the harness refuses rather than silently
+  # measuring a different path than the one asked for.
   class PreprocessFailure < StandardError; end
 
 end
@@ -239,66 +239,13 @@ module PartialsGenerationHelpers
     File.write( File.join( dir, "#{module_name}.c" ), source )
     extra.each { |name, text| File.write( File.join( dir, name ), text ) }
 
-    pp_header = reconstitute_partial_file(
-      dir: dir, filename: "#{module_name}.h", kind: :header,
-      includes: header_includes, defines: defines, mode: mode
+    # Each file is preprocessed as stages 6 and 7 preprocess it, into the record they fill in
+    header_file = preprocess_partial_file(
+      dir: dir, filename: "#{module_name}.h", kind: :header, includes: header_includes, defines: defines, mode: mode
     )
-    pp_source = reconstitute_partial_file(
-      dir: dir, filename: "#{module_name}.c", kind: :source,
-      includes: source_includes, defines: defines, mode: mode
+    source_file = preprocess_partial_file(
+      dir: dir, filename: "#{module_name}.c", kind: :source, includes: source_includes, defines: defines, mode: mode
     )
-
-    # Each file's functions carry the role of the file they came from, as
-    # Partializer#extract_module_contents stamps them, so carrying sees the same origins.
-    header_module = extract_c( pp_header ).stamp_origin!( :header )
-    source_module = extract_c( pp_source ).stamp_origin!( :source )
-
-    # Production reconciles each file with its fully expanded copy, which resolves macros that
-    # hide a storage class and shows calls a macro hides. Full expansion needs no directives-only
-    # support, so fallback reconciles too.
-    reconcile_with_full_expansion( header_module, dir: dir, filename: "#{module_name}.h", defines: defines, file_type: 'header' )
-    reconcile_with_full_expansion( source_module, dir: dir, filename: "#{module_name}.c", defines: defines, file_type: 'source' )
-
-    c_module = header_module + source_module
-
-    # Production marks a function the module declares but never defines when an included
-    # header defines it inline, reading each file's raw directives-only copy as bytes.
-    # Fallback writes no such copy, so it marks nothing.
-    if mode == :accurate
-      defined = c_module.function_definitions.map( &:name )
-      { header_module => "#{module_name}.h", source_module => "#{module_name}.c" }.each do |file_module, filename|
-        raw   = File.join( dir, "#{filename}.directives_only" )
-        decls = file_module.function_declarations.reject { |decl| defined.include?( decl.name ) }
-        partials_helper.mark_inline_elsewhere( decls: decls, text: File.binread( raw ) ) if File.exist?( raw ) and !decls.empty?
-      end
-    end
-
-    generator   = build_partials_generator
-    partializer = build_partializer
-
-    # Function-scoped statics are promoted to module scope before generation, the way
-    # Partializer#extract_module_contents does it. Promotion is what puts a name that was
-    # private to one function into link-time resolution, so a linkage case cannot see its
-    # own subject without this step. Function line-number association is skipped, so selected
-    # bodies and helpers carry no `#line`. Carried prototypes are located in their files'
-    # text with the real code finder, as production locates them.
-    partials_helper.promote_function_scope_statics( c_module, name: 'PartialsGenerationTest', module_name: module_name, file_type: 'source' )
-
-    # A type a declaration defines is named once promotion is done, as production names it
-    Partials.name_defined_types( c_module, module_name )
-
-    # Generated-file boilerplate carried in from the reconstituted files is stripped before
-    # generation, exactly as PartialsManager#stage_generate_partials does. Skipping this
-    # leaves synthetic include guards in the extracted macros and misreports what a real
-    # build would emit. The real header's own guard goes too, since every generated file states it.
-    partializer.sanitize( c_module, include_guard: partializer.extract_module_include_guard( File.join( dir, "#{module_name}.h" ) ) )
-
-    # The header remaps take the source's and the header's lists apart, as partials_manager
-    # hands them. The implementation source's remap takes them joined, source first.
-    source_objects = partial_include_objects( source_includes )
-    header_objects = partial_include_objects( header_includes )
-    raw_includes   = source_objects + header_objects
-    apart          = { source_includes: source_objects, header_includes: header_objects }
 
     # DEDUCT with no subtractions is what TEST_PARTIAL_ALL_MODULE resolves to -- every function
     # exposed. The two sides are separate because a module is routinely tested at one visibility
@@ -309,23 +256,41 @@ module PartialsGenerationHelpers
       module: module_name,
       tests: PartializerConfig::PartialFunctions.new( type: tests_expose, subtractions: tests_subtract ),
       mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose, additions: mocks_add ),
-      header: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.h" ) ),
-      source: Partials::ConfigFileInfo.new( filepath: File.join( dir, "#{module_name}.c" ) )
+      header: header_file,
+      source: source_file
     )
+
+    generator   = build_partials_generator
+    partializer = build_partializer
+
+    # Extraction runs as PartialsManager runs it. Each file is extracted, reconciled with its
+    # expansion, located in its raw copy or in fallback its source, and has its function-scope
+    # statics promoted. The two merge, and declarations an included header defines inline are
+    # marked.
+    c_module = partializer.extract_module_contents( 'PartialsGenerationTest', config )
+
+    # Partials refuses a module whose shape fallback preprocessing cannot resolve, rather than
+    # generating from a guess and leaving a compiler to report something arcane later. The
+    # refusal comes right after extraction, before generation, as in PartialsManager.
+    partializer.validate_config( c_module: c_module, config: config, name: 'PartialsGenerationTest' )
+
+    # Generated-file boilerplate carried in from the reconstituted files is stripped before
+    # generation, exactly as PartialsManager#stage_generate_partials does. Skipping this
+    # leaves synthetic include guards in the extracted macros and misreports what a real
+    # build would emit. The real header's own guard goes too, since every generated file states it.
+    partializer.sanitize( c_module, include_guard: partializer.extract_module_include_guard( config.header.filepath ) )
+
+    # The header remaps take the source's and the header's lists apart, as partials_manager
+    # hands them. The implementation source's remap takes them joined, source first.
+    source_objects = source_file.includes
+    header_objects = header_file.includes
+    raw_includes   = source_objects + header_objects
+    apart          = { source_includes: source_objects, header_includes: header_objects }
 
     # Production hands the remaps the whole test file's partials hash, which includes the module
     # being generated. That entry is what tells the source remap to carry this module's own
     # interface header, so omitting it hides a real behavior.
     all_partials = partials.merge( module_name => config )
-
-    # Partials refuses a module whose shape fallback preprocessing cannot resolve, rather than
-    # generating from a guess and leaving a compiler to report something arcane later. Routed
-    # through validate_config so the refusal happens exactly where production puts it: before
-    # generation, not after.
-    partializer.validate_config(
-      c_module: c_module, config: config, name: 'PartialsGenerationTest',
-      fallback: mode == :fallback
-    )
 
     implementation = partializer.extract_implementation_functions(
       test: 'PartialsGenerationTest', partial: module_name,
@@ -369,10 +334,8 @@ module PartialsGenerationHelpers
     carry = nil
     unless implementation.nil?
       carry = partializer.plan_carry(
-        test: 'PartialsGenerationTest', partial: module_name, c_module: c_module,
-        impl: implementation, interface: interface, fallback: mode == :fallback,
-        header_guarded: !include_guard.nil?, header_filepath: config.header.filepath,
-        source_filepath: config.source.filepath
+        test: 'PartialsGenerationTest', c_module: c_module, impl: implementation, interface: interface,
+        header_guarded: !include_guard.nil?, config: config
       )
     end
 
@@ -411,63 +374,78 @@ module PartialsGenerationHelpers
       impl_h: read_generated( dir, "ceedling_partial_#{module_name}_impl.h" ),
       impl_c: read_generated( dir, "ceedling_partial_#{module_name}_impl.c" ),
       interface_h: read_generated( dir, "ceedling_partial_#{module_name}_interface.h" ),
-      pp_header: pp_header,
-      pp_source: pp_source,
+      pp_header: File.read( header_file.assembled_filepath, encoding: 'UTF-8' ),
+      pp_source: File.read( source_file.assembled_filepath, encoding: 'UTF-8' ),
       carry: carry
     )
   end
 
-  # Fully expands one module file with real GCC, keeps that file's own lines, and reconciles
-  # the file's extracted module with them through the production helper, as
-  # Partializer#extract_module_contents does with the expanded code stages 6 and 7 write.
-  def reconcile_with_full_expansion(file_module, dir:, filename:, defines:, file_type:)
-    path  = File.join( dir, filename )
-    raw   = "#{path}.full_expansion"
-    flags = defines.map { |name| "-D#{name}" }.join( ' ' )
-
-    command = "#{partials_compiler} -E #{flags} -I#{dir} -x c #{path} -o #{raw}".squeeze( ' ' )
-    _out, stderr, status = Open3.capture3( command )
-    raise PartialsGeneration::PreprocessFailure, "#{command}\n#{stderr}" unless status.success?
-
-    expanded = File.open( raw, 'rb' ) { |file| partials_reconstructor.extract_file_as_string_from_expansion( file, path ) }
-    expanded_module = extract_c( expanded )
-
-    # The production helper reads the expanded copy through its extractor, so this one hands
-    # back the module just extracted
-    extractor = Object.new
-    extractor.define_singleton_method( :from_file ) { |_path| expanded_module }
-    reconciler = PartializerHelper.new(
-      {
-        partializer_utils: nil, c_extractor: extractor, c_extractor_declarations: nil,
-        file_path_utils: nil, parsing_parcels: nil, loginator: partials_null_loginator
-      }
-    )
-    reconciler.update_signatures_from_full_expansion(
-      funcs: file_module.function_definitions, decls: file_module.function_declarations,
-      expansion_filepath: raw, name: 'PartialsGenerationTest',
-      module_name: File.basename( filename, '.*' ), file_type: file_type
-    )
-  end
-
-  # Reproduces what Preprocessinator#preprocess_partial_file
-  # leaves on disk for the extractor to read, in the same steps and with the same
-  # collaborators.
-  #
-  # The accurate path runs real GCC, which resolves every conditional and follows every
-  # include while leaving macro directives as written. The fallback path never runs a
-  # compiler: it scans the file's own text, tracking conditionals approximately, which is
-  # why it resolves less and why Partials needs to refuse some shapes outright under it.
-  def reconstitute_partial_file(dir:, filename:, kind:, includes:, defines: [], mode: :accurate)
+  # Preprocesses one module file as stages 6 and 7 do, and gives the record they fill in. The
+  # accurate path keeps a raw directives-only copy, which locates functions and marks inline
+  # bodies. Both paths keep a full expansion and its own lines as plain code, which
+  # reconciliation parses.
+  def preprocess_partial_file(dir:, filename:, kind:, includes:, defines:, mode:)
     path = File.join( dir, filename )
 
-    contents, extras =
+    raw =
       case mode
-      when :accurate then reconstitute_accurate( dir: dir, path: path, defines: defines )
-      when :fallback then reconstitute_fallback( path: path, defines: defines )
+      when :accurate then directives_only( dir: dir, path: path, defines: defines )
+      when :fallback then nil
       else raise ArgumentError, "unknown preprocessing mode '#{mode}'"
       end
 
-    assembled = File.join( dir, "preprocessed_#{filename}" )
+    raw_expansion, expansion = expand( dir: dir, path: path, defines: defines )
+
+    return Partials::ConfigFileInfo.new(
+      filepath: path, raw_directives_only_filepath: raw, raw_expansion_filepath: raw_expansion, expansion_filepath: expansion,
+      assembled_filepath: reconstitute_partial_file( dir: dir, filename: filename, kind: kind, includes: includes, raw: raw, defines: defines ),
+      fallback: raw.nil?, includes: partial_include_objects( includes )
+    )
+  end
+
+  # GCC's -fdirectives-only output with its comments stripped, as Preprocessinator#generate_directives_only_output
+  # leaves it. Defines reach every pass, as they do in production. Without them a case pairing
+  # `defines:` with accurate mode would silently measure the undefined configuration instead.
+  def directives_only(dir:, path:, defines:)
+    raw = "#{path}.directives_only"
+    run_partials_preprocessor( dir: dir, path: path, output: raw, defines: defines, flags: '-fdirectives-only' )
+    partials_comment_stripper.strip_file( raw )
+
+    return raw
+  end
+
+  # The full expansion and its own lines, as Preprocessinator#generate_partial_expansion writes them
+  def expand(dir:, path:, defines:)
+    raw  = "#{path}.full_expansion"
+    code = "#{path}.expanded_code"
+    run_partials_preprocessor( dir: dir, path: path, output: raw, defines: defines )
+
+    contents = partials_file_assembler.collect_own_lines( source_filepath: path, preprocessed_filepath: raw )
+    partials_file_assembler.assemble_preprocessed_code_file( preprocessed_filepath: code, contents: contents, extras: [], includes: [] )
+
+    return raw, code
+  end
+
+  def run_partials_preprocessor(dir:, path:, output:, defines:, flags: '')
+    defines = defines.map { |name| "-D#{name}" }.join( ' ' )
+    command = "#{partials_compiler} -E #{flags} #{defines} -I#{dir} -x c #{path} -o #{output}".squeeze( ' ' )
+
+    _out, stderr, status = Open3.capture3( command )
+    raise PartialsGeneration::PreprocessFailure, "#{command}\n#{stderr}" unless status.success?
+  end
+
+  # Reproduces the assembled copy Preprocessinator#preprocess_partial_file leaves for the
+  # extractor, in the same steps and with the same collaborators, and gives its path.
+  #
+  # The accurate path reads GCC's directives-only output, which resolves every conditional and
+  # follows every include while leaving macro directives as written. The fallback path never
+  # runs a compiler: it scans the file's own text, tracking conditionals approximately, which
+  # is why it resolves less and why Partials needs to refuse some shapes outright under it.
+  def reconstitute_partial_file(dir:, filename:, kind:, includes:, raw:, defines:)
+    path = File.join( dir, filename )
+    contents, extras = raw ? reconstitute_accurate( path: path, raw: raw ) : reconstitute_fallback( path: path, defines: defines )
+
+    assembled    = File.join( dir, "preprocessed_#{filename}" )
     include_list = partial_include_objects( includes )
 
     if kind == :header
@@ -477,52 +455,29 @@ module PartialsGenerationHelpers
       )
     else
       partials_file_assembler.assemble_preprocessed_code_file(
-        preprocessed_filepath: assembled,
-        contents: contents, extras: extras, includes: include_list
+        preprocessed_filepath: assembled, contents: contents, extras: extras, includes: include_list
       )
     end
 
-    File.read( assembled, encoding: 'UTF-8' )
+    return assembled
   end
 
-  # Only lines belonging to this file survive the reconstructor; a type arriving from an
-  # included header is discarded here, which is why an extracted type can reference
-  # something no generated file declares.
-  def reconstitute_accurate(dir:, path:, defines: [])
-    raw = "#{path}.directives_only"
-
-    # Defines reach both passes, as they do in production. Without this a case pairing
-    # `defines:` with accurate mode would silently measure the undefined configuration instead.
-    flags = defines.map { |name| "-D#{name}" }.join( ' ' )
-
-    command = "#{partials_compiler} -E -fdirectives-only #{flags} -I#{dir} -x c #{path} -o #{raw}".squeeze( ' ' )
-    _out, stderr, status = Open3.capture3( command )
-    raise PartialsGeneration::PreprocessFailure, "#{command}\n#{stderr}" unless status.success?
-
-    partials_comment_stripper.strip_file( raw )
-
-    # Text mode, as PreprocessinatorFileAssembler#collect_own_lines
-    # reads it. On Windows, GCC's directives-only output of a CRLF source ends each line in
-    # "\r\r\n", and the text-mode read is what keeps that one line break, not two.
-    contents = File.open( raw, 'r' ) do |file|
-      partials_reconstructor.extract_file_as_array_from_expansion( file, path, rejoin: false )
-    end
-
-    [contents, []]
+  # Only lines belonging to this file survive. A type arriving from an included header is
+  # discarded here, which is why an extracted type can reference something no generated file
+  # declares. On Windows, GCC's directives-only output of a CRLF source ends each line in
+  # "\r\r\n", and the production reader's text mode keeps one line break, not two.
+  def reconstitute_accurate(path:, raw:)
+    return partials_file_assembler.collect_own_lines( source_filepath: path, preprocessed_filepath: raw, rejoin: false ), []
   end
 
   # Fallback strips every directive line out of the content, so the macros and pragmas the
   # extractor still needs are recovered separately and reinserted as assembler extras. That
   # second pass is what keeps a type's array-size macro visible when no compiler ran.
-  def reconstitute_fallback(path:, defines: [])
-    contents = partials_file_assembler.collect_file_contents_fallback(
-      source_filepath: path, defines: defines
-    )
-    extras = partials_file_assembler.collect_macros_and_pragmas_fallback(
-      source_filepath: path, defines: defines
-    )
+  def reconstitute_fallback(path:, defines:)
+    contents = partials_file_assembler.collect_file_contents_fallback( source_filepath: path, defines: defines )
+    extras   = partials_file_assembler.collect_macros_and_pragmas_fallback( source_filepath: path, defines: defines )
 
-    [contents, extras]
+    return contents, extras
   end
 
   # ---- compilation -------------------------------------------------------------
@@ -682,6 +637,12 @@ module PartialsGenerationHelpers
   end
 
   def extract_c(content)
+    partials_c_extractor.from_string( content: content )
+  end
+
+  # A real extractor that reads files with a real file wrapper, as Partializer reads the
+  # assembled copies and reconciliation reads the expanded code
+  def partials_c_extractor
     code_text     = CExtractorCodeText.new
     declarations  = CExtractorDeclarations.new({ c_extractor_code_text: code_text })
     functions     = CExtractorFunctions.new({ c_extractor_code_text: code_text })
@@ -701,11 +662,11 @@ module PartialsGenerationHelpers
         # length, as c_extractor_composition_spec.rb does.
         configurator:              RSpec::Mocks::Double.new( 'Configurator' ),
         loginator:                 RSpec::Mocks::Double.new( 'Loginator' ).as_null_object,
-        file_wrapper:              RSpec::Mocks::Double.new( 'FileWrapper' ).as_null_object
+        file_wrapper:              partials_file_wrapper
       }
     )
     extractor.setup()
-    extractor.from_string( content: content )
+    extractor
   end
 
   def build_partials_generator
@@ -726,7 +687,7 @@ module PartialsGenerationHelpers
         configurator:       RSpec::Mocks::Double.new( 'Configurator' ).as_null_object,
         partializer_helper: partials_helper,
         file_finder:        RSpec::Mocks::Double.new( 'FileFinder' ).as_null_object,
-        c_extractor:        RSpec::Mocks::Double.new( 'CExtractor' ).as_null_object,
+        c_extractor:        partials_c_extractor,
         file_path_utils:    partials_file_path_utils,
         preprocessinator_reconstructor: partials_reconstructor,
         file_wrapper:       partials_file_wrapper,
@@ -736,9 +697,9 @@ module PartialsGenerationHelpers
     )
   end
 
-  # One instance per case, memoized so the promotion pass and the extraction passes share
-  # state. The code finder stays doubled: it serves only line-number association, which this
-  # harness skips. Wiring mirrors partializer_helper_spec.rb's own end-to-end context.
+  # One instance per case, memoized so extraction and the later passes share state. Every
+  # collaborator is real, so selected bodies and carried items alike carry the #line a build
+  # gives them.
   def partials_helper
     @partials_helper ||= PartializerHelper.new(
       {
@@ -749,11 +710,10 @@ module PartialsGenerationHelpers
                                       loginator: partials_null_loginator
                                     }
                                   ),
-        c_extractor:              RSpec::Mocks::Double.new( 'CExtractor' ).as_null_object,
+        c_extractor:              partials_c_extractor,
         c_extractor_declarations: CExtractorDeclarations.new(
                                     { c_extractor_code_text: CExtractorCodeText.new }
                                   ).tap( &:setup ),
-        file_path_utils:          partials_file_path_utils,
         parsing_parcels:          ParsingParcels.new,
         loginator:                partials_null_loginator
       }
@@ -795,8 +755,8 @@ module PartialsGenerationHelpers
     FileWrapper.new( loginator: partials_null_loginator, verbosinator: partials_null_verbosinator )
   end
 
-  # No build tree exists, so preprocessed copies resolve under a path that holds none, as when
-  # directives-only preprocessing is unavailable
+  # Partializer names generated files with it. Each record carries its preprocessed paths, so
+  # no build tree is needed.
   def partials_file_path_utils
     FilePathUtils.new(
       configurator: RSpec::Mocks::Double.new( 'Configurator', project_test_preprocess_files_path: '/no/preprocessed/files' ).as_null_object,

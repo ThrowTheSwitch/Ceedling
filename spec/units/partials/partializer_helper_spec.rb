@@ -21,7 +21,6 @@ describe PartializerHelper do
     @partializer_utils        = double("PartializerUtils")
     @c_extractor              = double("CExtractor")
     @c_extractor_declarations = double("CExtractorDeclarations")
-    @file_path_utils          = double("FilePathUtils")
     @parsing_parcels          = ParsingParcels.new
     @loginator                = double("Loginator").as_null_object
 
@@ -30,7 +29,6 @@ describe PartializerHelper do
         :partializer_utils        => @partializer_utils,
         :c_extractor              => @c_extractor,
         :c_extractor_declarations => @c_extractor_declarations,
-        :file_path_utils          => @file_path_utils,
         :parsing_parcels          => @parsing_parcels,
         :loginator                => @loginator
       }
@@ -277,13 +275,8 @@ describe PartializerHelper do
 
   context "#associate_function_line_numbers" do
     before(:each) do
-      @name                 = 'TestModule'
-      @filepath             = '/path/to/module.c'
-      @preprocessed_filepath = '/build/preproc/module_TestModule.i'
-
-      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
-        .with(@filepath, @name)
-        .and_return(@preprocessed_filepath)
+      @filepath     = '/path/to/module.c'
+      @raw_filepath = '/build/preproc/directives_only/raw/module.c'
 
       allow(@partializer_utils).to receive(:stamp_source_filepaths)
       allow(@partializer_utils).to receive(:format_line_number_list).and_return([])
@@ -291,50 +284,43 @@ describe PartializerHelper do
       allow(@partializer_utils).to receive(:locate_functions_via_preprocessed).and_return([])
     end
 
-    it "calls stamp_source_filepaths for empty funcs with fallback: false" do
-      expect(@partializer_utils).to receive(:stamp_source_filepaths).with([], @filepath)
-
-      @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath, fallback: false)
+    def locate(funcs, raw_filepath: @raw_filepath)
+      @helper.associate_function_line_numbers( funcs: funcs, filepath: @filepath, raw_filepath: raw_filepath )
     end
 
-    it "calls stamp_source_filepaths for empty funcs with fallback: true" do
-      expect(@partializer_utils).to receive(:stamp_source_filepaths).with([], @filepath)
+    it "stamps source filepaths with or without a raw copy" do
+      expect(@partializer_utils).to receive(:stamp_source_filepaths).with([], @filepath).twice
 
-      @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath, fallback: true)
-    end
-
-    it "constructs preprocessed filepath from name and filepath" do
-      expect(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
-        .with(@filepath, @name)
-        .and_return(@preprocessed_filepath)
-
-      @helper.associate_function_line_numbers(name: @name, funcs: [], filepath: @filepath, fallback: false)
+      locate( [] )
+      locate( [], raw_filepath: nil )
     end
 
     # The file is read once for all of its functions
-    it "locates every function in the source with one call when fallback: true" do
+    it "locates every function in the source with one call when there is no raw copy" do
       func1 = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
       func2 = OpenStruct.new(code_block: 'int bar(int x) {}', line_num: nil)
 
       expect(@partializer_utils).to receive(:locate_functions_in_source)
         .with(code_blocks: [func1.code_block, func2.code_block], filepath: @filepath).once
         .and_return([10, 25])
+      expect(@partializer_utils).not_to receive(:locate_functions_via_preprocessed)
 
-      @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2], filepath: @filepath, fallback: true)
+      locate( [func1, func2], raw_filepath: nil )
 
       expect(func1.line_num).to eq(10)
       expect(func2.line_num).to eq(25)
     end
 
-    it "locates every function in the preprocessed copy with one call when fallback: false" do
+    it "locates every function in the raw copy it is given with one call" do
       func1 = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
       func2 = OpenStruct.new(code_block: 'int bar(int x) {}', line_num: nil)
 
       expect(@partializer_utils).to receive(:locate_functions_via_preprocessed)
-        .with(code_blocks: [func1.code_block, func2.code_block], filepath: @filepath, preprocessed_filepath: @preprocessed_filepath).once
+        .with(code_blocks: [func1.code_block, func2.code_block], filepath: @filepath, preprocessed_filepath: @raw_filepath).once
         .and_return([10, 25])
+      expect(@partializer_utils).not_to receive(:locate_functions_in_source)
 
-      @helper.associate_function_line_numbers(name: @name, funcs: [func1, func2], filepath: @filepath, fallback: false)
+      locate( [func1, func2] )
 
       expect(func1.line_num).to eq(10)
       expect(func2.line_num).to eq(25)
@@ -345,27 +331,9 @@ describe PartializerHelper do
 
       allow(@partializer_utils).to receive(:locate_functions_via_preprocessed).and_return([nil])
 
-      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
+      locate( [func] )
 
       expect(func.line_num).to be_nil
-    end
-
-    it "does not search the preprocessed copy when fallback: true" do
-      func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
-
-      expect(@partializer_utils).not_to receive(:locate_functions_via_preprocessed)
-      allow(@partializer_utils).to receive(:locate_functions_in_source).and_return([1])
-
-      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: true)
-    end
-
-    it "does not search the source alone when fallback: false" do
-      func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
-
-      expect(@partializer_utils).not_to receive(:locate_functions_in_source)
-      allow(@partializer_utils).to receive(:locate_functions_via_preprocessed).and_return([1])
-
-      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
     end
 
     it "calls format_line_number_list with funcs and passes result to loginator" do
@@ -375,22 +343,7 @@ describe PartializerHelper do
 
       expect(@partializer_utils).to receive(:format_line_number_list).with([func]).and_return(["foo(): 5"])
 
-      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
-    end
-
-    it "forwards the constructed preprocessed_filepath to locate_functions_via_preprocessed" do
-      func = OpenStruct.new(code_block: 'void foo(void) {}', line_num: nil)
-
-      custom_preproc = '/custom/preproc/output.i'
-      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
-        .with(@filepath, @name)
-        .and_return(custom_preproc)
-
-      expect(@partializer_utils).to receive(:locate_functions_via_preprocessed)
-        .with(hash_including(preprocessed_filepath: custom_preproc))
-        .and_return([nil])
-
-      @helper.associate_function_line_numbers(name: @name, funcs: [func], filepath: @filepath, fallback: false)
+      locate( [func] )
     end
   end
 
@@ -472,7 +425,6 @@ describe PartializerHelper do
             :partializer_utils        => real_utils,
             :c_extractor              => double("CExtractor").as_null_object,
             :c_extractor_declarations => CExtractorDeclarations.new({ c_extractor_code_text: CExtractorCodeText.new() }).tap(&:setup),
-            :file_path_utils          => double("FilePathUtils"),
             :parsing_parcels          => ParsingParcels.new,
             :loginator                => double("Loginator").as_null_object
           }

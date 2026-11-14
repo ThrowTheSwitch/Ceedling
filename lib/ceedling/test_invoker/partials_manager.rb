@@ -39,8 +39,6 @@ class PartialsManager
   # three, as stage 6's preprocessing passes share one, would never read back as fresh when a
   # file is legitimately never written.
   def stage_generate_partials(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-
     partials = []
     state.testables.each do |_, testable|
       next if testable.partials.configs.empty?
@@ -59,9 +57,9 @@ class PartialsManager
 
       # Every input generation reads rides in the staleness record below, so a change to any of
       # them regenerates what the previous ones produced:
-      #  - The preprocessed copies stages 6/7 wrote, beside the originals. Extraction parses the
-      #    copies, so whatever rewrites them without touching the originals -- forced fallback
-      #    toggled, a different preprocessor -- reaches this stage through them.
+      #  - The preprocessed copies stages 6/7 wrote, beside the originals. Generation reads the
+      #    copies, so whatever rewrites them without touching the originals reaches this stage
+      #    through them. Forced fallback toggled and a different preprocessor are two such.
       #  - The test's selection, which decides what each generated file holds.
       #  - The real header's guard, spoofed deliberately in every generated file.
       #  - Each generated file's includes, which depend on the test's other Partial modules
@@ -97,15 +95,8 @@ class PartialsManager
         next
       end
 
-      module_contents = @partializer.extract_module_contents(
-        name,
-        config,
-        fallback: !directives_only
-      )
-
-      @partializer.validate_config(
-        c_module: module_contents, config: config, name: name, fallback: !directives_only
-      )
+      module_contents = @partializer.extract_module_contents( name, config )
+      @partializer.validate_config( c_module: module_contents, config: config, name: name )
 
       @partializer.sanitize( module_contents, include_guard: module_include_guard )
 
@@ -168,15 +159,8 @@ class PartialsManager
           # What the implementation source carries beyond the selection. Planned only when the
           # source regenerates, so its notices appear with that build.
           carry = @partializer.plan_carry(
-            test:            name,
-            partial:         config.module,
-            c_module:        module_contents,
-            impl:            implementation,
-            interface:       interface,
-            fallback:        !directives_only,
-            header_guarded:  !module_include_guard.nil?,
-            header_filepath: config.header.filepath,
-            source_filepath: config.source.filepath
+            test: name, c_module: module_contents, impl: implementation, interface: interface,
+            header_guarded: !module_include_guard.nil?, config: config
           )
 
           @generator.generate_partial_implementation(
@@ -315,13 +299,15 @@ class PartialsManager
     partials.mocks << partial_module if kinds.include?( :interface )
   end
 
-  # A Partial's original header and source, and the preprocessed copies of each that extraction
-  # parses. A declaration-only Partial (a prototype with no matching definition) has no source
-  # file to find, leaving all three of its source paths legitimately nil -- compacted out before
-  # they reach path normalization, which expects real paths only.
+  # A Partial's original header and source, and the preprocessed copies of each that generation
+  # reads. Extraction parses the assembled copy and the expanded code. Inline marking and the
+  # incomplete-type search read the raw directives-only copy, which holds every header the file
+  # includes. A declaration-only Partial has no source file, and a file preprocessed in fallback
+  # has no raw copy. Those paths are nil and compacted out, since path normalization expects
+  # real paths only.
   def partial_antecedent_files(config)
     return [config.header, config.source].flat_map do |file|
-      [file.filepath, file.assembled_filepath, file.expansion_filepath]
+      [file.filepath, file.assembled_filepath, file.expansion_filepath, file.raw_directives_only_filepath]
     end.compact.uniq
   end
 

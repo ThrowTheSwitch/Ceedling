@@ -53,6 +53,19 @@ describe 'Partial symbol linkage' do
       expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_diagnostic}"
     end
 
+    # A coverage tool, a debugger and a compiler message all follow the #line back to the module
+    it 'writes an exposed function behind a #line naming its own file and line' do
+      result = generate_partial(
+        module_name: 'engine',
+        header: "#ifndef ENGINE_H\n#define ENGINE_H\n#endif\n",
+        source: "#include \"engine.h\"\n\nstatic int engine_step(int v)\n{\n  return v + 1;\n}\n",
+        source_includes: ['engine.h']
+      )
+      @dir = result.dir
+
+      expect( result.impl_c ).to match( /^#line 3 "[^"]*engine\.c"\nint engine_step\(int v\)/ )
+    end
+
     # An inline function carries no external definition of its own in C99, so exposing one
     # has to produce a definition the linker can find rather than only a declaration.
     it 'links an inline function the Partial exposes' do

@@ -83,6 +83,11 @@ class PartializerConfig
                    source: Partials::ConfigFileInfo.new)
       super
     end
+
+    # Whether fallback preprocessing produced any file the module is extracted from
+    def fallback?
+      return [header, source].any? { |file| file.assembled_filepath and file.fallback }
+    end
   end unless const_defined?(:Config, false)
 
   # Extract partial configuration macros from a string.

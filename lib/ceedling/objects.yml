@@ -390,7 +390,6 @@ partializer_helper:
     - partializer_utils
     - c_extractor
     - c_extractor_declarations
-    - file_path_utils
     - parsing_parcels
     - loginator
 

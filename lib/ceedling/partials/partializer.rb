@@ -51,7 +51,7 @@ class Partializer
     @helper = @partializer_helper
   end
 
-  def validate_config(c_module:, config:, name:, fallback:)
+  def validate_config(c_module:, config:, name:)
     msg = @reportinator.generate_progress("Validating Partial config for '#{name}'")
     @loginator.log(msg, Verbosity::DEBUG)
     @helper.validate_function_names_exist(c_module, config, name)
@@ -61,7 +61,7 @@ class Partializer
     # Fallback preprocessing resolves strictly less than the accurate pass, and two module
     # shapes are knowably beyond it. Reading the original text happens here, at the I/O edge,
     # so the check itself stays pure.
-    return unless fallback
+    return unless config.fallback?
 
     @helper.validate_fallback_sufficiency(
       name: name,
@@ -85,26 +85,23 @@ class Partializer
   # Decides what the Partial's implementation source carries beyond its selected functions.
   # See PartializerHelper#plan_carry for the categories it applies.
   #
-  # @param test            [String] Test name (for log messages)
-  # @param partial         [String] Partial module name (for log messages)
-  # @param c_module        [CExtractorTypes::CModule] The module's merged contents
-  # @param impl            [Array<Partials::FunctionDefinition>] Functions selected to test
-  # @param interface       [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
-  # @param fallback        [Boolean] Whether fallback preprocessing produced the module's copies
-  # @param header_guarded  [Boolean] Whether the module header has an include guard
-  # @param header_filepath [String, nil] The module header, searched for carried prototypes and named in notices
-  # @param source_filepath [String, nil] The module source, searched for carried prototypes
+  # @param test           [String] Test name (for log messages)
+  # @param c_module       [CExtractorTypes::CModule] The module's merged contents
+  # @param impl           [Array<Partials::FunctionDefinition>] Functions selected to test
+  # @param interface      [Array<Partials::FunctionDeclaration>, nil] Functions selected to mock
+  # @param header_guarded [Boolean] Whether the module header has an include guard
+  # @param config         [PartializerConfig::Config] The Partial, whose files are searched for
+  #   carried prototypes and named in notices
   # @return [Partials::CarryPlan]
-  def plan_carry(test:, partial:, c_module:, impl:, interface:, fallback:, header_guarded:, header_filepath: nil, source_filepath: nil)
+  def plan_carry(test:, c_module:, impl:, interface:, header_guarded:, config:)
     plan = @helper.plan_carry(
-      c_module: c_module, impl: impl, interface: interface, fallback: fallback, header_guarded: header_guarded
+      c_module: c_module, impl: impl, interface: interface, fallback: config.fallback?, header_guarded: header_guarded
     )
 
-    filepaths = { header: header_filepath, source: source_filepath }
-    _locate_carried( plan, filepaths )
-    plan.incomplete.merge( _incomplete_variables( c_module, filepaths.values.compact, test, fallback ) )
+    _locate_carried( plan, { header: config.header.filepath, source: config.source.filepath } )
+    plan.incomplete.merge( _incomplete_variables( c_module, config ) )
 
-    _log_plan( test, partial, plan, header_filepath )
+    _log_plan( test, config.module, plan, config.header.filepath )
     return plan
   end
 
@@ -307,9 +304,6 @@ class Partializer
   # @param name [String] The test this extraction is running for (log/error context).
   # @param config [PartializerConfig::Config] The Partial's own config, carrying `header`/
   #   `source` (each a ConfigFileInfo) and `module`, the module name.
-  # @param fallback [Boolean] Passed through to `associate_function_line_numbers` --
-  #   whether to fall back to plain (non-directives-only) line-number association. It also
-  #   skips inline marking, which needs a raw directives-only copy.
   #
   # @return [CExtractorTypes::CModule] A merged CModule containing all extracted contents
   #   from both files. The structure includes:
@@ -319,7 +313,7 @@ class Partializer
   #
   # @note The method always starts with an empty CModule and merges in contents
   #   from any provided files using the CModule's + operator for combining structures.
-  def extract_module_contents(name, config, fallback:)
+  def extract_module_contents(name, config)
     # Array for CModule structs
     contents = [CExtractorTypes::CModule.new()]
 
@@ -328,15 +322,14 @@ class Partializer
       # Skip a file preprocessing never assembled, such as the absent source of a header-only Partial mock
       next unless c_file.assembled_filepath
 
-      contents << _extract_file_contents( name, config, c_file, file_type, fallback )
+      contents << _extract_file_contents( name, config, c_file, file_type )
     end
 
     # Use `+` operator for CModule to merge everything
     contents = contents.reduce(&:+)
 
-    # Only the merged module knows which functions have a body. Fallback preprocessing writes no
-    # raw copy, so any copy on disk is stale.
-    _mark_inline_elsewhere( name, config, contents ) unless fallback
+    # Only the merged module knows which functions have a body
+    _mark_inline_elsewhere( config, contents )
 
     return contents
   end
@@ -466,14 +459,14 @@ class Partializer
   private
 
   # Extracts one of a module's files, a header or a source, ready to merge with the other.
-  def _extract_file_contents(name, config, c_file, file_type, fallback)
+  def _extract_file_contents(name, config, c_file, file_type)
     c_module = @c_extractor.from_file( c_file.assembled_filepath )
     @helper.validate_function_names_readable( c_module, name, config.module )
 
     _log_module_contents(name, config.module, file_type, c_module)
 
     _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.expansion_filepath
-    _locate_contents( name, c_file, fallback, c_module )
+    _locate_contents( c_file, c_module )
     _promote_function_scope_statics( name, config, file_type, c_module )
     Partials.name_defined_types( c_module, config.module )
 
@@ -501,18 +494,19 @@ class Partializer
   # file's raw directives-only copy holds every header it includes, so the inline body is
   # looked for there. A function the module defines is never looked for, since nothing reads
   # its mark. The copy is read as bytes, which is all the scan needs.
-  def _mark_inline_elsewhere(name, config, c_module)
+  def _mark_inline_elsewhere(config, c_module)
     undefined = _declaration_only( c_module.function_definitions, c_module.function_declarations )
 
     { header: config.header, source: config.source }.each do |origin, c_file|
       decls = undefined.select { |decl| decl.origin == origin }
-      _mark_from_raw_copy( name, c_file, decls ) unless decls.empty?
+      _mark_from_raw_copy( c_file, decls ) unless decls.empty?
     end
   end
 
-  def _mark_from_raw_copy(name, c_file, decls)
-    raw = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( c_file.filepath, name )
-    return unless @file_wrapper.exist?( raw )
+  # A file preprocessed in fallback has no raw copy, so nothing is marked from it
+  def _mark_from_raw_copy(c_file, decls)
+    raw = c_file.raw_directives_only_filepath
+    return if raw.nil?
 
     @helper.mark_inline_elsewhere( decls: decls, text: @file_wrapper.read_binary( raw ) )
   end
@@ -523,13 +517,13 @@ class Partializer
     return declarations.reject { |decl| defined.include?( decl.name ) }
   end
 
-  def _locate_contents(name, c_file, fallback, c_module)
+  def _locate_contents(c_file, c_module)
     # Align extracted function definitions with line markers in preprocessor output.
     # This perfectly remaps functions found in expanded preprocessor output with 
     # original source location.
     # This routine depends on original, unaltered function definitions.
     @helper.associate_function_line_numbers(
-      name: name, funcs: c_module.function_definitions, filepath: c_file.filepath, fallback: fallback
+      funcs: c_module.function_definitions, filepath: c_file.filepath, raw_filepath: c_file.raw_directives_only_filepath
     )
   end
 
@@ -571,12 +565,11 @@ class Partializer
   # directly or through a typedef the module makes. No definition of one compiles, weak or not.
   # The module's own files are searched for the completing definition, and so are their raw
   # directives-only copies where those exist, since a copy holds every header its file includes.
-  # Fallback preprocessing writes no raw copy, so any copy on disk is stale and goes unread.
-  def _incomplete_variables(c_module, filepaths, test, fallback)
+  def _incomplete_variables(c_module, config)
     candidates = _extern_aggregates( c_module )
     return Set.new if candidates.empty?
 
-    texts = _translation_unit_texts( filepaths, test, fallback )
+    texts = _translation_unit_texts( config )
     return Set.new( candidates.filter_map { |var, tag| var.name unless _completed?( tag, texts ) } )
   end
 
@@ -603,11 +596,13 @@ class Partializer
     return tags
   end
 
-  # Each file and, outside fallback, its raw copy, read as bytes, which is all the search needs.
+  # Each of the module's files and its raw copy where one exists, read as bytes, which is all
+  # the search needs.
   # Transcoding a raw copy would cost far more than reading it.
-  def _translation_unit_texts(filepaths, test, fallback)
-    copies = fallback ? [] : filepaths.map { |filepath| @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, test ) }
-    return (filepaths + copies.select { |copy| @file_wrapper.exist?( copy ) }).map { |path| @file_wrapper.read_binary( path ) }
+  def _translation_unit_texts(config)
+    files = [config.header, config.source].select( &:filepath )
+    paths = files.map( &:filepath ) + files.filter_map( &:raw_directives_only_filepath )
+    return paths.map { |path| @file_wrapper.read_binary( path ) }
   end
 
   def _completed?(tag, texts)
@@ -731,11 +726,12 @@ class Partializer
     )
   end
 
-  # The module's own header and source text, keyed by filepath. A declaration-only Partial has
-  # no paired source, which leaves that filepath legitimately nil.
+  # The text of each module file preprocessed in fallback, keyed by filepath. Fallback's limits
+  # belong to the file that fell back, so a file preprocessed accurately isn't checked. A
+  # declaration-only Partial has no paired source, which leaves that filepath legitimately nil.
   def _module_file_texts(config)
     [config.header, config.source].filter_map do |file_info|
-      next if file_info.nil? || file_info.filepath.nil?
+      next if file_info.nil? || file_info.filepath.nil? || !file_info.fallback
 
       [file_info.filepath, @file_wrapper.read( file_info.filepath ).clean_encoding]
     end.to_h

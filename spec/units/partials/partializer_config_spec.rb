@@ -658,4 +658,29 @@ describe PartializerConfig do
 
   end
 
+  context "Config#fallback?" do
+    def file(assembled:, fallback:)
+      Partials::ConfigFileInfo.new( filepath: "src/a.c", assembled_filepath: (assembled ? "build/a.c" : nil), fallback: fallback )
+    end
+
+    it "is true when either file the module is extracted from fell back" do
+      config = PartializerConfig::Config.new( module: "a", header: file( assembled: true, fallback: false ), source: file( assembled: true, fallback: true ) )
+
+      expect( config.fallback? ).to be( true )
+    end
+
+    it "is false when every file was preprocessed accurately" do
+      config = PartializerConfig::Config.new( module: "a", header: file( assembled: true, fallback: false ), source: file( assembled: true, fallback: false ) )
+
+      expect( config.fallback? ).to be( false )
+    end
+
+    # A file preprocessing never assembled, such as a mock-only Partial's absent source, isn't extracted
+    it "ignores a file preprocessing never assembled" do
+      config = PartializerConfig::Config.new( module: "a", header: file( assembled: true, fallback: false ), source: file( assembled: false, fallback: true ) )
+
+      expect( config.fallback? ).to be( false )
+    end
+  end
+
 end
