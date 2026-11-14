@@ -111,7 +111,7 @@ class CExtractorFunctions
   end
 
   # The byte just past a function's declarator in its code block. That is the last ')' at the
-  # top level ahead of the body, which a GNU attribute after the parameter list moves past it.
+  # top level ahead of the body. A GNU attribute after the parameter list ends in that ')'.
   # A C23 attribute or a comment may follow. Nil when the head has no parameter list.
   def self.signature_end(code_block)
     scanner = StringScanner.new( code_block )

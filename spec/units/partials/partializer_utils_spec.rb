@@ -305,6 +305,23 @@ describe PartializerUtils do
       expect( result.code_block ).to eq( code )
     end
 
+    # A compound literal's brace inside the list hides where the body opens
+    it "strips as written when a brace sits inside the parameter list" do
+      code   = "PRIVATE int helper(int n, int a[(int){3}]) { return n; }"
+      result = transform( definition( code, hidden: ['static'] ), 'int helper(int n, int a[(int){3}])' )
+
+      expect( result.code_block ).to eq( code )
+    end
+
+    # A `_Pragma` in the head expands to a directive, which can't share a line with the head
+    it "strips as written when the signature holds a directive" do
+      code      = "PRIVATE NOUNUSED int helper(int a) { return 1; }"
+      signature = "\n#pragma GCC diagnostic ignored \"-Wunused-parameter\"\n int helper(int a)"
+      result    = transform( definition( code, hidden: ['static'] ), signature )
+
+      expect( result.code_block ).to eq( code )
+    end
+
     it "strips as written when nothing is hidden" do
       result = transform( definition( "static int helper(void) { return 1; }", hidden: [], decorators: ['static'] ), 'int helper(void)' )
 
