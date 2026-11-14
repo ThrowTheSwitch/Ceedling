@@ -482,14 +482,14 @@ class PartializerHelper
   # it, because a carried prototype is written word for word.
   #
   # @param funcs [Array<CFunctionDefinition>] Definitions to update in place.
-  # @param full_expansion_filepath [String] Path to the assembled full expansion file
-  #   produced by preprocess_partial_{header,source}_expand_macros().
+  # @param expansion_filepath [String] Path to the file's own lines from its full
+  #   expansion, written by Preprocessinator#generate_partial_expansion.
   # @param name [String] Test name, used in log messages.
   # @param module_name [String] Partial module name, used in log messages.
   # @param file_type [String] "source" or "header", used in log messages.
   # @param decls [Array<CFunctionDeclaration>] Declarations to update in place.
-  def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:, decls: [])
-    expanded_module = @c_extractor.from_file( full_expansion_filepath )
+  def update_signatures_from_full_expansion(funcs:, expansion_filepath:, name:, module_name:, file_type:, decls: [])
+    expanded_module = @c_extractor.from_file( expansion_filepath )
     entries         = _reconcile_definitions( funcs, expanded_module ) + _reconcile_declarations( decls, expanded_module )
 
     @loginator.log_list(

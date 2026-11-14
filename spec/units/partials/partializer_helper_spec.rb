@@ -1239,7 +1239,7 @@ describe PartializerHelper do
 
       @helper.update_signatures_from_full_expansion(
         funcs:                   [func],
-        full_expansion_filepath: '/build/full_expansion/mod.c',
+        expansion_filepath:      '/build/full_expansion/mod.c',
         name:                    'TestMod',
         module_name:             'mod',
         file_type:               'source'
@@ -1264,7 +1264,7 @@ describe PartializerHelper do
 
       @helper.update_signatures_from_full_expansion(
         funcs:                   [func],
-        full_expansion_filepath: '/build/full_expansion/mod.c',
+        expansion_filepath:      '/build/full_expansion/mod.c',
         name:                    'TestMod',
         module_name:             'mod',
         file_type:               'source'
@@ -1304,7 +1304,7 @@ describe PartializerHelper do
 
       @helper.update_signatures_from_full_expansion(
         funcs:                   [func_match, func_no_match],
-        full_expansion_filepath: '/build/full_expansion/mod.c',
+        expansion_filepath:      '/build/full_expansion/mod.c',
         name:                    'TestMod',
         module_name:             'mod',
         file_type:               'source'
@@ -1318,7 +1318,7 @@ describe PartializerHelper do
       expect {
         @helper.update_signatures_from_full_expansion(
           funcs:                   [],
-          full_expansion_filepath: '/build/full_expansion/mod.c',
+          expansion_filepath:      '/build/full_expansion/mod.c',
           name:                    'TestMod',
           module_name:             'mod',
           file_type:               'source'
@@ -1336,7 +1336,7 @@ describe PartializerHelper do
       allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_definitions: [expanded]))
 
       @helper.update_signatures_from_full_expansion(
-        funcs: [func], full_expansion_filepath: '/build/full_expansion/mod.c',
+        funcs: [func], expansion_filepath: '/build/full_expansion/mod.c',
         name: 'TestMod', module_name: 'mod', file_type: 'source'
       )
 
@@ -1351,7 +1351,7 @@ describe PartializerHelper do
       allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [expanded]))
 
       @helper.update_signatures_from_full_expansion(
-        funcs: [], decls: [decl], full_expansion_filepath: '/build/full_expansion/mod.h',
+        funcs: [], decls: [decl], expansion_filepath: '/build/full_expansion/mod.h',
         name: 'TestMod', module_name: 'mod', file_type: 'header'
       )
 
@@ -1370,7 +1370,7 @@ describe PartializerHelper do
       allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: expanded))
 
       @helper.update_signatures_from_full_expansion(
-        funcs: [], decls: [first, second], full_expansion_filepath: '/build/full_expansion/mod.c',
+        funcs: [], decls: [first, second], expansion_filepath: '/build/full_expansion/mod.c',
         name: 'TestMod', module_name: 'mod', file_type: 'source'
       )
 
@@ -1383,7 +1383,7 @@ describe PartializerHelper do
       allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new)
 
       @helper.update_signatures_from_full_expansion(
-        funcs: [], decls: [decl], full_expansion_filepath: '/build/full_expansion/mod.c',
+        funcs: [], decls: [decl], expansion_filepath: '/build/full_expansion/mod.c',
         name: 'TestMod', module_name: 'mod', file_type: 'source'
       )
 
@@ -1407,7 +1407,7 @@ describe PartializerHelper do
       )
 
       @helper.update_signatures_from_full_expansion(
-        funcs: [], decls: [decl, same], full_expansion_filepath: '/build/full_expansion/mod.h',
+        funcs: [], decls: [decl, same], expansion_filepath: '/build/full_expansion/mod.h',
         name: 'TestMod', module_name: 'mod', file_type: 'header'
       )
     end

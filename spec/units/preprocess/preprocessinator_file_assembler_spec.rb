@@ -492,7 +492,6 @@ RSpec.describe PreprocessinatorFileAssembler do
       expect(@file_wrapper).to receive(:mkdir).with('/build/files/drivers/spi')
 
       subject.assemble_preprocessed_code_file(
-        filename: 'config.c',
         preprocessed_filepath: '/build/files/drivers/spi/config.c',
         contents: [], extras: [], includes: []
       )
@@ -641,7 +640,6 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_code_file(
-        filename:              'module.c',
         preprocessed_filepath: preprocessed_filepath,
         contents:              ['void foo(void) {}'],
         extras:                [],
@@ -656,7 +654,6 @@ RSpec.describe PreprocessinatorFileAssembler do
       stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_code_file(
-        filename:              'module.c',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [],
         extras:                [],
@@ -671,7 +668,6 @@ RSpec.describe PreprocessinatorFileAssembler do
       content_line_with_crlf = "void foo(void) {\r\n  return;\r\n}"
 
       subject.assemble_preprocessed_code_file(
-        filename:              'module.c',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [content_line_with_crlf],
         extras:                [],
@@ -685,7 +681,6 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_code_file(
-        filename:              'module.c',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [],
         extras:                ['TEST_SOURCE_FILE("other.c")'],
@@ -699,7 +694,6 @@ RSpec.describe PreprocessinatorFileAssembler do
       output = stub_file_write(preprocessed_filepath)
 
       subject.assemble_preprocessed_code_file(
-        filename:              'module.c',
         preprocessed_filepath: preprocessed_filepath,
         contents:              [],
         extras:                [ ['TEST_CASE(1, 2)', 'TEST_CASE(3, 4)'] ],
@@ -714,74 +708,58 @@ RSpec.describe PreprocessinatorFileAssembler do
 
 
   # ===========================================================================
-  describe '#collect_file_contents_from_directives_only_preprocessing' do
+  describe '#collect_own_lines' do
   # ===========================================================================
 
-    it 'extracts file content from the raw directives-only preprocessor output' do
+    it 'keeps only the lines a preprocessor run attributes to the file' do
       source_filepath = 'test/test_widget.c'
-      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
-        .with(source_filepath, 'test_widget')
-        .and_return('/build/directives_only/raw_test_widget.c')
-
       file_contents = [
         "# 1 \"#{source_filepath}\" 99999",
-        'void test_ShouldDoSomething(void) {}'
+        'void test_ShouldDoSomething(void) {}',
+        "# 1 \"vendor/unity.h\" 1",
+        'void UnityBegin(void);'
       ].join("\n")
-      stub_file_open('/build/directives_only/raw_test_widget.c', file_contents, 'r')
+      stub_file_open('/build/directives_only/raw/test_widget.c', file_contents, 'r')
 
-      result = subject.collect_file_contents_from_directives_only_preprocessing(
-        source_filepath: source_filepath, test: 'test_widget'
+      result = subject.collect_own_lines(
+        source_filepath: source_filepath, preprocessed_filepath: '/build/directives_only/raw/test_widget.c', rejoin: false
       )
 
       expect(result).to eq(['void test_ShouldDoSomething(void) {}'])
     end
 
     # Directives-only output expands no macros, so it never wraps a line to rejoin
-    it 'keeps lines apart that a marker puts at the same count' do
+    it 'keeps lines apart that a marker puts at the same count, without rejoining' do
       source_filepath = 'src/widget.h'
-      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath)
-        .with(source_filepath, 'test_widget')
-        .and_return('/build/directives_only/raw_widget.h')
-
       file_contents = [
         "# 1 \"#{source_filepath}\"",
         'int widget_a(void);',
         "# 1 \"#{source_filepath}\"",
         'int widget_b(void);',
       ].join("\n")
-      stub_file_open('/build/directives_only/raw_widget.h', file_contents, 'r')
+      stub_file_open('/build/directives_only/raw/widget.h', file_contents, 'r')
 
-      result = subject.collect_file_contents_from_directives_only_preprocessing(
-        source_filepath: source_filepath, test: 'test_widget'
+      result = subject.collect_own_lines(
+        source_filepath: source_filepath, preprocessed_filepath: '/build/directives_only/raw/widget.h', rejoin: false
       )
 
       expect(result).to eq(['int widget_a(void);', 'int widget_b(void);'])
     end
 
-  end
-
-
-  # ===========================================================================
-  describe '#collect_file_contents_from_full_expansion' do
-  # ===========================================================================
-
-    it 'extracts file content from the full-expansion preprocessor output' do
+    # A full expansion re-marks one source line to continue it, so its pieces are joined
+    it 'rejoins a line a full expansion wrapped, by default' do
       source_filepath = 'src/module.c'
-      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath)
-        .with(source_filepath, 'test_module')
-        .and_return('/build/full_expansion/module.c')
-
       file_contents = [
-        "# 1 \"#{source_filepath}\" 99999",
-        'void Module_Init(void) {}'
+        "# 1 \"#{source_filepath}\"",
+        'int x',
+        "# 1 \"#{source_filepath}\"",
+        ';'
       ].join("\n")
       stub_file_open('/build/full_expansion/module.c', file_contents, 'r')
 
-      result = subject.collect_file_contents_from_full_expansion(
-        source_filepath: source_filepath, test: 'test_module'
-      )
+      result = subject.collect_own_lines( source_filepath: source_filepath, preprocessed_filepath: '/build/full_expansion/module.c' )
 
-      expect(result).to eq(['void Module_Init(void) {}'])
+      expect(result).to eq(['int x;'])
     end
 
   end

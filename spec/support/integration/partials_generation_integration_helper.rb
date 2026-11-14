@@ -14,7 +14,7 @@
 #
 # Preprocessing is part of what it runs, and that matters more than it looks. Partials never
 # sees a module's original text. `Partializer#extract_module_contents` calls
-# `CExtractor#from_file` against what `Preprocessinator#preprocess_partial_*_preserve_macros`
+# `CExtractor#from_file` against what `Preprocessinator#preprocess_partial_file`
 # reconstituted, so conditionals are already resolved, comments are gone, every line
 # belonging to an included header has been discarded, and the file has been rebuilt from the
 # survivors plus a reconciled include list. A harness fed original source would report
@@ -418,8 +418,8 @@ module PartialsGenerationHelpers
   end
 
   # Fully expands one module file with real GCC, keeps that file's own lines, and reconciles
-  # the file's extracted module with them through the production helper. That is what
-  # Partializer#extract_module_contents does with the copy stage 7 writes.
+  # the file's extracted module with them through the production helper, as
+  # Partializer#extract_module_contents does with the expanded code stages 6 and 7 write.
   def reconcile_with_full_expansion(file_module, dir:, filename:, defines:, file_type:)
     path  = File.join( dir, filename )
     raw   = "#{path}.full_expansion"
@@ -444,12 +444,12 @@ module PartialsGenerationHelpers
     )
     reconciler.update_signatures_from_full_expansion(
       funcs: file_module.function_definitions, decls: file_module.function_declarations,
-      full_expansion_filepath: raw, name: 'PartialsGenerationTest',
+      expansion_filepath: raw, name: 'PartialsGenerationTest',
       module_name: File.basename( filename, '.*' ), file_type: file_type
     )
   end
 
-  # Reproduces what Preprocessinator#preprocess_partial_{header,source}_file_preserve_macros
+  # Reproduces what Preprocessinator#preprocess_partial_file
   # leaves on disk for the extractor to read, in the same steps and with the same
   # collaborators.
   #
@@ -477,7 +477,7 @@ module PartialsGenerationHelpers
       )
     else
       partials_file_assembler.assemble_preprocessed_code_file(
-        filename: filename, preprocessed_filepath: assembled,
+        preprocessed_filepath: assembled,
         contents: contents, extras: extras, includes: include_list
       )
     end
@@ -501,7 +501,7 @@ module PartialsGenerationHelpers
 
     partials_comment_stripper.strip_file( raw )
 
-    # Text mode, as PreprocessinatorFileAssembler#collect_file_contents_from_directives_only_preprocessing
+    # Text mode, as PreprocessinatorFileAssembler#collect_own_lines
     # reads it. On Windows, GCC's directives-only output of a CRLF source ends each line in
     # "\r\r\n", and the text-mode read is what keeps that one line break, not two.
     contents = File.open( raw, 'r' ) do |file|

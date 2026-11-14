@@ -88,8 +88,7 @@ class TestFilePreprocessinator
     return @preprocessinator.preprocess_test_file(
       test: testable.name, filepath: testable.filepath, directives_only_filepath: directives_only_filepath( testable ),
       fallback: fallback?( testable ), includes: @context_extractor.lookup_all_header_includes_list( testable.filepath ),
-      flags: testable.preprocess_flags, include_paths: testable.search_paths, vendor_paths: vendor_search_paths(),
-      defines: testable.preprocess_defines
+      flags: testable.preprocess_flags, include_paths: testable.search_paths, defines: testable.preprocess_defines
     )
   end
 

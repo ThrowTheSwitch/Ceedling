@@ -76,11 +76,11 @@ describe PartialsManager do
 
       allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/Foo.h' )
-      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return( 'build/preprocess/full_expansion/Foo.h' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_expanded_code_filepath).and_return( 'build/preprocess/expanded_code/Foo.h' )
       allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.h.yml' )
       allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.h' )
-      allow(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros).and_return( ['build/preprocess/raw/Foo.h', []] )
-      allow(@preprocessinator).to receive(:preprocess_partial_header_expand_macros).and_return( 'build/preprocess/full_expansion/Foo.h' )
+      allow(@preprocessinator).to receive(:preprocess_partial_file).and_return( ['build/preprocess/raw/Foo.h', []] )
+      allow(@preprocessinator).to receive(:generate_partial_expansion).and_return( 'build/preprocess/expanded_code/Foo.h' )
       allow(@preprocessinator).to receive(:load_includes_list).and_return( [] )
 
       @testable = TestInvokerTypes::Testable.new(
@@ -116,8 +116,8 @@ describe PartialsManager do
       allow(@dependinator).to receive(:stale?).and_return( true )
 
       expect(@preprocessinator).to receive(:generate_directives_only_output).ordered
-      expect(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros).ordered
-      expect(@preprocessinator).to receive(:preprocess_partial_header_expand_macros).ordered
+      expect(@preprocessinator).to receive(:preprocess_partial_file).ordered
+      expect(@preprocessinator).to receive(:generate_partial_expansion).ordered
       expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/Foo.h').ordered
 
       @manager.stage_preprocess_partial_headers( @state )
@@ -127,11 +127,11 @@ describe PartialsManager do
     it "registers the includes list and full expansion as outputs before marking the target fresh" do
       allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( false )
       allow(@dependinator).to receive(:stale?).and_return( true )
-      allow(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros)
-      allow(@preprocessinator).to receive(:preprocess_partial_header_expand_macros)
+      allow(@preprocessinator).to receive(:preprocess_partial_file)
+      allow(@preprocessinator).to receive(:generate_partial_expansion)
 
       expect(@dependinator).to receive(:register).with(
-        'build/preprocess/Foo.h', outputs: ['build/preprocess/includes/Foo.h.yml', 'build/preprocess/full_expansion/Foo.h']
+        'build/preprocess/Foo.h', outputs: ['build/preprocess/includes/Foo.h.yml', 'build/preprocess/expanded_code/Foo.h']
       ).ordered
       expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/Foo.h').ordered
 
@@ -145,15 +145,15 @@ describe PartialsManager do
       allow(@preprocessinator).to receive(:load_includes_list).with( test: 'a_test', filepath: 'src/Foo.h' ).and_return( cached_includes )
 
       expect(@preprocessinator).to_not receive(:generate_directives_only_output)
-      expect(@preprocessinator).to_not receive(:preprocess_partial_header_file_preserve_macros)
-      expect(@preprocessinator).to_not receive(:preprocess_partial_header_expand_macros)
+      expect(@preprocessinator).to_not receive(:preprocess_partial_file)
+      expect(@preprocessinator).to_not receive(:generate_partial_expansion)
       expect(@dependinator).to_not receive(:mark_fresh)
 
       @manager.stage_preprocess_partial_headers( @state )
 
-      expect( @config.directives_only_filepath ).to eq( 'build/preprocess/Foo.h' )
+      expect( @config.assembled_filepath ).to eq( 'build/preprocess/Foo.h' )
       expect( @config.includes ).to eq( cached_includes )
-      expect( @config.full_expansion_filepath ).to eq( 'build/preprocess/full_expansion/Foo.h' )
+      expect( @config.expansion_filepath ).to eq( 'build/preprocess/expanded_code/Foo.h' )
     end
 
     it "does nothing for the directives-only pass when directives-only preprocessing is unavailable for this toolchain, but still runs preserve-macros and full-expansion" do
@@ -161,8 +161,8 @@ describe PartialsManager do
       allow(@dependinator).to receive(:stale?).and_return( true )
 
       expect(@preprocessinator).to_not receive(:generate_directives_only_output)
-      expect(@preprocessinator).to receive(:preprocess_partial_header_file_preserve_macros)
-      expect(@preprocessinator).to receive(:preprocess_partial_header_expand_macros)
+      expect(@preprocessinator).to receive(:preprocess_partial_file)
+      expect(@preprocessinator).to receive(:generate_partial_expansion)
 
       @manager.stage_preprocess_partial_headers( @state )
     end
@@ -201,11 +201,11 @@ describe PartialsManager do
 
       allow(@configurator).to receive(:project_build_vendor_ceedling_path).and_return( 'build/vendor/ceedling' )
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'build/preprocess/Foo.c' )
-      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return( 'build/preprocess/full_expansion/Foo.c' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_expanded_code_filepath).and_return( 'build/preprocess/expanded_code/Foo.c' )
       allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return( 'build/preprocess/includes/Foo.c.yml' )
       allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/raw/Foo.c' )
-      allow(@preprocessinator).to receive(:preprocess_partial_source_file_preserve_macros).and_return( ['build/preprocess/raw/Foo.c', []] )
-      allow(@preprocessinator).to receive(:preprocess_partial_source_expand_macros).and_return( 'build/preprocess/full_expansion/Foo.c' )
+      allow(@preprocessinator).to receive(:preprocess_partial_file).and_return( ['build/preprocess/raw/Foo.c', []] )
+      allow(@preprocessinator).to receive(:generate_partial_expansion).and_return( 'build/preprocess/expanded_code/Foo.c' )
       allow(@preprocessinator).to receive(:load_includes_list).and_return( [] )
 
       @testable = TestInvokerTypes::Testable.new(
@@ -241,8 +241,8 @@ describe PartialsManager do
       allow(@dependinator).to receive(:stale?).and_return( true )
 
       expect(@preprocessinator).to receive(:generate_directives_only_output).ordered
-      expect(@preprocessinator).to receive(:preprocess_partial_source_file_preserve_macros).ordered
-      expect(@preprocessinator).to receive(:preprocess_partial_source_expand_macros).ordered
+      expect(@preprocessinator).to receive(:preprocess_partial_file).ordered
+      expect(@preprocessinator).to receive(:generate_partial_expansion).ordered
       expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/Foo.c').ordered
 
       @manager.stage_preprocess_partial_sources( @state )
@@ -255,15 +255,15 @@ describe PartialsManager do
       allow(@preprocessinator).to receive(:load_includes_list).with( test: 'a_test', filepath: 'src/Foo.c' ).and_return( cached_includes )
 
       expect(@preprocessinator).to_not receive(:generate_directives_only_output)
-      expect(@preprocessinator).to_not receive(:preprocess_partial_source_file_preserve_macros)
-      expect(@preprocessinator).to_not receive(:preprocess_partial_source_expand_macros)
+      expect(@preprocessinator).to_not receive(:preprocess_partial_file)
+      expect(@preprocessinator).to_not receive(:generate_partial_expansion)
       expect(@dependinator).to_not receive(:mark_fresh)
 
       @manager.stage_preprocess_partial_sources( @state )
 
-      expect( @config.directives_only_filepath ).to eq( 'build/preprocess/Foo.c' )
+      expect( @config.assembled_filepath ).to eq( 'build/preprocess/Foo.c' )
       expect( @config.includes ).to eq( cached_includes )
-      expect( @config.full_expansion_filepath ).to eq( 'build/preprocess/full_expansion/Foo.c' )
+      expect( @config.expansion_filepath ).to eq( 'build/preprocess/expanded_code/Foo.c' )
     end
 
     it "does nothing for the directives-only pass when directives-only preprocessing is unavailable for this toolchain, but still runs preserve-macros and full-expansion" do
@@ -271,8 +271,8 @@ describe PartialsManager do
       allow(@dependinator).to receive(:stale?).and_return( true )
 
       expect(@preprocessinator).to_not receive(:generate_directives_only_output)
-      expect(@preprocessinator).to receive(:preprocess_partial_source_file_preserve_macros)
-      expect(@preprocessinator).to receive(:preprocess_partial_source_expand_macros)
+      expect(@preprocessinator).to receive(:preprocess_partial_file)
+      expect(@preprocessinator).to receive(:generate_partial_expansion)
 
       @manager.stage_preprocess_partial_sources( @state )
     end
@@ -696,16 +696,16 @@ describe PartialsManager do
       allow(@module_contents).to receive(:type_definitions).and_return( [double("TypeDef")] )
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
-      @config.header.directives_only_filepath = 'build/pp/directives_only/src/Foo.h'
-      @config.header.full_expansion_filepath  = 'build/pp/full_expansion/src/Foo.h'
-      @config.source.directives_only_filepath = 'build/pp/directives_only/src/Foo.c'
-      @config.source.full_expansion_filepath  = 'build/pp/full_expansion/src/Foo.c'
+      @config.header.assembled_filepath = 'build/pp/src/Foo.h'
+      @config.header.expansion_filepath = 'build/pp/expanded_code/src/Foo.h'
+      @config.source.assembled_filepath = 'build/pp/src/Foo.c'
+      @config.source.expansion_filepath = 'build/pp/expanded_code/src/Foo.c'
 
       expect(@dependinator).to receive(:register).exactly(3).times do |_target, files: [], **|
         expect( files ).to contain_exactly(
           'src/Foo.h', 'src/Foo.c',
-          'build/pp/directives_only/src/Foo.h', 'build/pp/full_expansion/src/Foo.h',
-          'build/pp/directives_only/src/Foo.c', 'build/pp/full_expansion/src/Foo.c'
+          'build/pp/src/Foo.h', 'build/pp/expanded_code/src/Foo.h',
+          'build/pp/src/Foo.c', 'build/pp/expanded_code/src/Foo.c'
         )
       end
 

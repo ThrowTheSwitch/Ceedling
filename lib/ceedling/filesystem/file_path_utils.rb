@@ -442,6 +442,14 @@ class FilePathUtils
     )
   end
 
+  # A file's own lines from its full expansion, as plain code without line markers. The
+  # expansion itself stays whole beside it, since its markers name every file it entered.
+  def form_preprocessed_file_expanded_code_filepath(filepath, subdir)
+    return form_preprocessed_filepath(
+      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_EXPANDED_CODE_DIR, filepath
+    )
+  end
+
   def form_preprocessed_file_raw_directives_only_filepath(filepath, subdir)
     return form_preprocessed_filepath(
       @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, filepath

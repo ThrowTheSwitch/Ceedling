@@ -325,8 +325,8 @@ class Partializer
 
     # Process the C module source and/or header associated with the Partial config
     [config.header, config.source].zip(['header', 'source']).each do |c_file, file_type|
-      # Do nothing if there's no directives-only preprocessed filepath (e.g. no source only header for a Partial mock)
-      next unless c_file.directives_only_filepath
+      # Skip a file preprocessing never assembled, such as the absent source of a header-only Partial mock
+      next unless c_file.assembled_filepath
 
       contents << _extract_file_contents( name, config, c_file, file_type, fallback )
     end
@@ -467,12 +467,12 @@ class Partializer
 
   # Extracts one of a module's files, a header or a source, ready to merge with the other.
   def _extract_file_contents(name, config, c_file, file_type, fallback)
-    c_module = @c_extractor.from_file( c_file.directives_only_filepath )
+    c_module = @c_extractor.from_file( c_file.assembled_filepath )
     @helper.validate_function_names_readable( c_module, name, config.module )
 
     _log_module_contents(name, config.module, file_type, c_module)
 
-    _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.full_expansion_filepath
+    _reconcile_with_full_expansion( name, config, c_file, file_type, c_module ) if c_file.expansion_filepath
     _locate_contents( name, c_file, fallback, c_module )
     _promote_function_scope_statics( name, config, file_type, c_module )
     Partials.name_defined_types( c_module, config.module )
@@ -489,7 +489,7 @@ class Partializer
     @helper.update_signatures_from_full_expansion(
       funcs:                   c_module.function_definitions,
       decls:                   c_module.function_declarations,
-      full_expansion_filepath: c_file.full_expansion_filepath,
+      expansion_filepath: c_file.expansion_filepath,
       name:                    name,
       module_name:             config.module,
       file_type:               file_type

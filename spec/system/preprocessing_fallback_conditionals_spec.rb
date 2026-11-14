@@ -18,7 +18,7 @@ require 'spec_system_helper'
 ##
 ## The primary fallback use case is Partials processing: Ceedling reads
 ## source/header files through collect_file_contents_fallback (called by
-## preprocess_partial_header/source_file_preserve_macros) and the #ifdef
+## Preprocessinator#preprocess_partial_file) and the #ifdef
 ## guards in those files determine what code appears in the generated
 ## partial implementation. The test file mirrors the same define-based
 ## conditions to include the corresponding mock and select test cases.

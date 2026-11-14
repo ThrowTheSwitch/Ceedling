@@ -27,24 +27,12 @@ class PartialsManager
 
   # Stage 6: Preprocess partial header files for extract-and-generate pass.
   def stage_preprocess_partial_headers(state)
-    preprocess_partials(
-      items:                  state.partials_headers,
-      kind:                   'header',
-      noun:                   'headers',
-      preserve_macros_method: :preprocess_partial_header_file_preserve_macros,
-      expand_macros_method:   :preprocess_partial_header_expand_macros
-    )
+    preprocess_partials( items: state.partials_headers, kind: :header, noun: 'headers' )
   end
 
   # Stage 7: Preprocess partial source files for extract-and-generate pass.
   def stage_preprocess_partial_sources(state)
-    preprocess_partials(
-      items:                  state.partials_sources,
-      kind:                   'source',
-      noun:                   'sources',
-      preserve_macros_method: :preprocess_partial_source_file_preserve_macros,
-      expand_macros_method:   :preprocess_partial_source_expand_macros
-    )
+    preprocess_partials( items: state.partials_sources, kind: :source, noun: 'sources' )
   end
 
   # Stage 8: Extract and generate partial implementation and interface files.
@@ -344,7 +332,7 @@ class PartialsManager
   # they reach path normalization, which expects real paths only.
   def partial_antecedent_files(config)
     return [config.header, config.source].flat_map do |file|
-      [file.filepath, file.directives_only_filepath, file.full_expansion_filepath]
+      [file.filepath, file.assembled_filepath, file.expansion_filepath]
     end.compact.uniq
   end
 
@@ -394,7 +382,7 @@ class PartialsManager
     end
   end
 
-  def preprocess_partials(items:, kind:, noun:, preserve_macros_method:, expand_macros_method:)
+  def preprocess_partials(items:, kind:, noun:)
     directives_only = @configurator.test_build_preprocess_directives_only_available
     skipped = 0
 
@@ -438,9 +426,9 @@ class PartialsManager
         @loginator.log( msg, Verbosity::OBNOXIOUS )
         skipped += 1
 
-        config.directives_only_filepath = target
-        config.includes                 = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
-        config.full_expansion_filepath  = @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+        config.assembled_filepath = target
+        config.includes           = @preprocessinator.load_includes_list( test: name, filepath: config.filepath )
+        config.expansion_filepath = @file_path_utils.form_preprocessed_file_expanded_code_filepath( config.filepath, name )
       end
     end
 
@@ -476,6 +464,7 @@ class PartialsManager
       directives_only_filepath = details.directives_only_filepath
 
       arg_hash = {
+        kind:                     kind,
         test:                     name,
         filepath:                 config.filepath,
         directives_only_filepath: directives_only_filepath,
@@ -486,7 +475,7 @@ class PartialsManager
         defines:                  testable.preprocess_defines
       }
 
-      config.directives_only_filepath, config.includes = @preprocessinator.public_send( preserve_macros_method, **arg_hash )
+      config.assembled_filepath, config.includes = @preprocessinator.preprocess_partial_file( **arg_hash )
     end
 
     # Full-preprocess files for expanded signature extraction.
@@ -506,15 +495,15 @@ class PartialsManager
         defines:       testable.preprocess_defines
       }
 
-      config.full_expansion_filepath = @preprocessinator.public_send( expand_macros_method, **arg_hash )
+      config.expansion_filepath = @preprocessinator.generate_partial_expansion( **arg_hash )
 
-      # A skipped run recalls the includes list and full expansion this run wrote, so the
+      # A skipped run recalls the includes list and expanded code this run wrote, so the
       # preprocessed target vouches for both
       @dependinator.register(
         details.preprocessed_target,
         outputs: [
           @file_path_utils.form_preprocessed_includes_list_filepath( config.filepath, name ),
-          @file_path_utils.form_preprocessed_file_full_expansion_filepath( config.filepath, name )
+          @file_path_utils.form_preprocessed_file_expanded_code_filepath( config.filepath, name )
         ]
       )
       @dependinator.mark_fresh( details.preprocessed_target )

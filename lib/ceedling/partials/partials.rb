@@ -30,9 +30,24 @@ module Partials
   # first wins, as it does for the compiler.
   LITERAL_OR_COMMENT = %r{"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|/\*.*?\*/|//[^\n]*}m unless const_defined?(:LITERAL_OR_COMMENT)
 
-  # Data class representing a source or header file to be partialized
-  ConfigFileInfo = Struct.new(:filepath, :directives_only_filepath, :full_expansion_filepath, :includes, keyword_init: true) do
-    def initialize(filepath: nil, directives_only_filepath: nil, full_expansion_filepath: nil, includes: [])
+  # A header or source file to be partialized, and what stages 6 and 7 made of it. A
+  # preprocessed path is nil when that file wasn't written.
+  #
+  # - `raw_directives_only_filepath`: the -fdirectives-only output, line markers and every
+  #   included header's macros intact. Nil in fallback.
+  # - `assembled_filepath`: the file's own content with its #includes restored, which
+  #   extraction parses.
+  # - `raw_expansion_filepath`: the full expansion, line markers intact.
+  # - `expansion_filepath`: the full expansion's own lines, which reconciliation parses.
+  # - `fallback`: true when this file was preprocessed without -fdirectives-only.
+  ConfigFileInfo = Struct.new(
+    :filepath, :raw_directives_only_filepath, :assembled_filepath, :raw_expansion_filepath, :expansion_filepath,
+    :fallback, :includes, keyword_init: true
+  ) do
+    def initialize(
+        filepath: nil, raw_directives_only_filepath: nil, assembled_filepath: nil, raw_expansion_filepath: nil,
+        expansion_filepath: nil, fallback: false, includes: []
+      )
       super
     end
   end unless const_defined?(:ConfigFileInfo, false)
