@@ -5,17 +5,25 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/constants'
+
 # Pairs what a Partial extracts from a file's written text with its twin in the file's full
 # expansion, where no macro hides anything.
 #
 # Extraction reads the directives-only copy, so a Partial writes code as its user spelled
 # it. That copy keeps every macro, so a macro can hide a storage class, an inline specifier
-# or a call. The full expansion shows them. Each written item takes from its twin what a
-# macro can hide, and keeps its code as written, so line mapping still holds.
+# or a call. The full expansion shows them. A function or a declaration takes from its twin
+# what a macro can hide, and keeps its code as written, so line mapping still holds. A
+# variable whose storage class a macro supplies takes its whole declaration from its twin.
 #
-# Definitions pair by name. Declarations pair by name and then by order, since a name may be
-# declared more than once.
+# Definitions pair by name. Declarations and file-scope variables pair by name and then by
+# order, since a name may be declared more than once.
 class PartializerReconciler
+
+  # A variable takes these from its twin when a macro supplies its storage class
+  VARIABLE_FIELDS = %i[decorators type array_suffix text declarator asm_label].freeze
+
+  STORAGE_CLASSES = %w[static extern].freeze
 
   constructor :c_extractor, :loginator
 
@@ -30,7 +38,8 @@ class PartializerReconciler
   def reconcile(c_module:, expansion_filepath:, name:, module_name:, file_type:)
     expanded = @c_extractor.from_file( expansion_filepath )
     entries  = _reconcile_definitions( c_module.function_definitions, expanded ) +
-               _reconcile_declarations( c_module.function_declarations, expanded )
+               _reconcile_declarations( c_module.function_declarations, expanded ) +
+               _reconcile_variables( c_module, expanded )
 
     @loginator.log_list(
       entries,
@@ -86,6 +95,41 @@ class PartializerReconciler
     decl.decorators         = expanded.decorators
     decl.signature_stripped = expanded.signature_stripped
     return changed ? "`#{decl.name}` (declaration)" : nil
+  end
+
+  # Pairs each file-scope variable with its twin by name, then order. A name pairs only where it
+  # appears as often in both copies, since fallback can keep both branches of a conditional. A
+  # variable with no name it can be read by never pairs. Returns log entries for those reconciled.
+  def _reconcile_variables(c_module, expanded_module)
+    expanded_by_name = expanded_module.variable_declarations.group_by( &:name )
+
+    return c_module.variable_declarations.group_by( &:name ).flat_map do |var_name, same_name|
+      twins = expanded_by_name.fetch( var_name, [] )
+      next [] if var_name.nil? or twins.size != same_name.size
+
+      same_name.zip( twins ).filter_map { |var, twin| _reconcile_variable( c_module, var, twin ) }
+    end
+  end
+
+  # A variable whose storage class a macro supplies takes every parsed field from its twin. Its
+  # fields depend on each other, so a mix of written and expanded ones could read `extern static`.
+  # A macro that supplies only a qualifier, as `#define ROM const`, compiles as written.
+  def _reconcile_variable(c_module, var, twin)
+    return nil if (var.decorators & STORAGE_CLASSES) == (twin.decorators & STORAGE_CLASSES)
+
+    VARIABLE_FIELDS.each { |field| var[field] = twin[field] }
+    _adopt_defined_type( c_module, var, twin )
+    return "`#{var.name}` (variable)"
+  end
+
+  # Places ahead of the variable the type its twin defines, which a macro ahead of it hid from
+  # the written declaration. Once per type, however many variables share it.
+  def _adopt_defined_type(c_module, var, twin)
+    type = twin.defined_type
+    return if type.nil? or var.defined_type
+
+    c_module.insert_before!( var, [type] ) unless c_module.aggregate_definitions.any? { |held| held.equal?( type ) }
+    var.defined_type = type
   end
 
 end

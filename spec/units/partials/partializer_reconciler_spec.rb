@@ -279,4 +279,133 @@ describe PartializerReconciler do
       )
     end
   end
+
+  context "#reconcile with file-scope variables" do
+    def var(name:, type:, text:, decorators: [], **fields)
+      CExtractorTypes::CVariableDeclaration.new( name: name, type: type, text: text, decorators: decorators, original: "orig #{name}", line_num: 7, **fields )
+    end
+
+    def reconcile_vars(written, expanded)
+      c_module = CExtractorTypes::CModule.new( variable_declarations: written, element_sequence: written.dup )
+      allow(@c_extractor).to receive(:from_file).and_return( CExtractorTypes::CModule.new( variable_declarations: expanded ) )
+      @reconciler.reconcile( c_module: c_module, expansion_filepath: "/build/expanded_code/mod.c", name: "TestMod", module_name: "mod", file_type: "source" )
+      return c_module
+    end
+
+    it "takes every parsed field from the twin when a macro supplies the storage class" do
+      written = var( name: "counter", type: "PRIVATE int", text: "PRIVATE int counter[DEPTH];", array_suffix: "[DEPTH]", origin: :source )
+      twin    = var(
+        name: "counter", type: "int", text: "int (*counter[4])(int) = { 0 };", decorators: ["static"], array_suffix: "",
+        declarator: "(*counter[4])(int)", asm_label: "__asm__(\"c\")", line_num: 2
+      )
+
+      reconcile_vars( [written], [twin] )
+
+      expect( written ).to have_attributes(
+        decorators: ["static"], type: "int", text: "int (*counter[4])(int) = { 0 };", array_suffix: "",
+        declarator: "(*counter[4])(int)", asm_label: "__asm__(\"c\")"
+      )
+      expect( written ).to have_attributes( original: "orig counter", line_num: 7, name: "counter", origin: :source )
+    end
+
+    it "takes an extern a macro spells" do
+      written = var( name: "shared", type: "EXTERN int", text: "EXTERN int shared;" )
+      twin    = var( name: "shared", type: "int", text: "int shared;", decorators: ["extern"] )
+
+      reconcile_vars( [written], [twin] )
+
+      expect( written.extern? ).to be( true )
+    end
+
+    # A name may be declared and then defined, and each pairs with its own twin
+    it "pairs a repeated name with its twins in order" do
+      written = [var( name: "g", type: "EXTERN int", text: "EXTERN int g;" ), var( name: "g", type: "int", text: "int g = 1;" )]
+      twins   = [var( name: "g", type: "int", text: "int g;", decorators: ["extern"] ), var( name: "g", type: "int", text: "int g = 1;" )]
+
+      reconcile_vars( written, twins )
+
+      expect( written.map( &:decorators ) ).to eq( [["extern"], []] )
+      expect( written.map( &:text ) ).to eq( ["int g;", "int g = 1;"] )
+    end
+
+    # A token-pasted name and a file-scope asm statement both read as nameless
+    it "never pairs variables it can read no name for" do
+      written = var( name: nil, type: "extern int", text: "extern int CAT(buf, 1)[4];", decorators: ["extern"] )
+      twin    = var( name: nil, type: "", text: "__asm__(\".text\");" )
+
+      reconcile_vars( [written], [twin] )
+
+      expect( written ).to have_attributes( text: "extern int CAT(buf, 1)[4];", decorators: ["extern"] )
+    end
+
+    it "leaves alone a name the expansion holds more often" do
+      written = var( name: "mode", type: "PRIVATE int", text: "PRIVATE int mode;" )
+      twins   = [var( name: "mode", type: "int", text: "int mode;", decorators: ["static"] ), var( name: "mode", type: "int", text: "int mode;", decorators: ["static"] )]
+
+      reconcile_vars( [written], twins )
+
+      expect( written.type ).to eq( "PRIVATE int" )
+    end
+
+    it "keeps a type the written declaration already defines" do
+      held    = CExtractorTypes::CStatement.new( text: "struct { int a; };", kind: :aggregate )
+      other   = CExtractorTypes::CStatement.new( text: "struct { int a; };", kind: :aggregate )
+      written = var( name: "s", type: "", text: "s;", defined_type: held )
+      twin    = var( name: "s", type: "", text: "s;", decorators: ["static"], defined_type: other )
+
+      c_module = reconcile_vars( [written], [twin] )
+
+      expect( written.defined_type ).to be( held )
+      expect( c_module.aggregate_definitions ).to be_empty
+    end
+
+    it "reconciles each variable of a compound declaration with its own twin, in order" do
+      written = [var( name: "a", type: "PRIVATE int", text: "PRIVATE int a;" ), var( name: "b", type: "PRIVATE int", text: "PRIVATE int b;" )]
+      twins   = [var( name: "a", type: "int", text: "int a;", decorators: ["static"] ), var( name: "b", type: "int", text: "int b;", decorators: ["static"] )]
+
+      reconcile_vars( written, twins )
+
+      expect( written.map( &:text ) ).to eq( ["int a;", "int b;"] )
+    end
+
+    # A qualifier compiles as written, so the written declaration stays
+    it "leaves alone a variable whose storage class agrees, as a qualifier-only macro leaves it" do
+      written = var( name: "table", type: "ROM int", text: "ROM int table;", decorators: ["static"] )
+      twin    = var( name: "table", type: "int", text: "int table;", decorators: ["static", "const"] )
+
+      reconcile_vars( [written], [twin] )
+
+      expect( written ).to have_attributes( type: "ROM int", text: "ROM int table;", decorators: ["static"] )
+    end
+
+    # Fallback can keep both branches of a conditional, which leaves no sure pairing
+    it "leaves alone a name the two copies hold a different number of times" do
+      written = [var( name: "mode", type: "PRIVATE int", text: "PRIVATE int mode;" ), var( name: "mode", type: "PRIVATE long", text: "PRIVATE long mode;" )]
+      twin    = var( name: "mode", type: "int", text: "int mode;", decorators: ["static"] )
+
+      reconcile_vars( written, [twin] )
+
+      expect( written.map( &:type ) ).to eq( ["PRIVATE int", "PRIVATE long"] )
+    end
+
+    # A macro ahead of the type hid it from the written declaration
+    it "places a type the twin defines ahead of the variable, once for all its variables" do
+      type    = CExtractorTypes::CStatement.new( text: "struct { int a; };", kind: :aggregate )
+      written = [var( name: "s", type: "PRIVATE struct { int a; }", text: "PRIVATE struct { int a; } s, t;" ), var( name: "t", type: "PRIVATE struct { int a; }", text: "PRIVATE struct { int a; } s, t;" )]
+      twins   = [var( name: "s", type: "", text: "s;", decorators: ["static"], defined_type: type ), var( name: "t", type: "", text: "t;", decorators: ["static"], defined_type: type )]
+
+      c_module = reconcile_vars( written, twins )
+
+      expect( c_module.aggregate_definitions ).to contain_exactly( be( type ) )
+      expect( c_module.element_sequence ).to eq( [type, *written] )
+      expect( written.map( &:defined_type ) ).to all( be( type ) )
+    end
+
+    it "lists each variable it reconciles" do
+      written = var( name: "counter", type: "PRIVATE int", text: "PRIVATE int counter;" )
+      reconcile_vars( [written], [var( name: "counter", type: "int", text: "int counter;", decorators: ["static"] )] )
+
+      expect(@loginator).to have_received(:log_list).with( ["`counter` (variable)"], anything, Verbosity::DEBUG )
+    end
+  end
 end
