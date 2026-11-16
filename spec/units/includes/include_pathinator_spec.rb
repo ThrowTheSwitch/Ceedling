@@ -122,6 +122,14 @@ describe IncludePathinator do
     end
   end
 
+  describe '#collection_candidates' do
+    it "gives the collection's headers a query names, those below earlier search paths first" do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['src/a/sensor.h', 'lib/sensor.h', 'src/other.h'] )
+
+      expect(@pathinator.collection_candidates( 'sensor.h', ['lib', 'src'] )).to eq( ['lib/sensor.h', 'src/a/sensor.h'] )
+    end
+  end
+
   describe '#prioritize' do
     it 'orders any header list by the earliest search path each header lies below, keeping ties in list order' do
       headers = ['src/b.h', 'inc/a.h', 'src/a.h', 'other/c.h']

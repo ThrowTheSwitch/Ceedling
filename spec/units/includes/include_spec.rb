@@ -564,6 +564,20 @@ describe "Include string coercion (to_str)" do
       # to_str always returns @filename (the basename) regardless of include_path
       expect(include_obj.to_str).to eq("header.h")
     end
+
+    # Its path is then no longer the one written
+    it "marks an include whose `..` a scan resolved against its file's directory" do
+      anchored = UserInclude.new("../src/header.h").anchored("test")
+
+      expect(anchored.filepath).to eq("src/header.h")
+      expect(anchored.directory_relative?).to be( true )
+      expect(anchored).to eq( UserInclude.new("src/header.h") )
+    end
+
+    it "leaves an include without `..` unmarked" do
+      expect(UserInclude.new("src/header.h").anchored("test").directory_relative?).to be( false )
+      expect(UserInclude.new("src/header.h").directory_relative?).to be( false )
+    end
   end
 
   describe "SystemInclude" do

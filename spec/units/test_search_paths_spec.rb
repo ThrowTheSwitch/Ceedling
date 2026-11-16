@@ -27,8 +27,10 @@ describe TestSearchPaths do
     )
   end
 
-  def testable(paths, mock_search_paths = [])
-    return TestInvokerTypes::Testable.new( filepath: 'test/TestFoo.c', paths: paths, mock_search_paths: mock_search_paths )
+  def testable(paths, mock_search_paths = [], derived_search_paths = [])
+    return TestInvokerTypes::Testable.new(
+      filepath: 'test/TestFoo.c', paths: paths, mock_search_paths: mock_search_paths, derived_search_paths: derived_search_paths
+    )
   end
 
   describe "#compose" do
@@ -59,6 +61,13 @@ describe TestSearchPaths do
       ] )
     end
 
+    it "puts the directories a test's #includes imply after every configured path" do
+      allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( ['toolchain'] )
+      allow(@configurator).to receive(:collection_paths_include).and_return( ['src'] )
+
+      expect(@search_paths.compose( testable( { mocks: 'mocks' }, [], ['src/path/to'] ) )).to eq( ['mocks', 'src', 'toolchain', 'src/path/to'] )
+    end
+
     it "adds no Partial directory for a module named without one" do
       allow(@test_context_extractor).to receive(:lookup_partials_config).and_return( { 'uart' => {} } )
 
@@ -83,8 +92,8 @@ describe TestSearchPaths do
         allow(@configurator).to receive(:"collection_paths_#{kind}").and_return( [kind.to_s] )
       end
 
-      expect(@search_paths.header_paths( testable( { mocks: 'mocks', partials: 'partials' }, ['mocks/drivers'] ) )).to eq( %w[
-        directive test_include support include libraries vendor test_toolchain_include
+      expect(@search_paths.header_paths( testable( { mocks: 'mocks', partials: 'partials' }, ['mocks/drivers'], ['derived'] ) )).to eq( %w[
+        directive test_include support include libraries vendor test_toolchain_include derived
       ] )
     end
   end
@@ -99,6 +108,16 @@ describe TestSearchPaths do
 
       expect(testable.mock_search_paths).to eq( ['mocks/drivers'] )
       expect(testable.search_paths).to eq( ['mocks', 'mocks/drivers'] )
+    end
+
+    it "keeps the directories the test's #includes imply" do
+      testable = TestInvokerTypes::Testable.new(
+        filepath: 'test/TestFoo.c', paths: { mocks: 'mocks' }, mock_search_paths: [], derived_search_paths: ['src/path/to']
+      )
+
+      @search_paths.assign_mock_search_paths( testable, ['mocks/drivers'], Mutex.new )
+
+      expect(testable.search_paths).to eq( ['mocks', 'mocks/drivers', 'src/path/to'] )
     end
   end
 end

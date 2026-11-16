@@ -30,11 +30,14 @@ describe 'Test file #include extraction (integration)' do
 
   # Runs stages 2 through 4 for test/<test> in a project laid out from `tree`, and yields
   # the harness and the Testable. `directives_only: false` forces whole-run fallback.
-  # `include_paths` replaces every directory below src/ as the search paths.
-  def extract(tree, test, directives_only:, defines: [], flags: [], bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL, include_paths: nil)
+  # `include_paths` replaces every directory below src/ as the search paths, and
+  # `all_headers` every header below src/ as the header collection.
+  def extract(tree, test, directives_only:, defines: [], flags: [], bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL, include_paths: nil, all_headers: nil)
     with_source_tree( tree ) do |dir|
       Dir.chdir( dir ) do
-        harness  = IntegrationSpecHelpers::TestIncludesHarness.new( directives_only: directives_only, bare_tool: bare_tool, include_paths: include_paths )
+        harness  = IntegrationSpecHelpers::TestIncludesHarness.new(
+          directives_only: directives_only, bare_tool: bare_tool, include_paths: include_paths, all_headers: all_headers
+        )
         testable = harness.run( "test/#{test}", defines: defines, flags: flags )
         yield harness, testable
       end
@@ -203,6 +206,21 @@ describe 'Test file #include extraction (integration)' do
             search.header_candidates( include.filepath ).first
           end
           expect(headers).to eq( ['src/drivers/foo.h'] )
+        end
+      end
+
+      # A header only :files supplies sits in no search path's directory, so the test gets
+      # the directory its #include implies, and its stand-in reaches the header through it
+      it 'reaches a header no search path lists through the directory its #include implies' do
+        tree = {
+          'src/path/to/sensor.h' => "int sensor_read(void);\n",
+          'test/test_sensor.c'   => "#include \"mock_sensor.h\"\n"
+        }
+
+        extract_in_mode( tree, 'test_sensor.c', include_paths: ['.'], all_headers: ['src/path/to/sensor.h'] ) do |harness, testable|
+          expect(testable.derived_search_paths).to eq( ['src/path/to'] )
+          expect(testable.search_paths.last).to eq( 'src/path/to' )
+          expect(harness.mocks( 'test/test_sensor.c' )).to eq( ['mock_sensor.h'] )
         end
       end
 
