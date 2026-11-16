@@ -7,7 +7,8 @@
 
 # A test's compiler search paths, in the order the compiler searches them. Generated
 # directories come first, so a test's mocks and Partials shadow the real headers they
-# stand in for, then TEST_INCLUDE_PATH() entries, then the project's configured paths.
+# stand in for, then TEST_INCLUDE_PATH() entries, then the project's configured paths,
+# then the directories the test's #includes imply for headers no search path lists.
 class TestSearchPaths
 
   constructor :configurator, :include_pathinator, :test_context_extractor
@@ -16,7 +17,7 @@ class TestSearchPaths
   # the flat mock root. They default to the Testable's own.
   def compose(testable, mock_search_paths = testable.mock_search_paths)
     filepath = testable.filepath
-    return (generated_paths( filepath, testable.paths, mock_search_paths ) + configured_paths( filepath )).uniq
+    return (generated_paths( filepath, testable.paths, mock_search_paths ) + configured_paths( filepath ) + testable.derived_search_paths).uniq
   end
 
   # The paths a test's real headers are found through: its search paths without the

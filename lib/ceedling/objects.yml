@@ -458,6 +458,7 @@ test_build_setup:
     - dependinator
     - test_search_paths
     - mock_locator
+    - test_derived_search_paths
     - test_source_file_directive_resolver
 
 test_includes_extractinator:
@@ -537,6 +538,16 @@ test_build_planner:
     - plugin_manager
     - test_source_file_directive_resolver
     - mock_locator
+
+test_derived_search_paths:
+  compose:
+    - configurator
+    - include_pathinator
+    - test_search_paths
+    - test_context_extractor
+    - file_finder
+    - file_wrapper
+    - loginator
 
 mock_locator:
   compose:

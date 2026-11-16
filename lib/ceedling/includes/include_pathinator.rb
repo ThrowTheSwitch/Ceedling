@@ -10,6 +10,7 @@ require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/filesystem/project_paths'
 require 'ceedling/includes/header_search'
+require 'ceedling/filesystem/path_matcher'
 
 class IncludePathinator
 
@@ -99,6 +100,12 @@ class IncludePathinator
   # reference that distinguishes nothing resolving exactly as it did before.
   def prioritized_header_files(search_paths)
     return prioritize( @configurator.collection_all_headers.to_a, search_paths )
+  end
+
+  # The collection's headers `query` could name, those beneath earlier search paths first.
+  # Matches filter the collection before ranking, so a lookup costs one pass.
+  def collection_candidates(query, search_paths)
+    return prioritize( PathMatcher.candidates( query, @configurator.collection_all_headers.to_a ), search_paths )
   end
 
   # `headers` reordered so those beneath earlier search paths come first, keeping their

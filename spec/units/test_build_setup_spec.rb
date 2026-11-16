@@ -82,6 +82,9 @@ describe TestBuildSetup do
       file_finder: @file_finder, file_path_utils: @file_path_utils
     )
 
+    @test_derived_search_paths = double( "TestDerivedSearchPaths" )
+    allow(@test_derived_search_paths).to receive(:collect).and_return( [] )
+
     @setup = described_class.new(
       {
         :configurator           => @configurator,
@@ -99,6 +102,7 @@ describe TestBuildSetup do
         :dependinator           => @dependinator,
         :test_search_paths      => @search_paths,
         :mock_locator           => @mock_locator,
+        :test_derived_search_paths => @test_derived_search_paths,
         :test_source_file_directive_resolver => @test_source_file_directive_resolver
       }
     )
@@ -382,6 +386,18 @@ describe TestBuildSetup do
 
     # Only a scan without test preprocessing caches TEST_SOURCE_FILE() entries, so switching
     # modes must rescan rather than recall a cache missing them
+    # A mock's header found only through a derived directory needs that directory first
+    it "derives a test's search paths before its mock search paths" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+      expect(@test_derived_search_paths).to receive(:collect).with( @testable ).ordered.and_return( ['src/path/to'] )
+      expect(@setup).to receive(:collect_mock_search_paths).with( @testable ).ordered do |testable|
+        expect(testable.derived_search_paths).to eq( ['src/path/to'] )
+        []
+      end
+
+      @setup.stage_collect_test_context( @state )
+    end
+
     it "caches build directives against the test preprocessing mode that scanned them" do
       [true, false].each do |preprocessing|
         allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( preprocessing )

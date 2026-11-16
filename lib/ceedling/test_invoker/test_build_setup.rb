@@ -36,6 +36,7 @@ class TestBuildSetup
     :dependinator,
     :test_search_paths,
     :mock_locator,
+    :test_derived_search_paths,
     :test_source_file_directive_resolver
   )
 
@@ -182,6 +183,10 @@ class TestBuildSetup
         partials_in_use: !(@context_extractor.lookup_partials_config( filepath )).empty?,
         includes:        @context_extractor.lookup_all_header_includes_list( filepath )
       )
+
+      # Mock search paths are found through the derived ones
+      derived = @test_derived_search_paths.collect( testable )
+      state.lock.synchronize { testable.derived_search_paths = derived }
 
       testable.mock_search_paths = collect_mock_search_paths( testable )
     end

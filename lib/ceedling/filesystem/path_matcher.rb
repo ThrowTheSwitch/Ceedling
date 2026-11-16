@@ -134,6 +134,21 @@ class PathMatcher
     tail_matches?(shorter, longer)
   end
 
+  # What remains of `path` above `tail`'s segments: `.` when nothing does, and nil when
+  # `path` doesn't end in `tail`. A leading `/` or drive letter stays.
+  def self.strip_tail(path, tail)
+    path_segments = segments(path)
+    tail_segments = segments(tail)
+    return nil if tail_segments.empty? or !tail_matches?(tail_segments, path_segments)
+
+    rest  = path_segments[0...-tail_segments.length]
+    drive = path[/\A[A-Za-z]:(?=[\\\/])/]
+    return "#{drive}/#{rest.drop(1).join('/')}" if drive
+    return "/#{rest.join('/')}" if path.start_with?('/', '\\')
+
+    return rest.empty? ? '.' : rest.join('/')
+  end
+
   # A Unix absolute path or one beginning with a Windows drive letter
   def self.absolute?(path)
     path.start_with?('/') || path.match?( /\A[A-Za-z]:[\\\/]/ )

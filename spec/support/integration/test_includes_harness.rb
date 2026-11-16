@@ -28,6 +28,7 @@ require 'ceedling/test_context_extractor'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
 require 'ceedling/test_invoker/mock_locator'
+require 'ceedling/test_invoker/test_derived_search_paths'
 require 'ceedling/test_invoker/standin_headerinator'
 require 'ceedling/test_invoker/test_includes_extractinator'
 require 'ceedling/test_invoker/test_bare_includes_extractinator'
@@ -180,6 +181,11 @@ module IntegrationSpecHelpers
       @locator      = MockLocator.new(
         configurator: @cfg, include_pathinator: @headers, test_search_paths: @search_paths, file_finder: file_finder, file_path_utils: @fpu
       )
+      @derived = TestDerivedSearchPaths.new(
+        configurator: @cfg, include_pathinator: @headers, test_search_paths: @search_paths, test_context_extractor: @context_extractor,
+        file_finder: file_finder, file_wrapper: @file_wrapper, loginator: NULL
+      )
+      @derived.setup
       @extractinator = build_extractinator
     end
 
@@ -189,7 +195,8 @@ module IntegrationSpecHelpers
       testable = testable_for( filepath, defines, flags )
       @context_extractor.collect_simple_context_from_file( filepath, nil, TestContextExtractor::Context::INCLUDES )
 
-      # Stage 2's tolerant mock search paths and stage 3's search paths
+      # Stage 2's derived and tolerant mock search paths, and stage 3's search paths
+      testable.derived_search_paths = @derived.collect( testable )
       testable.mock_search_paths = @locator.directories(
         @context_extractor.lookup_mock_header_includes_list( filepath ), mocks_root: testable.paths[:mocks],
         collection: @locator.header_search( testable ), complain: :silent

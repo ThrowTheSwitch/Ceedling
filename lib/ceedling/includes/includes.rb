@@ -422,6 +422,12 @@ class Include
   attr_reader :path
   attr_reader :include_path
 
+  # Whether a scan rewrote this include's `..` against its file's own directory, so its
+  # path is no longer the one written
+  def directory_relative?
+    return @directory_relative
+  end
+
   # Initialize an Include object from a C include statement or simple filepath.
   #
   # @param statement [String] A C include statement. Examples:
@@ -436,8 +442,9 @@ class Include
   #    resolved location (needed elsewhere for identity -- see `Includes.sanitize!`)
   #    rather than the original, as-written directive text a reconciled render needs.
   # @raise [ArgumentError] If the statement is empty or becomes empty after cleaning
-  def initialize(statement, include_path: nil)
+  def initialize(statement, include_path: nil, directory_relative: false)
     @filepath = clean(statement)
+    @directory_relative = directory_relative
 
     raise ArgumentError, "Empty include statement" if @filepath.empty?
 
@@ -455,7 +462,7 @@ class Include
   def anchored(anchor)
     resolved = PathMatcher.resolve_relative( @filepath, anchor: anchor )
     return self if resolved == @filepath
-    return self.class.new( resolved, include_path: @include_path )
+    return self.class.new( resolved, include_path: @include_path, directory_relative: true )
   end
 
   # Method specialized by subclasses
