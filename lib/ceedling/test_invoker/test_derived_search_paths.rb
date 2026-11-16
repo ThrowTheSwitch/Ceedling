@@ -35,15 +35,19 @@ class TestDerivedSearchPaths
     @refused_lock = Mutex.new
   end
 
-  # The directories `testable`'s #includes imply, in the order its #includes need them
+  # The directories `testable`'s #includes imply, in the order its #includes need them. One
+  # search serves every #include until a directory joins it.
   def collect(testable)
     roots      = []
     configured = @test_search_paths.header_paths( testable )
+    search     = @include_pathinator.header_search( configured )
 
     candidate_includes( testable ).each do |include|
+      root = derived_root( testable, include, search )
+      next if root.nil?
+
+      roots << root
       search = @include_pathinator.header_search( configured + roots )
-      root   = derived_root( testable, include, search )
-      roots << root unless root.nil?
     end
 
     return roots
