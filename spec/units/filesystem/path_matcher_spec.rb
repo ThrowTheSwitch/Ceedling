@@ -213,6 +213,10 @@ describe PathMatcher do
       expect(described_class.strip_tail( 'C:/sys/socket.h', 'sys/socket.h' )).to eq( 'C:/' )
     end
 
+    it 'keeps a share' do
+      expect(described_class.strip_tail( '//server/sdk/sys/socket.h', 'sys/socket.h' )).to eq( '//server/sdk' )
+    end
+
     it 'ignores `./` and doubled separators' do
       expect(described_class.strip_tail( './src//path/sensor.h', './path/sensor.h' )).to eq( 'src' )
     end

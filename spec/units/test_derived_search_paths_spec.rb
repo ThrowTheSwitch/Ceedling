@@ -27,7 +27,7 @@ describe TestDerivedSearchPaths do
     # The project's headers on disk, listed a directory at a time
     @tree = []
     allow(@file_wrapper).to receive(:directory_listing) do |patterns|
-      dir = File.dirname( patterns.first )
+      dir = File.dirname( patterns.first ).delete_prefix( './' )
       @tree.select { |header| File.dirname( header ) == dir }.sort
     end
     allow(@file_wrapper).to receive(:exist?) { |path| @tree.include?( path ) }
@@ -91,6 +91,11 @@ describe TestDerivedSearchPaths do
       expect(derive( paths: ['inc'], includes: [mock( 'src/path/to/mock_sensor.h' )] )).to eq( ['.'] )
     end
 
+    # The compiler can't join `src` with "src/path/to/sensor.h", though the header lies below it
+    it "adds the directory a mock's folder is measured from when that folder starts at a search path" do
+      expect(derive( paths: ['src'], includes: [mock( 'src/path/to/mock_sensor.h' )] )).to eq( ['.'] )
+    end
+
     it "adds the header's own directory for a mock named without its folder" do
       allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
 
@@ -147,6 +152,18 @@ describe TestDerivedSearchPaths do
 
       it "adds the directory a mock's folder is measured from" do
         expect(derive( paths: ['inc'], includes: [mock( 'sys/mock_socket.h' )], headers: [socket] )).to eq( ['/usr/include/x86_64-linux-gnu'] )
+      end
+
+      it "names the option a mock without its folder needs, rather than a folder alone" do
+        allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
+        expect(@loginator).to receive(:log).once.with(
+          "#include \"sys/mock_socket.h\" in test/test_it.c names #{socket}, outside the project. " \
+          "With :cmock ↳ :mock_name_include_folder disabled, its mock includes it by bare name, and Ceedling adds no search path " \
+          "for a bare name there. Enable that option to include it by its folder, as in \"sys/mock_socket.h\".",
+          Verbosity::COMPLAIN, LogLabels::NOTICE
+        )
+
+        expect(derive( paths: ['inc'], includes: [mock( 'sys/mock_socket.h' )], headers: [socket] )).to eq( [] )
       end
 
       it "adds nothing for a bare name, naming the #include that would reach it once" do

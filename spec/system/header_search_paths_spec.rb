@@ -94,6 +94,35 @@ ceedling_system_tests do
     end
   end
 
+  # A mock's #include after stage 4 names its place below its mirror root. A header of the
+  # same path below an earlier search path is a different header. The build itself can't
+  # pass here: under :all the mock includes its header by that place, which the compiler
+  # finds below the earlier search path, so only the mock's own content is checked.
+  it "mocks the header a preprocessed test's mock was placed for, not one of the same path in an earlier search path" do
+    in_project do
+      write( 'test/support/hal/foo.h', "int fake_read(void);\n" )
+      write( 'inc/hal/foo.h', "int foo_read(void);\n" )
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_foo.h\"\n" \
+                              "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+      configure( ['inc/**'], :all, { :paths => { :include => ['inc/**'], :support => ['test/support'] } } )
+
+      output = @c.ceedling_build_exec( "gen:mocks:all" )
+      expect(@c.last_exit_status).to eq(0), output
+      expect(File.read( 'build/test/mocks/test/test_c/hal/mock_foo.h' )).to include( 'foo_read' )
+    end
+  end
+
+  it "mocks a header by a folder below a search path without naming the mock by it" do
+    in_project do
+      write( 'src/drivers/foo.h', "int foo_read(void);\n" )
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                              "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+      configure( ['src'], :none, { :cmock => { :mock_name_include_folder => false } } )
+      expect(build_passes).to include( "Added search path 'src/drivers'" )
+    end
+  end
+
   # A header only :files ↳ :include supplies sits in no search path's directory. The
   # directory a test's #include implies for it joins that test's search paths, last.
   describe "a header only :files supplies" do
@@ -132,6 +161,25 @@ ceedling_system_tests do
         write( 'inc/other.h', "int other(void);\n" )
         sensor_project( '#include "src/path/to/mock_sensor.h"', include_paths: ['inc'] )
         expect(build_passes).to include( "Added search path '.' for test/test_c.c" )
+      end
+    end
+
+    it "mocks it through a folder that starts at a search path, through the directory that folder is measured from" do
+      in_project do
+        sensor_project( '#include "src/path/to/mock_sensor.h"', include_paths: ['src'] )
+        expect(build_passes).to include( "Added search path '.' for test/test_c.c" )
+      end
+    end
+
+    it "includes it in the runner through the directory its #include implies" do
+      in_project do
+        write( 'src/path/to/sensor_types.h', "typedef int sensor_value_t;\n" )
+        sensor_project( "#include \"sensor_types.h\"\n#include \"mock_sensor.h\"\nvoid test_type(void) { sensor_value_t v = 3; TEST_ASSERT_EQUAL_INT(3, v); }",
+                        files: ['+:src/**/*.h'] )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+2/)
       end
     end
 

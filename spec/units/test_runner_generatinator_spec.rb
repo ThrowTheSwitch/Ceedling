@@ -263,6 +263,16 @@ describe TestRunnerGeneratinator do
       expect(generated_includes( [UserInclude.new( 'gone/missing.h' )] )).to eq( ['missing.h'] )
     end
 
+    it "spells a test's #includes once for both stages and the runner" do
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [UserInclude.new( 'top.h' )] )
+      allow(@test_context_extractor).to receive(:collect_test_runner_details)
+      allow(@generator).to receive(:generate_test_runner)
+      expect(@mock_locator).to receive(:header_search).once.and_return( HeaderSearch.new( ['src'], ->(_dir) { ['src/top.h'] } ) )
+
+      @runners.collect_details( @state )
+      @runners.generate( @state )
+    end
+
     it "carries the spelled #includes in its meta" do
       allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [UserInclude.new( 'drivers/foo.h' )] )
       allow(@generator).to receive(:generate_test_runner)

@@ -50,6 +50,7 @@ describe TestBuildPlanner do
     allow(@include_pathinator).to receive(:header_search).and_return( @header_search )
     @test_search_paths = double( "TestSearchPaths" )
     allow(@test_search_paths).to receive(:header_paths) { |testable| testable.search_paths }
+    allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
     allow(@include_pathinator).to receive(:prioritized_header_files).and_return( [] )
     allow(@loginator).to receive(:log)
 
@@ -249,6 +250,22 @@ describe TestBuildPlanner do
 
       expect(@testable.mocks.length).to eq( 3 )
       expect(collections).to eq( 1 )
+    end
+
+    # A reconciled mock's #include names its place below its mirror root
+    it "resolves a reconciled mock by trailing path first when test files are preprocessed" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'hal/MockFoo.h' )] )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
+      allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
+      trailing = HeaderSearch.new( [], ->(_dir) { [] } )
+      allow(@header_search).to receive(:trailing_first).and_return( trailing )
+
+      expect(@file_finder).to receive(:resolve_mock).with( 'hal/MockFoo.h', collection: trailing, complain: :error ).and_return( ['inc/hal/foo.h', 'hal'] )
+
+      @planner.stage_determine_files( @state )
     end
 
     context "with a Partial mocked header" do

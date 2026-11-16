@@ -94,6 +94,13 @@ describe HeaderSearch do
       expect(headers.header_candidates( '/opt/sdk/drivers/foo.h' )).to eq( ['/opt/sdk/drivers/foo.h'] )
     end
 
+    # ProjectPaths expands both sides alike, so a drive-lettered path compares on any host
+    it "takes a path with a drive letter below a search path" do
+      headers = search( ['C:/sdk/inc'], ['C:/sdk/inc/drivers/x.h'] )
+
+      expect(headers.header_candidates( 'C:\\sdk\\inc\\drivers\\x.h' )).to eq( ['C:/sdk/inc/drivers/x.h'] )
+    end
+
     it "finds no absolute path outside every search path" do
       headers = search( ['src'], ['/opt/sdk/foo.h'] )
 
@@ -107,16 +114,57 @@ describe HeaderSearch do
       expect(headers.header_candidates( '../b/foo.h' )).to eq( [] )
     end
 
-    it "never reads a glob character in an #include as a glob" do
-      headers = search( ['src'], ['src/drivers/foo.h'] )
+    it "never reads a glob character in an #include's directory as a glob" do
+      headers = search( ['src', '.'], ['src/drivers/foo.h'] )
 
       expect(headers.header_candidates( 'd*/foo.h' )).to eq( [] )
+      expect(@listed.keys).to_not include( a_string_including( '*' ) )
+    end
+
+    it "finds a header whose own name holds a glob character" do
+      expect(search( ['src'], ['src/a[1].h'] ).header_candidates( 'a[1].h' )).to eq( ['src/a[1].h'] )
     end
 
     it "finds nothing for a name no search path reaches" do
       headers = search( ['src'], ['src/foo.h'] )
 
       expect(headers.header_candidates( 'drivers/bar.h' )).to eq( [] )
+    end
+  end
+
+  # A mock's #include after stage 4 names its place below its mirror root, which a header
+  # of the same path below an earlier search path mustn't take
+  describe "#trailing_first" do
+    let(:tree) { ['test/support/hal/foo.h', 'inc/hal/foo.h'] }
+
+    it "matches a header directly in a search path by trailing path before joining" do
+      headers = search( ['test/support', 'inc', 'inc/hal'], tree )
+
+      expect(headers.header_candidates( 'hal/foo.h' )).to eq( ['test/support/hal/foo.h', 'inc/hal/foo.h'] )
+      expect(headers.trailing_first.header_candidates( 'hal/foo.h' )).to eq( ['inc/hal/foo.h'] )
+    end
+
+    it "joins when no header's trailing path matches" do
+      headers = search( ['src'], ['src/drivers/foo.h'] )
+
+      expect(headers.trailing_first.header_candidates( 'drivers/foo.h' )).to eq( ['src/drivers/foo.h'] )
+    end
+
+    it "shares the search's listings" do
+      headers = search( ['src'], ['src/foo.h'] )
+      headers.header_candidates( 'foo.h' )
+      headers.trailing_first.header_candidates( 'foo.h' )
+
+      expect(@listed).to eq( { 'src' => 1 } )
+    end
+  end
+
+  describe "#joins?" do
+    it "says whether a search path joined with the text names a header, as -I does" do
+      headers = search( ['src'], ['src/drivers/foo.h'] )
+
+      expect(headers.joins?( 'drivers/foo.h' )).to be( true )
+      expect(headers.joins?( 'src/drivers/foo.h' )).to be( false )
     end
   end
 

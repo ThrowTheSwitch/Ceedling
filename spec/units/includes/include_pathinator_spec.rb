@@ -293,10 +293,24 @@ describe IncludePathinator do
 
   describe '#augment_environment_header_files' do
     it 'delegates to configurator.redefine_element with :collection_all_headers and the given headers, unchanged' do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['inc/foo.h'] )
       headers = ['inc/foo.h', 'inc/bar.h']
       expect(@configurator).to receive(:redefine_element).with(:collection_all_headers, headers)
 
       @pathinator.augment_environment_header_files(headers)
+    end
+
+    # A later build in the process would otherwise find another test's TEST_INCLUDE_PATH()
+    # headers among the configured ones
+    it 'keeps collection_candidates drawing on the collection as configured' do
+      collection = ['src/a/sensor.h']
+      allow(@configurator).to receive(:collection_all_headers) { collection }
+      allow(@configurator).to receive(:redefine_element) { |_name, headers| collection = headers }
+
+      @pathinator.augment_environment_header_files( ['src/a/sensor.h', 'tip/sensor.h'] )
+      @pathinator.augment_environment_header_files( ['src/a/sensor.h', 'tip/sensor.h'] )
+
+      expect(@pathinator.collection_candidates( 'sensor.h', [] )).to eq( ['src/a/sensor.h'] )
     end
   end
 
