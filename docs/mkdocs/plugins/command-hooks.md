@@ -177,7 +177,7 @@ The parameter available to a tool (`${1}`) when the hook is called is a floating
 
 ### `:pre_mock_preprocess`
 
-If mocks are enabled and preprocessing is in use, this is called just before each header file to be mocked is preprocessed.
+If mocks are enabled and preprocessing is in use, this is called just before each header file to be mocked is preprocessed. A mocked Partial’s generated header is never preprocessed, so it draws no call.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the header file to be mocked.
 
@@ -187,7 +187,7 @@ See [_Conventions & Behaviors_][preprocessing] for details on how Ceedling prepr
 
 ### `:post_mock_preprocess`
 
-If mocks are enabled and preprocessing is in use, this is called just after each header file to be mocked is preprocessed.
+If mocks are enabled and preprocessing is in use, this is called just after each header file to be mocked is preprocessed. A mocked Partial’s generated header is never preprocessed, so it draws no call.
 
 The parameter available to a tool (`${1}`) when the hook is called is the filepath of the header file to be mocked.
 

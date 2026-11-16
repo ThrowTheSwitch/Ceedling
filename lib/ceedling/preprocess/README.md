@@ -17,9 +17,9 @@ One class is the entry point: `Preprocessinator` (`preprocessinator.rb`). Every 
 - `preprocess_bare_includes(filepath:, test:, search_paths:, flags:, defines:)` — the bare `#include` list only, for early stand-in generation. Returns `Array<Include>`, or `nil` if the preprocessor failed.
 - `generate_directives_only_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)` — runs the accurate pass, strips its comments, compacts it. Returns the raw output’s path, or `nil` if the preprocessor failed.
 - `generate_fallback_expansion_output(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)` — runs a test file’s plain expansion, fallback’s best-effort stand-in for the accurate pass. Returns its path, or `nil` if the preprocessor failed.
-- `preprocess_file_includes_common(test:, filepath:, directives_only_filepath:, fallback:, flags:, include_paths:, vendor_paths:, defines:)` — the full extract-reconcile-cache path for a mockable header or a Partial header/source. Returns the reconciled `Array<Include>`.
-- `preprocess_mockable_header_file(...)`, `preprocess_partial_header_file_preserve_macros(...)`, `preprocess_partial_source_file_preserve_macros(...)`, `preprocess_test_file(...)` — each extracts includes (via the method above, except the test file, which already has its list), then rebuilds the file.
-- `preprocess_partial_header_expand_macros(...)` / `preprocess_partial_source_expand_macros(...)` — the full-expansion pass, for signature extraction.
+- `preprocess_file_includes_common(test:, filepath:, directives_only_filepath:, fallback:, flags:, vendor_paths:, defines:)` — the full extract-reconcile-cache path for a mockable header or a Partial header/source. Returns the reconciled `Array<Include>`.
+- `preprocess_mockable_header_file(...)`, `preprocess_partial_file(kind:, ...)`, `preprocess_test_file(...)` — each extracts includes (via the method above, except the test file, which already has its list), then rebuilds the file. `kind` is `:header` or `:source`, and the Partial method also gives back the includes.
+- `generate_partial_expansion(filepath:, test:, ...)` — the full-expansion pass for a Partial file, which reconciliation reads. Returns the path of the file’s own expanded lines, or `nil` if the preprocessor failed.
 - `store_includes_list(...)` / `load_includes_list(...)` — the per-file YAML cache of a reconciled list.
 
 ## Reading a Line Marker
@@ -153,13 +153,15 @@ The reconciled list is also cleaned of any self-reference (`clean_self_reference
 
 ## Expanding a File in Full
 
-A separate pass runs with every macro expanded, for the narrow case where a signature or visibility keyword hides behind a project macro (`#define PRIVATE static`). `Preprocessinator#preprocess_partial_{header,source}_expand_macros` funnel through `_preprocess_partial_expand_macros`, which runs `tools_test_file_full_preprocessor`:
+A separate pass expands every macro in a Partial file, since a project macro can hide a decorator, a call or a type attribute (`#define PRIVATE static`). Partial reconciliation reads the result (see `partials/README.md`). `Preprocessinator#generate_partial_expansion` runs `tools_test_file_full_preprocessor`:
 
 ```
 gcc -E -I"src" -D"UNIT_TEST" -x c "test_module.c" -o "out.c"
 ```
 
-`command[:options][:boom] = false` — a nonzero exit must fall back to directives-only signatures, not raise. On failure the method returns `nil`. This is the most expensive mode and is used sparingly.
+The pass writes two files. GCC’s raw output stays whole under `full_expansion/`, since its line markers name every header the file entered, and stage 6 or 7 registers those headers as dependencies. The file’s own lines go under `expanded_code/` as plain code, which reconciliation parses. A nonzero exit doesn’t raise. Both files are removed and the method returns `nil`, so an earlier run’s expansion never passes for this one’s, and reconciliation has nothing to read.
+
+Every stale Partial file gets this pass, with no attempt to detect a hiding macro first. A sound check would fire on nearly every module, since even `bool` from `stdbool.h` is a macro.
 
 All three runs share one private runner, `run_preprocessor(tool, filepath, output, flags:, include_paths:, vendor_paths:, defines:)`. It builds the command for whichever tool the caller names, with the file’s own search paths ahead of vendor paths, and sets `boom: false`. Each caller then handles a failure its own way.
 

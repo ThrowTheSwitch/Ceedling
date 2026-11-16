@@ -141,8 +141,9 @@ whose associated value is itself a hash with the following contents:
 These methods are called before and after execution of preprocessing for header
 files to be mocked (see [Conventions & Behaviors][preprocessing] for preprocessing details). If a
 project does not enable preprocessing or a build does not include tests, these
-are not called. This pair of methods is called a number of times equal to the
-number of mocks in a test build.
+are not called. This pair of methods is called once for each mocked header in a
+test build. A mocked Partial's generated header is never preprocessed, so it
+draws no call.
 
 The argument `arg_hash` follows the structure below:
 

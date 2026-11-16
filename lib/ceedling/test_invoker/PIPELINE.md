@@ -6,19 +6,20 @@ Each test file in a run gets its own `Testable` record, and every `Testable` tra
 
 ## The pipeline's shape
 
-Nine classes divide the stages, each owning one concern:
+Ten classes divide the stages, each owning one concern:
 
 - **`TestInvoker`** owns one test build run from start to finish. It opens the dependency cache before the run and flushes it afterward, and fires the `pre_test_build` and `post_test_build` plugin hooks around it. When anything in the pipeline raises, it catches the exception, logs it, and records the run as a failed build. Once a run finishes, it also answers narrow questions such as which sources a test pulled in, for callers that want dependency information rather than a real build.
 - **`TestPipelineManager`** owns the stage sequence: the fixed list of stages below, and the feature toggles and stop points that let a stage decline to run. It knows nothing of how a stage does its work, only whether it runs.
 - **`TestBuildSetup`** does each test's groundwork in stages 1–3: build directories, the text scan of the test file's `#include`s and build directives, and the flags, defines, and search paths every later stage uses.
 - **`TestIncludesExtractinator`** runs stage 4, which replaces the text scan's `#include`s with what the real preprocessor found. It sequences one class per pass: `TestBareIncludesExtractinator`, `TestIncludesPreprocessinator`, and `TestIncludesReconcilinator`.
 - **`TestBuildPlanner`** decides what to generate and build: which mocks a test needs, what its runner and Partials will be, and, once everything upstream has run, the final sources, objects, and artifacts to compile and link.
-- **`PartialsManager`** preprocesses each Partial's header and source files and generates its implementation, interface, and, when needed, types header, calling on `Partializer` (`lib/ceedling/partials/`) for the C parsing and extraction.
+- **`PartialFilesPreprocessinator`** runs stages 6 and 7, which preprocess each Partial's header and source files, one tracked job per file.
+- **`PartialsManager`** runs stage 8, which generates each Partial's implementation, interface, and, when needed, types header. It calls on `Partializer` (`lib/ceedling/partials/`) for the C parsing and extraction.
 - **`TestFilePreprocessinator`** runs stage 11, which preprocesses each test file and extracts its `TEST_SOURCE_FILE()` directives.
 - **`TestRunnerGeneratinator`** runs stages 12 and 13, which parse test case names and generate each test's Unity runner.
 - **`TestBuildExecutor`** does the remaining work the planner decided on: generating mocks, compiling objects, linking executables, and running the test fixtures.
 
-The seven stage classes never call each other. `TestPipelineManager` alone sequences them, calling each stage's method on the shared `PipelineState` in turn.
+The eight stage classes never call each other. `TestPipelineManager` alone sequences them, calling each stage's method on the shared `PipelineState` in turn.
 
 Three collaborators hold logic more than one stage needs, so the stages cannot drift apart:
 
@@ -62,9 +63,17 @@ Stages 2 and 3 run before stage 4, so anything they derive from the `#include`s 
 
 **Planning (stage 5)** is where `TestBuildPlanner` decides what this test needs generated: which of its includes are mocks and where each one's real header resolves, what its Partials configuration looks like, and where its runner will live. It checks that every header the test includes exists, and it fires the `pre_test` plugin hook. Nothing is generated yet.
 
-**Partials (stages 6-8)** run only when the project uses Partials and this run has any. A transform first flattens every test's Partials configuration into two lists, one of Partial header files and one of Partial source files, so stages 6 and 7 can preprocess every Partial file across every test as one parallel batch. Stage 8 then generates each Partial's implementation and interface from that output. A Partial whose implementation and interface are already fresh is passed over without extraction.
+**Partials (stages 6-8)** run only when the project uses Partials and this run has any. A transform first flattens every test's Partials configuration into two lists, one of Partial header files and one of Partial source files. Stages 6 and 7 hand each list to `PartialFilesPreprocessinator`, which preprocesses every Partial file across every test as one parallel batch. Stage 8 then generates each Partial's implementation and interface from that output. A Partial whose implementation and interface are already fresh is passed over without extraction.
 
-**Mocks (stages 9-10)** run only when the project uses mocks and this run has any. A transform flattens every test's planned mocks into one list, as the Partials transform does. Stage 9, with mock preprocessing on (`:mocks` or `:all`), preprocesses each header to be mocked. Stage 10 generates each mock's source and header with CMock, into a directory that mirrors its real header's location below the test's mock root. The `:mocking` stop point ends the run here.
+Each Partial file is one job of three preprocessor runs, each feeding a later step:
+
+1. A directives-only run keeps the file's macros and records every file it entered. Fallback has no such run.
+2. A bare-includes run yields the file's reconciled `#include`s. Assembly then writes the copy stage 8 extracts from.
+3. A full `-E` expansion shows what a macro hides, such as the `static` that `#define PRIVATE static` supplies. Its own lines are what stage 8 reconciles the extracted code with (see `partials/README.md`).
+
+A job is skipped when nothing it read has changed. The project headers named in the raw expansion's line markers are among its dependencies, so editing the header that defines `PRIVATE` reruns it. A job whose full expansion fails leaves no expansion behind and stays stale, so the next run tries again. A file whose directives-only run fails is preprocessed its fallback way, and its record says so for stage 8.
+
+**Mocks (stages 9-10)** run only when the project uses mocks and this run has any. A transform flattens every test's planned mocks into one list, as the Partials transform does. Stage 9, with mock preprocessing on (`:mocks` or `:all`), preprocesses each header to be mocked. A Partial mock is left out, since CMock reads its generated interface header itself. Stage 10 generates each mock's source and header with CMock, into a directory that mirrors its real header's location below the test's mock root. The `:mocking` stop point ends the run here.
 
 Two same-named headers mocked by directory stay distinct through `:cmock` ↳ `:mock_name_include_folder`, on by default. CMock names a mock's include guard and lifecycle functions by the folder its `#include` names, and the runner names its calls by the same `#include`, so the two always agree. `MockLocator#placement` decides where each mock goes, and generation, the planner's mock sources, the stand-ins, and the mock search paths all use it. When the folder ends the header's mirrored subdirectory, the mock stays in the mirrored directory. An `#include` spelling more path than the mirror holds puts its mock at the written path below the test's mock root instead, and one climbing with `..` stays below the mock root with an `_up_` directory for each `..`. The directory the `#include` as written reaches the mock from joins the mock search paths.
 
@@ -137,7 +146,7 @@ A fifth option, `:refresh_dependencies`, is not a stop point, and no stage reads
 
 There is no "stop the pipeline" signal. Every stage is still visited, and each carries a condition that checks `PipelineState#options` and skips the stage when there is nothing to do. A `:mocking` run doesn't end the loop after stage 10; stages 11 through 17 are visited and each declines to run. Feature toggles work the same way: with Partials disabled, stages 6-8 skip by the same mechanism.
 
-The three Partials stages and the two mock stages carry a second check. A project can enable Partials or mocking while a particular run has none of that work, such as a `test:pattern` run over files that use neither. The stage then declines to run as if the feature were off, but logs one line at OBNOXIOUS verbosity saying there was nothing to do, so a narrow run isn't left with headings that have nothing under them.
+The three Partials stages and the two mock stages carry a second check. A project can enable Partials or mocking while a particular run has none of that work, such as a `test:pattern` run over files that use neither. The stage then declines to run as if the feature were off, but logs one line at OBNOXIOUS verbosity saying there was nothing to do, so a narrow run isn't left with headings that have nothing under them. Stage 9 also declines when every mock in the run is a Partial's.
 
 ## Guidance from failed build steps
 

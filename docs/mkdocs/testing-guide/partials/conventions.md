@@ -90,10 +90,12 @@ lists of functions for testing and mocking, and the decorators are stripped
 from the functions you select. What a Partial carries keeps its decorators, as
 [described below](#what-a-partial-carries-from-your-module).
 
-!!! note "Because of preproccesing only the “private” keywords are recognized"
-    The preprocesing steps that are part of generating Partials expand any
-    macros (e.g. `INLINE` or `STATICINLINE`) to the actual keywords decorating
-    function signatures. As such, only the keywords above must be handled.
+!!! note "Decorators a macro supplies are recognized too"
+    Generating a Partial expands your module's macros to see the keywords
+    behind them, so a macro such as `PRIVATE` or `STATICINLINE` works as the
+    keyword it stands for. A function a macro makes `static` is written from
+    its expanded signature, and every line of its body keeps its place. A
+    variable a macro makes `static` loses `static` the same way.
 
 ### Public functions
 
