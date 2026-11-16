@@ -462,7 +462,7 @@ RSpec.describe Preprocessinator do
       expect(@reconstructor).to_not have_received(:compact_file_from_expansion)
     end
 
-    it 'returns nil without raising, and logs that text-scan #includes will be used, when the preprocessor fails' do
+    it 'returns nil without raising, and warns that text-scan #includes will be used, when the preprocessor fails' do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
       result = nil
@@ -470,7 +470,7 @@ RSpec.describe Preprocessinator do
 
       expect(result).to be_nil
       expect(@loginator).to have_received(:log).with(
-        'Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for /src/test_module.c', Verbosity::OBNOXIOUS, LogLabels::ERROR
+        'Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for /src/test_module.c', Verbosity::COMPLAIN
       )
     end
 

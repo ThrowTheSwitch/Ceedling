@@ -75,7 +75,7 @@ class Preprocessinator
     result = run_preprocessor( @configurator.tools_test_file_full_preprocessor, filepath, output, **tool_args )
 
     if @tool_executor.failed?( result )
-      return log_failure( "Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::ERROR )
+      return log_failure( "Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for #{filepath}", Verbosity::COMPLAIN )
     end
 
     return output
