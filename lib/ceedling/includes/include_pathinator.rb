@@ -35,6 +35,7 @@ class IncludePathinator
     # test directories holding headers
     @listings           = {}
     @test_include_paths = nil
+    @configured_headers = nil
     @listings_lock      = Mutex.new
   end
 
@@ -96,16 +97,19 @@ class IncludePathinator
   # trailing path matches a file at any depth below a search path, and it needs this
   # test's own priority so a TEST_INCLUDE_PATH() decides among same-named candidates.
   #
-  # Ordering within one priority rank is the collection's own, which is what keeps a
-  # reference that distinguishes nothing resolving exactly as it did before.
+  # Ordering within one priority rank is the collection's own, so a reference that
+  # distinguishes nothing resolves by collection order.
   def prioritized_header_files(search_paths)
     return prioritize( @configurator.collection_all_headers.to_a, search_paths )
   end
 
-  # The collection's headers `query` could name, those beneath earlier search paths first.
-  # Matches filter the collection before ranking, so a lookup costs one pass.
+  # The configured collection's headers `query` could name, those beneath earlier search
+  # paths first. Matches filter the collection before ranking, so a lookup costs one pass.
+  # Stage 2 adds every test's TEST_INCLUDE_PATH() headers to the collection, which a later
+  # build in the process would see, so lookups draw on the collection as configured.
   def collection_candidates(query, search_paths)
-    return prioritize( PathMatcher.candidates( query, @configurator.collection_all_headers.to_a ), search_paths )
+    headers = @listings_lock.synchronize { @configured_headers } || @configurator.collection_all_headers.to_a
+    return prioritize( PathMatcher.candidates( query, headers ), search_paths )
   end
 
   # `headers` reordered so those beneath earlier search paths come first, keeping their
@@ -119,7 +123,10 @@ class IncludePathinator
     end.map(&:first)
   end
 
+  # Remembers the configured collection the first time, since the collection then holds
+  # every test's TEST_INCLUDE_PATH() headers for each later build in the process
   def augment_environment_header_files(headers)
+    @listings_lock.synchronize { @configured_headers ||= @configurator.collection_all_headers.to_a.freeze }
     @configurator.redefine_element(:collection_all_headers, headers)
   end
 
@@ -146,8 +153,8 @@ class IncludePathinator
 
   # One search path's headers. A directory outside the build root keeps its listing for the
   # test build, since a build never writes there, and a test's search paths are listed
-  # several times a test. One under the build root is listed every time, since the build
-  # fills it as it runs.
+  # several times a test. One under the build root is listed every time, since a plugin or
+  # the build itself can write headers there as it runs.
   def header_listing(path)
     key        = [ProjectPaths.working_dir, path]
     remembered = @listings_lock.synchronize { @listings[key] }

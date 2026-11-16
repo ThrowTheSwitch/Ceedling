@@ -57,15 +57,11 @@ module TestBuildValidations
     end
   end
 
-  # Every #include naming a real project header -- other than a mock (validated separately,
-  # as part of resolving it via FileFinder#resolve_mock), a system header, Unity's or
-  # Ceedling's own header, or a Partial (Ceedling's own generated content, not a project file
-  # to validate) -- must resolve to a file through this test's search paths, as the compiler
-  # resolves it. Same-named candidates resolve to the first in search order, as the real
-  # compile finds it; only an unresolvable name halts the build here. Unity's and Ceedling's
-  # own headers live in the build's vendor directories, outside every configured
-  # :test/:source/:support/:include root a test's search_paths is built from, so neither
-  # could ever resolve there.
+  # Every #include of a project header must resolve through this test's search paths, as
+  # the compiler resolves it. Same-named candidates resolve to the first in search order,
+  # and only an unresolvable name halts the build here. Mocks are checked as they resolve
+  # (FileFinder#resolve_mock). System headers, Unity's and Ceedling's own headers, and
+  # Partials are Ceedling's or the toolchain's, so none is checked.
   #
   # `search` is the test's HeaderSearch when the caller already holds one.
   def validate_header_includes(test_filepath:, testable:, search: nil)

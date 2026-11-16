@@ -12,10 +12,11 @@ require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/project_paths'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 
-# The search paths a test's #includes imply for headers no search path lists.
+# The search paths a test's #includes imply for headers whose own directories no search
+# path lists.
 #
-# A header that only :files ↳ :include supplies sits in no search path's directory, so the
-# compiler can't reach it through the #include as written. The directory that #include
+# A header that only :files ↳ :include supplies usually sits in no search path's
+# directory, so the compiler can't reach it through the #include as written. The directory that #include
 # implies is the header's path with the #include's own path taken off its end. Joined with
 # that directory, the #include names the header, so a test whose #include reaches nothing
 # else gets the directory as a search path, after every configured path. Nothing
@@ -116,10 +117,11 @@ class TestDerivedSearchPaths
     return [query, text]
   end
 
-  # Whether the compiled #include already finds a header: through the search paths, or for
-  # the test's own #include, through the test file's directory, as a quoted #include does
+  # Whether the compiled #include already finds a header: joined with a search path as the
+  # compiler joins it, or for the test's own #include, through the test file's directory,
+  # as a quoted #include does
   def reaches?(testable, include, text, search)
-    return true unless search.header_candidates( text ).empty?
+    return true if search.joins?( text )
     return false if include.is_a?( MockInclude )
 
     return @file_wrapper.exist?( File.join( File.dirname( testable.filepath ), text ) )
@@ -148,12 +150,23 @@ class TestDerivedSearchPaths
     return nil if first.nil?
 
     written   = include.filepath
-    suggested = File.join( File.basename( File.dirname( header ) ), written )
-    msg = "#include \"#{written}\" in #{testable.filepath} names #{header}, outside the project. " \
-          "Ceedling adds no search path for a bare name there. " \
-          "Include it by its path below an include directory, as in \"#{suggested}\"."
-    @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
+    suggested = File.join( File.basename( File.dirname( header ) ), File.basename( written ) )
+    @loginator.log( refusal( testable, written, header, suggested, include.is_a?( MockInclude ) ), Verbosity::COMPLAIN, LogLabels::NOTICE )
     return nil
+  end
+
+  # Without :mock_name_include_folder a mock includes its header by name alone, whatever
+  # folder its own #include writes
+  def refusal(testable, written, header, suggested, mock)
+    opening = "#include \"#{written}\" in #{testable.filepath} names #{header}, outside the project. "
+    unless mock and !@configurator.cmock_mock_name_include_folder
+      return opening + "Ceedling adds no search path for a bare name there. " \
+                       "Include it by its path below an include directory, as in \"#{suggested}\"."
+    end
+
+    return opening + "With :cmock ↳ :mock_name_include_folder disabled, its mock includes it by bare name, " \
+                     "and Ceedling adds no search path for a bare name there. " \
+                     "Enable that option to include it by its folder, as in \"#{suggested}\"."
   end
 
 end

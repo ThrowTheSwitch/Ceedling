@@ -107,8 +107,13 @@ class TestRunnerGeneratinator
   # The test's #includes as its runner writes them. A user #include is spelled as the text
   # through which the test's search paths find its header first, its filename whenever that
   # does, so the runner includes the header the test does. One whose header isn't found
-  # keeps its filename.
+  # keeps its filename. Both stages' staleness checks and the runner itself ask, and each
+  # test's list is settled by then, so it is spelled once.
   def runner_includes(testable)
+    return testable.runner.includes ||= spelled_includes( testable )
+  end
+
+  def spelled_includes(testable)
     search = @mock_locator.header_search( testable )
 
     return @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ).map do |include|

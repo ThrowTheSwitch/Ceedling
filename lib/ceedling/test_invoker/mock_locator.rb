@@ -12,8 +12,9 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 
 # Where a test's mocks come from and where they go. A mock's real header resolves
 # through the test's search paths as the compiler resolves it, and the mock is written to
-# a directory below the test's mock root mirroring that header's location. Stand-ins, mock search paths, and
-# the real mock must all agree on that directory, so every stage locates mocks here.
+# a directory below the test's mock root mirroring that header's location. Stand-ins,
+# mock search paths, and the real mock must all agree on that directory, so every stage
+# locates mocks here.
 class MockLocator
 
   include TestPipelineHelpers

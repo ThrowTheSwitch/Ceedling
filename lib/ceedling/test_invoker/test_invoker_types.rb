@@ -41,7 +41,8 @@ module TestInvokerTypes
 
   # A test's generated Unity runner: the C file to be compiled (`output_filepath`)
   # and the (possibly preprocessed) test file it was generated from (`input_filepath`).
-  RunnerInfo = Struct.new(:output_filepath, :input_filepath, keyword_init: true) unless const_defined?(:RunnerInfo, false)
+  # `includes` are the runner's #includes, spelled the first time stage 12 or 13 asks
+  RunnerInfo = Struct.new(:output_filepath, :input_filepath, :includes, keyword_init: true) unless const_defined?(:RunnerInfo, false)
 
   # One Partial header or source file to preprocess, flattened out of its owning testable
   # for parallel processing (T1). `config` is the file's Partials::ConfigFileInfo, which

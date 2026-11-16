@@ -26,11 +26,10 @@ class FileFinderHelper
     return not_found_in_collection(filename, file_list, complain)
   end
 
-  # As `#find_file_in_collection`, but never raises on ambiguity -- a query matching
-  # more than one file resolves to the first entry in `file_list`'s own order (which
-  # already reflects real project path priority), with an ℹ️ NOTICE naming what else
-  # matched so the choice isn't silent. Every test that names the file makes the same
-  # choice, so a build notes it once.
+  # As `#find_file_in_collection`, but never raises on ambiguity. A query matching more
+  # than one file resolves to the first in `file_list`'s order, or to a HeaderSearch's
+  # first in search order, with an ℹ️ NOTICE naming what else matched so the choice isn't
+  # silent. Every test that names the file makes the same choice, so a build notes it once.
   def resolve_file_in_collection(filename, file_list, complain)
     found, others = resolve_in_collection(filename, file_list)
     return not_found_in_collection(filename, file_list, complain) if found.nil?
