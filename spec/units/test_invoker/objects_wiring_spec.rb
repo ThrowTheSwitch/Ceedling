@@ -17,7 +17,7 @@ describe 'Test pipeline object wiring' do
 
   %w[
     test_invoker test_pipeline_manager test_build_setup test_includes_extractinator test_bare_includes_extractinator
-    test_includes_preprocessinator test_includes_reconcilinator test_build_planner partials_manager
+    test_includes_preprocessinator test_includes_reconcilinator test_build_planner partial_files_preprocessinator partials_manager
     test_build_executor test_file_preprocessinator test_runner_generatinator test_search_paths mock_locator
     standin_headerinator test_source_file_directive_resolver test_substitutions
   ].map { |name| [name, "ceedling/test_invoker/#{name}"] }.concat( [
@@ -29,7 +29,12 @@ describe 'Test pipeline object wiring' do
     ['duplicate_symbol_specialist',      'ceedling/diagnostics/duplicate_symbol_specialist'],
     ['partial_name_specialist',          'ceedling/diagnostics/partial_name_specialist'],
     ['include_depth_specialist',         'ceedling/diagnostics/include_depth_specialist'],
-    ['preprocessinator_file_assembler',  'ceedling/preprocess/preprocessinator_file_assembler']
+    ['preprocessinator_file_assembler',  'ceedling/preprocess/preprocessinator_file_assembler'],
+    ['partializer',                      'ceedling/partials/partializer'],
+    ['partializer_helper',               'ceedling/partials/partializer_helper'],
+    ['partializer_reconciler',           'ceedling/partials/partializer_reconciler'],
+    ['partializer_utils',                'ceedling/partials/partializer_utils'],
+    ['generator_partials',               'ceedling/generators/generator_partials']
   ] ).each do |name, path|
     it "composes exactly what #{name}'s constructor takes" do
       require path

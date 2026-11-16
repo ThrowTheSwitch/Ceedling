@@ -34,19 +34,13 @@ class PreprocessinatorFileAssembler
       include_paths:,
       extras:
     )
-    contents = []
-
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
     @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
     expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths )
 
-    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
-    # rides out the file briefly not yet being visible right after the shell-out exits.
-    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
-    end
+    contents = collect_own_lines( source_filepath: filepath, preprocessed_filepath: preprocessed_filepath )
 
     # Bail out if no extras are required
     return contents, [], nil if !extras
@@ -89,18 +83,17 @@ class PreprocessinatorFileAssembler
   end
 
 
-  def collect_file_contents_from_directives_only_preprocessing(source_filepath:, test:)
-    contents = []
-
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( source_filepath, test )
-
-    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
-    # rides out the file briefly not yet being visible right after the shell-out exits.
+  # The lines a preprocessor run kept from `source_filepath`, one per element. A full
+  # expansion can wrap one source line across several, which `rejoin` joins back.
+  # Directives-only output never wraps, so its readers pass `rejoin: false`. Rejoining
+  # there would only merge distinct lines a marker puts at the same count.
+  #
+  # `preprocessed_filepath` is this same build's own preprocessor output. open_with_retry
+  # rides out the file briefly not yet being visible right after the shell-out exits.
+  def collect_own_lines(source_filepath:, preprocessed_filepath:, rejoin: true)
     @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath, rejoin: false )
+      return @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath, rejoin: rejoin )
     end
-
-    return contents
   end
 
   # Extract macro definitions and pragmas from a file using text scanning (fallback mode).
@@ -158,21 +151,6 @@ class PreprocessinatorFileAssembler
     end
 
     return result
-  end
-
-
-  def collect_file_contents_from_full_expansion(source_filepath:, test:)
-    contents = []
-
-    full_expansion_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( source_filepath, test )
-
-    # `full_expansion_filepath` is this same build's own gcc output -- open_with_retry
-    # rides out the file briefly not yet being visible right after the shell-out exits.
-    @file_wrapper.open_with_retry( full_expansion_filepath, 'r' ) do |file|
-      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, source_filepath )
-    end
-
-    return contents
   end
 
 
@@ -237,19 +215,13 @@ class PreprocessinatorFileAssembler
       defines:,
       include_paths:
     )
-    contents = []
-
     preprocessed_filepath = @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test )
 
     @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
     expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths )
 
-    # `preprocessed_filepath` is this same build's own gcc output -- open_with_retry
-    # rides out the file briefly not yet being visible right after the shell-out exits.
-    @file_wrapper.open_with_retry( preprocessed_filepath, 'r' ) do |file|
-      contents = @preprocessinator_reconstructor.extract_file_as_array_from_expansion( file, filepath )
-    end
+    contents = collect_own_lines( source_filepath: filepath, preprocessed_filepath: preprocessed_filepath )
 
     if fallback
       msg = @reportinator.generate_module_progress(
@@ -348,7 +320,7 @@ class PreprocessinatorFileAssembler
 
   public
 
-  def assemble_preprocessed_code_file(filename:, preprocessed_filepath:, contents:, extras:, includes:)
+  def assemble_preprocessed_code_file(preprocessed_filepath:, contents:, extras:, includes:)
     # Write contents of final preprocessed file a line at a time
     # ----------------------------------------------------------
     # Binary mode: `contents` lines below come from an upstream preprocessed

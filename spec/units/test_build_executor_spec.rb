@@ -45,6 +45,7 @@ describe TestBuildExecutor do
     @tools_test_fixture                      = { name: 'fake fixture' }
     @tools_test_bare_includes_preprocessor   = { name: 'fake bare includes preprocessor' }
     @tools_test_file_directives_only_preprocessor = { name: 'fake directives-only preprocessor' }
+    @tools_test_file_full_preprocessor       = { name: 'fake full preprocessor' }
     @tools_test_backtrace_gdb                = { name: 'fake gdb backtrace' }
     @tools_test_fixture_simple_backtrace     = { name: 'fake simple backtrace' }
 
@@ -56,6 +57,7 @@ describe TestBuildExecutor do
     allow(@configurator).to receive(:tools_test_fixture).and_return( @tools_test_fixture )
     allow(@configurator).to receive(:tools_test_bare_includes_preprocessor).and_return( @tools_test_bare_includes_preprocessor )
     allow(@configurator).to receive(:tools_test_file_directives_only_preprocessor).and_return( @tools_test_file_directives_only_preprocessor )
+    allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return( @tools_test_file_full_preprocessor )
     # tools_test_backtrace_gdb is deliberately NOT stubbed here -- the real Configurator
     # only defines it at all when :use_backtrace is :gdb (see test_build_executor.rb's
     # own comment at its one call site), so leaving it unstubbed here means any example
@@ -1527,7 +1529,7 @@ describe TestBuildExecutor do
       @executor.stage_preprocess_mocks( @state )
     end
 
-    it "registers the bare-includes and directives-only preprocessor tools, and the fallback setting, as meta" do
+    it "registers every preprocessor tool the stage runs, and the fallback setting, as meta" do
       allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
 
       expect(@dependinator).to receive(:register).with(
@@ -1535,7 +1537,7 @@ describe TestBuildExecutor do
         files: ['src/Foo.h'],
         meta:  {
           flags: [], defines: [], search_paths: [], extras: false,
-          tools: [@tools_test_bare_includes_preprocessor, @tools_test_file_directives_only_preprocessor],
+          tools: [@tools_test_bare_includes_preprocessor, @tools_test_file_directives_only_preprocessor, @tools_test_file_full_preprocessor],
           preprocess_force_fallback: false
         }
       )
@@ -1556,16 +1558,43 @@ describe TestBuildExecutor do
       @executor.stage_preprocess_mocks( @state )
     end
 
-    it "skips the extra treat-inlines-aware pass for a Partial mock even when the project configures :treat_inlines: :include -- its own generated header is already inline-free" do
+    # CMock reads a Partial mock's generated interface header itself, so stage 9 has nothing to do for one
+    it "never registers or preprocesses a Partial mock's header" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
       @state.mocks_list.first.details.partial = true
-      allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
-      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
 
-      expect(@dependinator).to receive(:register).with(
-        'build/preprocess/MockFoo.h',
-        files: anything,
-        meta:  hash_including( extras: false )
-      )
+      expect(@dependinator).to_not receive(:register)
+      expect(@preprocessinator).to_not receive(:generate_directives_only_output)
+      expect(@preprocessinator).to_not receive(:preprocess_mockable_header_file)
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    # Preprocessinator logs the warning
+    it "falls back without a message of its own when the directives-only run fails" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( nil )
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+      allow(@loginator).to receive(:log)
+
+      @executor.stage_preprocess_mocks( @state )
+
+      expect(@preprocessinator).to have_received(:generate_directives_only_output)
+      expect(@loginator).to_not have_received(:log).with( /directive-only/, any_args )
+      expect(@state.mocks_list.first.directives_only_filepath).to be_nil
+      expect(@preprocessinator).to have_received(:preprocess_mockable_header_file).with( hash_including( fallback: true ) )
+    end
+
+    it "preprocesses a plain mock's header beside a Partial mock" do
+      partial = @state.mocks_list.first.dup
+      partial.details = TestInvokerTypes::MockDetails.new( :source => 'build/test/partials/a_test/foo_interface.h', :partial => true )
+      @state.mocks_list.unshift( partial )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+
+      expect(@dependinator).to receive(:register).with( 'build/preprocess/MockFoo.h', files: ['src/Foo.h'], meta: anything ).once
+      expect(@preprocessinator).to receive(:preprocess_mockable_header_file).with( hash_including( filepath: 'src/Foo.h' ) ).once
 
       @executor.stage_preprocess_mocks( @state )
     end

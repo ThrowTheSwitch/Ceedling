@@ -385,12 +385,15 @@ partializer_utils:
     - preprocessinator_code_finder
     - loginator
 
+partializer_reconciler:
+  compose:
+    - c_extractor
+    - loginator
+
 partializer_helper:
   compose:
     - partializer_utils
-    - c_extractor
     - c_extractor_declarations
-    - file_path_utils
     - parsing_parcels
     - loginator
 
@@ -398,6 +401,7 @@ partializer:
   compose:
     - configurator
     - partializer_helper
+    - partializer_reconciler
     - file_finder
     - c_extractor
     - file_path_utils
@@ -427,6 +431,7 @@ test_pipeline_manager:
     - test_build_setup
     - test_includes_extractinator
     - test_build_planner
+    - partial_files_preprocessinator
     - partials_manager
     - test_build_executor
     - test_file_preprocessinator
@@ -583,13 +588,23 @@ test_build_executor:
     - library_resolver
     - mock_locator
 
-partials_manager:
+partial_files_preprocessinator:
   compose:
     - configurator
     - loginator
     - reportinator
     - batchinator
     - preprocessinator
+    - file_path_utils
+    - file_wrapper
+    - dependinator
+
+partials_manager:
+  compose:
+    - configurator
+    - loginator
+    - reportinator
+    - batchinator
     - partializer
     - generator
     - dependinator

@@ -13,7 +13,8 @@ require 'spec_system_helper'
 ##
 ## A Partial is regenerated when anything its generation reads changes: the test's selection
 ## of functions, or the preprocessed copies of the module, which forced fallback preprocessing
-## rewrites without touching the originals. Nothing is regenerated when nothing changed.
+## rewrites without touching the originals. Nothing is regenerated when nothing changed. A
+## mocked Partial's header is never preprocessed for mocking, since CMock reads it as generated.
 ##
 
 PARTIALS_DELTA_ENGINE_HEADER = <<~C
@@ -56,6 +57,32 @@ PARTIALS_DELTA_TYPED_SOURCE = <<~C
 C
 
 PARTIALS_DELTA_PREAMBLE = "#include \"unity.h\"\n#include \"ceedling.h\"\n"
+
+# A storage class from a macro in a header the module includes, which decides whether a
+# public selection holds helper()
+PARTIALS_DELTA_CONFIG_HEADER = "#ifndef CONFIG_H\n#define CONFIG_H\n#define PRIVATE static\n#endif\n"
+
+PARTIALS_DELTA_CONFIGURED_HEADER = <<~C
+  #ifndef ENGINE_H
+  #define ENGINE_H
+  #include "config.h"
+  int engine_get(void);
+  #endif
+C
+
+PARTIALS_DELTA_CONFIGURED_SOURCE = <<~C
+  #include "engine.h"
+
+  PRIVATE int helper(void)
+  {
+      return 41;
+  }
+
+  int engine_get(void)
+  {
+      return 42;
+  }
+C
 
 # Variables declared together with their types, at file scope and inside a function
 PARTIALS_DELTA_STATEFUL_SOURCE = <<~C
@@ -109,6 +136,17 @@ PARTIALS_DELTA_ALL_TEST = PARTIALS_DELTA_PREAMBLE + <<~C
   void tearDown(void) {}
   void test_get(void) { TEST_ASSERT_EQUAL_INT(42, engine_get()); }
   void test_helper(void) { TEST_ASSERT_EQUAL_INT(41, helper()); }
+C
+
+# A plain header mocked beside a Partial, so mock preprocessing has one header to work on
+PARTIALS_DELTA_CLOCK_HEADER = "#ifndef CLOCK_H\n#define CLOCK_H\nint clock_now(void);\n#endif\n"
+
+PARTIALS_DELTA_MOCKED_TEST = PARTIALS_DELTA_PREAMBLE + <<~C
+  #include "mock_clock.h"
+  #include MOCK_PARTIAL_PUBLIC_MODULE(engine)
+  void setUp(void) {}
+  void tearDown(void) {}
+  void test_get(void) { engine_get_ExpectAndReturn(42); clock_now_ExpectAndReturn(7); TEST_ASSERT_EQUAL_INT(49, engine_get() + clock_now()); }
 C
 
 ceedling_system_tests do
@@ -185,6 +223,39 @@ ceedling_system_tests do
     end
   end
 
+  # The module itself is unchanged. Only its preprocessing sees the header's new macro.
+  it "regenerates a Partial when a header its module includes changes a macro" do
+    in_project do
+      File.write( 'src/config.h', PARTIALS_DELTA_CONFIG_HEADER )
+      File.write( 'src/engine.h', PARTIALS_DELTA_CONFIGURED_HEADER )
+      File.write( 'src/engine.c', PARTIALS_DELTA_CONFIGURED_SOURCE )
+      build_passing( 1 )
+
+      implementation = Dir.glob( 'build/test/partials/**/ceedling_partial_engine_impl.h' )
+      expect(implementation).to_not be_empty
+      expect(File.read( implementation.first )).to_not include( 'helper(' )
+
+      File.write( 'src/config.h', PARTIALS_DELTA_CONFIG_HEADER.sub( '#define PRIVATE static', '#define PRIVATE' ) )
+      output = build_passing( 1 )
+      expect(output).to match(/Generating Partial implementation for .*engine/)
+      expect(File.read( implementation.first )).to match(/^int helper\(void\);/)
+    end
+  end
+
+  # Stage 8 stays fresh when preprocessing writes identical copies, so only the log shows a rerun
+  it "skips preprocessing a Partial's files when nothing changed" do
+    in_project do
+      File.write( 'src/config.h', PARTIALS_DELTA_CONFIG_HEADER )
+      File.write( 'src/engine.h', PARTIALS_DELTA_CONFIGURED_HEADER )
+      File.write( 'src/engine.c', PARTIALS_DELTA_CONFIGURED_SOURCE )
+      progress = /Preprocessing (?:header|source) file for follow-on Partials handling/
+      expect(build_passing( 1 )).to match(progress)
+
+      output = build_passing( 1 )
+      expect(output).to_not match(progress)
+    end
+  end
+
   it "regenerates a Partial when forced fallback preprocessing rewrites its preprocessed copies" do
     in_project do
       build_passing( 1 )
@@ -192,6 +263,18 @@ ceedling_system_tests do
       @c.merge_project_yml_for_test( { :test_build => { :preprocess_force_fallback => true } } )
       output = build_passing( 1 )
       expect(output).to match(/Generating Partial implementation for .*engine/)
+    end
+  end
+
+  it "preprocesses a plain header for mocking but never a mocked Partial's header" do
+    in_project do
+      File.write( 'src/clock.h', PARTIALS_DELTA_CLOCK_HEADER )
+      File.write( 'test/test_engine.c', PARTIALS_DELTA_MOCKED_TEST )
+      @c.merge_project_yml_for_test( { :project => { :use_mocks => true, :use_test_preprocessor => :all } } )
+
+      output = build_passing( 1 )
+      expect(output).to match(/Preprocessing header file for follow-on mock handling \S*clock\.h/)
+      expect(output).to_not match(/Preprocessing header file for follow-on mock handling \S*_interface\.h/)
     end
   end
 end

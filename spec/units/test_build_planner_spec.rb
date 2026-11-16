@@ -361,7 +361,7 @@ describe TestBuildPlanner do
       @planner.stage_flatten_partials_lists( @state )
 
       expect(@state.partials_headers).to eq(
-        [TestInvokerTypes::PartialWork.new( config: header, testable: @testable, directives_only_filepath: nil )]
+        [TestInvokerTypes::PartialWork.new( config: header, testable: @testable )]
       )
       expect(@state.partials_sources).to eq( [] )
     end
@@ -374,7 +374,7 @@ describe TestBuildPlanner do
       @planner.stage_flatten_partials_lists( @state )
 
       expect(@state.partials_sources).to eq(
-        [TestInvokerTypes::PartialWork.new( config: source, testable: @testable, directives_only_filepath: nil )]
+        [TestInvokerTypes::PartialWork.new( config: source, testable: @testable )]
       )
       expect(@state.partials_headers).to eq( [] )
     end

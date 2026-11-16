@@ -36,21 +36,19 @@ class TestBuildExecutor
   )
 
   # Stage 9: Preprocess header files to be mocked.
+  #
+  # A Partial mock is left out. CMock reads its generated interface header itself.
   def stage_preprocess_mocks(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
-    skipped = 0
+    extras          = (@configurator.cmock_treat_inlines == :include)
+    mocks           = state.mocks_list.reject { |mock| mock.details.partial }
+    skipped         = 0
 
-    # Register every mock's preprocessed-header target and settle its staleness
-    # up front (sequentially -- cheap, no subprocess work), since it gates both
-    # of the parallel batches below.
-    state.mocks_list.each do |mock|
+    # Each remaining mock's target is registered and its staleness settled first. That
+    # staleness gates both parallel batches below, and settling it runs no subprocess.
+    mocks.each do |mock|
       details  = mock.details
       testable = mock.testable
-
-      # A Partial mock's own generated header is already free of inline function
-      # bodies, so it never needs this extra pass regardless of what the project
-      # configures for CMock's own mocks of real headers elsewhere.
-      extras = !details.partial && (@configurator.cmock_treat_inlines == :include)
 
       target = @file_path_utils.form_preprocessed_file_filepath( details.source, testable.name )
 
@@ -62,7 +60,11 @@ class TestBuildExecutor
           defines:                   testable.preprocess_defines,
           search_paths:              testable.search_paths,
           extras:                    extras,
-          tools:                     [@configurator.tools_test_bare_includes_preprocessor, @configurator.tools_test_file_directives_only_preprocessor],
+          tools:                     [
+            @configurator.tools_test_bare_includes_preprocessor,
+            @configurator.tools_test_file_directives_only_preprocessor,
+            @configurator.tools_test_file_full_preprocessor
+          ],
           preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback
         }
       )
@@ -84,7 +86,7 @@ class TestBuildExecutor
     log_skip_summary( task: "mock preprocessing", count: skipped, noun: "mocks" )
 
     # Generate directive-only preprocessor output if available
-    @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
+    @batchinator.exec(workload: :compile, things: mocks) do |mock|
       next unless mock.stale
 
       details  = mock.details
@@ -101,24 +103,17 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-
-      if _filepath.nil?
-        msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
-        @loginator.log( msg, Verbosity::COMPLAIN )
-      end
-
-      mock.directives_only_filepath = _filepath
+      # Nil when the preprocessor fails. Preprocessinator logs the warning.
+      mock.directives_only_filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
     end if directives_only
 
     # Preprocess and assemble header files to be mocked
-    @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
+    @batchinator.exec(workload: :compile, things: mocks) do |mock|
       next unless mock.stale
 
       details                  = mock.details
       testable                 = mock.testable
       directives_only_filepath = mock.directives_only_filepath
-      extras                   = !details.partial && (@configurator.cmock_treat_inlines == :include)
 
       arg_hash = {
         test:                     testable.name,

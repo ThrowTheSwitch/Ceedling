@@ -21,6 +21,7 @@ class TestPipelineManager
     :test_build_setup,
     :test_includes_extractinator,
     :test_build_planner,
+    :partial_files_preprocessinator,
     :partials_manager,
     :test_build_executor,
     :test_file_preprocessinator,
@@ -189,7 +190,7 @@ class TestPipelineManager
             condition:       use_partials,
             empty_condition: ->(s) { s.partials_headers.empty? },
             empty_notice:    "no Partials to process",
-            body: ->(s) { @partials_manager.stage_preprocess_partial_headers(s) }
+            body: ->(s) { @partial_files_preprocessinator.preprocess_headers(s) }
       ),
 
       # Stage 7
@@ -197,7 +198,7 @@ class TestPipelineManager
             condition:       use_partials,
             empty_condition: ->(s) { s.partials_sources.empty? },
             empty_notice:    "no Partials to process",
-            body: ->(s) { @partials_manager.stage_preprocess_partial_sources(s) }
+            body: ->(s) { @partial_files_preprocessinator.preprocess_sources(s) }
       ),
 
       # Stage 8
@@ -214,11 +215,11 @@ class TestPipelineManager
             body: ->(s) { @test_build_planner.stage_flatten_mocks_list(s) }
       ),
 
-      # Stage 9
+      # Stage 9 — a Partial mock needs no preprocessing, so Partial mocks alone leave it empty.
       stage("Preprocessing for Mocks",
             condition:       use_mocks_preproc,
-            empty_condition: ->(s) { s.mocks_list.empty? },
-            empty_notice:    "no mocks to process",
+            empty_condition: ->(s) { s.mocks_list.all? { |mock| mock.details.partial } },
+            empty_notice:    "no mocks need preprocessing",
             body: ->(s) { @test_build_executor.stage_preprocess_mocks(s) }
       ),
 

@@ -22,9 +22,7 @@ describe PartializerHelper do
     @helper = described_class.new(
       {
         :partializer_utils        => double( 'PartializerUtils' ),
-        :c_extractor              => double( 'CExtractor' ),
         :c_extractor_declarations => double( 'CExtractorDeclarations' ),
-        :file_path_utils          => double( 'FilePathUtils' ),
         :parsing_parcels          => double( 'ParsingParcels' ),
         :loginator                => double( 'Loginator' ).as_null_object
       }

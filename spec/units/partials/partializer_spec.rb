@@ -28,6 +28,7 @@ describe Partializer do
     # Guard extraction reads the module's own header text through these two.
     @preprocessinator_reconstructor = double("PreprocessinatorReconstructor")
     @file_wrapper                   = double("FileWrapper")
+    @partializer_reconciler         = double("PartializerReconciler")
 
     @configurator = double( "Configurator" )
     allow(@configurator).to receive(:paths_test).and_return( ['test'] )
@@ -37,15 +38,16 @@ describe Partializer do
 
     @partializer = described_class.new(
       {
-        :configurator       => @configurator,
-        :partializer_helper => @partializer_helper,
-        :file_finder        => @file_finder,
-        :c_extractor        => @c_extractor,
-        :file_path_utils    => @file_path_utils,
+        :configurator                   => @configurator,
+        :partializer_helper             => @partializer_helper,
+        :partializer_reconciler         => @partializer_reconciler,
+        :file_finder                    => @file_finder,
+        :c_extractor                    => @c_extractor,
+        :file_path_utils                => @file_path_utils,
         :preprocessinator_reconstructor => @preprocessinator_reconstructor,
-        :file_wrapper       => @file_wrapper,
-        :reportinator       => @reportinator,
-        :loginator          => @loginator
+        :file_wrapper                   => @file_wrapper,
+        :reportinator                   => @reportinator,
+        :loginator                      => @loginator
       }
     )
 
@@ -278,7 +280,7 @@ describe Partializer do
   context "#validate_config" do
     it "delegates to three validation helpers in order" do
       c_module = double("CModule")
-      config   = double("Config")
+      config   = double("Config", fallback?: false)
       name     = "test_foo"
 
       expect(@partializer_helper).to receive(:validate_function_names_exist)
@@ -288,11 +290,11 @@ describe Partializer do
       expect(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
         .with(c_module, config, name).ordered
 
-      @partializer.validate_config(c_module: c_module, config: config, name: name, fallback: false)
+      @partializer.validate_config(c_module: c_module, config: config, name: name)
     end
 
     # The fourth check only applies where preprocessing resolved less than it could, so the
-    # accurate path must not pay for it.
+    # accurate path must not pay for it. The Partial's own files say which path ran.
     it "does not check fallback sufficiency when preprocessing was accurate" do
       allow(@partializer_helper).to receive(:validate_function_names_exist)
       allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
@@ -301,7 +303,7 @@ describe Partializer do
       expect(@partializer_helper).not_to receive(:validate_fallback_sufficiency)
 
       @partializer.validate_config(
-        c_module: double("CModule"), config: double("Config"), name: 'test_foo', fallback: false
+        c_module: double("CModule"), config: double("Config", fallback?: false), name: 'test_foo'
       )
     end
 
@@ -312,8 +314,8 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'Foo',
-        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
-        source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c' )
+        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h', assembled_filepath: 'build/Foo.h', fallback: true ),
+        source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c', assembled_filepath: 'build/Foo.c', fallback: true )
       )
 
       allow(@file_wrapper).to receive(:read).with('src/Foo.h').and_return('header text')
@@ -326,7 +328,7 @@ describe Partializer do
       )
 
       @partializer.validate_config(
-        c_module: double("CModule"), config: config, name: 'test_foo', fallback: true
+        c_module: double("CModule"), config: config, name: 'test_foo'
       )
     end
 
@@ -339,7 +341,7 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'Foo',
-        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h' ),
+        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h', assembled_filepath: 'build/Foo.h', fallback: true ),
         source: Partials::ConfigFileInfo.new( filepath: nil )
       )
 
@@ -350,8 +352,31 @@ describe Partializer do
       )
 
       @partializer.validate_config(
-        c_module: double("CModule"), config: config, name: 'test_foo', fallback: true
+        c_module: double("CModule"), config: config, name: 'test_foo'
       )
+    end
+
+    # Fallback's limits belong to the file that fell back, so an accurately preprocessed one is
+    # never refused for a computed #include fallback can't resolve
+    it "checks only the module files preprocessed in fallback" do
+      allow(@partializer_helper).to receive(:validate_function_names_exist)
+      allow(@partializer_helper).to receive(:validate_no_additions_subtractions_overlap)
+      allow(@partializer_helper).to receive(:validate_additions_subtractions_visibility)
+
+      config = PartializerConfig::Config.new(
+        module: 'Foo',
+        header: Partials::ConfigFileInfo.new( filepath: 'src/Foo.h', assembled_filepath: 'build/Foo.h', fallback: true ),
+        source: Partials::ConfigFileInfo.new( filepath: 'src/Foo.c', assembled_filepath: 'build/Foo.c', fallback: false )
+      )
+
+      allow(@file_wrapper).to receive(:read).with('src/Foo.h').and_return('header text')
+      expect(@file_wrapper).not_to receive(:read).with('src/Foo.c')
+
+      expect(@partializer_helper).to receive(:validate_fallback_sufficiency).with(
+        name: 'test_foo', module_name: 'Foo', files: { 'src/Foo.h' => 'header text' }
+      )
+
+      @partializer.validate_config( c_module: double("CModule"), config: config, name: 'test_foo' )
     end
   end
 
@@ -534,11 +559,20 @@ describe Partializer do
       ).and_return( plan )
 
       result = @partializer.plan_carry(
-        test: 'test_foo', partial: 'Foo', c_module: c_module, impl: impl, interface: nil,
-        fallback: false, header_guarded: true, header_filepath: 'src/Foo.h', source_filepath: 'src/Foo.c'
+        test: 'test_foo', c_module: c_module, impl: impl, interface: nil, header_guarded: true, config: carry_config( 'Foo' )
       )
 
       expect( result ).to equal( plan )
+    end
+
+    # Fallback can keep two copies of one function from a file it read without resolving it
+    it "plans for fallback when any file the module is extracted from fell back" do
+      config = carry_config( 'Foo' )
+      config.source.fallback = true
+
+      expect(@partializer_helper).to receive(:plan_carry).with( hash_including( fallback: true ) ).and_return( Partials::CarryPlan.new )
+
+      @partializer.plan_carry( test: 'test_foo', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil, header_guarded: true, config: config )
     end
 
     def plan_for(prototypes: [], helpers: [], skipped: [])
@@ -554,8 +588,17 @@ describe Partializer do
     def carry_with(plan)
       allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
       @partializer.plan_carry(
-        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil,
-        fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
+        test: 'test_engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil, header_guarded: true,
+        config: carry_config( 'engine' )
+      )
+    end
+
+    # A Partial whose files were preprocessed accurately, as stages 6 and 7 record them
+    def carry_config(name, raw: {})
+      PartializerConfig::Config.new(
+        module: name,
+        header: Partials::ConfigFileInfo.new( filepath: "src/#{name}.h", assembled_filepath: "build/#{name}.h", raw_directives_only_filepath: raw[:header] ),
+        source: Partials::ConfigFileInfo.new( filepath: "src/#{name}.c", assembled_filepath: "build/#{name}.c", raw_directives_only_filepath: raw[:source] )
       )
     end
 
@@ -592,9 +635,10 @@ describe Partializer do
       expect(@file_wrapper).not_to receive(:read)
       expect(@partializer_helper).not_to receive(:associate_declaration_line_numbers)
 
+      config = carry_config( 'engine' )
+      config.source = Partials::ConfigFileInfo.new
       @partializer.plan_carry(
-        test: 'test_engine', partial: 'engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil,
-        fallback: false, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: nil
+        test: 'test_engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil, header_guarded: true, config: config
       )
     end
 
@@ -702,21 +746,22 @@ describe Partializer do
         CExtractorTypes::CStatement.new( text: text, kind: :typedef, **CExtractorDefinedType.names( text ) )
       end
 
-      # Each file's raw directives-only copy, present only where `copies` gives its text. Files and
-      # copies are read as bytes, since the search needs nothing more.
+      # Each file's raw directives-only copy, recorded only where `copies` gives its text, keyed by
+      # :header or :source. Files and copies are read as bytes, since the search needs nothing more.
       def stub_texts(header:, source:, copies: {})
         allow(@file_wrapper).to receive(:read_binary).with('src/engine.h').and_return( header )
         allow(@file_wrapper).to receive(:read_binary).with('src/engine.c').and_return( source )
-        allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
-        allow(@file_wrapper).to receive(:exist?) { |path| copies.key?( path ) }
-        copies.each { |path, text| allow(@file_wrapper).to receive(:read_binary).with( path ).and_return( text ) }
+        @copies = copies.to_h { |file, _| [file, "raw/src/engine.#{file == :header ? 'h' : 'c'}"] }
+        copies.each { |file, copy| allow(@file_wrapper).to receive(:read_binary).with( @copies[file] ).and_return( copy ) }
       end
 
+      # A file preprocessed in fallback records no raw copy, whatever is on disk
       def incomplete_for(c_module, fallback: false)
         allow(@partializer_helper).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+        config = carry_config( 'engine', raw: fallback ? {} : @copies.to_h )
+        [config.header, config.source].each { |file| file.fallback = fallback }
         @partializer.plan_carry(
-          test: 'test_engine', partial: 'engine', c_module: c_module, impl: [], interface: nil,
-          fallback: fallback, header_guarded: true, header_filepath: 'src/engine.h', source_filepath: 'src/engine.c'
+          test: 'test_engine', c_module: c_module, impl: [], interface: nil, header_guarded: true, config: config
         ).incomplete
       end
 
@@ -784,18 +829,18 @@ describe Partializer do
       it "leaves alone a variable whose struct an included header defines" do
         stub_texts(
           header: "#include \"point.h\"\nextern struct point_s origin;\n", source: '',
-          copies: { 'raw/src/engine.h' => "struct point_s {\n  int x;\n};\nextern struct point_s origin;\n" }
+          copies: { header: "struct point_s {\n  int x;\n};\nextern struct point_s origin;\n" }
         )
         c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
 
         expect( incomplete_for( c_module ) ).to be_empty
       end
 
-      # Fallback writes no raw copy, so any copy on disk is stale
+      # An earlier raw copy on disk says nothing about a file preprocessed in fallback
       it "reads no raw copy under fallback preprocessing" do
         stub_texts(
           header: "#include \"point.h\"\nextern struct point_s origin;\n", source: '',
-          copies: { 'raw/src/engine.h' => "struct point_s {\n  int x;\n};\n" }
+          copies: { header: "struct point_s {\n  int x;\n};\n" }
         )
         c_module = CExtractorTypes::CModule.new( variable_declarations: [extern_var( 'origin', 'struct point_s' )] )
 
@@ -2111,9 +2156,6 @@ describe Partializer do
 
       # associate_function_line_numbers is called for every file processed; stub by default
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
-      # Each file's raw directives-only copy is absent unless an example provides it
-      allow(@file_path_utils).to receive(:form_preprocessed_file_raw_directives_only_filepath) { |path, _test| "raw/#{path}" }
-      allow(@file_wrapper).to receive(:exist?).and_return(false)
       # static var extraction/promotion called for every file processed; stub by default
       allow(@partializer_helper).to receive(:promote_function_scope_statics)
       allow(@partializer_helper).to receive(:validate_function_names_readable)
@@ -2126,8 +2168,8 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', assembled_filepath: '/build/preproc/module1.i')
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
@@ -2136,22 +2178,22 @@ describe Partializer do
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
       expect(@partializer_helper).not_to receive(:promote_function_scope_statics)
 
-      expect { @partializer.extract_module_contents(@name, config, fallback: false) }
+      expect { @partializer.extract_module_contents(@name, config) }
         .to raise_error(CeedlingException, 'unreadable')
     end
 
-    it "returns empty CModule when both directives_only_filepaths are nil" do
+    it "returns empty CModule when both assembled_filepaths are nil" do
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: nil)
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', assembled_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', assembled_filepath: nil)
       )
 
       expect(@c_extractor).not_to receive(:from_file)
       expect(@partializer_helper).not_to receive(:associate_function_line_numbers)
       expect(@partializer_helper).not_to receive(:promote_function_scope_statics)
 
-      result = @partializer.extract_module_contents(@name, config, fallback: false)
+      result = @partializer.extract_module_contents(@name, config)
 
       expect(result.function_definitions).to eq([])
       expect(result.variable_declarations).to eq([])
@@ -2166,16 +2208,16 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
-        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', assembled_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil)
       )
 
       expect(@c_extractor).to receive(:from_file).with('/build/preproc/header.i').and_return(header_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
+        funcs: header_funcs, filepath: '/path/to/header.h', raw_filepath: nil
       )
 
-      result = @partializer.extract_module_contents(@name, config, fallback: false)
+      result = @partializer.extract_module_contents(@name, config)
 
       expect(result.function_definitions).to eq(header_funcs)
       expect(result.variable_declarations).to eq([])
@@ -2190,16 +2232,16 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', assembled_filepath: '/build/preproc/source.i')
       )
 
       expect(@c_extractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: source_funcs, filepath: '/path/to/source.c', fallback: false
+        funcs: source_funcs, filepath: '/path/to/source.c', raw_filepath: nil
       )
 
-      result = @partializer.extract_module_contents(@name, config, fallback: false)
+      result = @partializer.extract_module_contents(@name, config)
 
       expect(result.function_definitions).to eq(source_funcs)
       expect(result.variable_declarations).to eq([])
@@ -2219,62 +2261,45 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
-        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', directives_only_filepath: '/build/preproc/source.i')
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', assembled_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: '/path/to/source.c', assembled_filepath: '/build/preproc/source.i')
       )
 
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/source.i').and_return(source_contents)
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/header.i').and_return(header_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: source_funcs, filepath: '/path/to/source.c', fallback: false
+        funcs: source_funcs, filepath: '/path/to/source.c', raw_filepath: nil
       )
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: header_funcs, filepath: '/path/to/header.h', fallback: false
+        funcs: header_funcs, filepath: '/path/to/header.h', raw_filepath: nil
       )
 
-      result = @partializer.extract_module_contents(@name, config, fallback: false)
+      result = @partializer.extract_module_contents(@name, config)
 
       expect(result.function_definitions).to eq(header_funcs + source_funcs)
       expect(result.variable_declarations).to eq(header_contents.variable_declarations + source_contents.variable_declarations)
     end
 
-    it "calls associate_function_line_numbers with the preprocessed expansion filepath, not the preprocessed filepath" do
+    # The original filepath names each function, and the raw copy locates it
+    it "locates each file's functions in the raw copy its record names, under the original filepath" do
       source_funcs = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
-      )
-
-      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
-
-      # associate_function_line_numbers must receive the original filepath, not the preprocessed one
-      expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: source_funcs, filepath: '/src/module1.c', fallback: false
-      )
-
-      @partializer.extract_module_contents(@name, config, fallback: false)
-    end
-
-    it "passes extraction name through to associate_function_line_numbers" do
-      source_funcs = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
-      source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
-
-      config = PartializerConfig::Config.new(
-        module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil),
+        source: Partials::ConfigFileInfo.new(
+          filepath: '/src/module1.c', assembled_filepath: '/build/preproc/module1.i', raw_directives_only_filepath: '/build/raw/module1.c'
+        )
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
 
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: 'SpecificTestName', funcs: source_funcs, filepath: '/src/module1.c', fallback: false
+        funcs: source_funcs, filepath: '/src/module1.c', raw_filepath: '/build/raw/module1.c'
       )
 
-      @partializer.extract_module_contents('SpecificTestName', config, fallback: false)
+      @partializer.extract_module_contents(@name, config)
     end
 
     it "returns empty CModule when a preprocessed file has no contents" do
@@ -2282,16 +2307,16 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', directives_only_filepath: '/build/preproc/header.i'),
-        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+        header: Partials::ConfigFileInfo.new(filepath: '/path/to/header.h', assembled_filepath: '/build/preproc/header.i'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil)
       )
 
       expect(@c_extractor).to receive(:from_file).and_return(empty_contents)
       expect(@partializer_helper).to receive(:associate_function_line_numbers).with(
-        name: @name, funcs: [], filepath: '/path/to/header.h', fallback: false
+        funcs: [], filepath: '/path/to/header.h', raw_filepath: nil
       )
 
-      result = @partializer.extract_module_contents(@name, config, fallback: false)
+      result = @partializer.extract_module_contents(@name, config)
 
       expect(result.function_definitions).to eq([])
       expect(result.variable_declarations).to eq([])
@@ -2303,126 +2328,93 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.i')
+        header: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', assembled_filepath: '/build/preproc/module1.i')
       )
 
       allow(@c_extractor).to receive(:from_file).and_return(source_contents)
       expect(@partializer_helper).to receive(:promote_function_scope_statics)
         .with(source_contents, name: @name, module_name: 'module1', file_type: 'source')
 
-      @partializer.extract_module_contents(@name, config, fallback: false)
+      @partializer.extract_module_contents(@name, config)
     end
 
-    it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on source" do
+    it "reconciles the source's module with its expanded code when the record names one" do
       source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        header: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil),
         source: Partials::ConfigFileInfo.new(
-          filepath:               '/src/module1.c',
-          directives_only_filepath: '/build/preproc/module1.i',
-          full_expansion_filepath:  '/build/preproc/full_expansion/module1.c'
+          filepath:           '/src/module1.c',
+          assembled_filepath: '/build/preproc/module1.i',
+          expansion_filepath: '/build/preproc/full_expansion/module1.c'
         )
       )
 
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.i').and_return(source_contents)
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
 
-      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
-        funcs:                   source_funcs,
-        decls:                   [],
-        full_expansion_filepath: '/build/preproc/full_expansion/module1.c',
-        name:                    @name,
-        module_name:             'module1',
-        file_type:               'source'
+      expect(@partializer_reconciler).to receive(:reconcile).with(
+        c_module: source_contents, expansion_filepath: '/build/preproc/full_expansion/module1.c', name: @name, module_name: 'module1', file_type: 'source'
       )
 
-      @partializer.extract_module_contents(@name, config, fallback: false)
+      @partializer.extract_module_contents(@name, config)
     end
 
-    it "calls update_signatures_from_full_expansion when full_expansion_filepath is set on header" do
+    it "reconciles the header's module with its expanded code when the record names one" do
       header_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       header_contents = CExtractorTypes::CModule.new(function_definitions: header_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
         module: 'module1',
         header: Partials::ConfigFileInfo.new(
-          filepath:               '/path/to/header.h',
-          directives_only_filepath: '/build/preproc/header.h',
-          full_expansion_filepath:  '/build/preproc/full_expansion/header.h'
+          filepath:           '/path/to/header.h',
+          assembled_filepath: '/build/preproc/header.h',
+          expansion_filepath: '/build/preproc/full_expansion/header.h'
         ),
-        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+        source: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil)
       )
 
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/header.h').and_return(header_contents)
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
 
-      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
-        funcs:                   header_funcs,
-        decls:                   [],
-        full_expansion_filepath: '/build/preproc/full_expansion/header.h',
-        name:                    @name,
-        module_name:             'module1',
-        file_type:               'header'
+      expect(@partializer_reconciler).to receive(:reconcile).with(
+        c_module: header_contents, expansion_filepath: '/build/preproc/full_expansion/header.h', name: @name, module_name: 'module1', file_type: 'header'
       )
 
-      @partializer.extract_module_contents(@name, config, fallback: false)
+      @partializer.extract_module_contents(@name, config)
     end
 
-    it "does not call update_signatures_from_full_expansion when full_expansion_filepath is nil" do
+    it "reconciles nothing when the record names no expanded code" do
       source_funcs    = [CExtractorTypes::CFunctionDefinition.new(name: 'func1')]
       source_contents = CExtractorTypes::CModule.new(function_definitions: source_funcs, variable_declarations: [])
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
+        header: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil),
         source: Partials::ConfigFileInfo.new(
-          filepath:               '/src/module1.c',
-          directives_only_filepath: '/build/preproc/module1.i',
-          full_expansion_filepath:  nil
+          filepath:           '/src/module1.c',
+          assembled_filepath: '/build/preproc/module1.i',
+          expansion_filepath: nil
         )
       )
 
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.i').and_return(source_contents)
       allow(@partializer_helper).to receive(:associate_function_line_numbers)
 
-      expect(@partializer_helper).not_to receive(:update_signatures_from_full_expansion)
+      expect(@partializer_reconciler).not_to receive(:reconcile)
 
-      @partializer.extract_module_contents(@name, config, fallback: false)
-    end
-
-    it "passes each file's declarations to update_signatures_from_full_expansion" do
-      decls           = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
-      source_contents = CExtractorTypes::CModule.new(function_declarations: decls)
-
-      config = PartializerConfig::Config.new(
-        module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
-        source: Partials::ConfigFileInfo.new(
-          filepath:                 '/src/module1.c',
-          directives_only_filepath: '/build/preproc/module1.i',
-          full_expansion_filepath:  '/build/preproc/full_expansion/module1.c'
-        )
-      )
-
-      allow(@c_extractor).to receive(:from_file).and_return(source_contents)
-
-      expect(@partializer_helper).to receive(:update_signatures_from_full_expansion).with(
-        hash_including( decls: decls )
-      )
-
-      @partializer.extract_module_contents(@name, config, fallback: false)
+      @partializer.extract_module_contents(@name, config)
     end
 
     # Locating declarations costs a search of the file's text each, so only carried ones are located
     it "leaves declarations unlocated during extraction" do
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', directives_only_filepath: '/build/preproc/module1.h'),
-        source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
+        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', assembled_filepath: '/build/preproc/module1.h'),
+        source: Partials::ConfigFileInfo.new(filepath: nil, assembled_filepath: nil)
       )
       decls = [CExtractorTypes::CFunctionDeclaration.new(name: 'tick', signature: 'int tick(void);')]
       allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: decls))
@@ -2430,23 +2422,24 @@ describe Partializer do
       expect(@partializer_helper).not_to receive(:associate_declaration_line_numbers)
       expect(@file_wrapper).not_to receive(:read)
 
-      @partializer.extract_module_contents(@name, config, fallback: false)
+      @partializer.extract_module_contents(@name, config)
     end
 
     context "marking functions an included header defines inline" do
-      let(:config) do
-        PartializerConfig::Config.new(
-          module: 'engine',
-          header: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil),
-          source: Partials::ConfigFileInfo.new(filepath: 'src/engine.c', directives_only_filepath: '/build/preproc/engine.c')
+      # Each file's record names the raw copy its preprocessing kept
+      def file(filepath, raw: nil)
+        Partials::ConfigFileInfo.new(
+          filepath: filepath, assembled_filepath: filepath && "/build/preproc/#{File.basename( filepath )}", raw_directives_only_filepath: raw
         )
+      end
+
+      let(:config) do
+        PartializerConfig::Config.new( module: 'engine', header: file( nil ), source: file( 'src/engine.c', raw: 'raw/src/engine.c' ) )
       end
       let(:twice) { CExtractorTypes::CFunctionDeclaration.new( name: 'engine_get_twice', signature: 'int engine_get_twice(void);' ) }
       let(:both_files) do
         PartializerConfig::Config.new(
-          module: 'engine',
-          header: Partials::ConfigFileInfo.new(filepath: 'src/engine.h', directives_only_filepath: '/build/preproc/engine.h'),
-          source: Partials::ConfigFileInfo.new(filepath: 'src/engine.c', directives_only_filepath: '/build/preproc/engine.c')
+          module: 'engine', header: file( 'src/engine.h', raw: 'raw/src/engine.h' ), source: file( 'src/engine.c', raw: 'raw/src/engine.c' )
         )
       end
 
@@ -2454,31 +2447,23 @@ describe Partializer do
       # The scan needs only bytes, so the copy is never transcoded.
       it "marks a source declaration against the source's raw copy, read as bytes" do
         allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
-        allow(@file_wrapper).to receive(:exist?).with('raw/src/engine.c').and_return(true)
         allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.c').and_return('raw bytes')
 
         expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'raw bytes' )
         expect(@file_wrapper).not_to receive(:read)
-        expect(@file_path_utils).not_to receive(:form_preprocessed_file_raw_directives_only_filepath).with(nil, anything)
 
-        @partializer.extract_module_contents(@name, config, fallback: false)
+        @partializer.extract_module_contents(@name, config)
       end
 
       # A module mocked from its header alone has no source, and every declaration is the header's
       it "marks a header-only Partial's declarations against the header's raw copy" do
-        header_only = PartializerConfig::Config.new(
-          module: 'engine',
-          header: Partials::ConfigFileInfo.new(filepath: 'src/engine.h', directives_only_filepath: '/build/preproc/engine.h'),
-          source: Partials::ConfigFileInfo.new(filepath: nil, directives_only_filepath: nil)
-        )
+        header_only = PartializerConfig::Config.new( module: 'engine', header: file( 'src/engine.h', raw: 'raw/src/engine.h' ), source: file( nil ) )
         allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
-        allow(@file_wrapper).to receive(:exist?).with('raw/src/engine.h').and_return(true)
         allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
 
         expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'header bytes' )
-        expect(@file_path_utils).not_to receive(:form_preprocessed_file_raw_directives_only_filepath).with(nil, anything)
 
-        @partializer.extract_module_contents(@name, header_only, fallback: false)
+        @partializer.extract_module_contents(@name, header_only)
       end
 
       # Each file's raw copy holds the headers that file includes, so each is searched for its own
@@ -2490,14 +2475,13 @@ describe Partializer do
         allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
           CExtractorTypes::CModule.new(function_declarations: [twice])
         )
-        allow(@file_wrapper).to receive(:exist?).and_return(true)
         allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
         allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.c').and_return('source bytes')
 
         expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [tick], text: 'header bytes' )
         expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [twice], text: 'source bytes' )
 
-        @partializer.extract_module_contents(@name, both_files, fallback: false)
+        @partializer.extract_module_contents(@name, both_files)
       end
 
       # Only a function the module has no body for can be defined inline elsewhere
@@ -2510,12 +2494,11 @@ describe Partializer do
         allow(@c_extractor).to receive(:from_file).with('/build/preproc/engine.c').and_return(
           CExtractorTypes::CModule.new(function_definitions: [CExtractorTypes::CFunctionDefinition.new(name: 'engine_get')])
         )
-        allow(@file_wrapper).to receive(:exist?).and_return(true)
         allow(@file_wrapper).to receive(:read_binary).with('raw/src/engine.h').and_return('header bytes')
 
         expect(@partializer_helper).to receive(:mark_inline_elsewhere).with( decls: [tick], text: 'header bytes' ).once
 
-        @partializer.extract_module_contents(@name, both_files, fallback: false)
+        @partializer.extract_module_contents(@name, both_files)
       end
 
       it "reads no file when every declaration's function has a body in the module" do
@@ -2527,39 +2510,29 @@ describe Partializer do
           CExtractorTypes::CModule.new(function_definitions: [CExtractorTypes::CFunctionDefinition.new(name: 'engine_get')])
         )
 
-        expect(@file_wrapper).not_to receive(:exist?)
         expect(@file_wrapper).not_to receive(:read_binary)
         expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
 
-        @partializer.extract_module_contents(@name, both_files, fallback: false)
+        @partializer.extract_module_contents(@name, both_files)
       end
 
-      it "reads no file and marks nothing without a raw copy" do
+      # A file preprocessed in fallback records no raw copy, whatever an earlier build left on disk
+      it "reads no file and marks nothing for a file whose record names no raw copy" do
+        config.source.raw_directives_only_filepath = nil
         allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
 
         expect(@file_wrapper).not_to receive(:read_binary)
         expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
 
-        @partializer.extract_module_contents(@name, config, fallback: false)
-      end
-
-      # Fallback writes no raw copy, so any copy on disk is stale
-      it "marks nothing under fallback preprocessing, even when a raw copy remains" do
-        allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new(function_declarations: [twice]))
-        allow(@file_wrapper).to receive(:exist?).and_return(true)
-
-        expect(@file_wrapper).not_to receive(:read_binary)
-        expect(@partializer_helper).not_to receive(:mark_inline_elsewhere)
-
-        @partializer.extract_module_contents(@name, config, fallback: true)
+        @partializer.extract_module_contents(@name, config)
       end
 
       it "reads no file when the file declares no function" do
         allow(@c_extractor).to receive(:from_file).and_return(CExtractorTypes::CModule.new)
 
-        expect(@file_wrapper).not_to receive(:exist?)
+        expect(@file_wrapper).not_to receive(:read_binary)
 
-        @partializer.extract_module_contents(@name, config, fallback: false)
+        @partializer.extract_module_contents(@name, config)
       end
     end
 
@@ -2571,8 +2544,8 @@ describe Partializer do
 
       config = PartializerConfig::Config.new(
         module: 'module1',
-        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', directives_only_filepath: '/build/preproc/module1.h'),
-        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', directives_only_filepath: '/build/preproc/module1.c')
+        header: Partials::ConfigFileInfo.new(filepath: '/src/module1.h', assembled_filepath: '/build/preproc/module1.h'),
+        source: Partials::ConfigFileInfo.new(filepath: '/src/module1.c', assembled_filepath: '/build/preproc/module1.c')
       )
 
       allow(@c_extractor).to receive(:from_file).with('/build/preproc/module1.h').and_return(
@@ -2582,7 +2555,7 @@ describe Partializer do
         CExtractorTypes::CModule.new(function_definitions: [source_def], function_declarations: [source_decl])
       )
 
-      @partializer.extract_module_contents(@name, config, fallback: false)
+      @partializer.extract_module_contents(@name, config)
 
       expect([header_def, header_decl].map(&:origin)).to all(eq(:header))
       expect([source_def, source_decl].map(&:origin)).to all(eq(:source))

@@ -658,6 +658,8 @@ describe FilePathUtils do
         .to eq('build/test/preprocess/files/test_both/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
         .to eq('build/test/preprocess/files/test_both/full_expansion/src/drivers/uart/config.c')
+      expect( @fpu.form_preprocessed_file_expanded_code_filepath('src/drivers/uart/config.c', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/expanded_code/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
         .to eq('build/test/preprocess/files/test_both/directives_only/raw/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
@@ -691,6 +693,7 @@ describe FilePathUtils do
 
       @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both')
       @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both')
+      @fpu.form_preprocessed_file_expanded_code_filepath('src/drivers/uart/config.c', 'test_both')
       @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both')
     end
 

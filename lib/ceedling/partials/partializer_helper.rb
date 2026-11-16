@@ -78,9 +78,7 @@ class PartializerHelper
 
   constructor(
     :partializer_utils,
-    :c_extractor,
     :c_extractor_declarations,
-    :file_path_utils,
     :parsing_parcels,
     :loginator
   )
@@ -149,23 +147,18 @@ class PartializerHelper
   # 
   # `source_filepath` is always updated.
   #
-  # @param name [String]Name of the containing test, used to construct the path to 
-  # the preprocessor expansion file for that test context.
   # @param funcs [Array<FunctionDefinition>] Function definitions whose source 
   # locations are to be resolved. Matched entries are mutated in place.
   # @param filepath [String] Path to the original C source file that was 
   # preprocessed, written into each matched FunctionDefinition as source_filepath.
-  # @param fallback [bool] Whether to immediately use simple source file scanning
-  # instead of preprocessed output (because preprocessed output is not available)
-  def associate_function_line_numbers(name:, funcs:, filepath:, fallback:)
-    # File path of directives-only preprocessor output
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_raw_directives_only_filepath( filepath, name )
-
+  # @param raw_filepath [String, nil] The file's raw directives-only output. Without one, as
+  # in fallback, the original source is searched instead.
+  def associate_function_line_numbers(funcs:, filepath:, raw_filepath:)
     @utils.stamp_source_filepaths( funcs, filepath )
 
     # Every function is located with one read of each file searched
     code_blocks = funcs.map( &:code_block )
-    if fallback
+    if raw_filepath.nil?
       msg = "Using fallback C function location search for #{filepath}"
       @loginator.log( msg, Verbosity::OBNOXIOUS, LogLabels::WARNING )
 
@@ -173,7 +166,7 @@ class PartializerHelper
     else
       # Searches the original source for any function the preprocessed copy lacks
       lines = @utils.locate_functions_via_preprocessed(
-        code_blocks: code_blocks, filepath: filepath, preprocessed_filepath: preprocessed_filepath
+        code_blocks: code_blocks, filepath: filepath, preprocessed_filepath: raw_filepath
       )
     end
     funcs.zip( lines ) { |func, line_num| func.line_num = line_num }
@@ -219,11 +212,7 @@ class PartializerHelper
   end
 
   def _add_promoted(c_module, func, vars)
-    items = _with_defined_types( vars )
-    c_module.aggregate_definitions.concat( items.grep( CExtractorTypes::CStatement ) )
-    c_module.variable_declarations.concat( vars )
-    at = c_module.element_sequence.index { |item| item.equal?( func ) } || c_module.element_sequence.size
-    c_module.element_sequence.insert( at, *items )
+    c_module.insert_before!( func, _with_defined_types( vars ) )
   end
 
   # Lifts function-scoped static variables out of function bodies, to be promoted to module
@@ -293,12 +282,8 @@ class PartializerHelper
     return statements
   end
 
-  # The byte at which a function's body opens in its code block: the first brace outside a
-  # literal or comment, since an attribute's string in the signature may hold one
   def _body_start(func)
-    scanner = StringScanner.new( func.code_block )
-    nil until scanner.skip_until( CExtractorDeclarator::BALANCE_TOKEN ).nil? or scanner.matched == '{'
-    return scanner.pos - 1
+    return CExtractorFunctions.body_start( func.code_block )
   end
 
   # The variables of one statement share its decorators
@@ -470,77 +455,6 @@ class PartializerHelper
     line.match?( RELOCATED_CONTENT ) || line.match?( ANY_INCLUDE_DIRECTIVE )
   end
 
-
-  # For each function definition in funcs, find the matching function by name in the fully
-  # preprocessed expansion file and replace the three signature-related fields with their
-  # macro-expanded equivalents. The expanded body is kept alongside in expanded_body, where a
-  # call hidden in a macro is visible. All other fields — especially code_block — are preserved
-  # from the directives-only extraction so that line number mapping stays valid.
-  #
-  # Declarations get their decorators and stripped signature the same way, so a macro that
-  # hides `static` is seen for what it is. Their written signature stays as the user spelled
-  # it, because a carried prototype is written word for word.
-  #
-  # @param funcs [Array<CFunctionDefinition>] Definitions to update in place.
-  # @param full_expansion_filepath [String] Path to the assembled full expansion file
-  #   produced by preprocess_partial_{header,source}_expand_macros().
-  # @param name [String] Test name, used in log messages.
-  # @param module_name [String] Partial module name, used in log messages.
-  # @param file_type [String] "source" or "header", used in log messages.
-  # @param decls [Array<CFunctionDeclaration>] Declarations to update in place.
-  def update_signatures_from_full_expansion(funcs:, full_expansion_filepath:, name:, module_name:, file_type:, decls: [])
-    expanded_module = @c_extractor.from_file( full_expansion_filepath )
-    entries         = _reconcile_definitions( funcs, expanded_module ) + _reconcile_declarations( decls, expanded_module )
-
-    @loginator.log_list(
-      entries,
-      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
-      Verbosity::DEBUG
-    ) unless entries.empty?
-  end
-
-  # Updates each definition from the expanded definition of the same name. Returns log entries
-  # for those it found.
-  def _reconcile_definitions(funcs, expanded_module)
-    expanded_by_name = expanded_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
-
-    return funcs.filter_map do |func|
-      expanded = expanded_by_name[func.name]
-      next unless expanded
-
-      _take_expanded( func, expanded )
-      "`#{func.name}`"
-    end
-  end
-
-  # Everything about a definition that a macro can hide. Its code block stays as written, so
-  # line mapping still holds.
-  def _take_expanded(func, expanded)
-    func.signature          = expanded.signature
-    func.decorators         = expanded.decorators
-    func.signature_stripped = expanded.signature_stripped
-    func.expanded_body      = expanded.body
-  end
-
-  # Matches each declaration to the expanded declaration of the same name, in order, since
-  # a name may be declared more than once. Returns log entries for those whose decorators changed.
-  def _reconcile_declarations(decls, expanded_module)
-    expanded_by_name = expanded_module.function_declarations.group_by( &:name )
-
-    return decls.group_by( &:name ).flat_map do |decl_name, same_name|
-      same_name.zip( expanded_by_name.fetch( decl_name, [] ) ).filter_map { |decl, expanded| _reconcile_declaration( decl, expanded ) }
-    end
-  end
-
-  # Updates one declaration from its expanded counterpart. Returns a log entry when its decorators changed.
-  def _reconcile_declaration(decl, expanded)
-    return nil if expanded.nil?
-
-    changed = decl.decorators != expanded.decorators
-    decl.decorators         = expanded.decorators
-    decl.signature_stripped = expanded.signature_stripped
-    return changed ? "`#{decl.name}` (declaration)" : nil
-  end
 
   # Marks each declaration whose function the text defines inline with external linkage. Given
   # a file's raw directives-only copy, which holds every header the file includes, a mark means

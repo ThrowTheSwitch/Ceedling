@@ -59,7 +59,7 @@ class Preprocessinator
     result = run_preprocessor( @configurator.tools_test_file_directives_only_preprocessor, filepath, raw, **tool_args )
 
     if @tool_executor.failed?( result )
-      return log_failure( "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::ERROR )
+      return log_failure( "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}", Verbosity::COMPLAIN )
     end
 
     strip_and_compact( filepath, test, raw )
@@ -75,7 +75,7 @@ class Preprocessinator
     result = run_preprocessor( @configurator.tools_test_file_full_preprocessor, filepath, output, **tool_args )
 
     if @tool_executor.failed?( result )
-      return log_failure( "Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::ERROR )
+      return log_failure( "Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for #{filepath}", Verbosity::COMPLAIN )
     end
 
     return output
@@ -97,18 +97,14 @@ class Preprocessinator
                           fallback: fallback, defines: defines )
   end
 
-  # Persists `includes` under a cache file keyed by `test`/`filepath` so
-  # `load_includes_list` can recall it later. Independent callers share this
-  # pair of methods against different `filepath`s, each already knowing its
-  # target is stale before writing here:
-  #  - Stage 4's first pass (TestBareIncludesExtractinator), for a test file's own
-  #    bare-includes list.
-  #  - `preprocess_file_includes_common` below, for a mocked header's or a
-  #    Partial header/source file's includes -- called from stage 9 and
-  #    stages 6/7 (test_build_executor.rb) respectively, both of which
-  #    register their own DependencyTracker target and only call in once
-  #    they've determined it stale.
-  # This method itself performs no freshness check of its own.
+  # Persists `includes` under a cache file keyed by `test` and `filepath`, so
+  # `load_includes_list` can recall it later. Two callers share the pair, each already
+  # knowing its target is stale:
+  #  - Stage 4's first pass (TestBareIncludesExtractinator), for a test file's own bare
+  #    #includes.
+  #  - `preprocess_file_includes_common` below, for a mockable header's or a Partial
+  #    file's #includes, from stage 9 and stages 6 and 7.
+  # This method performs no freshness check of its own.
   def store_includes_list(test:, filepath:, includes:)
     _filepath = ensure_output_dir(
       @file_path_utils.form_preprocessed_includes_list_filepath( filepath, test )
@@ -181,7 +177,6 @@ class Preprocessinator
       directives_only_filepath:  directives_only_filepath,
       fallback:                  fallback,
       flags:                     flags,
-      include_paths:             include_paths,
       vendor_paths:              vendor_paths,
       defines:                   defines
     }
@@ -231,126 +226,29 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
-  def preprocess_partial_header_file_preserve_macros(
-      test:,
-      filepath:,
-      directives_only_filepath:,
-      fallback:,
-      flags:,
-      include_paths:,
-      vendor_paths:,
-      defines:
-  )
-    msg = @reportinator.generate_module_progress(
-      operation: 'Preprocessing header file for follow-on Partials handling',
-      module_name: test,
-      filename: File.basename( filepath )
+  # A Partial's header or source with its macros kept, reassembled with its reconciled
+  # #includes for extraction to parse. `kind` is :header or :source. Gives the assembled
+  # copy's path and the #includes. `directives_only_filepath` is the file's raw
+  # -fdirectives-only output, which fallback has none of.
+  def preprocess_partial_file(kind:, test:, filepath:, directives_only_filepath:, fallback:, **tool_args)
+    noun = kind.to_s
+    msg  = @reportinator.generate_module_progress(
+      operation: "Preprocessing #{noun} file for follow-on Partials handling", module_name: test, filename: File.basename( filepath )
     )
     @loginator.log( msg )
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
-
-    arg_hash = {
-      test:                      test,
-      filepath:                  filepath,
-      directives_only_filepath:  directives_only_filepath,
-      fallback:                  fallback,
-      flags:                     flags,
-      include_paths:             include_paths,
-      vendor_paths:              vendor_paths,
-      defines:                   defines
-    }
-
-    # Extract includes & log progress and details
-    includes = preprocess_file_includes_common( **arg_hash )
-
-    header = "Discovered #includes for Partial header from #{filepath}:"
-    @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
-
-    contents =
-      if fallback
-        @file_assembler.collect_file_contents_fallback( source_filepath: filepath, defines: defines )
-      else
-        @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
-      end
-
-    # In fallback mode, #define macros are stripped from contents (all '#' lines skipped).
-    # Re-extract them so the CExtractor can see them when parsing the reconstituted file.
-    extras = fallback ? @file_assembler.collect_macros_and_pragmas_fallback( source_filepath: filepath, defines: defines ) : []
-
-    arg_hash = {
-      filepath:              @file_path_utils.preprocessed_file_subpath( filepath ),
-      preprocessed_filepath: preprocessed_filepath,
-      contents:              contents,
-      extras:                extras,
-      includes:              includes
-    }
-
-    # Create a reconstituted header file
-    @file_assembler.assemble_preprocessed_header_file( **arg_hash )
-
-    return preprocessed_filepath, includes
-  end
-
-  def preprocess_partial_source_file_preserve_macros(
-      test:,
-      filepath:,
-      directives_only_filepath:,
-      fallback:,
-      flags:,
-      include_paths:,
-      vendor_paths:,
-      defines:
-  )
-    msg = @reportinator.generate_module_progress(
-      operation: 'Preprocessing source file for follow-on Partials handling',
-      module_name: test,
-      filename: File.basename( filepath )
+    includes = preprocess_file_includes_common(
+      test: test, filepath: filepath, directives_only_filepath: directives_only_filepath, fallback: fallback,
+      **tool_args.except( :include_paths )
     )
-    @loginator.log( msg )
+    @loginator.log_list( includes, "Discovered #includes for Partial #{noun} from #{filepath}:", Verbosity::OBNOXIOUS )
 
-    preprocessed_filepath = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
+    contents, extras = partial_file_contents( filepath, directives_only_filepath, fallback, tool_args[:defines] )
+    assembled        = @file_path_utils.form_preprocessed_file_filepath( filepath, test )
 
-    arg_hash = {
-      test:                      test,
-      filepath:                  filepath,
-      directives_only_filepath:  directives_only_filepath,
-      fallback:                  fallback,
-      flags:                     flags,
-      include_paths:             include_paths,
-      vendor_paths:              vendor_paths,
-      defines:                   defines
-    }
+    write_partial_file( kind, filepath, preprocessed_filepath: assembled, contents: contents, extras: extras, includes: includes )
 
-    # Extract includes & log progress and info
-    includes = preprocess_file_includes_common( **arg_hash )
-
-    header = "Discovered #includes for Partial source from #{filepath}:"
-    @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
-
-    contents =
-      if fallback
-        @file_assembler.collect_file_contents_fallback( source_filepath: filepath, defines: defines )
-      else
-        @file_assembler.collect_file_contents_from_directives_only_preprocessing( source_filepath: filepath, test: test )
-      end
-
-    # In fallback mode, #define macros are stripped from contents (all '#' lines skipped).
-    # Re-extract them so the CExtractor can see them when parsing the reconstituted file.
-    extras = fallback ? @file_assembler.collect_macros_and_pragmas_fallback( source_filepath: filepath, defines: defines ) : []
-
-    arg_hash = {
-      filename:              File.basename( filepath ),
-      preprocessed_filepath: preprocessed_filepath,
-      contents:              contents,
-      extras:                extras,
-      includes:              includes
-    }
-
-    # Create a reconstituted source file
-    @file_assembler.assemble_preprocessed_code_file( **arg_hash )
-
-    return preprocessed_filepath, includes
+    return assembled, includes
   end
 
   def preprocess_test_file(
@@ -361,7 +259,6 @@ class Preprocessinator
       includes:,
       flags:,
       include_paths:,
-      vendor_paths:,
       defines:
     )
     msg = @reportinator.generate_module_progress(
@@ -402,11 +299,10 @@ class Preprocessinator
     contents, extras = @file_assembler.collect_test_file_contents( **arg_hash )
 
     arg_hash = {
-      filename:              File.basename( filepath ),
       preprocessed_filepath: preprocessed_filepath,
       contents:              contents,
       extras:                extras,
-      includes:              includes                       
+      includes:              includes
     }
 
     # Create a reconstituted test file from preprocessing expansion and preserving any extras
@@ -418,26 +314,30 @@ class Preprocessinator
     return preprocessed_filepath
   end
 
-  def preprocess_partial_header_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    _preprocess_partial_expand_macros(
-      filepath:      filepath,
-      test:          test,
-      flags:         flags,
-      include_paths: include_paths,
-      vendor_paths:  vendor_paths,
-      defines:       defines
-    )
-  end
+  # A Partial's header or source in full expansion, where a macro hiding a decorator or a
+  # call is visible. The expansion stays whole, since its line markers name every file it
+  # entered. The file's own lines are written beside it as plain code, which
+  # reconciliation parses. Gives that code's path.
+  #
+  # Nil when the preprocessor fails, so its caller reconciles nothing. A failure leaves
+  # neither file behind, so an earlier run's expansion never passes for this one's.
+  def generate_partial_expansion(filepath:, test:, **tool_args)
+    progress = { operation: 'Full-preprocessing for Partial reconciliation', module_name: test, filename: File.basename( filepath ) }
+    @loginator.log( @reportinator.generate_module_progress( **progress ) )
 
-  def preprocess_partial_source_expand_macros(filepath:, test:, flags:, include_paths:, vendor_paths:, defines:)
-    _preprocess_partial_expand_macros(
-      filepath:      filepath,
-      test:          test,
-      flags:         flags,
-      include_paths: include_paths,
-      vendor_paths:  vendor_paths,
-      defines:       defines
-    )
+    raw    = ensure_output_dir( @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test ) )
+    code   = @file_path_utils.form_preprocessed_file_expanded_code_filepath( filepath, test )
+    result = run_preprocessor( @configurator.tools_test_file_full_preprocessor, filepath, raw, **tool_args )
+
+    if @tool_executor.failed?( result )
+      [raw, code].each { |path| @file_wrapper.rm_f( path ) }
+      return log_failure( "Failed to generate full expansion for Partial reconciliation (macro-supplied decorators will be missed) for #{filepath}", Verbosity::COMPLAIN )
+    end
+
+    contents = @file_assembler.collect_own_lines( source_filepath: filepath, preprocessed_filepath: raw )
+    @file_assembler.assemble_preprocessed_code_file( preprocessed_filepath: code, contents: contents, extras: [], includes: [] )
+
+    return code
   end
 
   ### Private ###
@@ -454,6 +354,28 @@ class Preprocessinator
     command[:options][:boom] = false
 
     return @tool_executor.exec( command )
+  end
+
+  # A Partial file's content lines and the extras written ahead of them. Fallback reads the
+  # original file's text. Its reader skips every `#` line, so the file's macros and
+  # pragmas are recovered separately as extras for extraction to see.
+  def partial_file_contents(filepath, directives_only_filepath, fallback, defines)
+    unless fallback
+      return @file_assembler.collect_own_lines( source_filepath: filepath, preprocessed_filepath: directives_only_filepath, rejoin: false ), []
+    end
+
+    return @file_assembler.collect_file_contents_fallback( source_filepath: filepath, defines: defines ),
+           @file_assembler.collect_macros_and_pragmas_fallback( source_filepath: filepath, defines: defines )
+  end
+
+  # A Partial's header is written with an include guard named for its path below its root,
+  # so two same-named headers differ. A source has no guard.
+  def write_partial_file(kind, filepath, **written)
+    if kind == :header
+      @file_assembler.assemble_preprocessed_header_file( filepath: @file_path_utils.preprocessed_file_subpath( filepath ), **written )
+    else
+      @file_assembler.assemble_preprocessed_code_file( **written )
+    end
   end
 
   # Logs why a preprocessor run failed and gives the nil its caller returns
@@ -508,42 +430,19 @@ class Preprocessinator
     includes
   end
 
-  # A Partial's file in full expansion, reassembled in place as plain code. Nil when the
-  # preprocessor fails, so its caller uses directives-only signatures instead.
-  def _preprocess_partial_expand_macros(filepath:, test:, **tool_args)
-    progress = { operation: 'Full-preprocessing for expanded Partial signature extraction', module_name: test, filename: File.basename( filepath ) }
-    @loginator.log( @reportinator.generate_module_progress( **progress ) )
-
-    output = ensure_output_dir( @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test ) )
-    result = run_preprocessor( @configurator.tools_test_file_full_preprocessor, filepath, output, **tool_args )
-
-    if @tool_executor.failed?( result )
-      return log_failure( "Failed to generate full expansion for Partial signature extraction (directives-only signatures will be used) for #{filepath}", Verbosity::COMPLAIN )
-    end
-
-    assemble_full_expansion( filepath, test, output )
-    return output
-  end
-
-  def assemble_full_expansion(filepath, test, output)
-    contents = @file_assembler.collect_file_contents_from_full_expansion( source_filepath: filepath, test: test )
-    @file_assembler.assemble_preprocessed_code_file(
-      filename: File.basename( filepath ), preprocessed_filepath: output, contents: contents, extras: [], includes: []
-    )
-  end
-
-  # Extracts, reconciles, and persists a header or source file's user/system
-  # includes. Called only once a caller has already determined, via its own
-  # DependencyTracker target, that this exact file/test pair is stale --
-  # see `preprocess_mockable_header_file` above and stages 6/7 in
-  # test_build_executor.rb -- so the extraction below always runs for real.
+  # Extracts, reconciles, and persists a header or source file's user/system #includes.
+  # Stage 9 calls it for mockable headers, and stages 6 and 7 for Partial files. Each
+  # calls only once its own DependencyTracker target is stale, so the extraction always
+  # runs for real.
+  #
+  # The file's own search paths take no part. The bare pass searches vendor paths alone,
+  # and the user and system lists come from output a preprocessor already wrote.
   def preprocess_file_includes_common(
       test:,
       filepath:,
       directives_only_filepath:,
       fallback:,
       flags:,
-      include_paths:,
       vendor_paths:,
       defines:
   )

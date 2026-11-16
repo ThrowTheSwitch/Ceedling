@@ -16,8 +16,8 @@ module TestInvokerTypes
     :testables,         # Hash<Symbol, Testable> — accumulated across all stages
     :context,
     :options,           # Array<Symbol> — pipeline-control flags (see TestPipelineManager)
-    :partials_headers,  # Array<PartialWork> — produced by T1; consumed by stages 6 & 7
-    :partials_sources,  # Array<PartialWork> — produced by T1; consumed by stages 6 & 7
+    :partials_headers,  # Array<PartialWork> — produced by T1; consumed by stage 6
+    :partials_sources,  # Array<PartialWork> — produced by T1; consumed by stage 7
     :mocks_list,        # Array<MockWork> — produced by T2; consumed by stages 9 & 10
     :objects_list,      # Array<ObjectWork> — produced by T3; consumed by stage 15
     :lock,              # Mutex for thread-safe testable writes
@@ -43,13 +43,10 @@ module TestInvokerTypes
   # and the (possibly preprocessed) test file it was generated from (`input_filepath`).
   RunnerInfo = Struct.new(:output_filepath, :input_filepath, keyword_init: true) unless const_defined?(:RunnerInfo, false)
 
-  # One partial header or source file's own preprocessing work, flattened out of its
-  # owning testable for parallel processing (T1). `preprocessed_target` and `stale` are
-  # unset until the corresponding stage settles this target's staleness.
-  PartialWork = Struct.new(
-    :config, :testable, :directives_only_filepath, :preprocessed_target, :stale,
-    keyword_init: true
-  ) unless const_defined?(:PartialWork, false)
+  # One Partial header or source file to preprocess, flattened out of its owning testable
+  # for parallel processing (T1). `config` is the file's Partials::ConfigFileInfo, which
+  # preprocessing fills in for stage 8.
+  PartialWork = Struct.new( :config, :testable, keyword_init: true ) unless const_defined?(:PartialWork, false)
 
   # One mock's own preprocessing/generation work, flattened out of its owning testable
   # for parallel processing (T2). `details` is this mock's own MockDetails; `preprocessed_target`

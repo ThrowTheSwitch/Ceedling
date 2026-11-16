@@ -618,13 +618,15 @@ describe 'Declarations in a Partial' do
     end
 
     # Each no-op stands on the line its statement did, and a statement over several lines keeps
-    # them. On Windows the source is written with CRLF endings, as a Windows checkout has them.
-    it 'keeps the function to its line count' do
-      source = "int ticker_get(void) {\n  static struct {\n    int n;\n  } st;\n  return st.n;\n}\n"
-      @result = ticker( header: "int ticker_get(void);\n", source: source )
+    # them. A CRLF source is the one a Windows checkout gives.
+    { 'LF' => "\n", 'CRLF' => "\r\n" }.each do |ending, newline|
+      it "keeps the function to its line count with #{ending} endings" do
+        source = "int ticker_get(void) {\n  static struct {\n    int n;\n  } st;\n  return st.n;\n}\n".gsub( "\n", newline )
+        @result = ticker( header: "int ticker_get(void);\n", source: source )
 
-      body = @result.impl_c[/int ticker_get\(void\) \{.*?\n\}/m]
-      expect( body.count( "\n" ) ).to eq( source.count( "\n" ) - 1 ), "the function as generated: #{body.inspect}"
+        body = @result.impl_c[/int ticker_get\(void\) \{.*?\n\}/m]
+        expect( body.count( "\n" ) ).to eq( source.count( "\n" ) - 1 ), "the function as generated: #{body.inspect}"
+      end
     end
   end
 

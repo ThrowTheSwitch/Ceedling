@@ -68,6 +68,76 @@ describe CExtractorTypes::CModule do
       expect( (header + source).element_sequence.map( &:origin ) ).to eq( [:header, :source] )
     end
   end
+
+  context "#remove!" do
+    it "takes items out of their lists and out of element_sequence" do
+      c_module = module_of( statement, definition, variable )
+
+      c_module.remove!( [statement, variable] )
+
+      expect( c_module.macro_definitions ).to be_empty
+      expect( c_module.variable_declarations ).to be_empty
+      expect( c_module.element_sequence ).to eq( [definition] )
+    end
+
+    # Two equal statements can sit in different places, and only the one given goes
+    it "matches items by identity, not by equality" do
+      twin     = CExtractorTypes::CStatement.new( text: '#define LIMIT 9' )
+      c_module = module_of( statement, twin )
+
+      c_module.remove!( [twin] )
+
+      expect( c_module.element_sequence ).to contain_exactly( be( statement ) )
+      expect( c_module.macro_definitions ).to contain_exactly( be( statement ) )
+    end
+
+    it "removes every one of several equal items it is given" do
+      twin     = CExtractorTypes::CStatement.new( text: '#define LIMIT 9' )
+      c_module = module_of( statement, twin )
+
+      c_module.remove!( [statement, twin] )
+
+      expect( c_module.element_sequence ).to be_empty
+      expect( c_module.macro_definitions ).to be_empty
+    end
+  end
+
+  context "#insert_before!" do
+    it "adds items to the lists their kinds name and places them just ahead of the anchor" do
+      type     = CExtractorTypes::CStatement.new( text: 'struct last { int n; };', kind: :aggregate )
+      c_module = module_of( statement, definition )
+
+      c_module.insert_before!( definition, [type, variable] )
+
+      expect( c_module.aggregate_definitions ).to eq( [type] )
+      expect( c_module.variable_declarations ).to eq( [variable] )
+      expect( c_module.element_sequence ).to eq( [statement, type, variable, definition] )
+    end
+
+    it "places a statement in the list its kind names" do
+      typedef  = CExtractorTypes::CStatement.new( text: 'typedef int count_t;', kind: :typedef )
+      c_module = module_of( definition )
+
+      c_module.insert_before!( definition, [typedef] )
+
+      expect( c_module.type_definitions ).to eq( [typedef] )
+      expect( c_module.aggregate_definitions ).to be_empty
+    end
+
+    it "refuses a statement whose kind names no list" do
+      loose = CExtractorTypes::CStatement.new( text: 'struct s;' )
+
+      expect { module_of.insert_before!( definition, [loose] ) }.to raise_error( ArgumentError, /CStatement of kind nil/ )
+    end
+
+    it "places items at the end when the anchor isn't in the module" do
+      c_module = module_of( statement )
+
+      c_module.insert_before!( definition, [variable] )
+
+      expect( c_module.element_sequence ).to eq( [statement, variable] )
+    end
+  end
 end
 
 describe 'C extractor item origins' do

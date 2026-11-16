@@ -17,6 +17,7 @@ describe TestPipelineManager do
     @test_file_preprocessinator  = double( "TestFilePreprocessinator" )
     @test_runner_generatinator   = double( "TestRunnerGeneratinator" )
     @test_build_planner   = double( "TestBuildPlanner" )
+    @partial_files_preprocessinator = double( "PartialFilesPreprocessinator" )
     @partials_manager     = double( "PartialsManager" )
     @test_build_executor  = double( "TestBuildExecutor" )
     @configurator         = double( "Configurator" )
@@ -45,8 +46,8 @@ describe TestPipelineManager do
     allow(@test_build_planner).to receive(:stage_determine_artifacts)
     allow(@test_build_planner).to receive(:stage_flatten_objects_list)
 
-    allow(@partials_manager).to receive(:stage_preprocess_partial_headers)
-    allow(@partials_manager).to receive(:stage_preprocess_partial_sources)
+    allow(@partial_files_preprocessinator).to receive(:preprocess_headers)
+    allow(@partial_files_preprocessinator).to receive(:preprocess_sources)
     allow(@partials_manager).to receive(:stage_generate_partials)
     allow(@test_build_executor).to receive(:stage_preprocess_mocks)
     allow(@test_build_executor).to receive(:stage_generate_mocks)
@@ -62,6 +63,7 @@ describe TestPipelineManager do
         :test_build_setup    => @test_build_setup,
         :test_includes_extractinator => @test_includes_extractinator,
         :test_build_planner  => @test_build_planner,
+        :partial_files_preprocessinator => @partial_files_preprocessinator,
         :partials_manager    => @partials_manager,
         :test_build_executor => @test_build_executor,
         :test_file_preprocessinator => @test_file_preprocessinator,
@@ -74,12 +76,17 @@ describe TestPipelineManager do
     )
   end
 
+  # A flattened mock, a Partial's or a plain header's
+  def mock_work(partial: false)
+    TestInvokerTypes::MockWork.new( :details => TestInvokerTypes::MockDetails.new( :partial => partial ) )
+  end
+
   # Defaults every flattened list to non-empty, real-shaped-enough content, so every
   # existing test below exercises the "has work to do" path without having to know or
   # care about T1/T2's output -- exactly as it would if a project had at least one
   # Partial and one mock. Tests specifically about the "enabled but nothing to do this
   # run" case (below) override one or more of these to `[]`.
-  def state(options: [], partials_headers: [double("PartialWork")], partials_sources: [double("PartialWork")], mocks_list: [double("MockWork")])
+  def state(options: [], partials_headers: [double("PartialWork")], partials_sources: [double("PartialWork")], mocks_list: [mock_work])
     TestInvokerTypes::PipelineState.new(
       :testables        => {}, :context => :test, :options => options,
       :partials_headers => partials_headers, :partials_sources => partials_sources, :mocks_list => mocks_list,
@@ -118,8 +125,8 @@ describe TestPipelineManager do
         expect(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
-        expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
-        expect(@partials_manager).to receive(:stage_preprocess_partial_sources)
+        expect(@partial_files_preprocessinator).to receive(:preprocess_headers)
+        expect(@partial_files_preprocessinator).to receive(:preprocess_sources)
         expect(@partials_manager).to receive(:stage_generate_partials)
         expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to receive(:stage_preprocess_mocks)
@@ -287,8 +294,8 @@ describe TestPipelineManager do
         expect(@test_includes_extractinator).to receive(:stage_collect_preprocessor_context)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
-        expect(@partials_manager).to receive(:stage_preprocess_partial_headers)
-        expect(@partials_manager).to receive(:stage_preprocess_partial_sources)
+        expect(@partial_files_preprocessinator).to receive(:preprocess_headers)
+        expect(@partial_files_preprocessinator).to receive(:preprocess_sources)
         expect(@partials_manager).to receive(:stage_generate_partials)
         expect(@test_build_planner).to receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to receive(:stage_preprocess_mocks)
@@ -338,8 +345,8 @@ describe TestPipelineManager do
         allow(@configurator).to receive(:project_use_partials).and_return( false )
 
         expect(@test_build_planner).to_not receive(:stage_flatten_partials_lists)
-        expect(@partials_manager).to_not receive(:stage_preprocess_partial_headers)
-        expect(@partials_manager).to_not receive(:stage_preprocess_partial_sources)
+        expect(@partial_files_preprocessinator).to_not receive(:preprocess_headers)
+        expect(@partial_files_preprocessinator).to_not receive(:preprocess_sources)
         expect(@partials_manager).to_not receive(:stage_generate_partials)
         expect(@test_build_planner).to receive(:stage_determine_files)
         expect(@loginator).to_not receive(:log)
@@ -367,8 +374,8 @@ describe TestPipelineManager do
         allow(@configurator).to receive(:project_use_partials).and_return( true )
 
         expect(@test_build_planner).to receive(:stage_flatten_partials_lists)
-        expect(@partials_manager).to_not receive(:stage_preprocess_partial_headers)
-        expect(@partials_manager).to_not receive(:stage_preprocess_partial_sources)
+        expect(@partial_files_preprocessinator).to_not receive(:preprocess_headers)
+        expect(@partial_files_preprocessinator).to_not receive(:preprocess_sources)
         expect(@partials_manager).to_not receive(:stage_generate_partials)
 
         expect(@loginator).to receive(:log)
@@ -392,11 +399,36 @@ describe TestPipelineManager do
         expect(@test_build_executor).to_not receive(:stage_generate_mocks)
 
         expect(@loginator).to receive(:log)
-          .with( "Preprocessing for Mocks: no mocks to process", Verbosity::OBNOXIOUS )
+          .with( "Preprocessing for Mocks: no mocks need preprocessing", Verbosity::OBNOXIOUS )
         expect(@loginator).to receive(:log)
           .with( "Mocking: no mocks to generate", Verbosity::OBNOXIOUS )
 
         @manager.run( state(options: [], mocks_list: []) )
+      end
+    end
+
+    # CMock reads a Partial mock's generated header itself, so stage 9 has nothing to do for one
+    context "when mocking is enabled and every mock is a Partial's" do
+      it "skips mock preprocessing with its notice but still generates the mocks" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+
+        expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
+        expect(@test_build_executor).to receive(:stage_generate_mocks)
+
+        expect(@loginator).to receive(:log)
+          .with( "Preprocessing for Mocks: no mocks need preprocessing", Verbosity::OBNOXIOUS )
+
+        @manager.run( state(options: [], mocks_list: [mock_work(partial: true)]) )
+      end
+
+      it "runs mock preprocessing when a plain mock sits beside a Partial's" do
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( true )
+
+        expect(@test_build_executor).to receive(:stage_preprocess_mocks)
+
+        @manager.run( state(options: [], mocks_list: [mock_work(partial: true), mock_work]) )
       end
     end
 

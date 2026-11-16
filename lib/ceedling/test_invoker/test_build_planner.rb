@@ -120,17 +120,8 @@ class TestBuildPlanner
   def stage_flatten_partials_lists(state)
     state.testables.each do |_, testable|
       testable.partials.configs.each do |_, config|
-        state.partials_headers << PartialWork.new(
-          config:                   config.header,
-          testable:                 testable,
-          directives_only_filepath: nil
-        ) if config.header.filepath
-
-        state.partials_sources << PartialWork.new(
-          config:                   config.source,
-          testable:                 testable,
-          directives_only_filepath: nil
-        ) if config.source.filepath
+        state.partials_headers << PartialWork.new( config: config.header, testable: testable ) if config.header.filepath
+        state.partials_sources << PartialWork.new( config: config.source, testable: testable ) if config.source.filepath
       end
     end
   end

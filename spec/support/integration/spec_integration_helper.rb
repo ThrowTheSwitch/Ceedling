@@ -220,7 +220,6 @@ module IntegrationSpecHelpers
         directives_only_filepath: donly,
         fallback: (fallback || donly.nil?),
         flags: [],
-        include_paths: search_paths,
         vendor_paths: [],
         defines: defines
       )

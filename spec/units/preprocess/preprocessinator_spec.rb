@@ -72,7 +72,6 @@ RSpec.describe Preprocessinator do
         directives_only_filepath:  '/build/directives_only/module.c',
         fallback:                  false,
         flags:                     [],
-        include_paths:             [],
         vendor_paths:              [],
         defines:                   defines
       )
@@ -218,41 +217,34 @@ RSpec.describe Preprocessinator do
   end
 
   # ===========================================================================
-  describe '#preprocess_partial_header_expand_macros / #preprocess_partial_source_expand_macros' do
+  describe '#generate_partial_expansion' do
   # ===========================================================================
-  # Both public methods funnel through the same private _preprocess_partial_expand_macros.
 
     let(:filepath) { '/src/module.c' }
+    let(:raw)      { '/build/full_expansion/module.c' }
+    let(:code)     { '/build/expanded_code/module.c' }
 
-    def call_it(method: :preprocess_partial_header_expand_macros)
-      subject.send(
-        method,
-        filepath:      filepath,
-        test:          'test',
-        flags:         [],
-        include_paths: [],
-        vendor_paths:  [],
-        defines:       []
+    def call_it(**overrides)
+      subject.generate_partial_expansion(
+        filepath: filepath, test: 'test', flags: [], include_paths: [], vendor_paths: [], defines: [], **overrides
       )
     end
 
     before do
-      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).and_return('/build/full_expansion/module.c')
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).with(filepath, 'test').and_return(raw)
+      allow(@file_path_utils).to receive(:form_preprocessed_file_expanded_code_filepath).with(filepath, 'test').and_return(code)
       allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return({})
       allow(@tool_executor).to receive(:build_command_line).and_return({ options: {} })
+      allow(@file_assembler).to receive(:collect_own_lines).and_return([])
+      allow(@file_assembler).to receive(:assemble_preprocessed_code_file)
+      allow(@file_wrapper).to receive(:rm_f)
     end
 
-    # Without boom: false, the real ToolExecutor#exec (not this double) raises
-    # ShellException on a nonzero exit code before the fallback below it ever runs,
-    # crashing the build instead of gracefully degrading as documented.
-    it "sets boom: false on the command before invoking the full preprocessor" do
+    # Without boom: false, the real ToolExecutor#exec raises ShellException on a failed run
+    # before the caller can reconcile without the expansion
+    it 'sets boom: false on the command before invoking the full preprocessor' do
       captured_command = nil
-      allow(@tool_executor).to receive(:exec) do |command|
-        captured_command = command
-        { exit_code: 0 }
-      end
-      allow(@file_assembler).to receive(:collect_file_contents_from_full_expansion).and_return([])
-      allow(@file_assembler).to receive(:assemble_preprocessed_code_file)
+      allow(@tool_executor).to receive(:exec) { |command| captured_command = command; { exit_code: 0 } }
 
       call_it()
 
@@ -260,58 +252,60 @@ RSpec.describe Preprocessinator do
     end
 
     # Vendor paths follow the file's own search paths, so a project header wins a name clash
-    it "runs the full preprocessor tool on the file, its output, defines, and search paths ahead of vendor paths" do
+    it 'runs the full preprocessor tool into the raw expansion, with search paths ahead of vendor paths' do
       allow(@configurator).to receive(:tools_test_file_full_preprocessor).and_return( { name: 'full' } )
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
-      subject.send( :preprocess_partial_header_expand_macros,
-        filepath: filepath, test: 'test', flags: ['-std=c99'], include_paths: ['inc'], vendor_paths: ['vendor'], defines: ['FOO']
-      )
+      call_it( flags: ['-std=c99'], include_paths: ['inc'], vendor_paths: ['vendor'], defines: ['FOO'] )
 
       expect(@tool_executor).to have_received(:build_command_line).with(
-        { name: 'full' }, ['-std=c99'], filepath, '/build/full_expansion/module.c', ['FOO'], ['inc', 'vendor']
+        { name: 'full' }, ['-std=c99'], filepath, raw, ['FOO'], ['inc', 'vendor']
       )
     end
 
-    it "returns nil without raising when the full preprocessor invocation fails" do
+    it 'keeps the raw expansion whole and writes the file\'s own lines beside it as plain code' do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
+      allow(@file_assembler).to receive(:collect_own_lines).with(source_filepath: filepath, preprocessed_filepath: raw).and_return(['expanded line'])
+
+      expect( call_it() ).to eq(code)
+      expect(@file_assembler).to have_received(:assemble_preprocessed_code_file).with(
+        preprocessed_filepath: code, contents: ['expanded line'], extras: [], includes: []
+      )
+      expect(@file_wrapper).to_not have_received(:rm_f)
+    end
+
+    # An earlier run's files would otherwise pass for this run's expansion
+    it 'returns nil without raising, and removes both files, when the preprocessor fails' do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
-      result = nil
+      result = :unset
       expect { result = call_it() }.to_not raise_error
+
       expect(result).to be_nil
+      expect(@file_wrapper).to have_received(:rm_f).with(raw)
+      expect(@file_wrapper).to have_received(:rm_f).with(code)
+      expect(@file_assembler).to_not have_received(:assemble_preprocessed_code_file)
     end
 
-    it "returns nil without raising via preprocess_partial_source_expand_macros too" do
+    it 'names reconciliation in its progress line' do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
+
+      call_it()
+
+      expect(@reportinator).to have_received(:generate_module_progress).with(
+        operation: 'Full-preprocessing for Partial reconciliation', module_name: 'test', filename: 'module.c'
+      )
+    end
+
+    it 'warns that macro-supplied decorators will be missed when the preprocessor fails' do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
-      result = nil
-      expect { result = call_it(method: :preprocess_partial_source_expand_macros) }.to_not raise_error
-      expect(result).to be_nil
-    end
+      call_it()
 
-    it "returns the full expansion filepath and assembles the code file on success" do
-      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
-      allow(@file_assembler).to receive(:collect_file_contents_from_full_expansion).and_return(['expanded line'])
-
-      captured = nil
-      allow(@file_assembler).to receive(:assemble_preprocessed_code_file) { |**kwargs| captured = kwargs }
-
-      result = call_it()
-
-      expect(result).to eq('/build/full_expansion/module.c')
-      expect(captured[:contents]).to eq(['expanded line'])
-      expect(captured[:includes]).to eq([])
-      expect(captured[:extras]).to eq([])
-    end
-
-    it "reaches the same success behavior via preprocess_partial_source_expand_macros too" do
-      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
-      allow(@file_assembler).to receive(:collect_file_contents_from_full_expansion).and_return(['expanded line'])
-      allow(@file_assembler).to receive(:assemble_preprocessed_code_file)
-
-      result = call_it(method: :preprocess_partial_source_expand_macros)
-
-      expect(result).to eq('/build/full_expansion/module.c')
+      expect(@loginator).to have_received(:log).with(
+        'Failed to generate full expansion for Partial reconciliation (macro-supplied decorators will be missed) for /src/module.c',
+        Verbosity::COMPLAIN
+      )
     end
 
   end
@@ -378,12 +372,15 @@ RSpec.describe Preprocessinator do
       )
     end
 
-    it "logs that the file falls back when the preprocessor fails" do
+    # Every stage that runs the pass reports a failure through this one warning
+    it "warns that the file falls back when the preprocessor fails" do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
       call_it()
 
-      expect(@loginator).to have_received(:log).with( /Failed to generate directive-only preprocessor output .* for \/src\/module\.c/, Verbosity::OBNOXIOUS, LogLabels::ERROR )
+      expect(@loginator).to have_received(:log).with(
+        'Failed to generate directive-only preprocessor output (fallback methods will be used) for /src/module.c', Verbosity::COMPLAIN
+      )
     end
 
     it "on success, strips comments, compacts the expansion, and returns the raw filepath" do
@@ -465,7 +462,7 @@ RSpec.describe Preprocessinator do
       expect(@reconstructor).to_not have_received(:compact_file_from_expansion)
     end
 
-    it 'returns nil without raising, and logs that text-scan #includes will be used, when the preprocessor fails' do
+    it 'returns nil without raising, and warns that text-scan #includes will be used, when the preprocessor fails' do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
       result = nil
@@ -473,7 +470,7 @@ RSpec.describe Preprocessinator do
 
       expect(result).to be_nil
       expect(@loginator).to have_received(:log).with(
-        'Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for /src/test_module.c', Verbosity::OBNOXIOUS, LogLabels::ERROR
+        'Failed to generate fallback preprocessor expansion (text-scan #includes will be used) for /src/test_module.c', Verbosity::COMPLAIN
       )
     end
 
@@ -669,27 +666,27 @@ RSpec.describe Preprocessinator do
   end
 
   # ===========================================================================
-  describe '#preprocess_partial_header_file_preserve_macros / #preprocess_partial_source_file_preserve_macros' do
+  describe '#preprocess_partial_file' do
   # ===========================================================================
 
-    let(:filepath) { '/src/module.h' }
+    let(:raw) { '/build/directives_only/raw/module.h' }
 
-    def call_it(method:, fallback:)
-      subject.send(
-        method,
+    def call_it(kind:, fallback:, filepath: '/src/module.h')
+      subject.preprocess_partial_file(
+        kind:                      kind,
         test:                      'test',
         filepath:                  filepath,
-        directives_only_filepath:  '/build/directives_only/module.h',
+        directives_only_filepath:  raw,
         fallback:                  fallback,
         flags:                     [],
         include_paths:             [],
         vendor_paths:              [],
-        defines:                   []
+        defines:                   ['FOO']
       )
     end
 
     before do
-      allow(@file_path_utils).to receive(:preprocessed_file_subpath) { |path| File.basename(path) }
+      allow(@file_path_utils).to receive(:preprocessed_file_subpath) { |path| "sub/#{File.basename(path)}" }
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return('/build/preprocessed/module.h')
       allow(@file_path_utils).to receive(:form_preprocessed_includes_list_filepath).and_return('/build/includes/module.h.yml')
       allow(@includes_handler).to receive(:extract_bare_includes).and_return([])
@@ -701,50 +698,68 @@ RSpec.describe Preprocessinator do
       allow(@includes_handler).to receive(:extract_system_includes_from_text).and_return([])
       allow(@includes_handler).to receive(:write_includes_list)
       allow(@file_assembler).to receive(:collect_file_contents_fallback).and_return(['fallback content'])
-      allow(@file_assembler).to receive(:collect_file_contents_from_directives_only_preprocessing).and_return(['directives content'])
+      allow(@file_assembler).to receive(:collect_own_lines).and_return(['directives content'])
       allow(@file_assembler).to receive(:collect_macros_and_pragmas_fallback).and_return(['macro'])
       allow(@file_assembler).to receive(:assemble_preprocessed_header_file)
       allow(@file_assembler).to receive(:assemble_preprocessed_code_file)
     end
 
-    it "uses the fallback content-source and re-extracts macros/pragmas when fallback: true (header)" do
-      captured = nil
-      allow(@file_assembler).to receive(:assemble_preprocessed_header_file) { |**kwargs| captured = kwargs }
+    # Fallback drops every `#` line from the content, so macros and pragmas come back as extras
+    it 'reads the original file\'s text and recovers its macros in fallback' do
+      call_it( kind: :header, fallback: true )
 
-      call_it(method: :preprocess_partial_header_file_preserve_macros, fallback: true)
-
-      expect(@file_assembler).to have_received(:collect_file_contents_fallback)
-      expect(@file_assembler).to_not have_received(:collect_file_contents_from_directives_only_preprocessing)
-      expect(captured[:contents]).to eq(['fallback content'])
-      expect(captured[:extras]).to eq(['macro'])
+      expect(@file_assembler).to have_received(:collect_file_contents_fallback).with(source_filepath: '/src/module.h', defines: ['FOO'])
+      expect(@file_assembler).to_not have_received(:collect_own_lines)
+      expect(@file_assembler).to have_received(:assemble_preprocessed_header_file).with(
+        hash_including( contents: ['fallback content'], extras: ['macro'] )
+      )
     end
 
-    it "uses directives-only content and empty extras when fallback: false (header)" do
-      captured = nil
-      allow(@file_assembler).to receive(:assemble_preprocessed_header_file) { |**kwargs| captured = kwargs }
+    # Directives-only output expands no macros, so nothing in it is rejoined
+    it 'reads the file\'s own lines from its raw directives-only output, unjoined, when accurate' do
+      call_it( kind: :header, fallback: false )
 
-      call_it(method: :preprocess_partial_header_file_preserve_macros, fallback: false)
-
-      expect(@file_assembler).to have_received(:collect_file_contents_from_directives_only_preprocessing)
+      expect(@file_assembler).to have_received(:collect_own_lines).with(source_filepath: '/src/module.h', preprocessed_filepath: raw, rejoin: false)
       expect(@file_assembler).to_not have_received(:collect_file_contents_fallback)
-      expect(captured[:contents]).to eq(['directives content'])
-      expect(captured[:extras]).to eq([])
+      expect(@file_assembler).to have_received(:assemble_preprocessed_header_file).with(
+        hash_including( contents: ['directives content'], extras: [] )
+      )
     end
 
-    it "uses the fallback content-source for the source-file variant too" do
-      captured = nil
-      allow(@file_assembler).to receive(:assemble_preprocessed_code_file) { |**kwargs| captured = kwargs }
+    # The guard is derived from the header's path below its root, so two same-named headers differ
+    it 'writes a header with a guard named for its path below its root' do
+      call_it( kind: :header, fallback: false )
 
-      call_it(method: :preprocess_partial_source_file_preserve_macros, fallback: true)
-
-      expect(captured[:contents]).to eq(['fallback content'])
-      expect(captured[:extras]).to eq(['macro'])
+      expect(@file_assembler).to have_received(:assemble_preprocessed_header_file).with(
+        hash_including( filepath: 'sub/module.h', preprocessed_filepath: '/build/preprocessed/module.h' )
+      )
+      expect(@file_assembler).to_not have_received(:assemble_preprocessed_code_file)
     end
 
-    it "returns the preprocessed filepath and the discovered includes" do
-      preprocessed_filepath, includes = call_it(method: :preprocess_partial_header_file_preserve_macros, fallback: false)
+    it 'writes a source without a guard' do
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).with('/src/module.c', 'test').and_return('/build/preprocessed/module.c')
 
-      expect(preprocessed_filepath).to eq('/build/preprocessed/module.h')
+      call_it( kind: :source, fallback: true, filepath: '/src/module.c' )
+
+      expect(@file_assembler).to have_received(:assemble_preprocessed_code_file).with(
+        hash_including( preprocessed_filepath: '/build/preprocessed/module.c', contents: ['fallback content'], extras: ['macro'] )
+      )
+      expect(@file_assembler).to_not have_received(:assemble_preprocessed_header_file)
+    end
+
+    it 'names the file\'s kind in its progress and #includes logs' do
+      call_it( kind: :source, fallback: false, filepath: '/src/module.c' )
+
+      expect(@reportinator).to have_received(:generate_module_progress).with(
+        operation: 'Preprocessing source file for follow-on Partials handling', module_name: 'test', filename: 'module.c'
+      )
+      expect(@loginator).to have_received(:log_list).with( [], 'Discovered #includes for Partial source from /src/module.c:', Verbosity::OBNOXIOUS )
+    end
+
+    it 'returns the assembled copy\'s path and the discovered #includes' do
+      assembled, includes = call_it( kind: :header, fallback: false )
+
+      expect(assembled).to eq('/build/preprocessed/module.h')
       expect(includes).to eq([])
     end
 
@@ -765,7 +780,6 @@ RSpec.describe Preprocessinator do
         includes:                  [],
         flags:                     [],
         include_paths:             [],
-        vendor_paths:              [],
         defines:                   []
       )
     end
@@ -813,7 +827,6 @@ RSpec.describe Preprocessinator do
         includes:                  given_includes,
         flags:                     [],
         include_paths:             [],
-        vendor_paths:              [],
         defines:                   []
       )
 

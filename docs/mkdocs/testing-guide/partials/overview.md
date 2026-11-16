@@ -41,7 +41,7 @@ When creating a Partial, Ceedling:
 1. Runs your source code under test through the preprocessor to:
     1. Handle `#ifdef` blocks and strip comments.
     1. Collect the `#include` directives.
-    1. Expand decorator macros (e.g. `STATICINLINE`) in function signatures.
+    1. Expand decorator macros (e.g. `STATICINLINE`) in function and variable declarations.
 1. Lexes the code under test to collect its individual C language elements
    (e.g. `typedef`s, macros, functions, variables, etc.).
 1. Generates a new set of C files in a _partials/_ build directory. The 
@@ -76,7 +76,9 @@ When creating a Partial, Ceedling:
 | Mockable header | <ul><li>Declares function signatures</li></ul> | `ceedling_partial_<module>_interface.h` |
 
 Ceedling uses CMock to generate mocks from Partials interface header files
-just as it does for any other mockable header files.
+just as it does for any other mockable header files. An interface header holds
+only declarations Ceedling has already resolved, with no inline bodies, so CMock
+reads it as generated, without the preprocessing other mocked headers get.
 
 !!! danger "Do not directly access generated Partials files"
     You as the test author will never directly interact with generated 

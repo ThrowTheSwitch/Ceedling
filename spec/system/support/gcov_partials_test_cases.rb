@@ -86,6 +86,32 @@ module GcovPartialsTestCases
     end
   end
 
+  def gcov_partials_coverage_macro_hidden_static
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+
+        # `static` comes from PRIVATE, a macro the module header defines, and the head spans
+        # two lines. The Partial writes that head from its expanded signature, so the selected
+        # function links from the test, and every body line keeps its original line.
+        asset_base = test_asset_path("tests_with_partials_coverage")
+        FileUtils.cp "#{asset_base}/src/private_macro.h",       'src/'
+        FileUtils.cp "#{asset_base}/src/private_macro.c",       'src/'
+        FileUtils.cp "#{asset_base}/test/test_private_macro.c", 'test/'
+
+        hits = partials_cobertura_hits_by_line('src/private_macro.c')
+
+        # The function's line is its name's line (3), not the line `PRIVATE int` starts (2).
+        expect(hits[3]).to be > 0
+        expect(hits[2]).to be_nil
+        # `return` is on source line 6 -- it must show as hit.
+        expect(hits[6]).to be > 0
+        # The blank line (5) must not appear as an executable/hit line.
+        expect(hits[5]).to be_nil
+      end
+    end
+  end
+
   def gcov_partials_coverage_function_scope_static_promotion
     @c.with_context do
       Dir.chdir @proj_name do
