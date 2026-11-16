@@ -199,7 +199,7 @@ class TestBuildSetup
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
 
-      srch_paths     = @test_search_paths.compose( filepath, testable.paths, testable.mock_search_paths )
+      srch_paths     = @test_search_paths.compose( testable )
       cmp_flags      = flags( context: state.context, operation: OPERATION_COMPILE_SYM,    filepath: filepath )
       pre_flags      = preprocess_flags( context: state.context, compile_flags: cmp_flags, filepath: filepath )
       asm_flags      = flags( context: state.context, operation: OPERATION_ASSEMBLE_SYM,   filepath: filepath )
@@ -254,7 +254,7 @@ class TestBuildSetup
 
     # This test's search paths don't exist until stage 3, so they are composed here
     # without mock directories, the same collection later stages resolve against
-    collection = @mock_locator.header_collection( @test_search_paths.compose( testable.filepath, testable.paths ) )
+    collection = @mock_locator.header_collection( @test_search_paths.compose( testable, [] ) )
 
     return @mock_locator.directories(
       @context_extractor.lookup_mock_header_includes_list( testable.filepath ),

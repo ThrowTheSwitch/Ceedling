@@ -12,16 +12,17 @@ class TestSearchPaths
 
   constructor :configurator, :include_pathinator, :test_context_extractor
 
-  # `paths` is a Testable's paths Hash. `mock_search_paths` are its mocks' mirrored
-  # directories, which sit right after the flat mock root.
-  def compose(filepath, paths, mock_search_paths = [])
-    return (generated_paths( filepath, paths, mock_search_paths ) + configured_paths( filepath )).uniq
+  # `mock_search_paths` are the test's mocks' mirrored directories, which sit right after
+  # the flat mock root. They default to the Testable's own.
+  def compose(testable, mock_search_paths = testable.mock_search_paths)
+    filepath = testable.filepath
+    return (generated_paths( filepath, testable.paths, mock_search_paths ) + configured_paths( filepath )).uniq
   end
 
   # Sets a test's mock search paths and composes its search paths around them. `lock`
   # guards the write, since other threads read the Testable.
   def assign_mock_search_paths(testable, mock_search_paths, lock)
-    paths = compose( testable.filepath, testable.paths, mock_search_paths )
+    paths = compose( testable, mock_search_paths )
     lock.synchronize do
       testable.mock_search_paths = mock_search_paths
       testable.search_paths      = paths

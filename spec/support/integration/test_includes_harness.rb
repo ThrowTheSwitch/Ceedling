@@ -11,10 +11,10 @@
 # The stage objects are real: TestContextExtractor's text scan (stage 2), TestSearchPaths
 # (stage 3), and TestIncludesExtractinator's three passes with their StandinHeaderinator, MockLocator,
 # FileFinder, and the Preprocessinator graph from spec_integration_helper.rb (stage 4).
-# Thin stand-ins replace only what would drag in a whole build: a configurator holding
-# one small project's settings, a dependency tracker that always reports stale, a
-# sequential batchinator, an include pathinator that orders a directory's headers, and
-# a file path utility rooted in the scratch tree.
+# IncludePathinator is real too. Thin stand-ins replace only what would drag in a whole
+# build: a configurator holding one small project's settings, a dependency tracker that
+# always reports stale, a sequential batchinator, and a file path utility rooted in the
+# scratch tree.
 #
 # A harness works in the current directory, a project root holding `src/` and `test/`,
 # as a real build does.
@@ -23,6 +23,7 @@ require 'spec_integration_helper'
 require 'ceedling/filename_extension'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
+require 'ceedling/includes/include_pathinator'
 require 'ceedling/test_context_extractor'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
@@ -36,13 +37,16 @@ require 'ceedling/test_invoker/test_includes_reconcilinator'
 module IntegrationSpecHelpers
 
   # One small project: sources and headers under src/, tests under test/, mocks named
-  # with a `mock_` prefix
+  # with a `mock_` prefix. `include_paths` and `all_headers`, when given, replace every
+  # directory below src/ and every header below it.
   class TestIncludesConfigurator < StubConfigurator
     attr_reader :test_build_preprocess_directives_only_available
 
-    def initialize(directives_only:, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+    def initialize(directives_only:, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL, include_paths: nil, all_headers: nil)
       super( bare_tool: bare_tool )
       @test_build_preprocess_directives_only_available = directives_only
+      @include_paths = include_paths
+      @all_headers   = all_headers
     end
 
     def cmock_mock_path
@@ -97,11 +101,14 @@ module IntegrationSpecHelpers
     def collection_mirror_roots_include
       ['src']
     end
+    def collection_paths_test
+      ['test']
+    end
     def collection_paths_support
       []
     end
     def collection_paths_include
-      Dir.glob( 'src/**/' ).map { |dir| dir.chomp( '/' ) }.sort
+      @include_paths || Dir.glob( 'src/**/' ).map { |dir| dir.chomp( '/' ) }.sort
     end
     def collection_paths_libraries
       []
@@ -113,7 +120,7 @@ module IntegrationSpecHelpers
       []
     end
     def collection_all_headers
-      Dir.glob( 'src/**/*.h' ).sort
+      @all_headers || Dir.glob( 'src/**/*.h' ).sort
     end
   end
 
@@ -130,20 +137,6 @@ module IntegrationSpecHelpers
 
     def form_mock_output_path(root, subdir)
       subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
-    end
-  end
-
-  # Headers in search order, as IncludePathinator#ordered_header_files gives them
-  class OrderedHeaders
-    def ordered_header_files(paths)
-      return paths.flat_map { |path| Dir.glob( File.join( path, '*.h' ) ).sort }.uniq
-    end
-
-    def lookup_test_directive_include_paths(_filepath)
-      []
-    end
-    def collect_test_include_paths
-      []
     end
   end
 
@@ -165,17 +158,23 @@ module IntegrationSpecHelpers
   class TestIncludesHarness
     attr_reader :context_extractor
 
-    def initialize(directives_only:, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
-      @cfg          = TestIncludesConfigurator.new( directives_only: directives_only, bare_tool: bare_tool )
+    def initialize(directives_only:, bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL, include_paths: nil, all_headers: nil)
+      @cfg = TestIncludesConfigurator.new(
+        directives_only: directives_only, bare_tool: bare_tool, include_paths: include_paths, all_headers: all_headers
+      )
       @file_wrapper = FileWrapper.new( loginator: NULL, verbosinator: NULL )
       @fpu          = TestIncludesFilePathUtils.new( 'build/scratch' )
-      @headers      = OrderedHeaders.new
 
       @context_extractor = TestContextExtractor.new(
         configurator: @cfg, parsing_parcels: ParsingParcels.new, include_factory: IncludeFactory.new( configurator: @cfg ),
         partializer_config: NULL, file_path_utils: @fpu, file_wrapper: @file_wrapper, yaml_wrapper: NULL, loginator: NULL
       )
       @context_extractor.setup
+
+      @headers = IncludePathinator.new(
+        configurator: @cfg, test_context_extractor: @context_extractor, loginator: NULL, file_wrapper: @file_wrapper
+      )
+      @headers.setup
 
       @search_paths = TestSearchPaths.new( configurator: @cfg, include_pathinator: @headers, test_context_extractor: @context_extractor )
       @locator      = MockLocator.new( configurator: @cfg, include_pathinator: @headers, file_finder: file_finder, file_path_utils: @fpu )
@@ -189,11 +188,11 @@ module IntegrationSpecHelpers
       @context_extractor.collect_simple_context_from_file( filepath, nil, TestContextExtractor::Context::INCLUDES )
 
       # Stage 2's tolerant mock search paths and stage 3's search paths
-      collection = @locator.header_collection( @search_paths.compose( filepath, testable.paths ) )
+      collection = @locator.header_collection( @search_paths.compose( testable, [] ) )
       testable.mock_search_paths = @locator.directories(
         @context_extractor.lookup_mock_header_includes_list( filepath ), mocks_root: testable.paths[:mocks], collection: collection, complain: :silent
       )
-      testable.search_paths = @search_paths.compose( filepath, testable.paths, testable.mock_search_paths )
+      testable.search_paths = @search_paths.compose( testable )
 
       state = TestInvokerTypes::PipelineState.new( testables: { testable.name.to_sym => testable }, context: :test, options: [], lock: Mutex.new )
       @extractinator.stage_collect_preprocessor_context( state )

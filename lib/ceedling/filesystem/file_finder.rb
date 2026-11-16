@@ -42,17 +42,21 @@ class FileFinder
     # whatever disambiguating path the #include carried, so a query with a path is matched
     # exactly as specifically as it was written, not collapsed to a bare basename that would
     # throw away real disambiguating information.
-    dir      = File.dirname(mock)
-    basename = File.basename(mock).delete_prefix(@configurator.cmock_mock_prefix)
-    header   = dir == '.' ? basename : File.join(dir, basename)
-
     found_path = @file_finder_helper.resolve_file_in_collection(
-      header,
+      mock_header_query(mock),
       collection || @configurator.collection_all_headers,
       complain
     )
 
     return found_path
+  end
+
+  # The header a mock's #include names: the mock prefix dropped from the filename alone,
+  # so any path the #include carried stays
+  def mock_header_query(mock)
+    dir      = File.dirname(mock)
+    basename = File.basename(mock).delete_prefix(@configurator.cmock_mock_prefix)
+    return dir == '.' ? basename : File.join(dir, basename)
   end
 
   # A mock's real header and its own mirrored subdirectory below whichever configured

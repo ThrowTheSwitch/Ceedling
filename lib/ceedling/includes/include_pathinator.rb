@@ -99,10 +99,16 @@ class IncludePathinator
   # Ordering within one priority rank is the collection's own, which is what keeps a
   # reference that distinguishes nothing resolving exactly as it did before.
   def prioritized_header_files(search_paths)
+    return prioritize( @configurator.collection_all_headers.to_a, search_paths )
+  end
+
+  # `headers` reordered so those beneath earlier search paths come first, keeping their
+  # own order within one rank
+  def prioritize(headers, search_paths)
     roots = search_paths.map { |path| FilePathUtils.no_decorators( path ) }.reject(&:empty?)
     ranks = root_ranks( roots )
 
-    @configurator.collection_all_headers.to_a.each_with_index.sort_by do |header, index|
+    return headers.each_with_index.sort_by do |header, index|
       [header_rank( header, ranks, roots.length ), index]
     end.map(&:first)
   end

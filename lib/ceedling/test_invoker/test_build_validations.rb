@@ -74,13 +74,21 @@ module TestBuildValidations
 
     collection = @include_pathinator.ordered_header_files( testable.search_paths )
 
-    includes.each do |include|
-      next if include.is_a?( SystemInclude )
-      next if include.filename == UNITY_H_FILE
-      next if include.filename == CEEDLING_HEADER_FILENAME
-      next if include.filename.start_with?( PARTIAL_FILENAME_PREFIX )
-
+    header_includes_to_check( includes ).each do |include|
       @file_finder.find_header_file( include.filepath, :error, collection: collection )
+    end
+  end
+
+  private
+
+  # The #includes naming a project header: no system header, Unity's or Ceedling's own
+  # header, or a Partial
+  def header_includes_to_check(includes)
+    return includes.reject do |include|
+      include.is_a?( SystemInclude ) or
+        include.filename == UNITY_H_FILE or
+        include.filename == CEEDLING_HEADER_FILENAME or
+        include.filename.start_with?( PARTIAL_FILENAME_PREFIX )
     end
   end
 

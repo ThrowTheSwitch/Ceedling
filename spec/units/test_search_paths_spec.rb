@@ -27,15 +27,19 @@ describe TestSearchPaths do
     )
   end
 
+  def testable(paths, mock_search_paths = [])
+    return TestInvokerTypes::Testable.new( filepath: 'test/TestFoo.c', paths: paths, mock_search_paths: mock_search_paths )
+  end
+
   describe "#compose" do
     it "includes a mocked header's own mirrored directory alongside the flat mock root" do
-      result = @search_paths.compose( 'test/TestFoo.c', { mocks: 'build/test/mocks/a_test' }, ['build/test/mocks/a_test/drivers'] )
+      result = @search_paths.compose( testable( { mocks: 'build/test/mocks/a_test' }, ['build/test/mocks/a_test/drivers'] ) )
 
       expect(result).to eq( ['build/test/mocks/a_test', 'build/test/mocks/a_test/drivers'] )
     end
 
     it "carries only the flat mock root when no mock needs a mirrored directory of its own" do
-      expect(@search_paths.compose( 'test/TestFoo.c', { mocks: 'build/test/mocks/a_test' } )).to eq( ['build/test/mocks/a_test'] )
+      expect(@search_paths.compose( testable( { mocks: 'build/test/mocks/a_test' } ) )).to eq( ['build/test/mocks/a_test'] )
     end
 
     # The compiler searches in this order, so a generated mock or Partial shadows the real
@@ -49,7 +53,7 @@ describe TestSearchPaths do
       end
       paths = { mocks: 'mocks', partials: 'partials' }
 
-      expect(@search_paths.compose( 'test/TestFoo.c', paths, ['mocks/drivers'] )).to eq( %w[
+      expect(@search_paths.compose( testable( paths, ['mocks/drivers'] ) )).to eq( %w[
         mocks mocks/drivers partials partials/drivers directive test_include
         support include libraries vendor test_toolchain_include
       ] )
@@ -58,14 +62,14 @@ describe TestSearchPaths do
     it "adds no Partial directory for a module named without one" do
       allow(@test_context_extractor).to receive(:lookup_partials_config).and_return( { 'uart' => {} } )
 
-      expect(@search_paths.compose( 'test/TestFoo.c', { partials: 'partials' } )).to eq( ['partials'] )
+      expect(@search_paths.compose( testable( { partials: 'partials' } ) )).to eq( ['partials'] )
     end
 
     it "lists each path once" do
       allow(@configurator).to receive(:collection_paths_include).and_return( ['src', 'src'] )
       allow(@configurator).to receive(:collection_paths_support).and_return( ['src'] )
 
-      expect(@search_paths.compose( 'test/TestFoo.c', {} )).to eq( ['src'] )
+      expect(@search_paths.compose( testable( {} ) )).to eq( ['src'] )
     end
   end
 
