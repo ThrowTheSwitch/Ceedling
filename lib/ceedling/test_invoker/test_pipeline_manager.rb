@@ -219,7 +219,7 @@ class TestPipelineManager
       stage("Preprocessing for Mocks",
             condition:       use_mocks_preproc,
             empty_condition: ->(s) { s.mocks_list.all? { |mock| mock.details.partial } },
-            empty_notice:    "no mocks to process",
+            empty_notice:    "no mocks need preprocessing",
             body: ->(s) { @test_build_executor.stage_preprocess_mocks(s) }
       ),
 

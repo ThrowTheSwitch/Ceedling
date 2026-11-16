@@ -17,25 +17,36 @@ module Partials
   module TypeMacros
     # Gives a type back the macro the written text read as its one variable. The expansion holds
     # no variable of that name, and it defines the tag on its own. A type with no tag, or with
-    # more than one variable, is left alone, since its expansion can't be matched.
+    # more than one variable, is left alone, since its expansion can't be matched. Returns a log
+    # entry for each type given its macro.
     def self.rejoin_trailing(c_module, expanded_module)
       misread = _misread( c_module, expanded_module )
 
       misread.each { |var| var.defined_type.text = "#{var.defined_type.text.chomp( ';' )} #{var.text}" }
       c_module.remove!( misread )
+      return misread.map { |var| _entry( var.text.chomp( ';' ).strip, var ) }
     end
 
     # Gives a type back the macro its variable's type starts with, as in
     # `struct pk { … } PACKED inst;`. The twin's type lacks the macro, since its expansion joined
     # the twin's defined type after the closing brace. `ended` holds the types already given
-    # their macro, since variables share a type.
+    # their macro, since variables share a type. Returns a log entry when the type takes the
+    # macro, or nil.
     def self.rejoin_leading(var, twin, ended)
       macro = _leading_macro( var, twin )
-      return if macro.nil?
+      return nil if macro.nil?
 
       var.type = var.type.strip.delete_prefix( macro ).strip
       var.text = var.text.delete_prefix( macro ).lstrip
-      _end_type( var.defined_type, macro, ended )
+      return nil unless _end_type( var.defined_type, macro, ended )
+
+      return _entry( macro, var )
+    end
+
+    # A rejoin's log entry, naming the type by its tag, or else by the variable it defines
+    def self._entry(macro, var)
+      tag = var.defined_type.tag
+      return "`#{macro}` (type attribute of #{tag ? "`#{tag}`" : "the type of `#{var.name}`"})"
     end
 
     # The written variables that are macros ending their types
@@ -101,13 +112,14 @@ module Partials
     end
 
     # Writes `macro` after a type's closing brace, ahead of any ';' that ends the statement.
-    # Once per type, as `ended` records.
+    # Once per type, as `ended` records. Returns whether it wrote.
     def self._end_type(type, macro, ended)
-      return if ended.include?( type )
+      return false if ended.include?( type )
 
       ended << type
       text      = type.text.rstrip
       type.text = text.end_with?( ';' ) ? "#{text.chomp( ';' ).rstrip} #{macro};" : "#{text} #{macro}"
+      return true
     end
   end
 

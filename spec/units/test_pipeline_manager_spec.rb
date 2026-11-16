@@ -399,7 +399,7 @@ describe TestPipelineManager do
         expect(@test_build_executor).to_not receive(:stage_generate_mocks)
 
         expect(@loginator).to receive(:log)
-          .with( "Preprocessing for Mocks: no mocks to process", Verbosity::OBNOXIOUS )
+          .with( "Preprocessing for Mocks: no mocks need preprocessing", Verbosity::OBNOXIOUS )
         expect(@loginator).to receive(:log)
           .with( "Mocking: no mocks to generate", Verbosity::OBNOXIOUS )
 
@@ -417,7 +417,7 @@ describe TestPipelineManager do
         expect(@test_build_executor).to receive(:stage_generate_mocks)
 
         expect(@loginator).to receive(:log)
-          .with( "Preprocessing for Mocks: no mocks to process", Verbosity::OBNOXIOUS )
+          .with( "Preprocessing for Mocks: no mocks need preprocessing", Verbosity::OBNOXIOUS )
 
         @manager.run( state(options: [], mocks_list: [mock_work(partial: true)]) )
       end

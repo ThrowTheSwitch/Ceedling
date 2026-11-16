@@ -41,14 +41,14 @@ class PartializerReconciler
   # @param file_type          [String] "source" or "header", used in log messages
   def reconcile(c_module:, expansion_filepath:, name:, module_name:, file_type:)
     expanded = @c_extractor.from_file( expansion_filepath )
-    Partials::TypeMacros.rejoin_trailing( c_module, expanded )
-    entries  = _reconcile_definitions( c_module.function_definitions, expanded ) +
+    entries  = Partials::TypeMacros.rejoin_trailing( c_module, expanded ) +
+               _reconcile_definitions( c_module.function_definitions, expanded ) +
                _reconcile_declarations( c_module.function_declarations, expanded ) +
                _reconcile_variables( c_module, expanded )
 
     @loginator.log_list(
       entries,
-      "Updated signatures from full expansion for Partial #{name}::#{module_name} #{file_type}:",
+      "Reconciled with full expansion for Partial #{name}::#{module_name} #{file_type}:",
       Verbosity::DEBUG
     ) unless entries.empty?
   end
@@ -104,10 +104,11 @@ class PartializerReconciler
 
   # Pairs each file-scope variable with its twin by name, then order. A name pairs only where it
   # appears as often in both copies, since fallback can keep both branches of a conditional. A
-  # variable with no name it can be read by never pairs. Returns log entries for those reconciled.
+  # variable with no name it can be read by never pairs. Returns log entries for the types given
+  # a macro and the variables reconciled.
   def _reconcile_variables(c_module, expanded_module)
     ended = Set.new.compare_by_identity
-    return _variable_pairs( c_module, expanded_module ).filter_map { |var, twin| _reconcile_pair( c_module, var, twin, ended ) }
+    return _variable_pairs( c_module, expanded_module ).flat_map { |var, twin| _reconcile_pair( c_module, var, twin, ended ) }.compact
   end
 
   # Each written variable with its twin, for the names both copies hold equally often
@@ -121,10 +122,11 @@ class PartializerReconciler
   end
 
   # A variable's type takes back a macro after its closing brace, then the variable takes what
-  # a macro hid. `ended` holds the types already given their macro.
+  # a macro hid. `ended` holds the types already given their macro. Returns a log entry or nil
+  # for the type, then for the variable.
   def _reconcile_pair(c_module, var, twin, ended)
-    Partials::TypeMacros.rejoin_leading( var, twin, ended )
-    return _reconcile_variable( c_module, var, twin )
+    rejoined = Partials::TypeMacros.rejoin_leading( var, twin, ended )
+    return [rejoined, _reconcile_variable( c_module, var, twin )]
   end
 
   # A variable whose storage class a macro supplies takes every parsed field from its twin. Its

@@ -1570,6 +1570,23 @@ describe TestBuildExecutor do
       @executor.stage_preprocess_mocks( @state )
     end
 
+    # Preprocessinator logs the warning
+    it "falls back without a message of its own when the directives-only run fails" do
+      allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( nil )
+      allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+      allow(@loginator).to receive(:log)
+
+      @executor.stage_preprocess_mocks( @state )
+
+      expect(@preprocessinator).to have_received(:generate_directives_only_output)
+      expect(@loginator).to_not have_received(:log).with( /directive-only/, any_args )
+      expect(@state.mocks_list.first.directives_only_filepath).to be_nil
+      expect(@preprocessinator).to have_received(:preprocess_mockable_header_file).with( hash_including( fallback: true ) )
+    end
+
     it "preprocesses a plain mock's header beside a Partial mock" do
       partial = @state.mocks_list.first.dup
       partial.details = TestInvokerTypes::MockDetails.new( :source => 'build/test/partials/a_test/foo_interface.h', :partial => true )

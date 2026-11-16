@@ -103,14 +103,8 @@ class TestBuildExecutor
         defines:       testable.preprocess_defines
       }
 
-      _filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
-
-      if _filepath.nil?
-        msg = "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}"
-        @loginator.log( msg, Verbosity::COMPLAIN )
-      end
-
-      mock.directives_only_filepath = _filepath
+      # Nil when the preprocessor fails. Preprocessinator logs the warning.
+      mock.directives_only_filepath = @preprocessinator.generate_directives_only_output( **arg_hash )
     end if directives_only
 
     # Preprocess and assemble header files to be mocked

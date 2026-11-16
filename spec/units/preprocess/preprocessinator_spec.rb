@@ -287,6 +287,27 @@ RSpec.describe Preprocessinator do
       expect(@file_assembler).to_not have_received(:assemble_preprocessed_code_file)
     end
 
+    it 'names reconciliation in its progress line' do
+      allow(@tool_executor).to receive(:exec).and_return({ exit_code: 0 })
+
+      call_it()
+
+      expect(@reportinator).to have_received(:generate_module_progress).with(
+        operation: 'Full-preprocessing for Partial reconciliation', module_name: 'test', filename: 'module.c'
+      )
+    end
+
+    it 'warns that macro-supplied decorators will be missed when the preprocessor fails' do
+      allow(@tool_executor).to receive(:exec).and_return( failed_run )
+
+      call_it()
+
+      expect(@loginator).to have_received(:log).with(
+        'Failed to generate full expansion for Partial reconciliation (macro-supplied decorators will be missed) for /src/module.c',
+        Verbosity::COMPLAIN
+      )
+    end
+
   end
 
   # ===========================================================================
@@ -351,12 +372,15 @@ RSpec.describe Preprocessinator do
       )
     end
 
-    it "logs that the file falls back when the preprocessor fails" do
+    # Every stage that runs the pass reports a failure through this one warning
+    it "warns that the file falls back when the preprocessor fails" do
       allow(@tool_executor).to receive(:exec).and_return( failed_run )
 
       call_it()
 
-      expect(@loginator).to have_received(:log).with( /Failed to generate directive-only preprocessor output .* for \/src\/module\.c/, Verbosity::OBNOXIOUS, LogLabels::ERROR )
+      expect(@loginator).to have_received(:log).with(
+        'Failed to generate directive-only preprocessor output (fallback methods will be used) for /src/module.c', Verbosity::COMPLAIN
+      )
     end
 
     it "on success, strips comments, compacts the expansion, and returns the raw filepath" do

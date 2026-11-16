@@ -269,7 +269,7 @@ describe PartializerReconciler do
 
       expect(@loginator).to receive(:log_list).with(
         ['`hidden` (declaration)'],
-        'Updated signatures from full expansion for Partial TestMod::mod header:',
+        'Reconciled with full expansion for Partial TestMod::mod header:',
         Verbosity::DEBUG
       )
 
@@ -522,6 +522,15 @@ describe PartializerReconciler do
 
       expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED;" )
     end
+
+    it "lists the macro it gives back to a type" do
+      pk = type( "struct pk { char c; int i; };", tag: "pk" )
+
+      reconcile_with( written( [pk], [variable( "PACKED", pk, text: "PACKED;" )] ), CExtractorTypes::CModule.new( aggregate_definitions: [type( "struct pk { char c; int i; } __attribute__((packed));", tag: "pk" )] ) )
+
+      expect(@loginator).to have_received(:log_list).with( ["`PACKED` (type attribute of `pk`)"], anything, Verbosity::DEBUG )
+    end
+
     # Variables after the macro read it as the start of their type. Their twins' types lack it.
     context "and variables follow" do
       def typed(name, type_text, defined_type, text:)
@@ -544,6 +553,28 @@ describe PartializerReconciler do
         expect( pk.text ).to eq( "struct pk { char c; int i; } PACKED" )
         expect( vars.map( &:type ) ).to eq( ["", ""] )
         expect( vars.map( &:text ) ).to eq( ["i1;", "i2;"] )
+      end
+
+      it "lists the macro once for a type its variables share" do
+        pk   = type( "struct pk { char c; int i; }", tag: "pk" )
+        vars = [typed( "i1", "PACKED", pk, text: "PACKED i1;" ), typed( "i2", "PACKED", pk, text: "PACKED i2;" )]
+
+        reconcile_with( written( [pk], vars ), expanded_with( ["i1", ""], ["i2", ""] ) )
+
+        expect(@loginator).to have_received(:log_list).with( ["`PACKED` (type attribute of `pk`)"], anything, Verbosity::DEBUG )
+      end
+
+      it "names a type without a tag by its first variable" do
+        anonymous = type( "struct { char c; int i; }", tag: nil )
+        twin      = type( "struct { char c; int i; } __attribute__((packed))", tag: nil )
+        vars      = [typed( "a", "PACKED", anonymous, text: "PACKED a;" ), typed( "b", "PACKED", anonymous, text: "PACKED b;" )]
+
+        reconcile_with( written( [anonymous], vars ), CExtractorTypes::CModule.new(
+          aggregate_definitions: [twin], variable_declarations: [typed( "a", "", twin, text: "a;" ), typed( "b", "", twin, text: "b;" )]
+        ) )
+
+        expect( anonymous.text ).to eq( "struct { char c; int i; } PACKED" )
+        expect(@loginator).to have_received(:log_list).with( ["`PACKED` (type attribute of the type of `a`)"], anything, Verbosity::DEBUG )
       end
 
       it "keeps what follows the macro in the variable's type" do

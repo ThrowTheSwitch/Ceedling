@@ -59,7 +59,7 @@ class Preprocessinator
     result = run_preprocessor( @configurator.tools_test_file_directives_only_preprocessor, filepath, raw, **tool_args )
 
     if @tool_executor.failed?( result )
-      return log_failure( "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}", Verbosity::OBNOXIOUS, LogLabels::ERROR )
+      return log_failure( "Failed to generate directive-only preprocessor output (fallback methods will be used) for #{filepath}", Verbosity::COMPLAIN )
     end
 
     strip_and_compact( filepath, test, raw )
@@ -322,7 +322,7 @@ class Preprocessinator
   # Nil when the preprocessor fails, so its caller reconciles nothing. A failure leaves
   # neither file behind, so an earlier run's expansion never passes for this one's.
   def generate_partial_expansion(filepath:, test:, **tool_args)
-    progress = { operation: 'Full-preprocessing for expanded Partial signature extraction', module_name: test, filename: File.basename( filepath ) }
+    progress = { operation: 'Full-preprocessing for Partial reconciliation', module_name: test, filename: File.basename( filepath ) }
     @loginator.log( @reportinator.generate_module_progress( **progress ) )
 
     raw    = ensure_output_dir( @file_path_utils.form_preprocessed_file_full_expansion_filepath( filepath, test ) )
@@ -331,7 +331,7 @@ class Preprocessinator
 
     if @tool_executor.failed?( result )
       [raw, code].each { |path| @file_wrapper.rm_f( path ) }
-      return log_failure( "Failed to generate full expansion for Partial signature extraction (directives-only signatures will be used) for #{filepath}", Verbosity::COMPLAIN )
+      return log_failure( "Failed to generate full expansion for Partial reconciliation (macro-supplied decorators will be missed) for #{filepath}", Verbosity::COMPLAIN )
     end
 
     contents = @file_assembler.collect_own_lines( source_filepath: filepath, preprocessed_filepath: raw )
