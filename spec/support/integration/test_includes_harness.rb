@@ -177,7 +177,9 @@ module IntegrationSpecHelpers
       @headers.setup
 
       @search_paths = TestSearchPaths.new( configurator: @cfg, include_pathinator: @headers, test_context_extractor: @context_extractor )
-      @locator      = MockLocator.new( configurator: @cfg, include_pathinator: @headers, file_finder: file_finder, file_path_utils: @fpu )
+      @locator      = MockLocator.new(
+        configurator: @cfg, include_pathinator: @headers, test_search_paths: @search_paths, file_finder: file_finder, file_path_utils: @fpu
+      )
       @extractinator = build_extractinator
     end
 
@@ -188,9 +190,9 @@ module IntegrationSpecHelpers
       @context_extractor.collect_simple_context_from_file( filepath, nil, TestContextExtractor::Context::INCLUDES )
 
       # Stage 2's tolerant mock search paths and stage 3's search paths
-      collection = @locator.header_collection( @search_paths.compose( testable, [] ) )
       testable.mock_search_paths = @locator.directories(
-        @context_extractor.lookup_mock_header_includes_list( filepath ), mocks_root: testable.paths[:mocks], collection: collection, complain: :silent
+        @context_extractor.lookup_mock_header_includes_list( filepath ), mocks_root: testable.paths[:mocks],
+        collection: @locator.header_search( testable ), complain: :silent
       )
       testable.search_paths = @search_paths.compose( testable )
 
@@ -207,6 +209,11 @@ module IntegrationSpecHelpers
 
     def mocks(filepath)
       @context_extractor.lookup_mock_header_includes_list( filepath ).map( &:filename )
+    end
+
+    # How the later stages find `testable`'s real headers
+    def header_search(testable)
+      return @locator.header_search( testable )
     end
 
     private

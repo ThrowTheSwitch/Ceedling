@@ -32,7 +32,7 @@ describe StandinHeaderinator do
     allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
       subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
     end
-    allow(@mock_locator).to receive(:header_collection).and_return( ['src/drivers/foo.h'] )
+    allow(@mock_locator).to receive(:header_search).and_return( :search )
     allow(@mock_locator).to receive(:locate).and_return( ['src/drivers/foo.h', 'drivers'] )
     allow(@mock_locator).to receive(:placement) do |mocks_root:, subdir:, **|
       dir = subdir.empty? ? mocks_root : File.join( mocks_root, subdir )
@@ -100,11 +100,9 @@ describe StandinHeaderinator do
       @standins.place( @testable, [Include.new( 'MockFoo.h' )] )
     end
 
-    it "resolves a mock's header against the test's search paths without its mock directories" do
-      expect(@mock_locator).to receive(:header_collection)
-        .with( ['build/test/mocks/a_test', 'build/test/mocks/a_test/hw', 'src'], ['build/test/mocks/a_test/hw'] )
-        .and_return( ['src/drivers/foo.h'] )
-      expect(@mock_locator).to receive(:locate).with( Include.new( 'MockFoo.h' ), collection: ['src/drivers/foo.h'], complain: :error )
+    it "resolves a mock's header through the test's header search" do
+      expect(@mock_locator).to receive(:header_search).with( @testable ).and_return( :search )
+      expect(@mock_locator).to receive(:locate).with( Include.new( 'MockFoo.h' ), collection: :search, complain: :error )
         .and_return( ['src/drivers/foo.h', 'drivers'] )
 
       @standins.place( @testable, [Include.new( 'MockFoo.h' )] )

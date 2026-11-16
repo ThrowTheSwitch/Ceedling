@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/includes/includes'
 require 'ceedling/test_invoker/mock_locator'
+require 'ceedling/test_invoker/test_invoker_types'
 
 describe MockLocator do
   before(:each) do
@@ -16,21 +17,25 @@ describe MockLocator do
     @include_pathinator = double( "IncludePathinator" )
     @file_finder        = double( "FileFinder" )
     @file_path_utils    = double( "FilePathUtils" )
+    @test_search_paths  = double( "TestSearchPaths" )
 
     allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
       subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
     end
 
     @locator = described_class.new(
-      configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
+      configurator: @configurator, include_pathinator: @include_pathinator, test_search_paths: @test_search_paths,
+      file_finder: @file_finder, file_path_utils: @file_path_utils
     )
   end
 
-  describe "#header_collection" do
-    it "orders the headers on a test's search paths without its own mock directories" do
-      expect(@include_pathinator).to receive(:ordered_header_files).with( ['src'] ).and_return( ['src/foo.h'] )
+  describe "#header_search" do
+    it "searches a test's header paths, which leave out its generated directories" do
+      testable = TestInvokerTypes::Testable.new( filepath: 'test/TestFoo.c', search_paths: ['mocks', 'mocks/drivers', 'src'] )
+      allow(@test_search_paths).to receive(:header_paths).with( testable ).and_return( ['src'] )
+      expect(@include_pathinator).to receive(:header_search).with( ['src'] ).and_return( :search )
 
-      expect(@locator.header_collection( ['mocks/drivers', 'src'], ['mocks/drivers'] )).to eq( ['src/foo.h'] )
+      expect(@locator.header_search( testable )).to eq( :search )
     end
   end
 

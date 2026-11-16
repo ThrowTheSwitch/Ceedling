@@ -140,7 +140,7 @@ class TestIncludesReconcilinator
     mock_dirs = @mock_locator.directories(
       @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
       mocks_root: testable.paths[:mocks],
-      collection: @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths ),
+      collection: @mock_locator.header_search( testable ),
       complain:   :silent
     )
     @test_search_paths.assign_mock_search_paths( testable, mock_dirs, state.lock )

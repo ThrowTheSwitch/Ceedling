@@ -135,7 +135,8 @@ describe TestBuildExecutor do
         :build_step_doctor       => @build_step_doctor,
         :library_resolver        => @library_resolver,
         :mock_locator            => MockLocator.new(
-          configurator: @configurator, include_pathinator: double( 'include_pathinator' ), file_finder: @file_finder, file_path_utils: @file_path_utils
+          configurator: @configurator, include_pathinator: double( 'include_pathinator' ), test_search_paths: double( 'test_search_paths' ),
+          file_finder: @file_finder, file_path_utils: @file_path_utils
         )
       }
     )

@@ -19,6 +19,12 @@ class TestSearchPaths
     return (generated_paths( filepath, testable.paths, mock_search_paths ) + configured_paths( filepath )).uniq
   end
 
+  # The paths a test's real headers are found through: its search paths without the
+  # directories its mocks and Partials are generated in
+  def header_paths(testable)
+    return (configured_paths( testable.filepath ) + testable.derived_search_paths).uniq
+  end
+
   # Sets a test's mock search paths and composes its search paths around them. `lock`
   # guards the write, since other threads read the Testable.
   def assign_mock_search_paths(testable, mock_search_paths, lock)

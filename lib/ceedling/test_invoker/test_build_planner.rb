@@ -49,9 +49,9 @@ class TestBuildPlanner
       mocks   = {}
       _mocks  = @context_extractor.lookup_mock_header_includes_list( filepath )
 
-      # Built at the first real mock and shared by the rest, since nothing here changes
-      # this test's search paths
-      collection = nil
+      # Shared by every mock and the #include validation, since nothing here changes this
+      # test's search paths
+      collection = test_header_search( testable )
 
       _mocks.each do |include|
         name    = File.basename( include.filename ).ext()
@@ -65,7 +65,6 @@ class TestBuildPlanner
           input  = source
           subdir = partial_mock_subdir( include )
         else
-          collection       ||= ordered_mock_header_collection( testable )
           source, subdir     = @mock_locator.locate( include, collection: collection )
           preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
           input             = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
@@ -93,7 +92,7 @@ class TestBuildPlanner
         )
       end
 
-      validate_header_includes( test_filepath: filepath, testable: testable )
+      validate_header_includes( test_filepath: filepath, testable: testable, search: collection )
 
       partials_configs = {}
       if @configurator.project_use_partials
@@ -321,8 +320,8 @@ class TestBuildPlanner
 
   # Every stage resolving a mock's real header must agree on the same winner, or a
   # stand-in, a mock search path, and the real mock would land in different directories
-  def ordered_mock_header_collection(testable)
-    @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
+  def test_header_search(testable)
+    @mock_locator.header_search( testable )
   end
 
   # The mock's directory below its test's mock root, where generation writes it. Two

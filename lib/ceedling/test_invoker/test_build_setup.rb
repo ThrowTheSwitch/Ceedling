@@ -252,13 +252,9 @@ class TestBuildSetup
 
     complain = @configurator.project_use_test_preprocessor_tests ? :silent : :error
 
-    # This test's search paths don't exist until stage 3, so they are composed here
-    # without mock directories, the same collection later stages resolve against
-    collection = @mock_locator.header_collection( @test_search_paths.compose( testable, [] ) )
-
     return @mock_locator.directories(
       @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
-      mocks_root: testable.paths[:mocks], collection: collection, complain: complain
+      mocks_root: testable.paths[:mocks], collection: @mock_locator.header_search( testable ), complain: complain
     )
   end
 

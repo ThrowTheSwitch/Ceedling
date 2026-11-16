@@ -73,6 +73,22 @@ describe TestSearchPaths do
     end
   end
 
+  # A test's real headers are never in the directories its mocks and Partials are generated in
+  describe "#header_paths" do
+    it "gives TEST_INCLUDE_PATH() and the configured paths, without the generated directories" do
+      allow(@include_pathinator).to receive(:lookup_test_directive_include_paths).with( 'test/TestFoo.c' ).and_return( ['directive'] )
+      allow(@include_pathinator).to receive(:collect_test_include_paths).and_return( ['test_include'] )
+      allow(@test_context_extractor).to receive(:lookup_partials_config).and_return( { 'drivers/uart' => {} } )
+      %i[support include libraries vendor test_toolchain_include].each do |kind|
+        allow(@configurator).to receive(:"collection_paths_#{kind}").and_return( [kind.to_s] )
+      end
+
+      expect(@search_paths.header_paths( testable( { mocks: 'mocks', partials: 'partials' }, ['mocks/drivers'] ) )).to eq( %w[
+        directive test_include support include libraries vendor test_toolchain_include
+      ] )
+    end
+  end
+
   describe "#assign_mock_search_paths" do
     it "sets a test's mock search paths and composes its search paths around them" do
       testable = TestInvokerTypes::Testable.new(

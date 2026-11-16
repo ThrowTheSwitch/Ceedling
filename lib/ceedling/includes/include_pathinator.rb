@@ -9,6 +9,7 @@ require 'pathname'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/filesystem/project_paths'
+require 'ceedling/includes/header_search'
 
 class IncludePathinator
 
@@ -29,9 +30,11 @@ class IncludePathinator
     # Alias for brevity
     @extractor = @test_context_extractor
 
-    # Each search path's header listing for one test build (see `header_listing`)
-    @listings      = {}
-    @listings_lock = Mutex.new
+    # Each search path's header listing for one test build (see `header_listing`), and the
+    # test directories holding headers
+    @listings           = {}
+    @test_include_paths = nil
+    @listings_lock      = Mutex.new
   end
 
   def validate_test_build_directive_paths
@@ -69,32 +72,28 @@ class IncludePathinator
     return headers
   end
 
-  # Header files reachable from an already-ordered directory priority list (e.g. a
-  # test's own search_paths), in that same order and deduplicated by first occurrence.
-  # This is the candidate list a compiler's own -I search would consult for a single
-  # test's #include resolution -- distinct from collection_all_headers, which is one
-  # global, project-wide list blind to any one test's own TEST_INCLUDE_PATH() priority.
-  def ordered_header_files(search_paths)
-    headers = []
-    search_paths.each do |path|
-      headers.concat( header_listing( path ) )
-    end
-    return headers.uniq
+  # A test's headers found as its compiler finds them, through `search_paths` in order,
+  # each directory listed as `header_listing` lists it. Distinct from collection_all_headers,
+  # which is one project-wide list blind to any one test's TEST_INCLUDE_PATH() priority.
+  def header_search(search_paths)
+    return HeaderSearch.new( search_paths, method( :header_listing ) )
   end
 
   # Starts a test build with every search path listed afresh
   def forget_header_listings
-    @listings_lock.synchronize { @listings.clear }
+    @listings_lock.synchronize do
+      @listings.clear
+      @test_include_paths = nil
+    end
   end
 
   # The project's whole header collection, reordered so headers beneath this test's
   # own earlier search paths come first.
   #
-  # Distinct from ordered_header_files above, which lists each search path's immediate
-  # contents the way a compiler's own non-recursive -I search does. A reference naming
-  # a header by path needs the whole collection instead, since the file it names can
-  # sit at any depth below a search path, and it needs this test's own priority so a
-  # TEST_INCLUDE_PATH() decides among same-named candidates.
+  # Distinct from header_search above, which finds a header as the compiler's -I search
+  # does. A Partial module named by path needs the whole collection instead, since its
+  # trailing path matches a file at any depth below a search path, and it needs this
+  # test's own priority so a TEST_INCLUDE_PATH() decides among same-named candidates.
   #
   # Ordering within one priority rank is the collection's own, which is what keeps a
   # reference that distinguishes nothing resolving exactly as it did before.
@@ -123,15 +122,17 @@ class IncludePathinator
     return @extractor.lookup_include_paths_list(filepath)
   end
 
-  # Gather together [:paths][:test] that actually contain header files
+  # Gather together [:paths][:test] that actually contain header files. Remembered for the
+  # test build, since every composition of a test's search paths asks.
   def collect_test_include_paths
-    paths = []
-    @configurator.collection_paths_test.each do |path|
-      headers = @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
-      paths << path if headers.length > 0
+    remembered = @listings_lock.synchronize { @test_include_paths }
+    return remembered unless remembered.nil?
+
+    paths = @configurator.collection_paths_test.select do |path|
+      !@file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) ).empty?
     end
 
-    return paths
+    return @listings_lock.synchronize { @test_include_paths ||= paths.freeze }
   end
 
   private

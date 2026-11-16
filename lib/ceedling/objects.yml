@@ -542,6 +542,7 @@ mock_locator:
   compose:
     - configurator
     - include_pathinator
+    - test_search_paths
     - file_finder
     - file_path_utils
 
@@ -567,6 +568,7 @@ test_runner_generatinator:
     - generator
     - test_context_extractor
     - dependinator
+    - mock_locator
 
 test_build_executor:
   compose:

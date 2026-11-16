@@ -32,7 +32,7 @@ class FileFinderHelper
   # matched so the choice isn't silent. Every test that names the file makes the same
   # choice, so a build notes it once.
   def resolve_file_in_collection(filename, file_list, complain)
-    found, others = PathMatcher.resolve(filename, file_list)
+    found, others = resolve_in_collection(filename, file_list)
     return not_found_in_collection(filename, file_list, complain) if found.nil?
 
     unless others.empty?
@@ -44,6 +44,15 @@ class FileFinderHelper
     end
 
     return found
+  end
+
+  # The winner and the other candidates for `filename`, from a file list or a
+  # HeaderSearch, which finds a header as the compiler does
+  def resolve_in_collection(filename, collection)
+    return PathMatcher.resolve(filename, collection) unless collection.respond_to?( :header_candidates )
+
+    found = collection.header_candidates( filename )
+    return [found.first, found.drop( 1 )]
   end
 
   def find_best_path_in_collection(pathname, path_list, complain, description)
@@ -89,7 +98,8 @@ class FileFinderHelper
   def not_found_in_collection(filename, file_list, complain)
     return nil if complain == :silent
 
-    matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
+    files   = file_list.respond_to?( :hint_files ) ? file_list.hint_files( filename ) : file_list
+    matches = files.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
     if (matches.length > 0)
       blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")
     end

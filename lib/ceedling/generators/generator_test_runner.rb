@@ -49,18 +49,15 @@ class GeneratorTestRunner
       # filename here drops both the directory component and the '<>' delimiters a
       # system header's own search path depends on (issue #1236).
       #
-      # User includes: bare filename, same as always. Unlike mocks (whose subdirectory
-      # is a real, dedicated build/test/mocks/<test>/ path -- hence their own
-      # directory-preserving filepath usage above) or a system header (whose directory
-      # is meaningful to the system include search path), a project's own directories
-      # are exposed to the compiler as a flat list of -I search paths, not nested to
-      # match whatever directory component a captured UserInclude's filepath happens to
-      # carry -- rendering the full path here breaks resolution instead of fixing it.
+      # User includes: the spelling the caller found the header by through the test's
+      # search paths (include_path), else the bare filename. A captured UserInclude's
+      # filepath can be the header's resolved location, which the runner's -I search
+      # paths don't reach, so it is never rendered.
       includes.map do |include|
         if include.is_a?(SystemInclude)
           "<#{include.include_path || include.filepath}>"
         else
-          include.filename
+          include.include_path || include.filename
         end
       end
     )

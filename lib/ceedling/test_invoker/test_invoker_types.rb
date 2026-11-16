@@ -71,6 +71,8 @@ module TestInvokerTypes
                                                 # into search_paths so a mock is still findable
                                                 # by however little path its own #include wrote
     :search_paths,
+    :derived_search_paths,                     # Array — directories the #includes of headers no
+                                                # search path lists imply, after every configured path
     :compile_flags, :preprocess_flags, :assembler_flags, :link_flags,
     :compile_defines, :preprocess_defines,
     :runner,                                   # RunnerInfo
@@ -97,6 +99,7 @@ module TestInvokerTypes
     def initialize(**kwargs)
       kwargs[:partials]           ||= TestablePartials.new(configs: {}, tests: [], mocks: [])
       kwargs[:mock_search_paths]  ||= []
+      kwargs[:derived_search_paths] ||= []
       super(**kwargs)
     end
   end unless const_defined?(:Testable, false)
