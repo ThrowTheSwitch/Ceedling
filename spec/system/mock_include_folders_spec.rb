@@ -45,6 +45,17 @@ ceedling_system_tests do
     end
   end
 
+  it "builds two same-named mocks through a search path that lists only their parent" do
+    in_project do
+      write( 'inc/a/foo.h', "int a_read(void);\n" )
+      write( 'inc/b/foo.h', "int b_read(void);\n" )
+      write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"a/mock_foo.h\"\n#include \"b/mock_foo.h\"\n" \
+                              "void test_reads(void) { a_read_ExpectAndReturn(5); b_read_ExpectAndReturn(6); TEST_ASSERT_EQUAL_INT(11, a_read() + b_read()); }\n" )
+
+      build( ['inc'] )
+    end
+  end
+
   # The mocks root carries the test's name, which the #include's folder happens to share
   it "builds a mock whose #include folder shares the test's own name" do
     in_project do

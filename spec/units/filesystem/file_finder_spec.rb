@@ -10,6 +10,7 @@ require 'ceedling/filesystem/build_roots'
 require 'tmpdir'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
+require 'ceedling/includes/header_search'
 require 'ceedling/filename_extension'
 require 'ceedling/exceptions'
 require 'ceedling/constants'
@@ -74,6 +75,19 @@ describe FileFinder do
     it 'searches a caller-supplied collection instead of collection_all_headers when one is given' do
       expect(@file_finder.find_header_file('baz.h', :error, collection: ['other/baz.h'])).to eq('other/baz.h')
     end
+
+    it 'finds a header through a HeaderSearch, joining a search path with the path the #include names' do
+      search = HeaderSearch.new( ['src'], ->(dir) { dir == 'src/drivers' ? ['src/drivers/foo.h'] : [] } )
+
+      expect(@file_finder.find_header_file('drivers/foo.h', :error, collection: search)).to eq('src/drivers/foo.h')
+    end
+
+    it 'tries each configured header extension through a HeaderSearch' do
+      allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new(['.h', '.hpp']) )
+      search = HeaderSearch.new( ['src'], ->(dir) { dir == 'src/drivers' ? ['src/drivers/foo.hpp'] : [] } )
+
+      expect(@file_finder.find_header_file('drivers/foo', :error, collection: search)).to eq('src/drivers/foo.hpp')
+    end
   end
 
   describe '#find_header_input_for_mock' do
@@ -116,6 +130,12 @@ describe FileFinder do
 
     it 'searches a caller-supplied collection instead of collection_all_headers when one is given' do
       expect(@file_finder.find_header_input_for_mock('Mockbaz.h', collection: ['other/baz.h'])).to eq('other/baz.h')
+    end
+
+    it "asks a HeaderSearch for the header a mock's #include names, its path kept" do
+      search = HeaderSearch.new( ['src'], ->(dir) { dir == 'src/drivers' ? ['src/drivers/foo.h'] : [] } )
+
+      expect(@file_finder.find_header_input_for_mock('drivers/Mockfoo.h', collection: search)).to eq('src/drivers/foo.h')
     end
   end
 
