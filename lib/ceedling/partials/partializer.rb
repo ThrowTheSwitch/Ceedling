@@ -774,7 +774,7 @@ class Partializer
     _includes =
       case others
       when :drop
-        remove_matching_includes( includes: _includes, modules: (partials.keys - [name]) )
+        remove_matching_includes( includes: _includes, modules: (partials.keys - [name]), partials: partials )
       when :mock_or_keep, :mock_or_drop
         # The types header differs from the generated source in two ways at once, which is why
         # both flags below read from one condition.
@@ -912,20 +912,16 @@ class Partializer
   end
 
   # Whether `include` names partialized module `_module`: its filename, less extension and in
-  # any case, is the module's basename. A module named by directory shares that basename with
-  # any same-named module, so when another Partial in `partials` shares it, the include's path
-  # also has to end the way the module's header path does. A module whose header path is
-  # unknown is named by basename alone.
+  # any case, is the module's basename, and its path ends the way the module's header path
+  # does. Another header can share the basename, partialized or not, so the path decides. Case
+  # is ignored there too, as a case-insensitive filesystem reaches the header by either. A
+  # module whose header path is unknown is named by basename alone. A bare #include, as
+  # fallback preprocessing leaves one, ends any such path.
   def _names_module?(include, _module, partials)
     return false unless include.filename.ext().downcase() == module_basename( _module )
-    return true unless _shares_basename?( _module, partials )
 
     header = partials.dig( _module )&.header&.filepath
-    return (header.nil? or PathMatcher.correspond?( include.filepath, header ))
-  end
-
-  def _shares_basename?(_module, partials)
-    return partials.keys.any? { |other| other != _module and module_basename( other ) == module_basename( _module ) }
+    return (header.nil? or PathMatcher.correspond?( include.filepath.downcase(), header.downcase() ))
   end
 
   # A module name reduced to what an #include actually carries. An #include names a

@@ -1045,7 +1045,7 @@ describe Partializer do
     it "removes partialized module headers from includes" do
       includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
-        'partial_module' => { types: [:test_public] }
+        'partial_module' => make_partial_config(tests_type: :public)
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
