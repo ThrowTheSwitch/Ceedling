@@ -62,6 +62,17 @@ class HeaderSearch
 
   attr_reader :paths
 
+  # A query as every search reads it: forward slashes, with no `.` or empty segments. A
+  # drive letter, a root `/`, and a Windows share's `//` stay.
+  def self.normalized(query)
+    query = query.to_s.tr( '\\', '/' )
+    root  = query[%r{\A(?:[A-Za-z]:/|/+)}].to_s
+    rest  = query.delete_prefix( root )
+    root  = (ProjectPaths.unc?( root ) ? '//' : '/') if root.start_with?( '/' )
+
+    return root + ProjectPaths.segments( rest ).join( '/' )
+  end
+
   # `paths` in search order. `lister` gives a directory's headers. `refusals` explain, by
   # the query a test's #include asks for, why no search path reaches its header.
   def initialize(paths, lister, trailing_first: false, listings: nil, refusals: {})
@@ -131,15 +142,8 @@ class HeaderSearch
 
   private
 
-  # Forward slashes, with no `.` or empty segments. A drive letter, a root `/`, and a
-  # Windows share's `//` stay.
   def normalized(query)
-    query = query.to_s.tr( '\\', '/' )
-    root  = query[%r{\A(?:[A-Za-z]:/|/+)}].to_s
-    rest  = query.delete_prefix( root )
-    root  = (ProjectPaths.unc?( root ) ? '//' : '/') if root.start_with?( '/' )
-
-    return root + ProjectPaths.segments( rest ).join( '/' )
+    return HeaderSearch.normalized( query )
   end
 
   # Each search path joined with the query's path, holding the query's file

@@ -7,6 +7,7 @@
 
 require 'ceedling/constants'
 require 'ceedling/includes/includes'
+require 'ceedling/includes/header_search'
 require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/project_paths'
 require 'ceedling/test_invoker/test_pipeline_helpers'
@@ -92,17 +93,32 @@ class TestDerivedSearchPaths
 
     header = unlisted_header( query, search )
     return nil if header.nil?
-    return refuse( refusals, query, refusal( testable, include, text, header ) ) if bare_outside_project?( text, header )
+    return refuse( refusals, include, query, refusal( testable, include, text, header ) ) if bare_outside_project?( text, header )
 
     root = PathMatcher.strip_tail( header, text )
     @notices.added( testable, root, text, header ) unless root.nil?
     return root
   end
 
-  # Records why the header `query` names gets no directory, which adds none
-  def refuse(refusals, query, why)
-    refusals[query] = why
+  # Records why the header `query` names gets no directory, which adds none, under every
+  # name its failed lookup can report. Every stage looks a test's mocks up before its other
+  # #includes, so a mock's refusal explains a name they share.
+  def refuse(refusals, include, query, why)
+    mock = include.is_a?( MockInclude )
+
+    lookup_names( include, query ).each do |name|
+      refusals[name] = why if mock or !refusals.key?( name )
+    end
+
     return nil
+  end
+
+  # The names a lookup of `query` reports, as the header search spells them. A mock's header
+  # is looked up by its query. Another #include's is looked up by each header extension in
+  # turn, and the last names the failure.
+  def lookup_names(include, query)
+    names = include.is_a?( MockInclude ) ? [query] : [query] + @configurator.extension_header.candidates( query )
+    return names.map { |name| HeaderSearch.normalized( name ) }.uniq
   end
 
   # Why a bare name's header outside the working directory gets no search path, and the
