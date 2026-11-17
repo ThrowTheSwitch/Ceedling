@@ -69,11 +69,11 @@ class FileFinderHelper
     return path_list[best_index( scores )]
   end
 
-  def handle_missing_file(filename, complain)
+  def handle_missing_file(filename, complain, extra_message = '')
     case (complain)
-      when :error then blow_up(filename) 
+      when :error then blow_up(filename, extra_message)
       when :warn
-        gripe(filename)
+        gripe(filename, extra_message)
         return nil
       when :ignore then return nil
     end
@@ -94,8 +94,14 @@ class FileFinderHelper
   # `complain` of :silent skips that check. A caller asks for silence when it can't know
   # whether the reference is even live, such as a scan of #includes that ignores #if, and
   # a later, authoritative lookup reports a real slip.
+  #
+  # A HeaderSearch's refusal comes first. It explains why the header lies beyond every
+  # search path, which a case check can't.
   def not_found_in_collection(filename, file_list, complain)
     return nil if complain == :silent
+
+    refusal = file_list.respond_to?( :refusal ) ? file_list.refusal( filename ) : nil
+    return handle_missing_file( filename, complain, refusal ) unless refusal.nil?
 
     files   = file_list.respond_to?( :hint_files ) ? file_list.hint_files( filename ) : file_list
     matches = files.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}

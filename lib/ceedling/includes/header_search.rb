@@ -62,17 +62,19 @@ class HeaderSearch
 
   attr_reader :paths
 
-  # `paths` in search order. `lister` gives a directory's headers.
-  def initialize(paths, lister, trailing_first: false, listings: nil)
+  # `paths` in search order. `lister` gives a directory's headers. `refusals` explain, by
+  # the query a test's #include asks for, why no search path reaches its header.
+  def initialize(paths, lister, trailing_first: false, listings: nil, refusals: {})
     @paths          = paths
     @trailing_first = trailing_first
     @listings       = listings || HeaderListings.new( lister )
+    @refusals       = refusals.to_h { |query, why| [normalized( query ), why] }
   end
 
   # The same search, trying a header's trailing path before a join, for a mock whose
   # #include names its place below its mirror root
   def trailing_first
-    return HeaderSearch.new( @paths, nil, trailing_first: true, listings: @listings )
+    return HeaderSearch.new( @paths, nil, trailing_first: true, listings: @listings, refusals: @refusals )
   end
 
   # The headers `query` names, the one the compiler includes first. Empty for none.
@@ -102,6 +104,12 @@ class HeaderSearch
     dirs << File.dirname( query ) if nameable?( query )
 
     return (dirs.flat_map { |dir| listing( dir ) } + flat).uniq
+  end
+
+  # Why no search path reaches the header `query` names, for the error its failed lookup
+  # raises. Nil when Ceedling refused no search path for it.
+  def refusal(query)
+    return @refusals[normalized( query )]
   end
 
   # The #include text through which these search paths find `header` first: its filename

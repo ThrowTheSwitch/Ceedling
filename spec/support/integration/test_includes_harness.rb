@@ -196,7 +196,7 @@ module IntegrationSpecHelpers
       @context_extractor.collect_simple_context_from_file( filepath, nil, TestContextExtractor::Context::INCLUDES )
 
       # Stage 2's derived and tolerant mock search paths, and stage 3's search paths
-      testable.derived_search_paths = @derived.collect( testable )
+      testable.derived_search_paths, testable.search_path_refusals = @derived.collect( testable )
       testable.mock_search_paths = @locator.directories(
         @context_extractor.lookup_mock_header_includes_list( filepath ), mocks_root: testable.paths[:mocks],
         collection: @locator.header_search( testable ), complain: :silent

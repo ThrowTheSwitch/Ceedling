@@ -77,8 +77,9 @@ class IncludePathinator
   # A test's headers found as its compiler finds them, through `search_paths` in order,
   # each directory listed as `header_listing` lists it. Distinct from collection_all_headers,
   # which is one project-wide list blind to any one test's TEST_INCLUDE_PATH() priority.
-  def header_search(search_paths)
-    return HeaderSearch.new( search_paths, method( :header_listing ) )
+  # `refusals` explain a failed lookup (see HeaderSearch#refusal).
+  def header_search(search_paths, refusals: {})
+    return HeaderSearch.new( search_paths, method( :header_listing ), refusals: refusals )
   end
 
   # Starts a test build with every search path listed afresh

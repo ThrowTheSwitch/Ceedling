@@ -27,9 +27,10 @@ class MockLocator
   constructor :configurator, :include_pathinator, :test_search_paths, :file_finder, :file_path_utils
 
   # How a test's real headers are found: through its search paths in order, without the
-  # directories its mocks and Partials are generated in, which hold no real headers
+  # directories its mocks and Partials are generated in, which hold no real headers. A
+  # header that stage 2 refused a search path explains its failed lookup.
   def header_search(testable)
-    return @include_pathinator.header_search( @test_search_paths.header_paths( testable ) )
+    return @include_pathinator.header_search( @test_search_paths.header_paths( testable ), refusals: testable.search_path_refusals )
   end
 
   # A mock's real header and the subdirectory mirroring its location. `complain` sets

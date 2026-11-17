@@ -74,6 +74,8 @@ module TestInvokerTypes
     :search_paths,
     :derived_search_paths,                     # Array — directories the #includes of headers no
                                                 # search path lists imply, after every configured path
+    :search_path_refusals,                     # Hash — header query → why its #include gets no
+                                                # derived directory, for the error its failed lookup raises
     :compile_flags, :preprocess_flags, :assembler_flags, :link_flags,
     :compile_defines, :preprocess_defines,
     :runner,                                   # RunnerInfo
@@ -101,6 +103,7 @@ module TestInvokerTypes
       kwargs[:partials]           ||= TestablePartials.new(configs: {}, tests: [], mocks: [])
       kwargs[:mock_search_paths]  ||= []
       kwargs[:derived_search_paths] ||= []
+      kwargs[:search_path_refusals] ||= {}
       super(**kwargs)
     end
   end unless const_defined?(:Testable, false)

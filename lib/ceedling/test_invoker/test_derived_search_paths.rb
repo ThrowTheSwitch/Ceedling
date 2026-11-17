@@ -22,40 +22,42 @@ require 'ceedling/test_invoker/derived_search_path_notices'
 # else gets the directory as a search path, after every configured path. Nothing
 # configured is shadowed.
 #
-# A bare name gives the header's own directory. Outside the project that can be a system
-# directory of forwarding headers, such as glibc's sys/, where one header includes another
-# by a name the directory itself holds. No directory is added for a bare name there.
+# A bare name gives the header's own directory. Outside the working directory that can be
+# a system directory of forwarding headers, such as glibc's sys/, where one header includes
+# another by a name the directory itself holds. No directory is added for a bare name
+# there. The refusal explains the error the header's failed lookup raises.
 class TestDerivedSearchPaths
 
   include TestPipelineHelpers
 
+  # The option that names a mock's header by its folder
+  FOLDER_OPTION = ':cmock ↳ :mock_name_include_folder'
+
   constructor :configurator, :include_pathinator, :test_search_paths, :test_context_extractor, :file_finder, :file_wrapper, :loginator
 
   def setup
-    @notices = DerivedSearchPathNotices.new( configurator: @configurator, loginator: @loginator )
+    @notices = DerivedSearchPathNotices.new( loginator: @loginator )
   end
 
-  # Starts a test build, whose NOTICEs name each directory and refused header once
+  # Starts a test build, whose NOTICEs name each directory once
   def forget_notices
     @notices.forget
   end
 
-  # The directories `testable`'s #includes imply, in the order its #includes need them. One
-  # search serves every #include until a directory joins it.
+  # The directories `testable`'s #includes imply, in the order its #includes need them, and
+  # the refusals for headers outside the working directory, by the query each #include asks
+  # for. One search serves every #include until a directory joins it.
   def collect(testable)
-    roots      = []
     configured = @test_search_paths.header_paths( testable )
     search     = @include_pathinator.header_search( configured )
 
-    candidate_includes( testable ).each do |include|
-      root = derived_root( testable, include, search )
+    return candidate_includes( testable ).each_with_object( [[], {}] ) do |include, (roots, refusals)|
+      root = derived_root( testable, include, search, refusals )
       next if root.nil?
 
       roots << root
       search = @include_pathinator.header_search( configured + roots )
     end
-
-    return roots
   end
 
   private
@@ -82,18 +84,43 @@ class TestDerivedSearchPaths
     return ProjectPaths.segments( include.filepath ).include?( '..' )
   end
 
-  # The directory `include` implies for its header, or nil when it needs none
-  def derived_root(testable, include, search)
+  # The directory `include` implies for its header, or nil when it needs none or is refused
+  # one. A refusal joins `refusals`.
+  def derived_root(testable, include, search, refusals)
     query, text = query_and_text( include )
     return nil if reaches?( testable, include, text, search )
 
     header = unlisted_header( query, search )
     return nil if header.nil?
-    return @notices.refused( testable, include, header ) if bare_outside_project?( text, header )
+    return refuse( refusals, query, refusal( testable, include, text, header ) ) if bare_outside_project?( text, header )
 
     root = PathMatcher.strip_tail( header, text )
     @notices.added( testable, root, text, header ) unless root.nil?
     return root
+  end
+
+  # Records why the header `query` names gets no directory, which adds none
+  def refuse(refusals, query, why)
+    refusals[query] = why
+    return nil
+  end
+
+  # Why a bare name's header outside the working directory gets no search path, and the
+  # #include that reaches it instead. Without :mock_name_include_folder a mock includes its
+  # header by `text` alone, whatever folder its own #include writes.
+  def refusal(testable, include, text, header)
+    written   = include.filepath
+    suggested = "`#include \"#{File.join( File.basename( File.dirname( header ) ), File.basename( written ) )}\"`"
+    needs     = "`#include \"#{written}\"` in #{testable.filepath} needs search path '#{ProjectPaths.absolute( File.dirname( header ) )}'"
+    reason    = 'Because this search path is outside the working directory and could cause shadowing of other headers, ' \
+                "Ceedling won't add the full search path."
+
+    unless include.is_a?( MockInclude ) and !@configurator.cmock_mock_name_include_folder
+      return "#{needs}. #{reason} Instead, reference the parent folder, as in #{suggested}."
+    end
+
+    return "#{needs}, since its mock writes `#include \"#{text}\"` with #{FOLDER_OPTION} disabled. #{reason} " \
+           "Instead, enable #{FOLDER_OPTION} and reference the parent folder, as in #{suggested}."
   end
 
   # The header `query` names, when no search path lists its directory and Ceedling didn't
@@ -105,7 +132,7 @@ class TestDerivedSearchPaths
     return header
   end
 
-  # A bare name's header outside the project may sit among forwarding headers
+  # A bare name's header outside the working directory may sit among forwarding headers
   def bare_outside_project?(text, header)
     return (File.dirname( text ) == '.' and !ProjectPaths.contains?( ProjectPaths.working_dir, header ))
   end

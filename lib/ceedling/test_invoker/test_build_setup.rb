@@ -186,8 +186,11 @@ class TestBuildSetup
       )
 
       # Mock search paths are found through the derived ones
-      derived = @test_derived_search_paths.collect( testable )
-      state.lock.synchronize { testable.derived_search_paths = derived }
+      derived, refusals = @test_derived_search_paths.collect( testable )
+      state.lock.synchronize do
+        testable.derived_search_paths = derived
+        testable.search_path_refusals = refusals
+      end
 
       testable.mock_search_paths = collect_mock_search_paths( testable )
     end
