@@ -729,21 +729,27 @@ class Partializer
 
   # A generated header's includes in the order the source compiles them: the source's includes
   # ahead of the module's header, the header's own, then the source's after it. The last make
-  # up the following group (see Partials::IncludeGroups). A source that never includes its own
-  # header leaves that group empty, as if its header came last.
+  # up the following group (see Partials::IncludeGroups).
+  #
+  # A source that never includes its own header, or a header-only module's absent source, is
+  # read as including it last. A stand-in holds that place, so whatever replaces the module's
+  # header lands there, in the leading group, ahead of the declarations. The following group
+  # is then empty.
   #
   # The whole list is remapped at once, so deduplication, redirects, and sorting see every
   # include. An include in both groups keeps its earlier place. A marker holds the boundary.
   def _remap_include_groups(name:, source:, header:, **remap)
-    index    = _own_header_index( name, source )
-    remapped = _remap_includes( name: name, includes: source[0..index] + header + [INCLUDE_BOUNDARY] + source[(index + 1)..], **remap )
+    index     = _own_header_index( name, source )
+    leading   = index.nil? ? source + [UserInclude.new( "#{module_basename( name )}.h" )] : source[0..index]
+    following = index.nil? ? [] : source[(index + 1)..]
+    remapped  = _remap_includes( name: name, includes: leading + header + [INCLUDE_BOUNDARY] + following, **remap )
 
     return Partials::IncludeGroups.split( remapped, INCLUDE_BOUNDARY )
   end
 
-  # Where the source includes the module's own header, or its last include when it never does
+  # Where the source includes the module's own header, or nil when it never does
   def _own_header_index(name, source)
-    return source.index { |include| include.filename.ext().downcase() == module_basename( name ) } || (source.size - 1)
+    return source.index { |include| include.filename.ext().downcase() == module_basename( name ) }
   end
 
   # One body behind all four public remaps. Each differs only in what replaces this module's
@@ -878,8 +884,8 @@ class Partializer
         include
       end
     end
-    # This module's own header wasn't in the includes list at all -- no original
-    # position to preserve, so fall back to appending.
+    # A flat list without the module's own header has no position to preserve, so the
+    # replacement goes last. A grouped list always holds one (see _remap_include_groups).
     spliced << UserInclude.new(replacement) unless replaced
 
     # A duplicate/case-variant entry beyond the first match (e.g. both 'module.h' and
