@@ -37,16 +37,19 @@ Ceedling distinguishes files by their full relative path, not just their
 filename. A project may have, for example, both `src/drivers/uart.c` and
 `src/sensors/uart.c` without one hiding or colliding with the other.
 
-Distinguishing files is mostly an issue in test builds. If two files share
-a name without enough path to distinguish them, Ceedling resolves the reference 
-to the first match among the file collection. File collections are ordered per
-your project configuration (`:paths`). The ordering of collected files is
-identical to the search path ordering provided to the compiler from the same
-`:paths` configuration plus any use of
-[`TEST_INCLUDE_PATH()`](build-directives.md#test_include_path) directives in
-a test file. When Ceedling finds more than one reference, it uses the first
-in the ordered file list but logs an informational notice naming multi-file 
-matches, so the choice is not silent.
+Distinguishing files is mostly an issue in test builds. Ceedling finds a
+header named by an `#include` the way your compiler does. It joins each of the
+test’s search paths, in order, with the path the `#include` names, and the
+first file that exists wins. A search path therefore reaches headers in the
+directories below it, as in `#include "drivers/uart.h"` with `src/` as a search
+path. Search paths are ordered per your project configuration (`:paths`) plus
+any use of [`TEST_INCLUDE_PATH()`](build-directives.md#test_include_path)
+directives in a test file. When more than one search path holds the header,
+Ceedling uses the first but logs an informational notice naming the others, so
+the choice is not silent.
+
+A source file a test needs resolves by its trailing path against the file
+collection, which is ordered by the same `:paths` configuration.
 
 If Ceedling uses the wrong match for lack of path information, your test build 
 fails downstream with an ordinary compilation error indirectly revealing the
@@ -54,9 +57,9 @@ issue. Add enough path at the point of reference to select the file you actually
 meant.
 
 * Use paths in `#include` directives in your test files to distinguish header 
-  files of the same name (mocks are distiguished by the same filepath as the 
-  headers from which they are generated). Examples: `#include "foo/bar/file.h"`
-  and/or `#include "foo/bar/mock_file.h"`.
+  files of the same name. A mock is distinguished by the same path as the
+  header it is generated from, below one of your search paths. Examples:
+  `#include "foo/bar/file.h"` and/or `#include "foo/bar/mock_file.h"`.
 * Use the [`TEST_SOURCE_FILE()` build directive macro][build-directive-macros]
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.
@@ -119,6 +122,12 @@ Ceedling provides two mechanisms for configuring search paths:
 1. The [`TEST_INCLUDE_PATH(...)`](build-directives.md#test_include_path) build directive 
    macro. This is only available within test files.
 
+A header whose own directory no search path lists needs no search path of its
+own, as is usual for one that
+[`:files` ↳ `:include`](../configuration/reference/files.md#files-include) adds.
+When a test’s `#include` names such a header, Ceedling adds the directory that
+`#include` implies to the test’s search paths.
+
 In testing contexts, you have three options for assembling the core of 
 the search path list used by Ceedling for test builds:
 
@@ -146,6 +155,8 @@ it is assembled from a variety of sources. In order:
 1. Internal paths for CMock’s C code (if respective feature enabled)
 1. `:paths` ↳ `:test_toolchain_include` list from your project 
    configuration
+1. Directories the test’s `#include`s imply for headers whose own directories
+   no search path lists, such as headers `:files` ↳ `:include` adds
 
 The paths lists above are documented in detail in the discussion of 
 project configuration.

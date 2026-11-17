@@ -123,7 +123,7 @@ A long configured root adds its whole location to every build path below it. A v
 
 `BuildRoots.table(roots)` decides which roots give way to a marker.
 
-- **The roots** are `collection_build_roots`, the canonical bases of `:paths` ↳ `:source`, `:include`, `:test`, and `:support` with globs stripped, which `ConfiguratorBuilder#collect_build_roots` takes through `collect_mirror_roots`. `TEST_INCLUDE_PATH()` directories and `:files` entries are not roots.
+- **The roots** are `collection_build_roots`, the canonical bases of `:paths` ↳ `:source`, `:include`, `:test`, and `:support` with globs stripped, which `ConfiguratorBuilder#collect_build_roots` takes through `collect_mirror_roots`. `TEST_INCLUDE_PATH()` directories, `:files` entries, and the search paths a test's `#include`s imply for `:files` headers are not roots.
 - **Outermost only.** A root inside another root is dropped, so a whole tree shares one marker and keeps its structure below it.
 - **Shorter only.** A root is shortened only when its marker is shorter than its encoded spelling. A marker is `_`, the root's own directory name with any leading `_` dropped (or `root`), `_`, and 8 upper-case hexadecimal digits of SHA-256 of the root's encoded spelling, case-folded on Windows. That is 10 characters more than the name, so `src` never shortens, and a climbing or deeply nested root always does. The decision depends only on the root's spelling, so it holds from run to run and changes only when the root does.
 - **Collisions.** `BuildRoots.collisions` finds two roots that would share a marker, and `collect_build_roots` stops configuration naming both.
@@ -189,7 +189,7 @@ The Dependencies plugin places objects by a different root. `Dependencies#prepar
 
 Mocks keep placement relative to their include root, not the project root. CMock's folder semantics need it. The test's search path `-I build/test/mocks/<test>` must resolve `#include "drv/mock_gpio.h"` as written. A mock's identity, its CMock symbols and runner entries, also comes from that path.
 
-`FileFinder#resolve_mock` finds the mocked header. It then takes the header's subdirectory below the most specific root of `collection_mirror_roots_headers` through `PathMirror.relative_subdir_from_clean_roots`. Containment is by whole directories, so a header outside every root yields `''`. Its mock then lands flat in the test's mock directory.
+`FileFinder#resolve_mock` finds the mocked header through the test's `HeaderSearch`, joining each search path with the `#include`'s path as the compiler does. It then takes the header's subdirectory below the most specific root of `collection_mirror_roots_headers` through `PathMirror.relative_subdir_from_clean_roots`. Containment is by whole directories, so a header outside every root yields `''`. Its mock then lands flat in the test's mock directory, or at the path its `#include` folder writes, as for a `:files` ↳ `:include` header outside every `:paths` root.
 
 `MockLocator#placement(mocks_root:, subdir:, include_path:)` returns a `MockPlacement` struct with four fields.
 
@@ -268,7 +268,7 @@ A `-:` entry that matches nothing is never an error. `ConfiguratorPathsValidator
 
 Several settings reach paths outside `:paths` and `:files`. Each spells its paths through `ProjectPaths` at intake.
 
-- `TestContextExtractor` canonicalizes every `TEST_INCLUDE_PATH()` entry. `IncludePathinator#prioritized_header_files` then ranks headers by walking up each header's directories to the nearest search root, with `rank_key` folding case on Windows.
+- `TestContextExtractor` canonicalizes every `TEST_INCLUDE_PATH()` entry. `IncludePathinator#prioritize` then ranks headers by walking up each header's directories to the nearest search root, with `rank_key` folding case on Windows. `prioritized_header_files` ranks the whole collection for Partials, and `collection_candidates` ranks a query's matches when stage 2 derives a search path for a `:files` header.
 - `LibraryResolver#search_directories` collects `:paths` ↳ `:libraries` through `collect_paths` and memoizes the result. `search_path_arguments` forms the `-L` arguments from it.
 - `ConfiguratorBuilder#set_release_target` standardizes `:release_build` ↳ `:output`. An absolute output names the artifact itself.
 - `CliHelper#process_logging_path` applies inline Ruby expansion and `standardize` to the build root before configuration loads. It refuses one that expands to nothing.
