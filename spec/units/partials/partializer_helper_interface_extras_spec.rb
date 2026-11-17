@@ -1,0 +1,178 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+# What a mock-only Partial keeps of its real header beyond the functions the test mocks.
+#
+# A mocked Partial's interface header takes the real header's place wherever generated code
+# includes it, so what the real header supplied besides the mocked functions has to come along
+# in the extras header the interface includes. These examples state which of a module's items
+# PartializerHelper#plan_interface_extras keeps, and which it withholds.
+
+require 'spec_helper'
+require 'ceedling/partials/partializer_helper'
+require 'ceedling/partials/partials'
+require 'ceedling/c_extractor/c_extractor_types'
+
+EXTRAS_KEYWORDS = %w[static inline extern const __inline __inline__].freeze
+
+describe PartializerHelper do
+  before(:each) do
+    @helper = described_class.new(
+      {
+        :partializer_utils        => double( 'PartializerUtils' ),
+        :c_extractor_declarations => double( 'CExtractorDeclarations' ),
+        :parsing_parcels          => double( 'ParsingParcels' ),
+        :loginator                => double( 'Loginator' ).as_null_object
+      }
+    )
+  end
+
+  # ---- builders --------------------------------------------------------------
+
+  def decl(signature, origin: :header)
+    name = signature[/(\w+)\s*\(/, 1]
+    CExtractorTypes::CFunctionDeclaration.new(
+      name: name, signature: signature, decorators: signature.split( /\s+/ ).take_while { |t| EXTRAS_KEYWORDS.include?( t ) },
+      signature_stripped: signature.sub( /\A(?:(?:static|inline|extern)\s+)+/, '' ), origin: origin
+    )
+  end
+
+  def defn(code_block, origin: :header)
+    signature = code_block[/\A[^{]*/].strip
+    CExtractorTypes::CFunctionDefinition.new(
+      name: signature[/(\w+)\s*\(/, 1], signature: signature, code_block: code_block, body: code_block[/\{.*\}/m],
+      decorators: signature.split( /\s+/ ).take_while { |t| EXTRAS_KEYWORDS.include?( t ) }, origin: origin
+    )
+  end
+
+  def var(text, decorators: [], origin: :header, promoted_from: nil)
+    CExtractorTypes::CVariableDeclaration.new(
+      name: text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators, origin: origin, promoted_from: promoted_from
+    )
+  end
+
+  def c_module(*items)
+    CExtractorTypes::CModule.new(
+      function_definitions:  items.grep( CExtractorTypes::CFunctionDefinition ),
+      function_declarations: items.grep( CExtractorTypes::CFunctionDeclaration ),
+      variable_declarations: items.grep( CExtractorTypes::CVariableDeclaration ),
+      element_sequence:      items
+    )
+  end
+
+  def mocked(*names)
+    names.map { |n| Partials.manufacture_function_declaration( name: n, signature: "int #{n}(void)" ) }
+  end
+
+  def plan(mod, interface: [], fallback: false, header_guarded: true)
+    @helper.plan_interface_extras( c_module: mod, interface: interface, fallback: fallback, header_guarded: header_guarded )
+  end
+
+  # ---- functions --------------------------------------------------------------
+
+  context 'functions' do
+    it 'keeps a header helper the mock leaves out, and leaves out the one it mocks' do
+      twice = defn( 'static inline int twice(int x) { return 2 * x; }' )
+      read  = defn( 'static inline int read(void) { return -1; }' )
+
+      extras = plan( c_module( twice, read ), interface: mocked( 'read' ) )
+
+      expect( extras.items ).to eq( [twice] )
+    end
+
+    it "keeps a kept helper's prototype ahead of it" do
+      proto = decl( 'static inline int twice(int x);' )
+      twice = defn( 'static inline int twice(int x) { return 2 * x; }' )
+
+      expect( plan( c_module( proto, twice ) ).items ).to eq( [proto, twice] )
+    end
+
+    # A caller may need a function the mock doesn't select, defined somewhere else
+    it 'keeps a plain prototype the mock leaves out' do
+      init = decl( 'int init(void);' )
+
+      expect( plan( c_module( init, decl( 'int read(void);' ) ), interface: mocked( 'read' ) ).items ).to eq( [init] )
+    end
+
+    # A static prototype with no body here promises a definition no file of the test holds
+    it 'leaves out a static prototype of a function with no body' do
+      expect( plan( c_module( decl( 'static int port(void);' ) ) ).items ).to eq( [] )
+    end
+
+    it "leaves out the source's functions" do
+      helper = defn( 'static int adjust(int v) { return v + 1; }', origin: :source )
+
+      expect( plan( c_module( helper ) ).items ).to eq( [] )
+    end
+
+    it 'keeps one copy of a helper fallback preprocessing found twice alike' do
+      first  = defn( 'static inline int twice(int x) { return 2 * x; }' )
+      second = defn( 'static inline int twice(int x) { return 2 * x; }' )
+
+      expect( plan( c_module( first, second ), fallback: true ).items ).to eq( [first] )
+    end
+
+    it 'leaves out a helper fallback preprocessing found with two different bodies' do
+      first  = defn( 'static inline int twice(int x) { return 2 * x; }' )
+      second = defn( 'static inline int twice(int x) { return x + x + 1; }' )
+
+      expect( plan( c_module( first, second ), fallback: true ).items ).to eq( [] )
+    end
+  end
+
+  # ---- variables --------------------------------------------------------------
+
+  context 'variables' do
+    it 'keeps a header static variable and an extern declaration' do
+      table = var( 'int table[] = { 1, 2 };', decorators: ['static', 'const'] )
+      count = var( 'int count;', decorators: ['extern'] )
+
+      expect( plan( c_module( table, count ) ).items ).to eq( [table, count] )
+    end
+
+    # Every file including the extras header would define it again
+    it 'leaves out a header definition without static' do
+      expect( plan( c_module( var( 'int total = 1;' ) ) ).items ).to eq( [] )
+    end
+
+    it "leaves out the source's variables" do
+      expect( plan( c_module( var( 'int level;', decorators: ['static'], origin: :source ) ) ).items ).to eq( [] )
+    end
+
+    it 'keeps the promoted statics of a helper it keeps, and not those of a helper the mock selects' do
+      kept_static = var( 'int partial_twice_calls;', decorators: ['static'], promoted_from: 'twice' )
+      twice       = defn( 'static inline int twice(int x) { return 2 * x; }' )
+      mock_static = var( 'int partial_read_calls;', decorators: ['static'], promoted_from: 'read' )
+      read        = defn( 'static inline int read(void) { return -1; }' )
+
+      extras = plan( c_module( kept_static, twice, mock_static, read ), interface: mocked( 'read' ) )
+
+      expect( extras.items ).to eq( [kept_static, twice] )
+    end
+  end
+
+  # ---- a header without an include guard ---------------------------------------
+
+  # The real header may still arrive through another include, where a second copy collides
+  context 'a header without an include guard' do
+    it 'withholds its helpers and static variables, and keeps its declarations' do
+      twice = defn( 'static inline int twice(int x) { return 2 * x; }' )
+      table = var( 'int table[] = { 1, 2 };', decorators: ['static', 'const'] )
+      count = var( 'int count;', decorators: ['extern'] )
+      init  = decl( 'int init(void);' )
+
+      extras = plan( c_module( twice, table, count, init ), header_guarded: false )
+
+      expect( extras.items ).to eq( [count, init] )
+      expect( extras.withheld ).to eq( [twice, table] )
+    end
+  end
+
+  it 'is empty for a header holding only what the mock selects' do
+    expect( plan( c_module( decl( 'int read(void);' ) ), interface: mocked( 'read' ) ) ).to be_empty
+  end
+end
