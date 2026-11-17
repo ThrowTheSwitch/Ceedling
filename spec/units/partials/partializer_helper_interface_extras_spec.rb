@@ -55,11 +55,16 @@ describe PartializerHelper do
     )
   end
 
+  def macro(text)
+    CExtractorTypes::CStatement.new( text: text, kind: :macro, origin: :header )
+  end
+
   def c_module(*items)
     CExtractorTypes::CModule.new(
       function_definitions:  items.grep( CExtractorTypes::CFunctionDefinition ),
       function_declarations: items.grep( CExtractorTypes::CFunctionDeclaration ),
       variable_declarations: items.grep( CExtractorTypes::CVariableDeclaration ),
+      macro_definitions:     items.grep( CExtractorTypes::CStatement ),
       element_sequence:      items
     )
   end
@@ -152,6 +157,86 @@ describe PartializerHelper do
       extras = plan( c_module( kept_static, twice, mock_static, read ), interface: mocked( 'read' ) )
 
       expect( extras.items ).to eq( [kept_static, twice] )
+    end
+  end
+
+  # ---- fallback preprocessing ------------------------------------------------------
+
+  # Fallback keeps both sides of a conditional, so a name can arrive twice
+  context 'fallback preprocessing' do
+    it 'keeps one copy of a static variable found twice alike' do
+      first  = var( 'int gain = 1;', decorators: ['static', 'const'] )
+      second = var( 'int gain = 1;', decorators: ['static', 'const'] )
+
+      expect( plan( c_module( first, second ), fallback: true ).items ).to eq( [first] )
+    end
+
+    it 'leaves out a static variable found twice with different definitions' do
+      first  = var( 'int gain = 1;', decorators: ['static', 'const'] )
+      second = var( 'int gain = 2;', decorators: ['static', 'const'] )
+
+      expect( plan( c_module( first, second ), fallback: true ).items ).to eq( [] )
+    end
+
+    it 'leaves out a plain prototype found twice with different signatures' do
+      expect( plan( c_module( decl( 'int init(void);' ), decl( 'long init(void);' ) ), fallback: true ).items ).to eq( [] )
+    end
+  end
+
+  # ---- names a macro rewrites ------------------------------------------------------
+
+  # The interface writes every macro ahead of the extras, so a function-like macro of the
+  # same name would rewrite the prototype. Calls go through the macro anyway.
+  it 'leaves out a prototype a function-like macro of the same name rewrites' do
+    alloc = decl( 'void *port_alloc(unsigned n);' )
+    dbg   = decl( 'void *port_alloc_dbg(unsigned n, int line);' )
+
+    extras = plan( c_module( alloc, macro( '#define port_alloc(n) port_alloc_dbg((n), __LINE__)' ), dbg ) )
+
+    expect( extras.items ).to eq( [dbg] )
+  end
+
+  # ---- what a test leaves undefined --------------------------------------------------
+
+  # GCC emits an unused static variable or non-inline static function at -O0, so one naming a
+  # function no file of the test defines fails the link. It stays behind, as it would have
+  # without the extras.
+  context 'a function the mock leaves undefined' do
+    def port_module(*items)
+      c_module( decl( 'int port_a(void);' ), decl( 'int port_read(void);' ), *items )
+    end
+
+    it 'leaves out a static variable naming it' do
+      handlers = var( 'port_fn_t port_handlers[] = { port_a };', decorators: ['static', 'const'] )
+
+      expect( plan( port_module( handlers ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    it 'leaves out a non-inline static helper calling it, and keeps an inline one' do
+      sum   = defn( 'static int port_sum(void) { return port_a() + 1; }' )
+      twice = defn( 'static inline int port_twice(void) { return 2 * port_a(); }' )
+
+      extras = plan( port_module( sum, twice ), interface: mocked( 'port_read' ) )
+
+      expect( extras.items.map( &:name ) ).to eq( ['port_a', 'port_twice'] )
+    end
+
+    # A body naming an item the extras leave out wouldn't compile, used or not
+    it 'leaves out what names an item it left out' do
+      sum   = defn( 'static int port_sum(void) { return port_a() + 1; }' )
+      twice = defn( 'static inline int port_twice(void) { return 2 * port_sum(); }' )
+      table = var( 'port_fn_t port_table[] = { port_twice };', decorators: ['static', 'const'] )
+
+      expect( plan( port_module( sum, twice, table ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    it 'keeps a static variable naming a mocked function or a kept helper' do
+      twice = defn( 'static inline int port_twice(int x) { return 2 * x; }' )
+      table = var( 'port_fn_t port_table[] = { port_read, port_twice };', decorators: ['static', 'const'] )
+
+      extras = plan( port_module( twice, table ), interface: mocked( 'port_read' ) )
+
+      expect( extras.items.map( &:name ) ).to eq( ['port_a', 'port_twice', 'port_table'] )
     end
   end
 
