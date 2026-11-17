@@ -1298,6 +1298,30 @@ describe Partializer do
       expect( groups.following.map( &:filename ) ).to eq( ['log.h'] )
     end
 
+    # The split comes at the module's own header, not at an unrelated header sharing its basename
+    it "splits the groups at a directory-named module's own header" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'drivers/uart/config',
+        source_includes: [UserInclude.new( 'src/config.h' ), UserInclude.new( 'a.h' ), UserInclude.new( 'include/drivers/uart/config.h' ), UserInclude.new( 'b.h' )],
+        header_includes: [UserInclude.new( 'h.h' )], types_header: 'module_types.h',
+        partials: { 'drivers/uart/config' => make_partial_config(mocks_type: :public, header: 'include/drivers/uart/config.h') }
+      )
+
+      expect( groups.leading.map( &:filepath ) ).to eq( ['src/config.h', 'a.h', 'module_types.h', 'h.h'] )
+      expect( groups.following.map( &:filepath ) ).to eq( ['b.h'] )
+    end
+
+    # A tested Partial's header is dropped from another module's interface, and only its header
+    it "keeps an unpartialized header sharing a tested Partial's basename" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'motor', source_includes: [UserInclude.new( 'src/motor.h' )],
+        header_includes: [UserInclude.new( 'src/config.h' ), UserInclude.new( 'include/drivers/uart/config.h' )],
+        partials: { 'drivers/uart/config' => make_partial_config(tests_type: :public, header: 'include/drivers/uart/config.h') }
+      )
+
+      expect( groups.leading.map( &:filepath ) ).to eq( ['src/config.h'] )
+    end
+
     it "puts a header-only module's types header ahead of its declarations" do
       groups = @partializer.remap_interface_header_includes(
         name: 'module', source_includes: [], header_includes: [UserInclude.new( 'base.h' )], partials: {},
@@ -1712,6 +1736,49 @@ describe Partializer do
         )
 
         expect( groups.leading.map( &:filepath ) ).to eq( ['src/config.h'] )
+      end
+    end
+
+    # A module named without a directory has a basename no other module shares, so its own
+    # header is named by that basename however an #include spells the path
+    context "with this module's own header spelled another way" do
+      before do
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .with('module').and_return('ceedling_partial_module_impl.h')
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .with('shared/module').and_return('shared/ceedling_partial_module_impl.h')
+      end
+
+      it "takes an absolute #include of a header outside the project for its own header" do
+        header = '../shared/module.h'
+        result = @partializer.remap_implementation_source_includes(
+          name: 'module', includes: [UserInclude.new( ProjectPaths.absolute( header ) )],
+          partials: { 'module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_module_impl.h'] )
+      end
+
+      # A module named by directory is matched by path, so both sides are compared absolutely
+      it "takes an absolute #include of a directory-named module's header outside the project for its own" do
+        header = '../shared/module.h'
+        result = @partializer.remap_implementation_source_includes(
+          name: 'shared/module', includes: [UserInclude.new( ProjectPaths.absolute( header ) )],
+          partials: { 'shared/module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['shared/ceedling_partial_module_impl.h'] )
+      end
+
+      # Fallback preprocessing anchors a `..` #include to the file's own directory, which need
+      # not be where the compiler finds the header
+      it "takes a fallback-anchored #include for its own header" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'module', includes: [UserInclude.new( 'src/module.h', directory_relative: true )],
+          partials: { 'module' => make_partial_config(tests_type: :public, header: 'include/module.h') }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_module_impl.h'] )
       end
     end
 
