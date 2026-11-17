@@ -75,7 +75,7 @@ module PartialsGeneration
   # was selected to test.
   Result = Struct.new(
     :dir, :module_name, :mode,
-    :types_h, :impl_h, :impl_c, :interface_h,
+    :types_h, :impl_h, :impl_c, :interface_h, :extras_h,
     :pp_header, :pp_source, :carry,
     keyword_init: true
   ) do
@@ -88,6 +88,7 @@ module PartialsGeneration
       when :impl_h      then impl_h
       when :impl_c      then impl_c
       when :interface_h then interface_h
+      when :extras_h    then extras_h
       else raise ArgumentError, "unknown generated file '#{file}'"
       end
     end
@@ -229,6 +230,7 @@ module PartialsGenerationHelpers
       mocks_expose: PartializerConfig::DEDUCT,
       tests_subtract: [],
       mocks_add: [],
+      mocks_subtract: [],
       suppress_redundant_decls: true,
       extern_variables: :weak,
       dir: nil
@@ -264,7 +266,7 @@ module PartialsGenerationHelpers
     config = PartializerConfig::Config.new(
       module: module_name,
       tests: PartializerConfig::PartialFunctions.new( type: tests_expose, subtractions: tests_subtract ),
-      mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose, additions: mocks_add ),
+      mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose, additions: mocks_add, subtractions: mocks_subtract ),
       header: header_file,
       source: source_file
     )
@@ -362,6 +364,15 @@ module PartialsGenerationHelpers
       extern_variables: extern_variables
     )
 
+    # A mock-only Partial's interface keeps the rest of its real header in an extras header,
+    # planned as PartialsManager plans it
+    extras = nil
+    if implementation.nil? and !interface.nil?
+      extras = partializer.plan_interface_extras(
+        test: 'PartialsGenerationTest', c_module: c_module, interface: interface, header_guarded: !include_guard.nil?, config: config
+      )
+    end
+
     # The mockable interface header is what CMock mocks in place of the real module header,
     # and it carries the same types header the implementation header does. Both land in one
     # translation unit when a module is tested and mocked in the same test file.
@@ -372,7 +383,8 @@ module PartialsGenerationHelpers
       following_includes: interface_list.following,
       c_module: c_module,
       output_path: dir,
-      include_guard: include_guard
+      include_guard: include_guard,
+      extras: extras
     )
 
     PartialsGeneration::Result.new(
@@ -383,6 +395,7 @@ module PartialsGenerationHelpers
       impl_h: read_generated( dir, "ceedling_partial_#{module_name}_impl.h" ),
       impl_c: read_generated( dir, "ceedling_partial_#{module_name}_impl.c" ),
       interface_h: read_generated( dir, "ceedling_partial_#{module_name}_interface.h" ),
+      extras_h: read_generated( dir, "ceedling_partial_#{module_name}_extras.h" ),
       pp_header: File.read( header_file.assembled_filepath, encoding: 'UTF-8' ),
       pp_source: source_file.assembled_filepath && File.read( source_file.assembled_filepath, encoding: 'UTF-8' ),
       carry: carry

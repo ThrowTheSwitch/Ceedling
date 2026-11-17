@@ -1111,6 +1111,11 @@ describe FilePathUtils do
         .to eq('drivers/uart/ceedling_partial_config_types.h')
     end
 
+    it 'prefixes the basename and keeps the directory for an extras header' do
+      expect( @fpu.form_partial_extras_header_filename('drivers/uart/config') )
+        .to eq('drivers/uart/ceedling_partial_config_extras.h')
+    end
+
     it 'stacks both prefixes on the basename for a mock interface header' do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
 
@@ -1147,13 +1152,17 @@ describe FilePathUtils do
         .to eq('drivers/uart/config')
     end
 
-    # Three suffixes exist, one per generated file kind.
+    # One suffix exists per generated file kind.
     it 'strips an implementation suffix' do
       expect( @fpu.module_from_partial_filename('ceedling_partial_config_impl.h') ).to eq('config')
     end
 
     it 'strips an interface suffix' do
       expect( @fpu.module_from_partial_filename('ceedling_partial_config_interface.h') ).to eq('config')
+    end
+
+    it 'strips an extras suffix' do
+      expect( @fpu.module_from_partial_filename('ceedling_partial_config_extras.h') ).to eq('config')
     end
 
     it 'strips a types suffix' do

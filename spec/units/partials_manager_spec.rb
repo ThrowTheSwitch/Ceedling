@@ -84,6 +84,7 @@ describe PartialsManager do
       allow(@partializer).to receive(:remap_types_header_includes).and_return( Partials::IncludeGroups.new )
       allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
       allow(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+      allow(@partializer).to receive(:plan_interface_extras).and_return( Partials::InterfaceExtras.new )
       allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( true )
       allow(@configurator).to receive(:partials_extern_variables).and_return( :weak )
       allow(@generator).to receive(:generate_partial_types)
@@ -94,6 +95,7 @@ describe PartialsManager do
       allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'ceedling_partial_Foo_impl.c' )
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'ceedling_partial_Foo_impl.h' )
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename).and_return( 'ceedling_partial_Foo_interface.h' )
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).and_return( 'ceedling_partial_Foo_extras.h' )
 
       allow(@dependinator).to receive(:register)
       allow(@dependinator).to receive(:stale?).and_return( true )
@@ -201,6 +203,58 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
       expect(@partializer).not_to receive(:plan_carry)
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # A mock-only Partial's interface stands in for the real header, so it keeps the rest of it
+    it "plans what a mock-only Partial's interface keeps from the module, its selection and the guard" do
+      interface = [double("FunctionDeclaration")]
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( interface )
+
+      expect(@partializer).to receive(:plan_interface_extras).with(
+        test: 'a_test', c_module: @module_contents, interface: interface, header_guarded: true, config: @config
+      ).and_return( Partials::InterfaceExtras.new )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # The module's implementation carries what its own code uses
+    it "plans no extras for a module the test also tests" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@partializer).not_to receive(:plan_interface_extras)
+      expect(@generator).to receive(:generate_partial_interface).with( hash_including( extras: nil ) )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "hands the extras to interface generation, which vouches for the extras header" do
+      extras = Partials::InterfaceExtras.new( items: [double("CFunctionDefinition")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@partializer).to receive(:plan_interface_extras).and_return( extras )
+
+      expect(@generator).to receive(:generate_partial_interface).with( hash_including( extras: extras ) )
+
+      @manager.stage_generate_partials( @state )
+
+      expect(@dependinator).to have_received(:register).with(
+        'build/test/partials/a_test/ceedling_partial_Foo_interface.h',
+        hash_including( outputs: ['build/test/partials/a_test/ceedling_partial_Foo_extras.h'] )
+      )
+    end
+
+    # An extras header an earlier build left would sit beside an interface that no longer includes it
+    it "removes an extras header an earlier build left once the interface keeps nothing" do
+      extras = 'build/test/partials/a_test/ceedling_partial_Foo_extras.h'
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@file_wrapper).to receive(:exist?).with( extras ).and_return( true )
+
+      expect(@file_wrapper).to receive(:rm_f).with( extras )
 
       @manager.stage_generate_partials( @state )
     end

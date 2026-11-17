@@ -213,6 +213,81 @@ PARTIALS_CARRY_VALVE_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
   }
 C
 
+# A header-only module whose functions its user's port defines, as #1417's project does. The
+# helper stays real, and the port's function is mocked.
+PARTIALS_CARRY_SENSOR_INTERFACE_HEADER = <<~C
+  #ifndef SENSOR_INTERFACE_H
+  #define SENSOR_INTERFACE_H
+  #define SENSOR_SCALE 2
+  typedef struct { int raw; } sensor_reading_t;
+  static const int sensor_table[] = { 1, 2 };
+  static inline int sensor_twice(int x) { return SENSOR_SCALE * x; }
+  static sensor_reading_t sensor_inf_read(void);
+  #endif
+C
+
+PARTIALS_CARRY_SENSOR_MANAGER_SOURCE = <<~C
+  #include "sensor_manager.h"
+  #include "sensor_interface.h"
+  #include SENSOR_INCLUDE_PORT
+  int sensor_get(void)
+  {
+      sensor_reading_t reading = sensor_inf_read();
+      return sensor_twice(reading.raw) * sensor_table[1];
+  }
+C
+
+PARTIALS_CARRY_SENSOR_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
+  #include TEST_PARTIAL_PUBLIC_MODULE(sensor_manager)
+  #include MOCK_PARTIAL_PRIVATE_MODULE(sensor_interface)
+  MOCK_PARTIAL_CONFIG(sensor_interface, -sensor_twice)
+  void setUp(void) {}
+  void tearDown(void) {}
+  void test_get_scales_the_reading(void)
+  {
+      sensor_reading_t reading = { 21 };
+      sensor_inf_read_ExpectAndReturn(reading);
+      TEST_ASSERT_EQUAL_INT(84, sensor_get());
+  }
+C
+
+# A mocked module's private helper, which the public mock leaves to its user
+PARTIALS_CARRY_PINS_HEADER = <<~C
+  #ifndef PINS_H
+  #define PINS_H
+  #include <stdint.h>
+  static inline uint32_t pins_mask(uint32_t pin) { return 1u << pin; }
+  void pins_write(uint32_t mask);
+  #endif
+C
+
+PARTIALS_CARRY_LED_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
+  #include TEST_PARTIAL_PUBLIC_MODULE(led)
+  #include MOCK_PARTIAL_PUBLIC_MODULE(pins)
+  void setUp(void) {}
+  void tearDown(void) {}
+  void test_on_writes_the_pin_mask(void)
+  {
+      pins_write_Expect(8);
+      led_on();
+  }
+C
+
+# A mocked module whose header has no include guard
+PARTIALS_CARRY_ONCE_PORT_HEADER = <<~C
+  #pragma once
+  static inline int oport_twice(int x) { return 2 * x; }
+  int oport_read(void);
+C
+
+PARTIALS_CARRY_ONCE_PORT_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
+  #include TEST_PARTIAL_PUBLIC_MODULE(oengine)
+  #include MOCK_PARTIAL_PUBLIC_MODULE(oport)
+  void setUp(void) {}
+  void tearDown(void) {}
+  void test_get_reads_the_port(void) { oport_read_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, oengine_get()); }
+C
+
 ceedling_system_tests do
   include_context "a fresh ceedling gem project", "partials_carry"
 
@@ -303,6 +378,50 @@ ceedling_system_tests do
       File.write( 'test/test_valve.c', PARTIALS_CARRY_VALVE_TEST )
 
       build_passing( 1 )
+    end
+  end
+
+  # A mock-only Partial's interface stands in for its real header, so the rest of that header
+  # comes along. CMock reads only the interface, so it mocks exactly what the test selected.
+  it "mocks a header-only module's port function and keeps its helper, table and types" do
+    in_project do
+      @c.merge_project_yml_for_test( { :defines => { :test => ['SENSOR_INCLUDE_PORT=<sensor_port_mocked.inc>'] } } )
+      FileUtils.mkdir_p( 'test/support' )
+      File.write( 'test/support/sensor_port_mocked.inc', '' )
+      File.write( 'src/sensor_interface.h', PARTIALS_CARRY_SENSOR_INTERFACE_HEADER )
+      File.write( 'src/sensor_manager.h', "#ifndef SENSOR_MANAGER_H\n#define SENSOR_MANAGER_H\nint sensor_get(void);\n#endif\n" )
+      File.write( 'src/sensor_manager.c', PARTIALS_CARRY_SENSOR_MANAGER_SOURCE )
+      File.write( 'test/test_sensor_manager.c', PARTIALS_CARRY_SENSOR_TEST )
+      @c.merge_project_yml_for_test( { :paths => { :support => ['test/support'] } } )
+
+      build_passing( 1 )
+
+      mock = File.read( Dir.glob( 'build/test/mocks/**/mock_ceedling_partial_sensor_interface_interface.h' ).first )
+      expect( mock ).to include( 'sensor_inf_read_ExpectAndReturn' )
+      expect( mock ).not_to include( 'sensor_twice' )
+    end
+  end
+
+  it "keeps a mocked module's private helper for the module that uses it" do
+    in_project do
+      File.write( 'src/pins.h', PARTIALS_CARRY_PINS_HEADER )
+      File.write( 'src/led.h', "#ifndef LED_H\n#define LED_H\nvoid led_on(void);\n#endif\n" )
+      File.write( 'src/led.c', "#include \"led.h\"\n#include \"pins.h\"\nvoid led_on(void) { pins_write(pins_mask(3)); }\n" )
+      File.write( 'test/test_led.c', PARTIALS_CARRY_LED_TEST )
+
+      build_passing( 1 )
+    end
+  end
+
+  it "leaves a mocked unguarded header's helpers behind with a notice, and still builds" do
+    in_project do
+      File.write( 'src/oport.h', PARTIALS_CARRY_ONCE_PORT_HEADER )
+      File.write( 'src/oengine.h', "#ifndef OENGINE_H\n#define OENGINE_H\nint oengine_get(void);\n#endif\n" )
+      File.write( 'src/oengine.c', "#include \"oengine.h\"\n#include \"oport.h\"\nint oengine_get(void) { return oport_read() + 1; }\n" )
+      File.write( 'test/test_oengine.c', PARTIALS_CARRY_ONCE_PORT_TEST )
+
+      output = build_passing( 1 )
+      expect( output ).to include( 'Its mock leaves helper `oport_twice()` from src/oport.h behind.' )
     end
   end
 

@@ -970,6 +970,92 @@ describe Partializer do
   end
 
   ###
+  ### plan_interface_extras()
+  ###
+
+  context "#plan_interface_extras" do
+    before(:each) do
+      @config = OpenStruct.new( module: 'sensor', fallback?: false, header: OpenStruct.new( filepath: 'src/sensor.h' ) )
+    end
+
+    def plan_with(extras)
+      allow(@partializer_helper).to receive(:plan_interface_extras)
+        .with( c_module: :module, interface: :interface, fallback: false, header_guarded: true ).and_return( extras )
+
+      return @partializer.plan_interface_extras(
+        test: 'test_sensor', c_module: :module, interface: :interface, header_guarded: true, config: @config
+      )
+    end
+
+    it "lists what the mock keeps at DEBUG" do
+      extras = Partials::InterfaceExtras.new( items: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'table', decorators: ['static'] ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'count', decorators: ['extern'] ),
+        CExtractorTypes::CFunctionDeclaration.new( name: 'init' )
+      ] )
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`twice()` (helper)', '`table` (static variable)', '`count` (extern declaration)', '`init()` (prototype)'],
+        'Kept in the mock of Partial test_sensor::sensor:', Verbosity::DEBUG
+      )
+
+      expect( plan_with( extras ) ).to equal( extras )
+    end
+
+    it "explains what an unguarded header's mock leaves behind" do
+      extras = Partials::InterfaceExtras.new( withheld: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'table', decorators: ['static'] )
+      ] )
+
+      expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_sensor::sensor ⏩️ Its mock leaves helper `twice()` and variable `table` from src/sensor.h behind.
+        src/sensor.h has no include guard. Without a guard the mock can't stand in for the header everywhere
+        it's included, and a copy could collide with the real one. Code that uses these compiles only where
+        another #include brings in the real header.
+
+        Give src/sensor.h an include guard so the mock keeps them.
+
+        See the docs on Partials conventions.
+      NOTICE
+
+      plan_with( extras )
+    end
+
+    it "names one item it leaves behind in the singular" do
+      extras = Partials::InterfaceExtras.new( withheld: [CExtractorTypes::CFunctionDefinition.new( name: 'twice' )] )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'Its mock leaves helper `twice()` from src/sensor.h behind.' )
+        expect( notice ).to include( 'Code that uses it compiles' )
+        expect( notice ).to include( 'so the mock keeps it.' )
+      end
+
+      plan_with( extras )
+    end
+
+    it "names several helpers and variables in the plural" do
+      extras = Partials::InterfaceExtras.new( withheld: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ), CExtractorTypes::CFunctionDefinition.new( name: 'half' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'a' ), CExtractorTypes::CVariableDeclaration.new( name: 'b' )
+      ] )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'Its mock leaves helpers `twice()`, `half()` and variables `a`, `b` from src/sensor.h behind.' )
+      end
+
+      plan_with( extras )
+    end
+
+    it "says nothing when the mock withholds nothing" do
+      expect(@loginator).not_to receive(:log)
+
+      plan_with( Partials::InterfaceExtras.new )
+    end
+  end
+
+  ###
   ### remap_implementation_header_includes()
   ###
 
