@@ -1645,12 +1645,73 @@ describe Partializer do
         )
       end
 
+      it "replaces the mocked module's header in place when it comes first" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'drivers/uart/config', partials: @partials,
+          includes: [UserInclude.new('src/drivers/spi/config.h'), UserInclude.new('src/drivers/uart/config.h'), UserInclude.new('last.h')]
+        )
+
+        expect( result.map( &:filepath ) ).to eq(
+          ['drivers/spi/ceedling_partial_config_interface.h', 'drivers/uart/ceedling_partial_config_impl.h', 'last.h']
+        )
+      end
+
+      # A case-insensitive filesystem reaches the module's header by any case of its path
+      it "takes a case variant of this module's own header path for its header" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'drivers/uart/config', partials: @partials, includes: [UserInclude.new('src/drivers/uart/Config.h')]
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['drivers/uart/ceedling_partial_config_impl.h'] )
+      end
+
       it "never takes this module's own header for the mocked module's" do
         result = @partializer.remap_implementation_source_includes(
           name: 'drivers/uart/config', partials: @partials, includes: [UserInclude.new('src/drivers/uart/config.h')]
         )
 
         expect( result.map( &:filepath ) ).to eq( ['drivers/uart/ceedling_partial_config_impl.h'] )
+      end
+    end
+
+    # A module named by directory claims only its own header, even with no other Partial
+    # sharing its basename
+    context "with an unpartialized header sharing a Partial's basename" do
+      before do
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .with('motor').and_return('ceedling_partial_motor_impl.h')
+        allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+          .with('drivers/uart/config').and_return('drivers/uart/ceedling_partial_config_interface.h')
+      end
+
+      it "keeps that header where a mocked Partial would take it" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'motor', includes: [UserInclude.new('src/motor.h'), UserInclude.new('src/config.h')],
+          partials: { 'drivers/uart/config' => make_partial_config(mocks_type: :public, header: 'include/drivers/uart/config.h') }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_motor_impl.h', 'src/config.h'] )
+      end
+
+      it "places a mocked Partial's interface header at its own header, not at that header" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'motor',
+          includes: [UserInclude.new('src/config.h'), UserInclude.new('include/drivers/uart/config.h'), UserInclude.new('src/motor.h')],
+          partials: { 'drivers/uart/config' => make_partial_config(mocks_type: :public, header: 'include/drivers/uart/config.h') }
+        )
+
+        expect( result.map( &:filepath ) ).to eq(
+          ['src/config.h', 'drivers/uart/ceedling_partial_config_interface.h', 'ceedling_partial_motor_impl.h']
+        )
+      end
+
+      it "keeps that header where a tested Partial's header would be dropped" do
+        groups = @partializer.remap_types_header_includes(
+          name: 'motor', source_includes: [UserInclude.new('src/motor.h')], header_includes: [UserInclude.new('src/config.h')],
+          partials: { 'drivers/uart/config' => make_partial_config(tests_type: :public, header: 'include/drivers/uart/config.h') }
+        )
+
+        expect( groups.leading.map( &:filepath ) ).to eq( ['src/config.h'] )
       end
     end
 
