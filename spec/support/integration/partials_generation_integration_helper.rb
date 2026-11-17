@@ -210,6 +210,7 @@ module PartialsGenerationHelpers
   #
   # `header_includes` and `source_includes` are include spellings; `<name>` marks a system
   # header and anything else a user header, matching what reconciliation hands the assembler.
+  # `source: nil` makes a header-only module, which has no source to write or preprocess.
   # `extra` writes additional headers into the working directory, where the preprocessor and
   # the later compile resolve them. `partials` defaults to empty: this module is partialized,
   # which the remap methods handle from `name:` alone. The hash names *other* partialized
@@ -238,16 +239,22 @@ module PartialsGenerationHelpers
 
     # Byte for byte, so a module's line endings are the same on every platform
     File.binwrite( File.join( dir, "#{module_name}.h" ), header )
-    File.binwrite( File.join( dir, "#{module_name}.c" ), source )
+    File.binwrite( File.join( dir, "#{module_name}.c" ), source ) unless source.nil?
     extra.each { |name, text| File.binwrite( File.join( dir, name ), text ) }
 
     # Each file is preprocessed as stages 6 and 7 preprocess it, into the record they fill in
     header_file = preprocess_partial_file(
       dir: dir, filename: "#{module_name}.h", kind: :header, includes: header_includes, defines: defines, mode: mode
     )
-    source_file = preprocess_partial_file(
-      dir: dir, filename: "#{module_name}.c", kind: :source, includes: source_includes, defines: defines, mode: mode
-    )
+    # A header-only module's source keeps the empty record PartialsManager leaves it
+    source_file =
+      if source.nil?
+        Partials::ConfigFileInfo.new
+      else
+        preprocess_partial_file(
+          dir: dir, filename: "#{module_name}.c", kind: :source, includes: source_includes, defines: defines, mode: mode
+        )
+      end
 
     # DEDUCT with no subtractions is what TEST_PARTIAL_ALL_MODULE resolves to -- every function
     # exposed. The two sides are separate because a module is routinely tested at one visibility
@@ -377,7 +384,7 @@ module PartialsGenerationHelpers
       impl_c: read_generated( dir, "ceedling_partial_#{module_name}_impl.c" ),
       interface_h: read_generated( dir, "ceedling_partial_#{module_name}_interface.h" ),
       pp_header: File.read( header_file.assembled_filepath, encoding: 'UTF-8' ),
-      pp_source: File.read( source_file.assembled_filepath, encoding: 'UTF-8' ),
+      pp_source: source_file.assembled_filepath && File.read( source_file.assembled_filepath, encoding: 'UTF-8' ),
       carry: carry
     )
   end
@@ -508,6 +515,15 @@ module PartialsGenerationHelpers
       #include "ceedling_partial_#{result.module_name}_interface.h"
       int main(void) { return 0; }
     C
+
+    syntax_only( result, probe )
+  end
+
+  # Compiles a translation unit that includes the generated interface header, the way the mock
+  # CMock generates from it includes it
+  def compile_interface(result)
+    probe = File.join( result.dir, "probe_#{result.module_name}_interface.c" )
+    File.write( probe, "#include \"ceedling_partial_#{result.module_name}_interface.h\"\nint main(void) { return 0; }\n" )
 
     syntax_only( result, probe )
   end

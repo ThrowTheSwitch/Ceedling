@@ -1256,19 +1256,27 @@ describe Partializer do
       ])
     end
 
-    it "appends the shared types header when the module's own header wasn't in the includes list to begin with" do
-      includes = [UserInclude.new('header1.h')]
-      result = @partializer.remap_implementation_header_includes(
+    # A source that never includes its own header leaves the header's place after its last
+    # include. The types header stands there, ahead of the declarations that use its types.
+    it "puts the types header after the source's includes when the source never includes the module's header" do
+      groups = @partializer.remap_implementation_header_includes(
         name: 'module',
-        source_includes: includes,
-        partials: {},
-        types_header: 'ceedling_partial_module_types.h'
-      ).to_a
+        source_includes: [UserInclude.new( 'a.h' ), UserInclude.new( 'b.h' )],
+        header_includes: [UserInclude.new( 'c.h' )], partials: {}, types_header: 'module_types.h'
+      )
 
-      expect(result).to eq([
-        UserInclude.new('header1.h'),
-        UserInclude.new('ceedling_partial_module_types.h')
-      ])
+      expect( groups.leading.map( &:filename ) ).to eq( ['a.h', 'b.h', 'module_types.h', 'c.h'] )
+      expect( groups.following ).to eq( [] )
+    end
+
+    it "puts a header-only module's types header ahead of its declarations" do
+      groups = @partializer.remap_implementation_header_includes(
+        name: 'module', source_includes: [], header_includes: [UserInclude.new( 'base.h' )], partials: {},
+        types_header: 'module_types.h'
+      )
+
+      expect( groups.leading.map( &:filename ) ).to eq( ['module_types.h', 'base.h'] )
+      expect( groups.following ).to eq( [] )
     end
   end
 
@@ -1287,6 +1295,27 @@ describe Partializer do
 
       expect( groups.leading.map( &:filename ) ).to eq( ['config.h', 'module_types.h', 'base.h'] )
       expect( groups.following.map( &:filename ) ).to eq( ['log.h'] )
+    end
+
+    it "puts a header-only module's types header ahead of its declarations" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'module', source_includes: [], header_includes: [UserInclude.new( 'base.h' )], partials: {},
+        types_header: 'module_types.h'
+      )
+
+      expect( groups.leading.map( &:filename ) ).to eq( ['module_types.h', 'base.h'] )
+      expect( groups.following ).to eq( [] )
+    end
+
+    it "puts the types header after the source's includes when the source never includes the module's header" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'module',
+        source_includes: [UserInclude.new( 'a.h' ), UserInclude.new( 'b.h' )],
+        header_includes: [UserInclude.new( 'c.h' )], partials: {}, types_header: 'module_types.h'
+      )
+
+      expect( groups.leading.map( &:filename ) ).to eq( ['a.h', 'b.h', 'module_types.h', 'c.h'] )
+      expect( groups.following ).to eq( [] )
     end
 
     it "returns empty array when input is empty and no partials" do

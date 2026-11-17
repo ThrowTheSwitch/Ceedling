@@ -141,6 +141,34 @@ PARTIALS_CARRY_ONCE_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
   void test_get(void) { TEST_ASSERT_EQUAL_INT(9, once_get(42)); }
 C
 
+# A header-only module whose prototype uses the header's own type, and the module that calls it
+PARTIALS_CARRY_GPIO_HEADER = <<~C
+  #ifndef GPIO_H
+  #define GPIO_H
+  #include <stdint.h>
+  typedef enum { GPIO_IN, GPIO_OUT } gpio_dir_t;
+  void gpio_set(uint32_t pin, gpio_dir_t dir);
+  #endif
+C
+
+PARTIALS_CARRY_BLINK_SOURCE = <<~C
+  #include "blink.h"
+  #include "gpio.h"
+  int blink_on(void) { gpio_set(13, GPIO_OUT); return 1; }
+C
+
+PARTIALS_CARRY_BLINK_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
+  #include TEST_PARTIAL_PUBLIC_MODULE(blink)
+  #include MOCK_PARTIAL_PUBLIC_MODULE(gpio)
+  void setUp(void) {}
+  void tearDown(void) {}
+  void test_on_sets_the_pin_out(void)
+  {
+      gpio_set_Expect(13, GPIO_OUT);
+      TEST_ASSERT_EQUAL_INT(1, blink_on());
+  }
+C
+
 ceedling_system_tests do
   include_context "a fresh ceedling gem project", "partials_carry"
 
@@ -195,6 +223,20 @@ ceedling_system_tests do
       expect( impl ).to include( 'int board_tick(void);' )
       expect( impl ).not_to include( 'int board_count;' )
       expect( impl ).not_to include( '#pragma GCC diagnostic' )
+    end
+  end
+
+  [false, true].each do |fallback|
+    it "mocks a header-only module whose prototype uses its own type#{' under fallback preprocessing' if fallback}" do
+      in_project do
+        @c.merge_project_yml_for_test( { :test_build => { :preprocess_force_fallback => fallback } } )
+        File.write( 'src/gpio.h', PARTIALS_CARRY_GPIO_HEADER )
+        File.write( 'src/blink.h', "#ifndef BLINK_H\n#define BLINK_H\nint blink_on(void);\n#endif\n" )
+        File.write( 'src/blink.c', PARTIALS_CARRY_BLINK_SOURCE )
+        File.write( 'test/test_blink.c', PARTIALS_CARRY_BLINK_TEST )
+
+        build_passing( 1 )
+      end
     end
   end
 

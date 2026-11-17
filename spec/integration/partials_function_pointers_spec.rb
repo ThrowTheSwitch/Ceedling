@@ -41,12 +41,8 @@ describe 'Function pointers in a Partial' do
     expect( link.ok ).to be(true), "expected a clean link, got: #{link.first_error}"
   end
 
-  # The mocked interface compiles the way the mock CMock generates from it includes it
   def expect_interface_compile(result)
-    probe = File.join( result.dir, "probe_#{result.module_name}_interface.c" )
-    File.write( probe, "#include \"ceedling_partial_#{result.module_name}_interface.h\"\nint main(void) { return 0; }\n" )
-
-    compile = syntax_only( result, probe )
+    compile = compile_interface( result )
     expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
   end
 
