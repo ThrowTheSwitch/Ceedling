@@ -14,6 +14,7 @@ require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
+require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/path_mirror'
 require 'ceedling/encodinator'
 
@@ -22,6 +23,10 @@ class Partializer
   # Holds the place between a generated header's include groups while a list is remapped.
   # Matched by identity, and named so no real include or module can match it.
   INCLUDE_BOUNDARY = UserInclude.new( '<ceedling include group boundary>' ) unless const_defined?(:INCLUDE_BOUNDARY, false)
+
+  # Holds the place of a module's own header in a list from a source that never includes it.
+  # Matched by identity, so it names no module. Whatever replaces the header takes its place.
+  OWN_HEADER_PLACE = UserInclude.new( '<ceedling own header place>' ) unless const_defined?(:OWN_HEADER_PLACE, false)
 
   # A typedef of a struct or union, whose type a variable may hold before it is complete
   AGGREGATE_TYPEDEF = /\Atypedef\s+(?:struct|union)(?![\w$])/ unless const_defined?(:AGGREGATE_TYPEDEF, false)
@@ -249,7 +254,7 @@ class Partializer
   def remap_implementation_source_includes(name:, includes:, partials:, test: nil)
     _remap_includes(
       name:        name,
-      includes:    includes,
+      includes:    _own_header_index( name, includes, partials ) ? includes : includes + [OWN_HEADER_PLACE],
       partials:    partials,
       replacement: @file_path_utils.form_partial_implementation_header_filename(name),
       others:      :mock_or_keep,
@@ -732,15 +737,15 @@ class Partializer
   # up the following group (see Partials::IncludeGroups).
   #
   # A source that never includes its own header, or a header-only module's absent source, is
-  # read as including it last. A stand-in holds that place, so whatever replaces the module's
-  # header lands there, in the leading group, ahead of the declarations. The following group
-  # is then empty.
+  # read as including it last. OWN_HEADER_PLACE holds that place, so whatever replaces the
+  # module's header lands there, in the leading group, ahead of the declarations. The following
+  # group is then empty.
   #
   # The whole list is remapped at once, so deduplication, redirects, and sorting see every
   # include. An include in both groups keeps its earlier place. A marker holds the boundary.
   def _remap_include_groups(name:, source:, header:, **remap)
-    index     = _own_header_index( name, source )
-    leading   = index.nil? ? source + [UserInclude.new( "#{module_basename( name )}.h" )] : source[0..index]
+    index     = _own_header_index( name, source, remap[:partials] )
+    leading   = index.nil? ? source + [OWN_HEADER_PLACE] : source[0..index]
     following = index.nil? ? [] : source[(index + 1)..]
     remapped  = _remap_includes( name: name, includes: leading + header + [INCLUDE_BOUNDARY] + following, **remap )
 
@@ -748,8 +753,8 @@ class Partializer
   end
 
   # Where the source includes the module's own header, or nil when it never does
-  def _own_header_index(name, source)
-    return source.index { |include| include.filename.ext().downcase() == module_basename( name ) }
+  def _own_header_index(name, source, partials)
+    return source.index { |include| _names_module?( include, name, partials ) }
   end
 
   # One body behind all four public remaps. Each differs only in what replaces this module's
@@ -764,7 +769,7 @@ class Partializer
     _includes = includes.clone()
 
     # A nil replacement strips this module's own header and substitutes nothing.
-    _includes = splice_in_replacement( includes: _includes, name: name, replacement: replacement )
+    _includes = splice_in_replacement( includes: _includes, name: name, replacement: replacement, partials: partials )
 
     _includes =
       case others
@@ -826,27 +831,33 @@ class Partializer
 
     partials.each do |_module, config|
       next if skip_self && _module == name
-      next unless original.any? { |include| include.filename.ext().downcase() == _module.downcase() }
+      next unless _named_in?( original, _module, name, partials )
 
       if config.mocks.type.nil?
         retired << _module if drop_unmocked
       else
-        _place_interface_header( includes, _module, (_module == name) ? replacement : nil )
+        _place_interface_header( includes, _module, (_module == name) ? replacement : nil, partials )
         retired << _module
       end
     end
 
-    remove_matching_includes( includes: includes, modules: retired )
+    remove_matching_includes( includes: includes, modules: retired, partials: partials )
+  end
+
+  # Whether a list names a partialized module. The module being generated is named by the
+  # place a source that never includes its own header holds for it, too.
+  def _named_in?(includes, _module, name, partials)
+    return includes.any? { |include| (_module == name) ? _own_header?( include, name, partials ) : _names_module?( include, _module, partials ) }
   end
 
   # An interface header declares what its module's real header declared, which the includes
   # after it may rely on. So it takes that header's place. The module being generated has
   # already had its header replaced, so its interface header follows the replacement. With
   # neither in the list, it goes last.
-  def _place_interface_header(includes, _module, replacement)
+  def _place_interface_header(includes, _module, replacement, partials)
     interface = UserInclude.new( @file_path_utils.form_partial_interface_header_filename(_module) )
 
-    index = includes.index { |include| include.filename.ext().downcase() == module_basename( _module ) }
+    index = includes.index { |include| _names_module?( include, _module, partials ) }
     return includes[index] = interface if index
 
     index = replacement && includes.index { |include| include.filename == File.basename( replacement ) }
@@ -872,38 +883,49 @@ class Partializer
   # depends on that came before it in the source's own working include order (e.g. a
   # shared Types.h), while still landing ahead of anything transitively re-reaching the
   # real header afterward.
-  def splice_in_replacement(includes:, name:, replacement:)
-    return remove_matching_includes(includes: includes, modules: [name]) unless replacement
+  def splice_in_replacement(includes:, name:, replacement:, partials: {})
+    spliced = includes.dup
+    index   = spliced.index { |include| _own_header?( include, name, partials ) }
 
-    replaced = false
-    spliced = includes.map do |include|
-      if !replaced && module_basename( name ) == include.filename.ext().downcase()
-        replaced = true
-        UserInclude.new(replacement)
-      else
-        include
-      end
+    # Every remap holds a place for the module's own header (see OWN_HEADER_PLACE). A list
+    # without one has no position to preserve, so the replacement goes last.
+    if replacement
+      index ? (spliced[index] = UserInclude.new( replacement )) : (spliced << UserInclude.new( replacement ))
     end
-    # A flat list without the module's own header has no position to preserve, so the
-    # replacement goes last. A grouped list always holds one (see _remap_include_groups).
-    spliced << UserInclude.new(replacement) unless replaced
 
     # A duplicate/case-variant entry beyond the first match (e.g. both 'module.h' and
-    # 'MODULE.H' present) has no meaningful position of its own to preserve -- drop it
-    # like remove_matching_includes always has.
-    spliced = remove_matching_includes(includes: spliced, modules: [name])
-    spliced
+    # 'MODULE.H' present) has no meaningful position of its own to preserve -- drop it too.
+    return spliced.reject { |include| _own_header?( include, name, partials ) }
   end
 
-  # Remove includes that match the given module names (case-insensitive)
-  # Returns a new array with matching includes removed
-  def remove_matching_includes(includes:, modules:)
-    normalized_modules = modules.map { |_module| module_basename( _module ) }
+  # The module's own header, or the place a source that never includes it holds for it
+  def _own_header?(include, name, partials)
+    return (include.equal?( OWN_HEADER_PLACE ) or _names_module?( include, name, partials ))
+  end
 
-    # Filter out includes (minus extension) that match any module name
+  # Remove includes that name any of the given modules (see _names_module?)
+  # Returns a new array with matching includes removed
+  def remove_matching_includes(includes:, modules:, partials: {})
     return includes.reject do |include|
-      normalized_modules.include?(include.filename.ext().downcase())
+      modules.any? { |_module| _names_module?( include, _module, partials ) }
     end
+  end
+
+  # Whether `include` names partialized module `_module`: its filename, less extension and in
+  # any case, is the module's basename. A module named by directory shares that basename with
+  # any same-named module, so when another Partial in `partials` shares it, the include's path
+  # also has to end the way the module's header path does. A module whose header path is
+  # unknown is named by basename alone.
+  def _names_module?(include, _module, partials)
+    return false unless include.filename.ext().downcase() == module_basename( _module )
+    return true unless _shares_basename?( _module, partials )
+
+    header = partials.dig( _module )&.header&.filepath
+    return (header.nil? or PathMatcher.correspond?( include.filepath, header ))
+  end
+
+  def _shares_basename?(_module, partials)
+    return partials.keys.any? { |other| other != _module and module_basename( other ) == module_basename( _module ) }
   end
 
   # A module name reduced to what an #include actually carries. An #include names a
