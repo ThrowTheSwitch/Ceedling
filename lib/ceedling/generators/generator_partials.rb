@@ -57,21 +57,29 @@ class GeneratorPartials
   def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, following_includes: [], include_guard: nil,
                          extras: nil)
     header    = @file_path_utils.form_partial_interface_header_filename(name)
-    extras_h  = generate_extras( name: name, extras: extras, c_module: c_module, output_path: output_path )
+    flag      = (include_guard and extras and !extras.empty?) ? _extras_flag( name ) : nil
+    extras_h  = generate_extras( name: name, extras: extras, c_module: c_module, output_path: output_path, flag: flag )
     following = extras_h ? [UserInclude.new( extras_h )] + following_includes : following_includes
 
     return _write( File.join(output_path, header) ) do |file|
       generate_header(file, header, includes, function_declarations, c_module,
-                      include_variables: false, include_guard: include_guard, following_includes: following)
+                      include_variables: false, include_guard: include_guard, following_includes: following, extras_flag: flag)
     end
+  end
+
+  # Defined by an interface that spoofs its real header's guard, where the real header hasn't
+  # arrived yet, so the extras hold what it would have supplied there and nowhere else
+  def _extras_flag(name)
+    return "#{FileWrapper.generate_include_guard( @file_path_utils.form_partial_extras_header_filename( name ) )}_WANTED"
   end
 
   # What a mock-only Partial keeps of its real header beyond the mocked functions (see
   # PartializerHelper#plan_interface_extras), in the module's order. CMock parses only the
   # interface header, so nothing here can read to it as a function to mock. A helper keeps its
-  # #line attribution to the real header, as carried helpers do. Returns the filename, or nil
-  # when nothing is kept, in which case nothing is written.
-  def generate_extras(name:, extras:, c_module:, output_path:)
+  # #line attribution to the real header, as carried helpers do. With `flag`, the items stand
+  # under it (see _extras_flag). Returns the filename, or nil when nothing is kept, in which case
+  # nothing is written.
+  def generate_extras(name:, extras:, c_module:, output_path:, flag: nil)
     return nil if extras.nil? or extras.empty?
 
     header   = @file_path_utils.form_partial_extras_header_filename( name )
@@ -79,18 +87,20 @@ class GeneratorPartials
     context  = _header_context( nil, header, [], _variables( c_module ) )
 
     _write( filepath ) do |file|
-      _write_extras( PartialSourceWriter.new( io: file, filepath: filepath, suppress_redundant_decls: false ), header, extras, context )
+      _write_extras( PartialSourceWriter.new( io: file, filepath: filepath, suppress_redundant_decls: false ), header, extras, context, flag )
     end
 
     return header
   end
 
-  def _write_extras(writer, header, extras, context)
+  def _write_extras(writer, header, extras, context, flag)
     guard = FileWrapper.generate_include_guard( header )
 
     writer.preamble( [] )
     writer.text( "#ifndef #{guard}\n#define #{guard}\n\n" )
+    writer.text( "#ifdef #{flag}\n" ) if flag
     extras.items.each { |item| _write_extras_item( writer, item, context ) }
+    writer.text( "#endif\n" ) if flag
     writer.text( "#endif // #{guard}\n" )
   end
 
@@ -247,11 +257,13 @@ class GeneratorPartials
   #   reach at that header finds it already satisfied. nil when the header has no guard.
   # @param following_includes [Array] The source's includes after the module header, written where
   #   the header's items end (see PartialHeaderWriter#following_includes)
-  def generate_header(io, name, includes, function_list, c_module, include_variables:, include_guard: nil, following_includes: [])
+  # @param extras_flag [String, nil] An interface's flag for its extras header (see _extras_flag)
+  def generate_header(io, name, includes, function_list, c_module, include_variables:, include_guard: nil, following_includes: [],
+                      extras_flag: nil)
     context   = _header_context( io, name, function_list, include_variables ? _variables( c_module ) : nil )
     following = following_includes.dup
 
-    context.writer.preamble( include_guard, includes )
+    context.writer.preamble( include_guard, includes, flag: extras_flag )
     c_module.element_sequence.each do |item|
       context.writer.following_includes( following ) if item.origin == :source
       _write_header_item( item, context )
@@ -289,9 +301,19 @@ class GeneratorPartials
     when CExtractorTypes::CFunctionDefinition  then writer.function( item )
     when CExtractorTypes::CFunctionDeclaration then writer.prototype( item )
     when CExtractorTypes::CVariableDeclaration
-      text = item.extern? ? _header_extern( item, context ) : "static #{_definition( item )}"
+      text = item.extern? ? _own_extern( item, context ) : "static #{_definition( item )}"
       writer.text( "#{text}\n" ) if text
     end
+  end
+
+  # An extern as the header declares it. The source may size or type the variable with what the
+  # extras never see. An asm label from any of the variable's declarations comes along.
+  def _own_extern(item, context)
+    name = item.name
+    return nil unless name and context.emitted.add?( name )
+
+    declared = [item.declarator || "#{name}#{item.array_suffix}", item.asm_label || context.variables.labels[name]].compact
+    return "extern #{qualifier_prefix( item )}#{_declared_type( item )} #{declared.join( ' ' )};"
   end
 
   # An interface header writes no variables, so its context holds none

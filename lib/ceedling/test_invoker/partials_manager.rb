@@ -186,7 +186,8 @@ class PartialsManager
       end
 
       unless interface.nil?
-        extras        = implementation.nil? ? plan_extras( name, config, module_contents, interface, module_include_guard ) : nil
+        extras = implementation.nil? ? plan_extras( name, config, module_contents, interface, module_include_guard ) : nil
+        explain_tested_mock( testable, config, module_contents, interface, module_include_guard ) unless implementation.nil?
         extras_target = (extras.nil? or extras.empty?) ? nil : paths[:extras]
         discard_leftover_extras( paths[:extras] ) if extras_target.nil?
 
@@ -309,6 +310,13 @@ class PartialsManager
   def plan_extras(name, config, module_contents, interface, include_guard)
     return @partializer.plan_interface_extras(
       test: name, c_module: module_contents, interface: interface, header_guarded: !include_guard.nil?, config: config
+    )
+  end
+
+  def explain_tested_mock(testable, config, module_contents, interface, include_guard)
+    @partializer.explain_tested_mock(
+      test: testable.name, c_module: module_contents, interface: interface, header_guarded: !include_guard.nil?, config: config,
+      partials: testable.partials.configs
     )
   end
 

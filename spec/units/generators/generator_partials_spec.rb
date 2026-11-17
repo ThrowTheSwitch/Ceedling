@@ -318,7 +318,7 @@ describe GeneratorPartials do
         includes,
         decls,
         c_module,
-        { include_variables: false, include_guard: nil, following_includes: [] }
+        { include_variables: false, include_guard: nil, following_includes: [], extras_flag: nil }
       )
 
       # Verify file path utilities were called
@@ -450,7 +450,7 @@ describe GeneratorPartials do
 
       expect(@generator).to have_received(:generate_header).with(
         interface, 'sensor_interface.h', [], [], c_module,
-        { include_variables: false, include_guard: nil, following_includes: [UserInclude.new('sensor_extras.h'), UserInclude.new('later.h')] }
+        { include_variables: false, include_guard: nil, following_includes: [UserInclude.new('sensor_extras.h'), UserInclude.new('later.h')], extras_flag: nil }
       )
     end
   end

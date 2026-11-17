@@ -1099,6 +1099,16 @@ describe Partializer do
       explain( { 'engine' => @engine, 'port' => @config } )
     end
 
+    it "lists helpers, variables and prototypes as one list" do
+      @extras.items << CExtractorTypes::CFunctionDeclaration.new( name: 'port_scaled' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves helper `port_twice()`, variable `port_k` and prototype `port_scaled()` out.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
     it "says nothing when no other Partial includes the module's header" do
       @engine.source.includes = [UserInclude.new( 'engine.h' )]
       expect(@loginator).not_to receive(:log)

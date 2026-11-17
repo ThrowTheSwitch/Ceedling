@@ -542,7 +542,9 @@ ceedling_system_tests do
         )
 
         output = @c.ceedling_build_exec( "test:all" )
-        expect( output ).to include( "Other Partials in this test include src/port.h's mock, which leaves helper `port_twice()` and variable `port_k` out." )
+        expect( output ).to include(
+          "Other Partials in this test include src/port.h's mock, which leaves helper `port_twice()`, variable `port_k` and prototype `port_scaled()` out."
+        )
       end
     end
   end

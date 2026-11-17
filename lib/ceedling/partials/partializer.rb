@@ -59,6 +59,23 @@ class Partializer
     See the docs on Partials conventions.
   NOTICE
 
+  # Explains what other Partials go without from a module a test both tests and mocks. The
+  # notice follows the linker failure guidance: what happened, why, then numbered options.
+  TESTED_MOCK_NOTICE = <<~NOTICE unless const_defined?(:TESTED_MOCK_NOTICE, false)
+    Partial %<partial>s ⏩️ Other Partials in this test include %<header>s's mock, which leaves %<items>s out.
+
+    HOW THIS HAPPENS:
+    • A module both tested and mocked in one test keeps its header's helpers and static variables in its own implementation.
+    • Every other Partial that includes %<header>s gets the mock's interface in its place, which declares only the mocked functions.
+    • Code in those Partials that uses %<them>s fails to compile or link.
+
+    OPTIONS:
+    1. Test %<module>s in a test file of its own, and only mock it in this one.
+    2. Move what the other Partials use into a header that %<header>s includes, which the mock keeps.
+
+    See the docs on Partials conventions.
+  NOTICE
+
   include Partials
 
   constructor :configurator, :partializer_helper, :partializer_reconciler, :file_finder, :c_extractor, :file_path_utils,
@@ -137,6 +154,23 @@ class Partializer
 
     _log_extras( "#{test}::#{config.module}", extras, config.header.filepath )
     return extras
+  end
+
+  # Explains what other Partials go without from a module the test both tests and mocks: its
+  # implementation carries what its own code uses, but its interface keeps no extras, so another
+  # Partial including its header gets only the mocked functions. Says nothing unless another
+  # Partial in `partials` includes the header and the mock would leave something out.
+  def explain_tested_mock(test:, c_module:, interface:, header_guarded:, config:, partials:)
+    extras = @helper.plan_interface_extras(
+      c_module: c_module, interface: interface, fallback: config.fallback?, header_guarded: header_guarded
+    )
+    return if extras.items.empty? or !_included_by_others?( config.module, partials )
+
+    notice = format(
+      TESTED_MOCK_NOTICE, partial: "#{test}::#{config.module}", header: config.header.filepath, module: config.module,
+      items: _withheld_phrase( extras.items ), them: extras.items.size > 1 ? 'them' : 'it'
+    )
+    @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
 
   def validate_extracted_functions(name:, partial:, impl:, interface:)
@@ -721,14 +755,32 @@ class Partializer
     return "`#{item.name}` (#{item.extern? ? 'extern declaration' : 'static variable'})"
   end
 
-  # As in "helper `twice()` and variables `a`, `b`"
+  # As in "helper `twice()` and variables `a`, `b`", or "helper `twice()`, variable `a` and prototype `get()`"
   def _withheld_phrase(items)
-    helpers, variables = items.partition { |item| item.is_a?( CExtractorTypes::CFunctionDefinition ) }
+    phrases = EXTRAS_NOUNS.filter_map do |kind, noun|
+      named = items.select { |item| item.is_a?( kind ) }
+      _named( noun, named.map { |item| kind == CExtractorTypes::CVariableDeclaration ? "`#{item.name}`" : "`#{item.name}()`" } ) unless named.empty?
+    end
 
-    phrases = []
-    phrases << _named( 'helper', helpers.map { |f| "`#{f.name}()`" } ) unless helpers.empty?
-    phrases << _named( 'variable', variables.map { |v| "`#{v.name}`" } ) unless variables.empty?
-    return phrases.join( ' and ' )
+    return phrases.size > 1 ? "#{phrases[0..-2].join( ', ' )} and #{phrases.last}" : phrases.join
+  end
+
+  # What an extras item is called in a notice
+  EXTRAS_NOUNS = {
+    CExtractorTypes::CFunctionDefinition  => 'helper',
+    CExtractorTypes::CVariableDeclaration => 'variable',
+    CExtractorTypes::CFunctionDeclaration => 'prototype'
+  }.freeze unless const_defined?(:EXTRAS_NOUNS, false)
+
+  # Whether another Partial in `partials` includes the module's header
+  def _included_by_others?(_module, partials)
+    return partials.any? do |other, config|
+      other != _module and _module_includes( config ).any? { |include| _names_module?( include, _module, partials ) }
+    end
+  end
+
+  def _module_includes(config)
+    return Array( config.source&.includes ) + Array( config.header&.includes )
   end
 
   def _named(noun, names)

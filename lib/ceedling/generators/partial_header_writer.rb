@@ -36,9 +36,12 @@ class PartialHeaderWriter
   # @param include_guard [String, nil] The real module header's own guard, or nil when it has none
   #   and so supplies nothing to spoof
   # @param includes      [Array]       The includes ahead of the header's content
-  def preamble(include_guard, includes)
+  # @param flag          [String, nil] Defined ahead of the spoof only when the real header's guard
+  #   isn't yet, so content the real header would supply follows only where it hasn't arrived
+  def preamble(include_guard, includes, flag: nil)
     @io << "#ifndef #{@guard}\n"
     @io << "#define #{@guard}\n\n"
+    @io << "#ifndef #{include_guard}\n#define #{flag}\n#endif\n" if include_guard and flag
     @io << "#define #{include_guard}\n\n" if include_guard
     return if includes.empty?
 
