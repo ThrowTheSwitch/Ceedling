@@ -916,15 +916,25 @@ class Partializer
   # any case, is the module's basename.
   #
   # A module named without a directory is named by its basename alone, as its own #include
-  # spells it. Naming a module by directory says its basename isn't enough, since another
-  # header, partialized or not, may share it, so that module's header path decides (see
-  # _same_header_path?). One whose header path is unknown is named by basename alone.
+  # spells it, short of a header a same-named module named by directory claims. Naming a
+  # module by directory says its basename isn't enough, since another header, partialized or
+  # not, may share it, so that module's header path decides (see _same_header_path?). One
+  # whose header path is unknown is named by basename alone.
   def _names_module?(include, _module, partials)
     return false unless include.filename.ext().downcase() == module_basename( _module )
-    return true if File.dirname( _module ) == '.'
+    return !_claimed_by_directory?( include, _module, partials ) if File.dirname( _module ) == '.'
 
     header = partials.dig( _module )&.header&.filepath
     return (header.nil? or _same_header_path?( include.filepath, header ))
+  end
+
+  # Whether a module sharing `_module`'s basename, named by directory, claims `include` by its header's path
+  def _claimed_by_directory?(include, _module, partials)
+    headers = partials.filter_map do |other, config|
+      config&.header&.filepath if File.dirname( other ) != '.' and module_basename( other ) == module_basename( _module )
+    end
+
+    return headers.any? { |header| _same_header_path?( include.filepath, header ) }
   end
 
   # Whether an include's path ends the way a header's path does, in any case, as a
