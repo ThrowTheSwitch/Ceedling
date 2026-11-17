@@ -224,7 +224,7 @@ ceedling_system_tests do
   # on its own
   describe "a system header below a multiarch directory" do
     before(:each) do
-      multiarch = `gcc -print-multiarch 2>/dev/null`.strip
+      multiarch = `gcc -print-multiarch 2>#{File::NULL}`.strip
       @multiarch_dir = "/usr/include/#{multiarch}"
       skip "no glibc sys/socket.h below a multiarch directory" if multiarch.empty? or !File.exist?( File.join( @multiarch_dir, 'sys/socket.h' ) )
     end
