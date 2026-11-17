@@ -84,6 +84,7 @@ describe TestBuildSetup do
 
     @test_derived_search_paths = double( "TestDerivedSearchPaths" )
     allow(@test_derived_search_paths).to receive(:collect).and_return( [] )
+    allow(@test_derived_search_paths).to receive(:forget_notices)
 
     @setup = described_class.new(
       {

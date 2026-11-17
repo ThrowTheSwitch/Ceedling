@@ -77,6 +77,14 @@ describe TestDerivedSearchPaths do
       derive( paths: ['.'], includes: [mock( 'mock_sensor.h' )] )
     end
 
+    it "names each directory once a build, however many tests need it" do
+      expect(@loginator).to receive(:log).with( /Added search path 'src\/path\/to'/, Verbosity::COMPLAIN, LogLabels::NOTICE ).twice
+
+      2.times { derive( paths: ['.'], includes: [mock( 'mock_sensor.h' )] ) }
+      @derived.forget_notices
+      derive( paths: ['.'], includes: [mock( 'mock_sensor.h' )] )
+    end
+
     it "adds nothing for a mock whose #include a search path already joins to its header" do
       expect(@loginator).to_not receive(:log)
 
