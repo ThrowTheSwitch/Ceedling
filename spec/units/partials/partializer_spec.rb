@@ -1739,8 +1739,8 @@ describe Partializer do
       end
     end
 
-    # A module named without a directory has a basename no other module shares, so its own
-    # header is named by that basename however an #include spells the path
+    # A module named without a directory is named by its basename, however an #include spells
+    # the path to its header
     context "with this module's own header spelled another way" do
       before do
         allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)

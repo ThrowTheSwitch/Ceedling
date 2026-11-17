@@ -15,6 +15,7 @@ require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
 require 'ceedling/filesystem/path_matcher'
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/filesystem/path_mirror'
 require 'ceedling/encodinator'
 
@@ -912,16 +913,29 @@ class Partializer
   end
 
   # Whether `include` names partialized module `_module`: its filename, less extension and in
-  # any case, is the module's basename, and its path ends the way the module's header path
-  # does. Another header can share the basename, partialized or not, so the path decides. Case
-  # is ignored there too, as a case-insensitive filesystem reaches the header by either. A
-  # module whose header path is unknown is named by basename alone. A bare #include, as
-  # fallback preprocessing leaves one, ends any such path.
+  # any case, is the module's basename.
+  #
+  # A module named without a directory is named by its basename alone, as its own #include
+  # spells it. Naming a module by directory says its basename isn't enough, since another
+  # header, partialized or not, may share it, so that module's header path decides (see
+  # _same_header_path?). One whose header path is unknown is named by basename alone.
   def _names_module?(include, _module, partials)
     return false unless include.filename.ext().downcase() == module_basename( _module )
+    return true if File.dirname( _module ) == '.'
 
     header = partials.dig( _module )&.header&.filepath
-    return (header.nil? or PathMatcher.correspond?( include.filepath.downcase(), header.downcase() ))
+    return (header.nil? or _same_header_path?( include.filepath, header ))
+  end
+
+  # Whether an include's path ends the way a header's path does, in any case, as a
+  # case-insensitive filesystem reaches the header by either. A bare #include, as fallback
+  # preprocessing leaves one, ends any such path. An absolute path and a relative one, such as
+  # `../shared/x.h` from a project's paths, are compared as the absolute paths they name.
+  def _same_header_path?(include_path, header_path)
+    return true if PathMatcher.correspond?( include_path.downcase(), header_path.downcase() )
+    return false unless PathMatcher.absolute?( include_path ) or PathMatcher.absolute?( header_path )
+
+    return ProjectPaths.absolute( include_path ).downcase() == ProjectPaths.absolute( header_path ).downcase()
   end
 
   # A module name reduced to what an #include actually carries. An #include names a
