@@ -1056,6 +1056,65 @@ describe Partializer do
   end
 
   ###
+  ### explain_tested_mock()
+  ###
+
+  context "#explain_tested_mock" do
+    before(:each) do
+      @config   = OpenStruct.new( module: 'port', fallback?: false, header: OpenStruct.new( filepath: 'src/port.h', includes: [] ),
+                                  source: OpenStruct.new( includes: [UserInclude.new( 'port.h' )] ) )
+      @engine   = OpenStruct.new( module: 'engine', header: OpenStruct.new( includes: [] ),
+                                  source: OpenStruct.new( includes: [UserInclude.new( 'engine.h' ), UserInclude.new( 'port.h' )] ) )
+      @extras   = Partials::InterfaceExtras.new( items: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'port_twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'port_k', decorators: ['static'] )
+      ] )
+      allow(@partializer_helper).to receive(:plan_interface_extras)
+        .with( c_module: :module, interface: :interface, fallback: false, header_guarded: true ).and_return( @extras )
+    end
+
+    def explain(partials)
+      @partializer.explain_tested_mock(
+        test: 'test_engine', c_module: :module, interface: :interface, header_guarded: true, config: @config, partials: partials
+      )
+    end
+
+    # A module tested and mocked in one test keeps its header's content in its own implementation
+    it "explains what other Partials including a tested and mocked module's header go without" do
+      expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_engine::port ⏩️ Other Partials in this test include src/port.h's mock, which leaves helper `port_twice()` and variable `port_k` out.
+
+        HOW THIS HAPPENS:
+        • A module both tested and mocked in one test keeps its header's helpers and static variables in its own implementation.
+        • Every other Partial that includes src/port.h gets the mock's interface in its place, which declares only the mocked functions.
+        • Code in those Partials that uses them fails to compile or link.
+
+        OPTIONS:
+        1. Test port in a test file of its own, and only mock it in this one.
+        2. Move what the other Partials use into a header that src/port.h includes, which the mock keeps.
+
+        See the docs on Partials conventions.
+      NOTICE
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "says nothing when no other Partial includes the module's header" do
+      @engine.source.includes = [UserInclude.new( 'engine.h' )]
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "says nothing when the mock would leave nothing out" do
+      allow(@partializer_helper).to receive(:plan_interface_extras).and_return( Partials::InterfaceExtras.new )
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+  end
+
+  ###
   ### remap_implementation_header_includes()
   ###
 

@@ -288,6 +288,9 @@ PARTIALS_CARRY_ONCE_PORT_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
   void test_get_reads_the_port(void) { oport_read_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, oengine_get()); }
 C
 
+PARTIALS_CARRY_PORT_TWICE_HEADER = "#ifndef PORT_H\n#define PORT_H\nstatic inline int port_twice(int x) { return 2 * x; }\nint port_read(void);\n#endif\n"
+PARTIALS_CARRY_PORT_READ_SOURCE  = "#include \"port.h\"\nint port_read(void) { return 0; }\n"
+
 ceedling_system_tests do
   include_context "a fresh ceedling gem project", "partials_carry"
 
@@ -422,6 +425,125 @@ ceedling_system_tests do
 
       output = build_passing( 1 )
       expect( output ).to include( 'Its mock leaves helper `oport_twice()` from src/oport.h behind.' )
+    end
+  end
+
+  # The extras stand in for the rest of the real header in every file of the test that
+  # includes a mock-only Partial's interface. These are the shapes where they must step aside.
+  describe "a mocked header's extras" do
+    def port_project(port_h:, port_c:, engine_c:, test:, extra: {})
+      File.write( 'src/port.h', port_h )
+      File.write( 'src/port.c', port_c )
+      File.write( 'src/engine.h', "#ifndef ENGINE_H\n#define ENGINE_H\nint engine_get(void);\n#endif\n" )
+      File.write( 'src/engine.c', engine_c )
+      extra.each { |path, text| File.write( path, text ) }
+      File.write( 'test/test_engine.c', PARTIALS_CARRY_PREAMBLE + test + "void setUp(void) {}\nvoid tearDown(void) {}\n" )
+    end
+
+    it "steps aside where another header brought in the real one first" do
+      in_project do
+        port_project(
+          port_h: PARTIALS_CARRY_PORT_TWICE_HEADER, port_c: PARTIALS_CARRY_PORT_READ_SOURCE,
+          extra: { 'src/board.h' => "#ifndef BOARD_H\n#define BOARD_H\n#include \"port.h\"\n#define BOARD_ID 1\n#endif\n" },
+          engine_c: "#include \"engine.h\"\n#include \"board.h\"\n#include \"port.h\"\nint engine_get(void) { return port_twice(port_read()) + BOARD_ID; }\n",
+          test: "#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include MOCK_PARTIAL_PUBLIC_MODULE(port)\n" \
+                "void test_get(void) { port_read_ExpectAndReturn(20); TEST_ASSERT_EQUAL_INT(41, engine_get()); }\n"
+        )
+
+        build_passing( 1 )
+      end
+    end
+
+    it "steps aside where the test file includes the real header first" do
+      in_project do
+        port_project(
+          port_h: PARTIALS_CARRY_PORT_TWICE_HEADER, port_c: PARTIALS_CARRY_PORT_READ_SOURCE,
+          engine_c: "#include \"engine.h\"\n#include \"port.h\"\nint engine_get(void) { return port_read() + 1; }\n",
+          test: "#include \"port.h\"\n#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include MOCK_PARTIAL_PUBLIC_MODULE(port)\n" \
+                "void test_get(void) { port_read_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, engine_get()); }\n"
+        )
+
+        build_passing( 1 )
+      end
+    end
+
+    it "keeps neither copy of a static fallback preprocessing found twice" do
+      in_project do
+        @c.merge_project_yml_for_test( { :test_build => { :preprocess_force_fallback => true } } )
+        port_project(
+          port_h: "#ifndef PORT_H\n#define PORT_H\n#include \"rev.h\"\n#if PORT_REV > 2\nstatic const int port_gain = 1;\n#endif\n" \
+                  "#if PORT_REV <= 2\nstatic const int port_gain = 2;\n#endif\nint port_read(void);\n#endif\n",
+          port_c: PARTIALS_CARRY_PORT_READ_SOURCE, extra: { 'src/rev.h' => "#ifndef REV_H\n#define REV_H\n#define PORT_REV 3\n#endif\n" },
+          engine_c: "#include \"engine.h\"\n#include \"port.h\"\nint engine_get(void) { return port_read() + 1; }\n",
+          test: "#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include MOCK_PARTIAL_PUBLIC_MODULE(port)\n" \
+                "void test_get(void) { port_read_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, engine_get()); }\n"
+        )
+
+        build_passing( 1 )
+      end
+    end
+
+    it "leaves behind a table naming a function the mock leaves undefined" do
+      in_project do
+        port_project(
+          port_h: "#ifndef PORT_H\n#define PORT_H\ntypedef int (*port_fn_t)(void);\nint port_a(void);\n" \
+                  "static inline int port_raw(void) { return 0; }\nstatic const port_fn_t port_handlers[] = { port_a };\n#endif\n",
+          port_c: "#include \"port.h\"\nint port_a(void) { return 5; }\n",
+          engine_c: "#include \"engine.h\"\n#include \"port.h\"\nint engine_get(void) { return port_raw() + 1; }\n",
+          test: "#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include MOCK_PARTIAL_PRIVATE_MODULE(port)\n" \
+                "void test_get(void) { port_raw_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, engine_get()); }\n"
+        )
+
+        build_passing( 1 )
+      end
+    end
+
+    it "declares an extern the way the header does, not the way the source sizes it" do
+      in_project do
+        port_project(
+          port_h: "#ifndef PORT_H\n#define PORT_H\nextern int port_buf[];\nint port_read(void);\n#endif\n",
+          port_c: "#include \"port.h\"\n#define PORT_BUF_LEN 4\nint port_buf[PORT_BUF_LEN];\nint port_read(void) { return port_buf[0]; }\n",
+          engine_c: "#include \"engine.h\"\n#include \"port.h\"\nint engine_get(void) { return port_read() + 1; }\n",
+          test: "#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include MOCK_PARTIAL_ALL_MODULE(port)\n" \
+                "void test_get(void) { port_read_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, engine_get()); }\n"
+        )
+
+        build_passing( 1 )
+      end
+    end
+
+    it "leaves behind a prototype a function-like macro of its name rewrites" do
+      in_project do
+        port_project(
+          port_h: "#ifndef PORT_H\n#define PORT_H\nvoid *port_alloc(unsigned n);\n#define port_alloc(n) port_alloc_dbg((n), __LINE__)\n" \
+                  "void *port_alloc_dbg(unsigned n, int line);\nstatic inline int port_raw(void) { return 0; }\n#endif\n",
+          port_c: "#include \"port.h\"\n#undef port_alloc\nvoid *port_alloc(unsigned n) { (void)n; return 0; }\n" \
+                  "void *port_alloc_dbg(unsigned n, int line) { (void)n; (void)line; return 0; }\n",
+          engine_c: "#include \"engine.h\"\n#include \"port.h\"\nint engine_get(void) { return port_raw() + 1; }\n",
+          test: "#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include MOCK_PARTIAL_PRIVATE_MODULE(port)\n" \
+                "void test_get(void) { port_raw_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, engine_get()); }\n"
+        )
+
+        build_passing( 1 )
+      end
+    end
+
+    # A module tested and mocked in one test keeps its header's content in its own implementation
+    it "explains what another Partial goes without from a module the test both tests and mocks" do
+      in_project do
+        port_project(
+          port_h: "#ifndef PORT_H\n#define PORT_H\nstatic inline int port_twice(int x) { return 2 * x; }\nstatic const int port_k = 1;\n" \
+                  "int port_read(void);\nint port_scaled(void);\n#endif\n",
+          port_c: "#include \"port.h\"\nint port_read(void) { return 0; }\nint port_scaled(void) { return port_twice(port_read()); }\n",
+          engine_c: "#include \"engine.h\"\n#include \"port.h\"\nint engine_get(void) { return port_twice(port_read()) + port_k; }\n",
+          test: "#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include TEST_PARTIAL_MODULE(port)\nTEST_PARTIAL_CONFIG(port, port_scaled)\n" \
+                "#include MOCK_PARTIAL_MODULE(port)\nMOCK_PARTIAL_CONFIG(port, port_read)\n" \
+                "void test_get(void) { port_read_ExpectAndReturn(20); TEST_ASSERT_EQUAL_INT(41, engine_get()); }\n"
+        )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect( output ).to include( "Other Partials in this test include src/port.h's mock, which leaves helper `port_twice()` and variable `port_k` out." )
+      end
     end
   end
 

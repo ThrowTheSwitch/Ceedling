@@ -85,6 +85,7 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
       allow(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
       allow(@partializer).to receive(:plan_interface_extras).and_return( Partials::InterfaceExtras.new )
+      allow(@partializer).to receive(:explain_tested_mock)
       allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( true )
       allow(@configurator).to receive(:partials_extern_variables).and_return( :weak )
       allow(@generator).to receive(:generate_partial_types)
@@ -227,6 +228,28 @@ describe PartialsManager do
 
       expect(@partializer).not_to receive(:plan_interface_extras)
       expect(@generator).to receive(:generate_partial_interface).with( hash_including( extras: nil ) )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "explains what other Partials go without when the test both tests and mocks a module" do
+      interface = [double("FunctionDeclaration")]
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( interface )
+
+      expect(@partializer).to receive(:explain_tested_mock).with(
+        test: 'a_test', c_module: @module_contents, interface: interface, header_guarded: true, config: @config,
+        partials: @testable.partials.configs
+      )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "explains nothing for a mock-only Partial" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@partializer).not_to receive(:explain_tested_mock)
 
       @manager.stage_generate_partials( @state )
     end

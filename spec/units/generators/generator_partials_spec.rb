@@ -34,10 +34,10 @@ describe GeneratorPartials do
   end
 
   # Helper to create CVariableDeclaration structs for testing
-  def make_var(name:, type:, text:, decorators: [], line_num: nil)
+  def make_var(name:, type:, text:, decorators: [], line_num: nil, array_suffix: '', origin: nil)
     CExtractorTypes::CVariableDeclaration.new(
-      name: name, type: type, decorators: decorators,
-      text: text, original: text, line_num: line_num
+      name: name, type: type, decorators: decorators, array_suffix: array_suffix,
+      text: text, original: text, line_num: line_num, origin: origin
     )
   end
 
@@ -366,6 +366,63 @@ describe GeneratorPartials do
         #endif // GEN<HASH>_SENSOR_EXTRAS_H_CEEDLING
       CONTENTS
       expect( result ).to eq( 'sensor_extras.h' )
+    end
+
+    # The source may size or type the variable with what the extras never see
+    it "writes an extern as the header declares it, not as the source defines it" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('port').and_return('port_extras.h')
+      buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/port_extras.h', 'wb').and_yield(buf)
+      header_extern = make_var(name: 'port_buf', type: 'int', text: 'int port_buf[];', decorators: ['extern'], array_suffix: '[]', origin: :header)
+      definition    = make_var(name: 'port_buf', type: 'int', text: 'int port_buf[PORT_BUF_LEN];', array_suffix: '[PORT_BUF_LEN]', origin: :source)
+
+      @generator.generate_extras( name: 'port', extras: Partials::InterfaceExtras.new(items: [header_extern]),
+                                  c_module: make_module(header_extern, definition), output_path: '/out' )
+
+      expect( buf.string ).to include( "extern int port_buf[];\n" )
+    end
+
+    # The real header may arrive before the interface, through another include. Its helpers are
+    # then already defined, so the extras hold their content only where the interface spoofed it.
+    it "holds its items under the flag an interface sets when it spoofs the real header" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(buf)
+      c_module, extras = extras_module
+
+      @generator.generate_extras( name: 'sensor', extras: extras, c_module: c_module, output_path: '/out', flag: 'SENSOR_EXTRAS_WANTED' )
+
+      expect( buf.string ).to match( %r{#ifdef SENSOR_EXTRAS_WANTED\n.*static const int table.*static inline int twice.*\n#endif\n#endif // }m )
+    end
+
+    it "sets that flag in the interface ahead of the spoof, only where the real header's guard isn't yet defined" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename).with('sensor').and_return('sensor_interface.h')
+      interface = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(StringIO.new)
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_interface.h', 'wb').and_yield(interface)
+      c_module, extras = extras_module
+
+      @generator.generate_interface(
+        name: 'sensor', function_declarations: [], includes: [], c_module: c_module, output_path: '/out',
+        include_guard: 'SENSOR_H', extras: extras
+      )
+
+      flag = "#{FileWrapper.generate_include_guard( 'sensor_extras.h' )}_WANTED"
+      expect( interface.string ).to include( "#ifndef SENSOR_H\n#define #{flag}\n#endif\n#define SENSOR_H\n" )
+    end
+
+    it "sets no flag for a header without an include guard, whose extras hold only declarations" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename).with('sensor').and_return('sensor_interface.h')
+      extras_buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(extras_buf)
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_interface.h', 'wb').and_yield(StringIO.new)
+      c_module, extras = extras_module
+
+      @generator.generate_interface( name: 'sensor', function_declarations: [], includes: [], c_module: c_module, output_path: '/out', extras: extras )
+
+      expect( extras_buf.string ).not_to include( '#ifdef' )
     end
 
     it "writes nothing and returns nil without extras" do
