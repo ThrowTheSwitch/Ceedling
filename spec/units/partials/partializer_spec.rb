@@ -1770,6 +1770,27 @@ describe Partializer do
         expect( result.map( &:filepath ) ).to eq( ['shared/ceedling_partial_module_impl.h'] )
       end
 
+      it "takes a relative #include of a directory-named module's header the project names absolutely" do
+        header = ProjectPaths.absolute( '../shared/module.h' )
+        result = @partializer.remap_implementation_source_includes(
+          name: 'shared/module', includes: [UserInclude.new( '../shared/module.h' )],
+          partials: { 'shared/module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['shared/ceedling_partial_module_impl.h'] )
+      end
+
+      # A case-insensitive filesystem reaches the header by either case of its absolute path
+      it "takes a case variant of a directory-named module's absolute header path for its own" do
+        header = '../shared/module.h'
+        result = @partializer.remap_implementation_source_includes(
+          name: 'shared/module', includes: [UserInclude.new( ProjectPaths.absolute( header ).sub( 'shared', 'SHARED' ) )],
+          partials: { 'shared/module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['shared/ceedling_partial_module_impl.h'] )
+      end
+
       # Fallback preprocessing anchors a `..` #include to the file's own directory, which need
       # not be where the compiler finds the header
       it "takes a fallback-anchored #include for its own header" do
@@ -2241,6 +2262,24 @@ describe Partializer do
         )
 
         expect( filenames( groups ) ).to eq( [['base.h'], []] )
+      end
+
+      # A bare name claims its basename, but not a header that a same-named module named by
+      # directory claims by its path
+      it "leaves a same-named module named by directory its own header" do
+        allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+          .with('drivers/zspi/config').and_return('drivers/zspi/ceedling_partial_config_interface.h')
+
+        groups = @partializer.remap_types_header_includes(
+          name: 'config', source_includes: [], header_includes: [UserInclude.new( 'include/drivers/zspi/config.h' )],
+          partials: {
+            'config'              => make_partial_config(tests_type: :public, header: 'include/drivers/uart/config.h'),
+            'drivers/zspi/config' => make_partial_config(mocks_type: :private, header: 'include/drivers/zspi/config.h')
+          }
+        )
+
+        expect( groups.leading.map( &:filepath ) ).to eq( ['drivers/zspi/ceedling_partial_config_interface.h'] )
+        expect( groups.following ).to eq( [] )
       end
 
       it "leaves nothing to follow when the source never includes the module's header" do
