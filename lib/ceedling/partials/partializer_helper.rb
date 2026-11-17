@@ -249,7 +249,8 @@ class PartializerHelper
       statements = _static_statements( func )
       next [] if statements.empty?
 
-      _promote( func, statements, module_name ).tap { |vars| _log_promoted( func, vars, "#{file_type} to be promoted for Partial #{name}::#{module_name}" ) }
+      _promote( func, statements, module_name ).each { |var| var.promoted_from = func.name }
+        .tap { |vars| _log_promoted( func, vars, "#{file_type} to be promoted for Partial #{name}::#{module_name}" ) }
     end
   end
 
@@ -503,6 +504,85 @@ class PartializerHelper
     _plan_all_prototypes( plan, facts, fallback, references )
 
     return plan
+  end
+
+  # What a mock-only Partial's extras header keeps of the module's header beyond the mocked
+  # functions. The interface header stands in for the real header wherever generated code
+  # includes it, so whatever else the real header supplied has to come along:
+  #   - each header helper the mock leaves out, written as it is, with its prototypes and the
+  #     statics promoted from it;
+  #   - the header's static variables, which keep `static`, and its extern declarations;
+  #   - the header's plain prototypes of functions the mock leaves out, which a caller may need.
+  # Nothing from the source comes along. Nor does a definition without `static`, which every
+  # file including the header would define again, nor a static or inline prototype of a function
+  # with no helper body here. A header without an include guard may still arrive through
+  # another include, so its helpers and static variables are withheld rather than copied.
+  #
+  # @return [Partials::InterfaceExtras]
+  def plan_interface_extras(c_module:, interface:, fallback:, header_guarded:)
+    selected = Set.new( Array( interface ).map( &:name ) )
+    helpers  = _interface_helpers( c_module, selected, fallback )
+    extras   = Partials::InterfaceExtras.new
+    declared = Set.new
+
+    _header_items( c_module ).each do |item|
+      _place_extra( extras, item, _extras_role( item, selected, helpers, declared ), header_guarded )
+    end
+
+    return extras
+  end
+
+  def _header_items(c_module)
+    return c_module.element_sequence.select { |item| item.respond_to?( :origin ) and item.origin == :header }
+  end
+
+  def _place_extra(extras, item, role, header_guarded)
+    case role
+    when :copy    then (header_guarded ? extras.items : extras.withheld) << item
+    when :follow  then extras.items << item if header_guarded
+    when :declare then extras.items << item
+    end
+  end
+
+  # Each header helper the mock leaves out, by name, as its first definition
+  def _interface_helpers(c_module, selected, fallback)
+    helpers = c_module.function_definitions.group_by( &:name ).select do |name, defs|
+      !selected.include?( name ) and _kept_helper?( defs, fallback )
+    end
+
+    return helpers.transform_values( &:first )
+  end
+
+  # A helper fallback found with two different bodies stays behind, since either could be wrong
+  def _kept_helper?(defs, fallback)
+    return (_helper?( defs ) and !(fallback and _conflicting?( defs.map( &:code_block ) )))
+  end
+
+  # What the extras header does with one header item: :copy a helper or static variable,
+  # which an unguarded header withholds; :follow a helper with its prototype or promoted
+  # static; :declare an extern or a plain prototype; or nil to leave it out
+  def _extras_role(item, selected, helpers, declared)
+    case item
+    when CExtractorTypes::CFunctionDefinition  then return (helpers[item.name].equal?( item ) ? :copy : nil)
+    when CExtractorTypes::CFunctionDeclaration then return _prototype_role( item, selected, helpers, declared )
+    when CExtractorTypes::CVariableDeclaration then return _variable_role( item, helpers )
+    end
+
+    return nil
+  end
+
+  def _prototype_role(decl, selected, helpers, declared)
+    return :follow if helpers.key?( decl.name )
+    return nil if selected.include?( decl.name ) or Partials.static?( decl.decorators ) or Partials.inline?( decl.decorators )
+
+    return declared.add?( decl.name ) ? :declare : nil
+  end
+
+  def _variable_role(var, helpers)
+    return (helpers.key?( var.promoted_from ) ? :follow : nil) if var.promoted_from
+    return :declare if var.extern?
+
+    return var.decorators.include?( 'static' ) ? :copy : nil
   end
 
   def _plan_all_prototypes(plan, facts, fallback, references)
