@@ -164,6 +164,8 @@ describe TestDerivedSearchPaths do
 
     context "for a header outside the working directory" do
       let(:socket) { '/usr/include/x86_64-linux-gnu/sys/socket.h' }
+      # A refusal spells the search path absolutely, so Windows gives it the current drive
+      let(:socket_dir) { ProjectPaths.absolute( File.dirname( socket ) ) }
 
       it "adds the directory a mock's folder is measured from" do
         expect(derive( paths: ['inc'], includes: [mock( 'sys/mock_socket.h' )], headers: [socket] )).to eq( ['/usr/include/x86_64-linux-gnu'] )
@@ -176,7 +178,7 @@ describe TestDerivedSearchPaths do
         expect(derive( paths: ['inc'], includes: [mock( 'sys/mock_socket.h' )], headers: [socket] )).to eq( [] )
         expect(@refusals).to eq(
           'sys/socket.h' =>
-            "`#include \"sys/mock_socket.h\"` in test/test_it.c needs search path '/usr/include/x86_64-linux-gnu/sys', " \
+            "`#include \"sys/mock_socket.h\"` in test/test_it.c needs search path '#{socket_dir}', " \
             "since its mock writes `#include \"socket.h\"` with :cmock ↳ :mock_name_include_folder disabled. " \
             "Because this search path is outside the working directory and could cause shadowing of other headers, " \
             "Ceedling won't add the full search path. Instead, enable :cmock ↳ :mock_name_include_folder and reference " \
@@ -190,7 +192,7 @@ describe TestDerivedSearchPaths do
         expect(derive( paths: ['inc'], includes: [mock( 'mock_socket.h' )], headers: [socket] )).to eq( [] )
         expect(@refusals).to eq(
           'socket.h' =>
-            "`#include \"mock_socket.h\"` in test/test_it.c needs search path '/usr/include/x86_64-linux-gnu/sys'. " \
+            "`#include \"mock_socket.h\"` in test/test_it.c needs search path '#{socket_dir}'. " \
             "Because this search path is outside the working directory and could cause shadowing of other headers, " \
             "Ceedling won't add the full search path. Instead, reference the parent folder, as in `#include \"sys/mock_socket.h\"`."
         )
@@ -240,7 +242,7 @@ describe TestDerivedSearchPaths do
         relative = ProjectPaths.relative( socket )
         derive( paths: ['inc'], includes: [mock( 'mock_socket.h' )], headers: [relative] )
 
-        expect(@refusals['socket.h']).to include( "needs search path '/usr/include/x86_64-linux-gnu/sys'." )
+        expect(@refusals['socket.h']).to include( "needs search path '#{socket_dir}'." )
       end
     end
   end
