@@ -667,7 +667,7 @@ describe TestBuildPlanner do
       allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('drivers/foo.h')] )
       @testable.search_paths = ['inc', 'src']
-      allow(@include_pathinator).to receive(:header_search).with( ['inc', 'src'] ).and_return( @header_search )
+      allow(@include_pathinator).to receive(:header_search).with( ['inc', 'src'], refusals: {} ).and_return( @header_search )
 
       expect(@file_finder).to receive(:find_header_file).with( 'drivers/foo.h', :error, collection: @header_search )
 

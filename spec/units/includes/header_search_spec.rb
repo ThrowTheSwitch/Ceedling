@@ -159,6 +159,26 @@ describe HeaderSearch do
     end
   end
 
+  describe "#refusal" do
+    it "explains a query by its own spelling, slashes and dot segments aside" do
+      headers = described_class.new( ['src'], ->(_dir) { [] }, refusals: { 'sys/socket.h' => 'why' } )
+
+      expect(headers.refusal( 'sys/socket.h' )).to eq( 'why' )
+      expect(headers.refusal( './sys\\socket.h' )).to eq( 'why' )
+      expect(headers.refusal( 'socket.h' )).to be_nil
+    end
+
+    it "carries over to the trailing-first view" do
+      headers = described_class.new( ['src'], ->(_dir) { [] }, refusals: { 'socket.h' => 'why' } )
+
+      expect(headers.trailing_first.refusal( 'socket.h' )).to eq( 'why' )
+    end
+
+    it "explains nothing by default" do
+      expect(search( ['src'], [] ).refusal( 'socket.h' )).to be_nil
+    end
+  end
+
   describe "#joins?" do
     it "says whether a search path joined with the text names a header, as -I does" do
       headers = search( ['src'], ['src/drivers/foo.h'] )

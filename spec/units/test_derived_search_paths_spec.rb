@@ -49,14 +49,16 @@ describe TestDerivedSearchPaths do
   end
 
   # `paths` are the test's search paths, `headers` the headers on disk, `files` the
-  # project's header collection, and `includes` the test's #includes
+  # project's header collection, and `includes` the test's #includes. Gives the derived
+  # directories and keeps the refusals in @refusals.
   def derive(paths:, includes:, headers: ['src/path/to/sensor.h'], files: headers)
     @tree       = headers
     @collection = files
     allow(@search_paths).to receive(:header_paths).with( @testable ).and_return( paths )
     allow(@extractor).to receive(:lookup_all_header_includes_list).with( 'test/test_it.c' ).and_return( includes )
 
-    return @derived.collect( @testable )
+    roots, @refusals = @derived.collect( @testable )
+    return roots
   end
 
   def mock(path)
@@ -155,33 +157,58 @@ describe TestDerivedSearchPaths do
       expect(derive( paths: ['inc'], includes: includes, headers: headers )).to eq( [] )
     end
 
-    context "for a header outside the project" do
+    it "refuses nothing for a bare name's header inside the working directory" do
+      expect(derive( paths: ['.'], includes: [mock( 'mock_sensor.h' )] )).to eq( ['src/path/to'] )
+      expect(@refusals).to eq( {} )
+    end
+
+    context "for a header outside the working directory" do
       let(:socket) { '/usr/include/x86_64-linux-gnu/sys/socket.h' }
 
       it "adds the directory a mock's folder is measured from" do
         expect(derive( paths: ['inc'], includes: [mock( 'sys/mock_socket.h' )], headers: [socket] )).to eq( ['/usr/include/x86_64-linux-gnu'] )
       end
 
-      it "names the option a mock without its folder needs, rather than a folder alone" do
+      it "explains a mock named without its folder by the option it needs, logging nothing" do
         allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
-        expect(@loginator).to receive(:log).once.with(
-          "#include \"sys/mock_socket.h\" in test/test_it.c names #{socket}, outside the project. " \
-          "With :cmock ↳ :mock_name_include_folder disabled, its mock includes it by bare name, and Ceedling adds no search path " \
-          "for a bare name there. Enable that option to include it by its folder, as in \"sys/mock_socket.h\".",
-          Verbosity::COMPLAIN, LogLabels::NOTICE
-        )
+        expect(@loginator).to_not receive(:log)
 
         expect(derive( paths: ['inc'], includes: [mock( 'sys/mock_socket.h' )], headers: [socket] )).to eq( [] )
+        expect(@refusals).to eq(
+          'sys/socket.h' =>
+            "`#include \"sys/mock_socket.h\"` in test/test_it.c needs search path '/usr/include/x86_64-linux-gnu/sys', " \
+            "since its mock writes `#include \"socket.h\"` with :cmock ↳ :mock_name_include_folder disabled. " \
+            "Because this search path is outside the working directory and could cause shadowing of other headers, " \
+            "Ceedling won't add the full search path. Instead, enable :cmock ↳ :mock_name_include_folder and reference " \
+            "the parent folder, as in `#include \"sys/mock_socket.h\"`."
+        )
       end
 
-      it "adds nothing for a bare name, naming the #include that would reach it once" do
-        expect(@loginator).to receive(:log).once.with(
-          "#include \"mock_socket.h\" in test/test_it.c names #{socket}, outside the project. " \
-          "Ceedling adds no search path for a bare name there. Include it by its path below an include directory, as in \"sys/mock_socket.h\".",
-          Verbosity::COMPLAIN, LogLabels::NOTICE
-        )
+      it "adds nothing for a bare name, explaining the #include that would reach it and logging nothing" do
+        expect(@loginator).to_not receive(:log)
 
-        2.times { expect(derive( paths: ['inc'], includes: [mock( 'mock_socket.h' )], headers: [socket] )).to eq( [] ) }
+        expect(derive( paths: ['inc'], includes: [mock( 'mock_socket.h' )], headers: [socket] )).to eq( [] )
+        expect(@refusals).to eq(
+          'socket.h' =>
+            "`#include \"mock_socket.h\"` in test/test_it.c needs search path '/usr/include/x86_64-linux-gnu/sys'. " \
+            "Because this search path is outside the working directory and could cause shadowing of other headers, " \
+            "Ceedling won't add the full search path. Instead, reference the parent folder, as in `#include \"sys/mock_socket.h\"`."
+        )
+      end
+
+      it "explains a plain #include by its own path" do
+        derive( paths: ['inc'], includes: [UserInclude.new( 'socket.h' )], headers: [socket] )
+
+        expect(@refusals.keys).to eq( ['socket.h'] )
+        expect(@refusals['socket.h']).to start_with( "`#include \"socket.h\"` in test/test_it.c needs search path" )
+        expect(@refusals['socket.h']).to end_with( "as in `#include \"sys/socket.h\"`." )
+      end
+
+      it "spells a header's search path absolutely, whatever spelling the collection holds" do
+        relative = ProjectPaths.relative( socket )
+        derive( paths: ['inc'], includes: [mock( 'mock_socket.h' )], headers: [relative] )
+
+        expect(@refusals['socket.h']).to include( "needs search path '/usr/include/x86_64-linux-gnu/sys'." )
       end
     end
   end

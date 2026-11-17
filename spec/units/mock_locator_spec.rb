@@ -33,7 +33,15 @@ describe MockLocator do
     it "searches a test's header paths, which leave out its generated directories" do
       testable = TestInvokerTypes::Testable.new( filepath: 'test/TestFoo.c', search_paths: ['mocks', 'mocks/drivers', 'src'] )
       allow(@test_search_paths).to receive(:header_paths).with( testable ).and_return( ['src'] )
-      expect(@include_pathinator).to receive(:header_search).with( ['src'] ).and_return( :search )
+      expect(@include_pathinator).to receive(:header_search).with( ['src'], refusals: {} ).and_return( :search )
+
+      expect(@locator.header_search( testable )).to eq( :search )
+    end
+
+    it "explains a failed lookup by the test's search path refusals" do
+      testable = TestInvokerTypes::Testable.new( filepath: 'test/TestFoo.c', search_path_refusals: { 'socket.h' => 'why' } )
+      allow(@test_search_paths).to receive(:header_paths).with( testable ).and_return( ['src'] )
+      expect(@include_pathinator).to receive(:header_search).with( ['src'], refusals: { 'socket.h' => 'why' } ).and_return( :search )
 
       expect(@locator.header_search( testable )).to eq( :search )
     end

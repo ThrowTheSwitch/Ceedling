@@ -83,7 +83,7 @@ describe TestBuildSetup do
     )
 
     @test_derived_search_paths = double( "TestDerivedSearchPaths" )
-    allow(@test_derived_search_paths).to receive(:collect).and_return( [] )
+    allow(@test_derived_search_paths).to receive(:collect).and_return( [[], {}] )
     allow(@test_derived_search_paths).to receive(:forget_notices)
 
     @setup = described_class.new(
@@ -385,12 +385,10 @@ describe TestBuildSetup do
       end
     end
 
-    # Only a scan without test preprocessing caches TEST_SOURCE_FILE() entries, so switching
-    # modes must rescan rather than recall a cache missing them
     # A mock's header found only through a derived directory needs that directory first
     it "derives a test's search paths before its mock search paths" do
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
-      expect(@test_derived_search_paths).to receive(:collect).with( @testable ).ordered.and_return( ['src/path/to'] )
+      expect(@test_derived_search_paths).to receive(:collect).with( @testable ).ordered.and_return( [['src/path/to'], {}] )
       expect(@setup).to receive(:collect_mock_search_paths).with( @testable ).ordered do |testable|
         expect(testable.derived_search_paths).to eq( ['src/path/to'] )
         []
@@ -398,6 +396,21 @@ describe TestBuildSetup do
 
       @setup.stage_collect_test_context( @state )
     end
+
+    # A header lookup that fails later explains itself with the refusal
+    it "keeps a test's search path refusals for its header lookups" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+      allow(@test_derived_search_paths).to receive(:collect).with( @testable ).and_return( [[], { 'socket.h' => 'why' }] )
+      expect(@setup).to receive(:collect_mock_search_paths).with( @testable ) do |testable|
+        expect(testable.search_path_refusals).to eq( 'socket.h' => 'why' )
+        []
+      end
+
+      @setup.stage_collect_test_context( @state )
+    end
+
+    # Only a scan without test preprocessing caches TEST_SOURCE_FILE() entries, so switching
+    # modes must rescan rather than recall a cache missing them
 
     it "caches build directives against the test preprocessing mode that scanned them" do
       [true, false].each do |preprocessing|
@@ -484,7 +497,7 @@ describe TestBuildSetup do
         .with('test/TestFoo.c').and_return( [foo_mock] )
 
       search = HeaderSearch.new( ['other_inc', 'src'], ->(_dir) { [] } )
-      expect(@include_pathinator).to receive(:header_search).with( ['other_inc', 'src'] ).and_return( search )
+      expect(@include_pathinator).to receive(:header_search).with( ['other_inc', 'src'], refusals: {} ).and_return( search )
       expect(@file_finder).to receive(:resolve_mock)
         .with('MockFoo.h', collection: search, complain: :error).and_return( ['other_inc/foo.h', ''] )
 

@@ -231,9 +231,13 @@ ceedling_system_tests do
 
     SOCKET_TEST = "void test_socket(void) { socket_ExpectAndReturn(1, 2, 3, 4); TEST_ASSERT_EQUAL_INT(4, socket(1, 2, 3)); }\n"
 
-    def socket_project(include_line, include_paths:, files: [])
+    def socket_project(include_line, include_paths:, files: [], preprocessor: :all, cmock: {})
       write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include <errno.h>\n" + include_line + "\n" + SOCKET_TEST )
-      configure( include_paths, :all, { :files => { :include => files }, :cmock => { :treat_externs => :include } } )
+      configure( include_paths, preprocessor, { :files => { :include => files }, :cmock => { :treat_externs => :include }.merge( cmock ) } )
+    end
+
+    def socket_header
+      return File.join( @multiarch_dir, 'sys/socket.h' )
     end
 
     it "mocks it by its subdirectory below the multiarch directory a search path lists" do
@@ -251,14 +255,51 @@ ceedling_system_tests do
       end
     end
 
-    it "adds no search path for its bare name, naming the #include that reaches it" do
+    # A failed lookup stops the build in stage 2 without test preprocessing, and later with it
+    [:none, :all].each do |preprocessor|
+      it "adds no search path for its bare name, and its error at :use_test_preprocessor #{preprocessor} names the #include that reaches it" do
+        in_project do
+          socket_project( '#include "mock_socket.h"', include_paths: ['test'], files: [socket_header], preprocessor: preprocessor )
+
+          output = @c.ceedling_build_exec( "test:all" )
+          expect(@c.last_exit_status).to_not eq(0)
+          expect(output).to include(
+            "Found no file `socket.h` in search paths. `#include \"mock_socket.h\"` in test/test_c.c needs search path '#{@multiarch_dir}/sys'. " \
+            "Because this search path is outside the working directory and could cause shadowing of other headers, " \
+            "Ceedling won't add the full search path. Instead, reference the parent folder, as in `#include \"sys/mock_socket.h\"`."
+          )
+          expect(output).to_not include( 'Added search path' )
+        end
+      end
+    end
+
+    # Captured output loses the option's arrow under a locale without UTF-8
+    def naming_option(text)
+      return Regexp.new( Regexp.escape( text ).gsub( Regexp.escape( ':cmock ↳ ' ) ) { ':cmock\s*\S*\s*' } )
+    end
+
+    it "names the option a mock without its folder needs in its error" do
       in_project do
-        socket_project( '#include "mock_socket.h"', include_paths: ['test'], files: [File.join( @multiarch_dir, 'sys/socket.h' )] )
+        socket_project( '#include "sys/mock_socket.h"', include_paths: ['test'], files: [socket_header], cmock: { :mock_name_include_folder => false } )
 
         output = @c.ceedling_build_exec( "test:all" )
         expect(@c.last_exit_status).to_not eq(0)
-        expect(output).to include( 'Ceedling adds no search path for a bare name there' )
-        expect(output).to include( 'as in "sys/mock_socket.h"' )
+        expect(output).to match( naming_option(
+          "Found no file `sys/socket.h` in search paths. `#include \"sys/mock_socket.h\"` in test/test_c.c needs search path '#{@multiarch_dir}/sys', " \
+          "since its mock writes `#include \"socket.h\"` with :cmock ↳ :mock_name_include_folder disabled."
+        ) )
+        expect(output).to match( naming_option( 'Instead, enable :cmock ↳ :mock_name_include_folder and reference the parent folder' ) )
+      end
+    end
+
+    # Stage 2 reads the #include from the file's text, and only a failed lookup reports it
+    it "says nothing of a bare name test preprocessing removes" do
+      in_project do
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#ifdef NEVER_DEFINED\n#include \"mock_socket.h\"\n#endif\n" \
+                                "void test_nothing(void) { TEST_ASSERT_EQUAL_INT(1, 1); }\n" )
+        configure( ['test'], :all, { :files => { :include => [socket_header] } } )
+
+        expect(build_passes).to_not include( 'needs search path' )
       end
     end
 
