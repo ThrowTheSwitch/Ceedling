@@ -7,21 +7,29 @@
 
 # A test's compiler search paths, in the order the compiler searches them. Generated
 # directories come first, so a test's mocks and Partials shadow the real headers they
-# stand in for, then TEST_INCLUDE_PATH() entries, then the project's configured paths.
+# stand in for, then TEST_INCLUDE_PATH() entries, then the project's configured paths,
+# then the directories the test's #includes imply for headers no search path lists.
 class TestSearchPaths
 
   constructor :configurator, :include_pathinator, :test_context_extractor
 
-  # `paths` is a Testable's paths Hash. `mock_search_paths` are its mocks' mirrored
-  # directories, which sit right after the flat mock root.
-  def compose(filepath, paths, mock_search_paths = [])
-    return (generated_paths( filepath, paths, mock_search_paths ) + configured_paths( filepath )).uniq
+  # `mock_search_paths` are the test's mocks' mirrored directories, which sit right after
+  # the flat mock root. They default to the Testable's own.
+  def compose(testable, mock_search_paths = testable.mock_search_paths)
+    filepath = testable.filepath
+    return (generated_paths( filepath, testable.paths, mock_search_paths ) + configured_paths( filepath ) + testable.derived_search_paths).uniq
+  end
+
+  # The paths a test's real headers are found through: its search paths without the
+  # directories its mocks and Partials are generated in
+  def header_paths(testable)
+    return (configured_paths( testable.filepath ) + testable.derived_search_paths).uniq
   end
 
   # Sets a test's mock search paths and composes its search paths around them. `lock`
   # guards the write, since other threads read the Testable.
   def assign_mock_search_paths(testable, mock_search_paths, lock)
-    paths = compose( testable.filepath, testable.paths, mock_search_paths )
+    paths = compose( testable, mock_search_paths )
     lock.synchronize do
       testable.mock_search_paths = mock_search_paths
       testable.search_paths      = paths

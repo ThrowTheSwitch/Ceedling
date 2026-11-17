@@ -33,6 +33,12 @@ describe "TestInvokerTypes" do
       expect(testable.mock_search_paths).to eq( [] )
     end
 
+    it "defaults search_path_refusals to an empty hash" do
+      testable = TestInvokerTypes::Testable.new
+
+      expect(testable.search_path_refusals).to eq( {} )
+    end
+
     it "accepts an explicit partials value instead of defaulting" do
       partials = TestInvokerTypes::TestablePartials.new( configs: { 'Foo' => double("Config") }, tests: ['Foo'], mocks: [] )
       testable = TestInvokerTypes::Testable.new( :partials => partials )

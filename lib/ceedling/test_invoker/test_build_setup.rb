@@ -36,6 +36,7 @@ class TestBuildSetup
     :dependinator,
     :test_search_paths,
     :mock_locator,
+    :test_derived_search_paths,
     :test_source_file_directive_resolver
   )
 
@@ -110,6 +111,7 @@ class TestBuildSetup
   # cache instead of being scanned again when nothing about the file itself has changed.
   def stage_collect_test_context(state)
     skipped = 0
+    @test_derived_search_paths.forget_notices
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
@@ -183,6 +185,13 @@ class TestBuildSetup
         includes:        @context_extractor.lookup_all_header_includes_list( filepath )
       )
 
+      # Mock search paths are found through the derived ones
+      derived, refusals = @test_derived_search_paths.collect( testable )
+      state.lock.synchronize do
+        testable.derived_search_paths = derived
+        testable.search_path_refusals = refusals
+      end
+
       testable.mock_search_paths = collect_mock_search_paths( testable )
     end
 
@@ -199,7 +208,7 @@ class TestBuildSetup
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath
 
-      srch_paths     = @test_search_paths.compose( filepath, testable.paths, testable.mock_search_paths )
+      srch_paths     = @test_search_paths.compose( testable )
       cmp_flags      = flags( context: state.context, operation: OPERATION_COMPILE_SYM,    filepath: filepath )
       pre_flags      = preprocess_flags( context: state.context, compile_flags: cmp_flags, filepath: filepath )
       asm_flags      = flags( context: state.context, operation: OPERATION_ASSEMBLE_SYM,   filepath: filepath )
@@ -252,13 +261,9 @@ class TestBuildSetup
 
     complain = @configurator.project_use_test_preprocessor_tests ? :silent : :error
 
-    # This test's search paths don't exist until stage 3, so they are composed here
-    # without mock directories, the same collection later stages resolve against
-    collection = @mock_locator.header_collection( @test_search_paths.compose( testable.filepath, testable.paths ) )
-
     return @mock_locator.directories(
       @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
-      mocks_root: testable.paths[:mocks], collection: collection, complain: complain
+      mocks_root: testable.paths[:mocks], collection: @mock_locator.header_search( testable ), complain: complain
     )
   end
 

@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'ceedling/constants'
+require 'ceedling/includes/includes'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 
 # Stages 12 and 13: each test's Unity runner. Stage 12 parses test case names from the
@@ -32,7 +33,8 @@ class TestRunnerGeneratinator
     :batchinator,
     :generator,
     :test_context_extractor,
-    :dependinator
+    :dependinator,
+    :mock_locator
   )
 
   def setup()
@@ -80,7 +82,7 @@ class TestRunnerGeneratinator
     @generator.generate_test_runner(
       context:         state.context,
       mocks:           @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
-      includes:        @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ),
+      includes:        runner_includes( testable ),
       test_filepath:   testable.filepath,
       input_filepath:  testable.runner.input_filepath,
       runner_filepath: testable.runner.output_filepath
@@ -98,8 +100,29 @@ class TestRunnerGeneratinator
       unity:                   @configurator.get_unity_config,
       test_preprocessor_tests: @configurator.project_use_test_preprocessor_tests,
       mocks:                   @context_extractor.lookup_mock_header_includes_list( testable.filepath ).map( &:filepath ),
-      includes:                @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ).map( &:filepath )
+      includes:                runner_includes( testable ).map { |include| include.include_path || include.filepath }
     }
+  end
+
+  # The test's #includes as its runner writes them. A user #include is spelled as the text
+  # through which the test's search paths find its header first, its filename whenever that
+  # does, so the runner includes the header the test does. One whose header isn't found
+  # keeps its filename. Both stages' staleness checks and the runner itself ask, and each
+  # test's list is settled by then, so it is spelled once.
+  def runner_includes(testable)
+    return testable.runner.includes ||= spelled_includes( testable )
+  end
+
+  def spelled_includes(testable)
+    search = @mock_locator.header_search( testable )
+
+    return @context_extractor.lookup_nonmock_header_includes_list( testable.filepath ).map do |include|
+      next include if include.is_a?( SystemInclude )
+
+      header   = search.header_candidates( include.filepath ).first
+      spelling = header.nil? ? nil : search.spelling( header )
+      spelling.nil? ? UserInclude.new( include.filepath ) : UserInclude.new( include.filepath, include_path: spelling )
+    end
   end
 
 end

@@ -215,14 +215,18 @@ describe GeneratorTestRunner do
       expect( captured ).to eq( ['<sys/stat.h>'] )
     end
 
-    it 'renders a user include with a directory component down to its bare filename, unchanged from prior behavior' do
-      # Unlike a system header, a project's own directories are exposed to the
-      # compiler as a flat list of -I search paths -- rendering a user include's
-      # own directory component here breaks resolution rather than fixing anything,
-      # so this behavior is intentionally unchanged by the issue #1236 fix.
+    it 'renders a user include with a directory component down to its bare filename when no spelling is given' do
+      # A user include's filepath can be its header's resolved location, which the runner's
+      # -I search paths don't reach, so without a spelling only its filename is rendered
       captured = build_and_capture_includes( includes: [ UserInclude.new('sub/header.h') ] )
 
       expect( captured ).to eq( ['header.h'] )
+    end
+
+    it 'renders a user include by the spelling its caller found its header through' do
+      captured = build_and_capture_includes( includes: [ UserInclude.new('src/sub/header.h', include_path: 'sub/header.h') ] )
+
+      expect( captured ).to eq( ['sub/header.h'] )
     end
 
     it 'renders a mixed list of system and user includes each in their own correct form' do

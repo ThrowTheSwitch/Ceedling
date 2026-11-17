@@ -46,7 +46,7 @@ functionality.
 
     All files with path found in the configured include, 
     support, and test paths having the configured header file 
-    extension. 
+    extension, revised by `:files` ↳ `:include`.
 
 * `COLLECTION_ALL_SUPPORT`:
 
@@ -78,8 +78,8 @@ functionality.
 * `COLLECTION_PATHS_SOURCE_INCLUDE_VENDOR`:
 
     All configured source and include paths plus applicable 
-    vendor paths (Unity's source path plus CMock and 
-    CException's source paths if mocks and exceptions are 
+    vendor paths (Unity’s source path plus CMock and 
+    CException’s source paths if mocks and exceptions are 
     enabled).
 
 * `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE`:
@@ -89,8 +89,8 @@ functionality.
 * `COLLECTION_PATHS_TEST_SUPPORT_SOURCE_INCLUDE_VENDOR`:
 
     All test, support, source, include, and applicable 
-    vendor paths (Unity's source path plus CMock and 
-    CException's source paths if mocks and exceptions are 
+    vendor paths (Unity’s source path plus CMock and 
+    CException’s source paths if mocks and exceptions are 
     enabled).
 
 * `COLLECTION_PATHS_RELEASE_TOOLCHAIN_INCLUDE`:
@@ -103,7 +103,7 @@ functionality.
 
 * `COLLECTION_PATHS_VENDOR`:
 
-    Unity's source path plus CMock and CException's source 
+    Unity’s source path plus CMock and CException’s source 
     paths if mocks and exceptions are enabled.
 
 ## Build input collections
@@ -124,7 +124,7 @@ functionality.
       paths having the configured source file extension.
     * All files with path found in the configured test 
       paths having the configured source file extension.
-    * Unity's source files.
+    * Unity’s source files.
     * If exceptions are enabled, the source files for 
       CException.
     * If mocks are enabled, the C source files for CMock.
@@ -136,19 +136,19 @@ functionality.
     Ceedling and its supporting frameworks at build time 
     (e.g. test runners and mocks). Further, this collection 
     does not include source files added to a test 
-    executable's build list with the `TEST_SOURCE_FILE()` 
+    executable’s build list with the `TEST_SOURCE_FILE()` 
     build directive macro.
 
 ## Options and artifacts
 
 * `COLLECTION_VENDOR_FRAMEWORK_SOURCES`:
 
-    Unity plus CMock, and CException's .c filenames (without 
+    Unity plus CMock, and CException’s .c filenames (without 
     paths) if mocks and exceptions are enabled.
 
 * `COLLECTION_RELEASE_ARTIFACT_EXTRA_LINK_OBJECTS`:
 
-    If exceptions are enabled, CException's .c filenames 
+    If exceptions are enabled, CException’s .c filenames 
     (without paths) remapped to configured object file 
     extension.
 

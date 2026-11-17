@@ -9,6 +9,8 @@ require 'pathname'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/filesystem/project_paths'
+require 'ceedling/includes/header_search'
+require 'ceedling/filesystem/path_matcher'
 
 class IncludePathinator
 
@@ -29,9 +31,12 @@ class IncludePathinator
     # Alias for brevity
     @extractor = @test_context_extractor
 
-    # Each search path's header listing for one test build (see `header_listing`)
-    @listings      = {}
-    @listings_lock = Mutex.new
+    # Each search path's header listing for one test build (see `header_listing`), and the
+    # test directories holding headers
+    @listings           = {}
+    @test_include_paths = nil
+    @configured_headers = nil
+    @listings_lock      = Mutex.new
   end
 
   def validate_test_build_directive_paths
@@ -69,45 +74,60 @@ class IncludePathinator
     return headers
   end
 
-  # Header files reachable from an already-ordered directory priority list (e.g. a
-  # test's own search_paths), in that same order and deduplicated by first occurrence.
-  # This is the candidate list a compiler's own -I search would consult for a single
-  # test's #include resolution -- distinct from collection_all_headers, which is one
-  # global, project-wide list blind to any one test's own TEST_INCLUDE_PATH() priority.
-  def ordered_header_files(search_paths)
-    headers = []
-    search_paths.each do |path|
-      headers.concat( header_listing( path ) )
-    end
-    return headers.uniq
+  # A test's headers found as its compiler finds them, through `search_paths` in order,
+  # each directory listed as `header_listing` lists it. Distinct from collection_all_headers,
+  # which is one project-wide list blind to any one test's TEST_INCLUDE_PATH() priority.
+  # `refusals` explain a failed lookup (see HeaderSearch#refusal).
+  def header_search(search_paths, refusals: {})
+    return HeaderSearch.new( search_paths, method( :header_listing ), refusals: refusals )
   end
 
   # Starts a test build with every search path listed afresh
   def forget_header_listings
-    @listings_lock.synchronize { @listings.clear }
+    @listings_lock.synchronize do
+      @listings.clear
+      @test_include_paths = nil
+    end
   end
 
   # The project's whole header collection, reordered so headers beneath this test's
   # own earlier search paths come first.
   #
-  # Distinct from ordered_header_files above, which lists each search path's immediate
-  # contents the way a compiler's own non-recursive -I search does. A reference naming
-  # a header by path needs the whole collection instead, since the file it names can
-  # sit at any depth below a search path, and it needs this test's own priority so a
-  # TEST_INCLUDE_PATH() decides among same-named candidates.
+  # Distinct from header_search above, which finds a header as the compiler's -I search
+  # does. A Partial module named by path needs the whole collection instead, since its
+  # trailing path matches a file at any depth below a search path, and it needs this
+  # test's own priority so a TEST_INCLUDE_PATH() decides among same-named candidates.
   #
-  # Ordering within one priority rank is the collection's own, which is what keeps a
-  # reference that distinguishes nothing resolving exactly as it did before.
+  # Ordering within one priority rank is the collection's own, so a reference that
+  # distinguishes nothing resolves by collection order.
   def prioritized_header_files(search_paths)
+    return prioritize( @configurator.collection_all_headers.to_a, search_paths )
+  end
+
+  # The configured collection's headers `query` could name, those beneath earlier search
+  # paths first. Matches filter the collection before ranking, so a lookup costs one pass.
+  # Stage 2 adds every test's TEST_INCLUDE_PATH() headers to the collection, which a later
+  # build in the process would see, so lookups draw on the collection as configured.
+  def collection_candidates(query, search_paths)
+    headers = @listings_lock.synchronize { @configured_headers } || @configurator.collection_all_headers.to_a
+    return prioritize( PathMatcher.candidates( query, headers ), search_paths )
+  end
+
+  # `headers` reordered so those beneath earlier search paths come first, keeping their
+  # own order within one rank
+  def prioritize(headers, search_paths)
     roots = search_paths.map { |path| FilePathUtils.no_decorators( path ) }.reject(&:empty?)
     ranks = root_ranks( roots )
 
-    @configurator.collection_all_headers.to_a.each_with_index.sort_by do |header, index|
+    return headers.each_with_index.sort_by do |header, index|
       [header_rank( header, ranks, roots.length ), index]
     end.map(&:first)
   end
 
+  # Remembers the configured collection the first time, since the collection then holds
+  # every test's TEST_INCLUDE_PATH() headers for each later build in the process
   def augment_environment_header_files(headers)
+    @listings_lock.synchronize { @configured_headers ||= @configurator.collection_all_headers.to_a.freeze }
     @configurator.redefine_element(:collection_all_headers, headers)
   end
 
@@ -117,23 +137,25 @@ class IncludePathinator
     return @extractor.lookup_include_paths_list(filepath)
   end
 
-  # Gather together [:paths][:test] that actually contain header files
+  # Gather together [:paths][:test] that actually contain header files. Remembered for the
+  # test build, since every composition of a test's search paths asks.
   def collect_test_include_paths
-    paths = []
-    @configurator.collection_paths_test.each do |path|
-      headers = @file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) )
-      paths << path if headers.length > 0
+    remembered = @listings_lock.synchronize { @test_include_paths }
+    return remembered unless remembered.nil?
+
+    paths = @configurator.collection_paths_test.select do |path|
+      !@file_wrapper.directory_listing( @configurator.extension_header.glob_patterns(path) ).empty?
     end
 
-    return paths
+    return @listings_lock.synchronize { @test_include_paths ||= paths.freeze }
   end
 
   private
 
   # One search path's headers. A directory outside the build root keeps its listing for the
   # test build, since a build never writes there, and a test's search paths are listed
-  # several times a test. One under the build root is listed every time, since the build
-  # fills it as it runs.
+  # several times a test. One under the build root is listed every time, since a plugin or
+  # the build itself can write headers there as it runs.
   def header_listing(path)
     key        = [ProjectPaths.working_dir, path]
     remembered = @listings_lock.synchronize { @listings[key] }

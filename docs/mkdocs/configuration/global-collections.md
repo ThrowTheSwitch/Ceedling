@@ -43,7 +43,7 @@ handy for crafting custom functionality.
 
     All files with path found in the configured include, 
     support, and test paths having the configured header file 
-    extension. 
+    extension, revised by `:files` ↳ `:include`.
 
 * `COLLECTION_ALL_SUPPORT`:
 

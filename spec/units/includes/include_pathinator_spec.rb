@@ -32,21 +32,22 @@ describe IncludePathinator do
     )
   end
 
-  describe '#ordered_header_files' do
+  # Each search builds anew, so these show the listings it draws on shared across searches
+  describe '#header_search' do
     it 'returns an empty list given an empty search path list' do
-      expect(@pathinator.ordered_header_files([])).to eq([])
+      expect(@pathinator.header_search([]).flat).to eq([])
     end
 
     it 'lists headers from a single search path' do
       allow(@file_wrapper).to receive(:directory_listing).with(['inc/*.h']).and_return( ['inc/foo.h', 'inc/bar.h'] )
-      expect(@pathinator.ordered_header_files(['inc'])).to eq( ['inc/foo.h', 'inc/bar.h'] )
+      expect(@pathinator.header_search(['inc']).flat).to eq( ['inc/foo.h', 'inc/bar.h'] )
     end
 
     it 'concatenates headers from multiple search paths in the order the paths are given' do
       allow(@file_wrapper).to receive(:directory_listing).with(['first/*.h']).and_return( ['first/foo.h'] )
       allow(@file_wrapper).to receive(:directory_listing).with(['second/*.h']).and_return( ['second/foo.h'] )
 
-      expect(@pathinator.ordered_header_files(['first', 'second'])).to eq( ['first/foo.h', 'second/foo.h'] )
+      expect(@pathinator.header_search(['first', 'second']).flat).to eq( ['first/foo.h', 'second/foo.h'] )
     end
 
     it "ranks an earlier search path's same-named header ahead of a later path's, regardless of either path's own alphabetical position" do
@@ -56,13 +57,13 @@ describe IncludePathinator do
       allow(@file_wrapper).to receive(:directory_listing).with(['zzz/*.h']).and_return( ['zzz/dup.h'] )
       allow(@file_wrapper).to receive(:directory_listing).with(['aaa/*.h']).and_return( ['aaa/dup.h'] )
 
-      expect(@pathinator.ordered_header_files(['zzz', 'aaa'])).to eq( ['zzz/dup.h', 'aaa/dup.h'] )
+      expect(@pathinator.header_search(['zzz', 'aaa']).flat).to eq( ['zzz/dup.h', 'aaa/dup.h'] )
     end
 
     it 'de-duplicates an identical filepath reachable more than once, keeping its first occurrence' do
       allow(@file_wrapper).to receive(:directory_listing).with(['inc/*.h']).and_return( ['inc/foo.h'] )
 
-      expect(@pathinator.ordered_header_files(['inc', 'inc'])).to eq( ['inc/foo.h'] )
+      expect(@pathinator.header_search(['inc', 'inc']).flat).to eq( ['inc/foo.h'] )
     end
 
     # A test's search paths are listed several times a test, and nothing in a build writes
@@ -70,7 +71,7 @@ describe IncludePathinator do
     it 'lists a directory outside the build root once' do
       expect(@file_wrapper).to receive(:directory_listing).with(['inc/*.h']).once.and_return( ['inc/foo.h'] )
 
-      2.times { expect(@pathinator.ordered_header_files(['inc'])).to eq( ['inc/foo.h'] ) }
+      2.times { expect(@pathinator.header_search(['inc']).flat).to eq( ['inc/foo.h'] ) }
     end
 
     it 'lists a directory under the build root on every call, so headers the build writes appear' do
@@ -80,22 +81,65 @@ describe IncludePathinator do
       )
       expect(ProjectPaths).to receive(:contains?).once.and_call_original
 
-      expect(@pathinator.ordered_header_files(['build/test/mocks'])).to eq( ['build/test/mocks/a.h'] )
-      expect(@pathinator.ordered_header_files(['build/test/mocks'])).to eq( ['build/test/mocks/a.h', 'build/test/mocks/b.h'] )
+      expect(@pathinator.header_search(['build/test/mocks']).flat).to eq( ['build/test/mocks/a.h'] )
+      expect(@pathinator.header_search(['build/test/mocks']).flat).to eq( ['build/test/mocks/a.h', 'build/test/mocks/b.h'] )
     end
 
     it 'lists every directory again after the listings are forgotten' do
       expect(@file_wrapper).to receive(:directory_listing).with(['inc/*.h']).twice.and_return( ['inc/foo.h'], ['inc/foo.h', 'inc/new.h'] )
 
-      @pathinator.ordered_header_files(['inc'])
+      @pathinator.header_search(['inc']).flat
       @pathinator.forget_header_listings
 
-      expect(@pathinator.ordered_header_files(['inc'])).to eq( ['inc/foo.h', 'inc/new.h'] )
+      expect(@pathinator.header_search(['inc']).flat).to eq( ['inc/foo.h', 'inc/new.h'] )
+    end
+
+    it 'lists the directory a search path joins with an #include once, outside the build root' do
+      expect(@file_wrapper).to receive(:directory_listing).with(['src/drivers/*.h']).once.and_return( ['src/drivers/foo.h'] )
+
+      2.times { expect(@pathinator.header_search(['src']).header_candidates('drivers/foo.h')).to eq( ['src/drivers/foo.h'] ) }
     end
   end
 
-  # Distinct from ordered_header_files: this returns the whole project collection, since a
-  # reference naming a header by path can sit at any depth below a search path.
+  describe '#collect_test_include_paths' do
+    before(:each) do
+      allow(@configurator).to receive(:collection_paths_test).and_return( ['test', 'test/support'] )
+      allow(@file_wrapper).to receive(:directory_listing).with(['test/*.h']).and_return( [] )
+      allow(@file_wrapper).to receive(:directory_listing).with(['test/support/*.h']).and_return( ['test/support/helper.h'] )
+    end
+
+    it 'gives the test directories holding headers' do
+      expect(@pathinator.collect_test_include_paths).to eq( ['test/support'] )
+    end
+
+    # Every composition of a test's search paths asks
+    it 'lists the test directories once until the listings are forgotten' do
+      expect(@file_wrapper).to receive(:directory_listing).with(['test/*.h']).twice.and_return( [] )
+
+      2.times { @pathinator.collect_test_include_paths }
+      @pathinator.forget_header_listings
+      @pathinator.collect_test_include_paths
+    end
+  end
+
+  describe '#collection_candidates' do
+    it "gives the collection's headers a query names, those below earlier search paths first" do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['src/a/sensor.h', 'lib/sensor.h', 'src/other.h'] )
+
+      expect(@pathinator.collection_candidates( 'sensor.h', ['lib', 'src'] )).to eq( ['lib/sensor.h', 'src/a/sensor.h'] )
+    end
+  end
+
+  describe '#prioritize' do
+    it 'orders any header list by the earliest search path each header lies below, keeping ties in list order' do
+      headers = ['src/b.h', 'inc/a.h', 'src/a.h', 'other/c.h']
+
+      expect(@pathinator.prioritize( headers, ['inc', 'src'] )).to eq( ['inc/a.h', 'src/b.h', 'src/a.h', 'other/c.h'] )
+    end
+  end
+
+  # Distinct from header_search: this returns the whole project collection, since a
+  # Partial module named by path can sit at any depth below a search path.
   describe '#prioritized_header_files' do
     it 'returns headers at any depth below a search path, not only its immediate contents' do
       allow(@configurator).to receive(:collection_all_headers)
@@ -249,10 +293,24 @@ describe IncludePathinator do
 
   describe '#augment_environment_header_files' do
     it 'delegates to configurator.redefine_element with :collection_all_headers and the given headers, unchanged' do
+      allow(@configurator).to receive(:collection_all_headers).and_return( ['inc/foo.h'] )
       headers = ['inc/foo.h', 'inc/bar.h']
       expect(@configurator).to receive(:redefine_element).with(:collection_all_headers, headers)
 
       @pathinator.augment_environment_header_files(headers)
+    end
+
+    # A later build in the process would otherwise find another test's TEST_INCLUDE_PATH()
+    # headers among the configured ones
+    it 'keeps collection_candidates drawing on the collection as configured' do
+      collection = ['src/a/sensor.h']
+      allow(@configurator).to receive(:collection_all_headers) { collection }
+      allow(@configurator).to receive(:redefine_element) { |_name, headers| collection = headers }
+
+      @pathinator.augment_environment_header_files( ['src/a/sensor.h', 'tip/sensor.h'] )
+      @pathinator.augment_environment_header_files( ['src/a/sensor.h', 'tip/sensor.h'] )
+
+      expect(@pathinator.collection_candidates( 'sensor.h', [] )).to eq( ['src/a/sensor.h'] )
     end
   end
 

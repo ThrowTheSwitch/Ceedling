@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/test_invoker/test_runner_generatinator'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/includes/includes'
+require 'ceedling/includes/header_search'
 
 describe TestRunnerGeneratinator do
   before(:each) do
@@ -32,10 +33,12 @@ describe TestRunnerGeneratinator do
     allow(@dependinator).to receive(:stale?).and_return( true )
     allow(@dependinator).to receive(:mark_fresh)
     @generator = double( "Generator" )
+    @mock_locator = double( "MockLocator" )
+    allow(@mock_locator).to receive(:header_search).and_return( HeaderSearch.new( [], ->(_dir) { [] } ) )
 
     @runners = described_class.new(
       configurator: @configurator, loginator: @loginator, reportinator: @reportinator, batchinator: @batchinator,
-      generator: @generator, test_context_extractor: @test_context_extractor, dependinator: @dependinator
+      generator: @generator, test_context_extractor: @test_context_extractor, dependinator: @dependinator, mock_locator: @mock_locator
     )
   end
 
@@ -208,6 +211,73 @@ describe TestRunnerGeneratinator do
       @testable.runner.input_filepath = 'test/TestFoo.c'
 
       expect(@dependinator).to receive(:register).with( 'build/test/runners/TestFoo_runner.c', files: ['test/TestFoo.c'], meta: anything )
+
+      @runners.generate( @state )
+    end
+  end
+
+  # The runner compiles with the test's search paths, so it includes each of the test's
+  # headers by the text those paths find it through
+  context "runner #includes" do
+    before(:each) do
+      allow(@configurator).to receive(:get_runner_config).and_return( {} )
+      allow(@configurator).to receive(:get_unity_config).and_return( {} )
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).and_return( [] )
+
+      tree = ['src/top.h', 'src/drivers/foo.h']
+      allow(@mock_locator).to receive(:header_search).and_return(
+        HeaderSearch.new( ['src'], ->(dir) { tree.select { |header| File.dirname( header ) == dir } } )
+      )
+
+      @testable = TestInvokerTypes::Testable.new(
+        :name => 'a_test', :filepath => 'test/TestFoo.c',
+        :runner => TestInvokerTypes::RunnerInfo.new( :output_filepath => 'build/test/runners/TestFoo_runner.c', :input_filepath => 'test/TestFoo.c' )
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
+    end
+
+    def generated_includes(includes)
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( includes )
+      rendered = nil
+      expect(@generator).to receive(:generate_test_runner) { |includes:, **| rendered = includes.map { |include| include.include_path || include.filename } }
+
+      @runners.generate( @state )
+      return rendered
+    end
+
+    it "includes a header by its filename when the search paths find it by that" do
+      expect(generated_includes( [UserInclude.new( 'top.h' )] )).to eq( ['top.h'] )
+    end
+
+    it "includes a header below a search path by its path below that search path" do
+      expect(generated_includes( [UserInclude.new( 'drivers/foo.h' )] )).to eq( ['drivers/foo.h'] )
+    end
+
+    # With test preprocessing, an #include carries the path GCC found the header by
+    it "includes a header named by its resolved path by the text the search paths find it through" do
+      expect(generated_includes( [UserInclude.new( 'src/drivers/foo.h' )] )).to eq( ['drivers/foo.h'] )
+    end
+
+    it "keeps the filename of a header no search path reaches" do
+      expect(generated_includes( [UserInclude.new( 'gone/missing.h' )] )).to eq( ['missing.h'] )
+    end
+
+    it "spells a test's #includes once for both stages and the runner" do
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [UserInclude.new( 'top.h' )] )
+      allow(@test_context_extractor).to receive(:collect_test_runner_details)
+      allow(@generator).to receive(:generate_test_runner)
+      expect(@mock_locator).to receive(:header_search).once.and_return( HeaderSearch.new( ['src'], ->(_dir) { ['src/top.h'] } ) )
+
+      @runners.collect_details( @state )
+      @runners.generate( @state )
+    end
+
+    it "carries the spelled #includes in its meta" do
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( [UserInclude.new( 'drivers/foo.h' )] )
+      allow(@generator).to receive(:generate_test_runner)
+
+      expect(@dependinator).to receive(:register).with( anything, files: anything, meta: hash_including( includes: ['drivers/foo.h'] ) )
 
       @runners.generate( @state )
     end

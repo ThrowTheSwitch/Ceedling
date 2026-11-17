@@ -9,6 +9,7 @@ require 'spec_helper'
 require 'ceedling/test_invoker/test_build_setup'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
+require 'ceedling/includes/header_search'
 require 'ceedling/test_invoker/mock_locator'
 
 describe TestBuildSetup do
@@ -54,9 +55,10 @@ describe TestBuildSetup do
     # Stage 2's Partials check reads the scanned #includes
     allow(@test_context_extractor).to receive(:lookup_all_header_includes_list).and_return( [] )
 
-    # Harmless default -- individual examples needing a specific ordered header
-    # collection stub this again with a narrower `.with(...)` match.
-    allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
+    # Harmless default -- individual examples needing a specific header search stub this
+    # again with a narrower `.with(...)` match.
+    @header_search = HeaderSearch.new( [], ->(_dir) { [] } )
+    allow(@include_pathinator).to receive(:header_search).and_return( @header_search )
 
     # Search path defaults, so tests need not know every source a test's search paths
     # draw on
@@ -71,9 +73,18 @@ describe TestBuildSetup do
     @test_source_file_directive_resolver = double( "TestSourceFileDirectiveResolver" )
     allow(@test_source_file_directive_resolver).to receive(:validate!)
 
-    @mock_locator = MockLocator.new(
-      configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
+    # Real, over the same doubles, so search path expectations read as paths
+    @search_paths = TestSearchPaths.new(
+      configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
     )
+    @mock_locator = MockLocator.new(
+      configurator: @configurator, include_pathinator: @include_pathinator, test_search_paths: @search_paths,
+      file_finder: @file_finder, file_path_utils: @file_path_utils
+    )
+
+    @test_derived_search_paths = double( "TestDerivedSearchPaths" )
+    allow(@test_derived_search_paths).to receive(:collect).and_return( [[], {}] )
+    allow(@test_derived_search_paths).to receive(:forget_notices)
 
     @setup = described_class.new(
       {
@@ -90,11 +101,9 @@ describe TestBuildSetup do
         :file_finder            => @file_finder,
         :test_runner_manager    => @test_runner_manager,
         :dependinator           => @dependinator,
-        # Real, over the same doubles, so search path expectations read as paths
-        :test_search_paths      => TestSearchPaths.new(
-          configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
-        ),
+        :test_search_paths      => @search_paths,
         :mock_locator           => @mock_locator,
+        :test_derived_search_paths => @test_derived_search_paths,
         :test_source_file_directive_resolver => @test_source_file_directive_resolver
       }
     )
@@ -376,8 +385,33 @@ describe TestBuildSetup do
       end
     end
 
+    # A mock's header found only through a derived directory needs that directory first
+    it "derives a test's search paths before its mock search paths" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+      expect(@test_derived_search_paths).to receive(:collect).with( @testable ).ordered.and_return( [['src/path/to'], {}] )
+      expect(@setup).to receive(:collect_mock_search_paths).with( @testable ).ordered do |testable|
+        expect(testable.derived_search_paths).to eq( ['src/path/to'] )
+        []
+      end
+
+      @setup.stage_collect_test_context( @state )
+    end
+
+    # A header lookup that fails later explains itself with the refusal
+    it "keeps a test's search path refusals for its header lookups" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+      allow(@test_derived_search_paths).to receive(:collect).with( @testable ).and_return( [[], { 'socket.h' => 'why' }] )
+      expect(@setup).to receive(:collect_mock_search_paths).with( @testable ) do |testable|
+        expect(testable.search_path_refusals).to eq( 'socket.h' => 'why' )
+        []
+      end
+
+      @setup.stage_collect_test_context( @state )
+    end
+
     # Only a scan without test preprocessing caches TEST_SOURCE_FILE() entries, so switching
     # modes must rescan rather than recall a cache missing them
+
     it "caches build directives against the test preprocessing mode that scanned them" do
       [true, false].each do |preprocessing|
         allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( preprocessing )
@@ -445,15 +479,15 @@ describe TestBuildSetup do
       bar_mock = MockInclude.new('MockBar.h')
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [foo_mock, bar_mock] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :error).and_return( ['src/drivers/foo.h', 'drivers'] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockBar.h', collection: [], complain: :error).and_return( ['src/drivers/bar.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: @header_search, complain: :error).and_return( ['src/drivers/foo.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockBar.h', collection: @header_search, complain: :error).and_return( ['src/drivers/bar.h', 'drivers'] )
 
       result = @setup.collect_mock_search_paths( @testable )
 
       expect(result).to eq(['build/test/mocks/a_test/drivers'])
     end
 
-    it "resolves each mock's real header against this test's own TEST_INCLUDE_PATH()-then-configured-root ordering, with no mock_search_paths yet (that's what this call is computing)" do
+    it "resolves each mock's real header through this test's own TEST_INCLUDE_PATH()-then-configured-root ordering, without its generated directories" do
       allow(@include_pathinator).to receive(:lookup_test_directive_include_paths)
         .with('test/TestFoo.c').and_return( ['other_inc'] )
       allow(@configurator).to receive(:collection_paths_include).and_return( ['src'] )
@@ -462,10 +496,10 @@ describe TestBuildSetup do
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [foo_mock] )
 
-      expect(@include_pathinator).to receive(:ordered_header_files)
-        .with( ['build/test/mocks/a_test', 'other_inc', 'src'] ).and_return( ['other_inc/foo.h'] )
+      search = HeaderSearch.new( ['other_inc', 'src'], ->(_dir) { [] } )
+      expect(@include_pathinator).to receive(:header_search).with( ['other_inc', 'src'], refusals: {} ).and_return( search )
       expect(@file_finder).to receive(:resolve_mock)
-        .with('MockFoo.h', collection: ['other_inc/foo.h'], complain: :error).and_return( ['other_inc/foo.h', ''] )
+        .with('MockFoo.h', collection: search, complain: :error).and_return( ['other_inc/foo.h', ''] )
 
       @setup.collect_mock_search_paths( @testable )
     end
@@ -474,7 +508,7 @@ describe TestBuildSetup do
       foo_mock = MockInclude.new('MockFoo.h')
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [foo_mock] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :error).and_return( ['src/foo.h', ''] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: @header_search, complain: :error).and_return( ['src/foo.h', ''] )
 
       result = @setup.collect_mock_search_paths( @testable )
 
@@ -499,8 +533,8 @@ describe TestBuildSetup do
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [MockInclude.new('MockHw1.h'), MockInclude.new('MockFoo.h')] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: [], complain: :silent).and_return( [nil, nil] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: [], complain: :silent).and_return( ['src/drivers/foo.h', 'drivers'] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: @header_search, complain: :silent).and_return( [nil, nil] )
+      allow(@file_finder).to receive(:resolve_mock).with('MockFoo.h', collection: @header_search, complain: :silent).and_return( ['src/drivers/foo.h', 'drivers'] )
 
       expect(@setup.collect_mock_search_paths( @testable )).to eq( ['build/test/mocks/a_test/drivers'] )
     end
@@ -508,7 +542,7 @@ describe TestBuildSetup do
     it "stops the build over a mock whose header is missing when test preprocessing is off" do
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with('test/TestFoo.c').and_return( [MockInclude.new('MockHw1.h')] )
-      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: [], complain: :error)
+      allow(@file_finder).to receive(:resolve_mock).with('MockHw1.h', collection: @header_search, complain: :error)
         .and_raise( CeedlingException.new( 'Found no file `Hw1.h` in search paths.' ) )
 
       expect { @setup.collect_mock_search_paths( @testable ) }.to raise_error( CeedlingException, /Hw1\.h/ )

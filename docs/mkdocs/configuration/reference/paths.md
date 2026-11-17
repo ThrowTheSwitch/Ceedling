@@ -154,6 +154,12 @@ This set of paths specifies the locations of your header files. If your header
 files are intermixed with source files, you must duplicate some or all of your
 `:paths` ↳ `:source` entries here.
 
+A search path reaches the headers in directories below it through the path an
+`#include` names, as your compiler does. With `src/` listed,
+`#include "drivers/uart.h"` and `#include "drivers/mock_uart.h"` both find
+`src/drivers/uart.h`. A glob such as `src/**` is needed only for an `#include`
+that names a header below `src/` by its filename alone.
+
 In its simplest use, your include paths list can be exhaustive. That is, you
 list all path locations where your project’s header files reside in this
 configuration list.

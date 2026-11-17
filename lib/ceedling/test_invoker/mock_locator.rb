@@ -11,9 +11,10 @@ require 'ceedling/filesystem/path_matcher'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 
 # Where a test's mocks come from and where they go. A mock's real header resolves
-# against the test's search paths, and the mock is written to a directory below the
-# test's mock root mirroring that header's location. Stand-ins, mock search paths, and
-# the real mock must all agree on that directory, so every stage locates mocks here.
+# through the test's search paths as the compiler resolves it, and the mock is written to
+# a directory below the test's mock root mirroring that header's location. Stand-ins,
+# mock search paths, and the real mock must all agree on that directory, so every stage
+# locates mocks here.
 class MockLocator
 
   include TestPipelineHelpers
@@ -23,12 +24,13 @@ class MockLocator
   # the mock from (`reach`), which a search path must name
   MockPlacement = Struct.new( :folder, :directory, :root, :reach, keyword_init: true )
 
-  constructor :configurator, :include_pathinator, :file_finder, :file_path_utils
+  constructor :configurator, :include_pathinator, :test_search_paths, :file_finder, :file_path_utils
 
-  # The headers a test's mocks resolve against: those on its search paths, in search
-  # order, without its own mock directories, which hold mocks rather than real headers
-  def header_collection(search_paths, mock_search_paths = [])
-    return @include_pathinator.ordered_header_files( search_paths - mock_search_paths )
+  # How a test's real headers are found: through its search paths in order, without the
+  # directories its mocks and Partials are generated in, which hold no real headers. A
+  # header that stage 2 refused a search path explains its failed lookup.
+  def header_search(testable)
+    return @include_pathinator.header_search( @test_search_paths.header_paths( testable ), refusals: testable.search_path_refusals )
   end
 
   # A mock's real header and the subdirectory mirroring its location. `complain` sets

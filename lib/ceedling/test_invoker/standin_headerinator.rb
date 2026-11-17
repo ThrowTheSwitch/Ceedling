@@ -56,7 +56,7 @@ class StandinHeaderinator
   # stand-in follows its own #include's path. An ordinary mock's stand-in mirrors its
   # real header's directory, as the real mock will.
   def place_mocks(testable, mocks, complain)
-    collection = @mock_locator.header_collection( testable.search_paths, testable.mock_search_paths )
+    collection = @mock_locator.header_search( testable )
 
     return mocks.filter_map do |include|
       if mock_partial?( include )

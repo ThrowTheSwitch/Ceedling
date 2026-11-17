@@ -78,8 +78,45 @@ Modify the (optional) collection of assembly files used in release builds.
 
 ## `:files` ↳ `:include`
 
-Modify the collection of all source header files used in unit test builds
-(e.g. for mocking) and release builds.
+Modify the collection of header files available to unit test builds, such as
+headers to mock.
+
+A header added here need not sit in a search path’s directory. When a test’s
+`#include` names such a header, Ceedling adds the directory that `#include`
+implies to that test’s search paths. That directory is the header’s path with
+the `#include`’s own path taken off its end. It follows every other search
+path, so it never takes the place of a header your configured paths reach.
+Ceedling logs each directory it adds, once a build.
+
+```yaml
+:paths:
+  :include:
+    - inc/
+:files:
+  :include:
+    - +:src/path/to/sensor.h
+```
+
+| Test file `#include` | Search path added |
+|---|---|
+| `#include "mock_sensor.h"` | `src/path/to` |
+| `#include "path/to/mock_sensor.h"` | `src` |
+| `#include "src/path/to/mock_sensor.h"` | `.` |
+
+With [`:cmock` ↳ `:mock_name_include_folder`](cmock.md#mock_name_include_folder)
+disabled, a mock includes its header by filename alone, so each row adds
+`src/path/to`.
+
+A header outside the working directory, such as one in a system include
+directory, is an exception. A bare name like `"mock_socket.h"` would need the
+header’s own directory as a search path, but this could bring about problems
+including shadowing other headers. Ceedling doesn’t add this full search path.
+A build that needs the header stops with an error that suggests referencing
+the parent folder instead, as in `#include "sys/mock_socket.h"`. Ceedling
+then adds the shallower search path, one subdirectory up. With
+`:mock_name_include_folder` disabled, the error also suggests enabling it.
+
+Release builds find headers through `:paths` ↳ `:include` alone.
 
 **Default**: `[]` (empty)
 

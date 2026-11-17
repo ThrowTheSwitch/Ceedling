@@ -192,6 +192,42 @@ describe PathMatcher do
 
 
   # A `.` segment names nothing (the path handling audit around GH #1370)
+  # The directory a search path must be for `tail` joined with it to name `path`
+  describe '.strip_tail' do
+    it 'gives what lies above the tail' do
+      expect(described_class.strip_tail( 'src/path/to/sensor.h', 'sensor.h' )).to eq( 'src/path/to' )
+      expect(described_class.strip_tail( 'src/path/to/sensor.h', 'path/to/sensor.h' )).to eq( 'src' )
+    end
+
+    it 'gives `.` when the tail is the whole path' do
+      expect(described_class.strip_tail( 'src/sensor.h', 'src/sensor.h' )).to eq( '.' )
+    end
+
+    it 'keeps an absolute path absolute' do
+      expect(described_class.strip_tail( '/usr/include/x86_64-linux-gnu/sys/socket.h', 'sys/socket.h' )).to eq( '/usr/include/x86_64-linux-gnu' )
+      expect(described_class.strip_tail( '/sys/socket.h', 'sys/socket.h' )).to eq( '/' )
+    end
+
+    it 'keeps a drive letter, with forward slashes' do
+      expect(described_class.strip_tail( 'C:\\sdk\\inc\\sys\\socket.h', 'sys/socket.h' )).to eq( 'C:/sdk/inc' )
+      expect(described_class.strip_tail( 'C:/sys/socket.h', 'sys/socket.h' )).to eq( 'C:/' )
+    end
+
+    it 'keeps a share' do
+      expect(described_class.strip_tail( '//server/sdk/sys/socket.h', 'sys/socket.h' )).to eq( '//server/sdk' )
+    end
+
+    it 'ignores `./` and doubled separators' do
+      expect(described_class.strip_tail( './src//path/sensor.h', './path/sensor.h' )).to eq( 'src' )
+    end
+
+    it 'gives nil when the path ends otherwise' do
+      expect(described_class.strip_tail( 'src/path/to/sensor.h', 'other/sensor.h' )).to be_nil
+      expect(described_class.strip_tail( 'src/path/to/sensor.h', 'Sensor.h' )).to be_nil
+      expect(described_class.strip_tail( 'sensor.h', 'to/sensor.h' )).to be_nil
+    end
+  end
+
   describe 'G9: `.` segments' do
     it 'matches a query with a leading `./`' do
       expect(PathMatcher.candidates( './foo.h', ['inc/foo.h'] )).to eq( ['inc/foo.h'] )

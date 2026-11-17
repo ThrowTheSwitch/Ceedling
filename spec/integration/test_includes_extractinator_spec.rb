@@ -30,10 +30,14 @@ describe 'Test file #include extraction (integration)' do
 
   # Runs stages 2 through 4 for test/<test> in a project laid out from `tree`, and yields
   # the harness and the Testable. `directives_only: false` forces whole-run fallback.
-  def extract(tree, test, directives_only:, defines: [], flags: [], bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL)
+  # `include_paths` replaces every directory below src/ as the search paths, and
+  # `all_headers` every header below src/ as the header collection.
+  def extract(tree, test, directives_only:, defines: [], flags: [], bare_tool: DEFAULT_TEST_BARE_INCLUDES_PREPROCESSOR_TOOL, include_paths: nil, all_headers: nil)
     with_source_tree( tree ) do |dir|
       Dir.chdir( dir ) do
-        harness  = IntegrationSpecHelpers::TestIncludesHarness.new( directives_only: directives_only, bare_tool: bare_tool )
+        harness  = IntegrationSpecHelpers::TestIncludesHarness.new(
+          directives_only: directives_only, bare_tool: bare_tool, include_paths: include_paths, all_headers: all_headers
+        )
         testable = harness.run( "test/#{test}", defines: defines, flags: flags )
         yield harness, testable
       end
@@ -182,6 +186,41 @@ describe 'Test file #include extraction (integration)' do
 
         extract_in_mode( tree, 'test_board.c' ) do |harness, _testable|
           expect(harness.includes( 'test/test_board.c' )).to eq( ['config.h', 'board.h'] )
+        end
+      end
+
+      # A search path reaches a header in a directory below it, as the compiler's -I does,
+      # whether the #include is the test's own or the path GCC resolved it to
+      it 'reaches a header named by its directory below a search path that lists only its parent' do
+        tree = {
+          'src/drivers/foo.h'   => "int foo_read(void);\n",
+          'test/test_drivers.c' => "#include \"drivers/foo.h\"\n#include \"drivers/mock_foo.h\"\n"
+        }
+
+        extract_in_mode( tree, 'test_drivers.c', include_paths: ['src'] ) do |harness, testable|
+          expect(harness.mocks( 'test/test_drivers.c' )).to eq( ['mock_foo.h'] )
+          expect(testable.mock_search_paths).to eq( ['build/mocks/test_drivers/drivers', 'build/mocks/test_drivers'] )
+
+          search = harness.header_search( testable )
+          headers = harness.context_extractor.lookup_nonmock_header_includes_list( 'test/test_drivers.c' ).map do |include|
+            search.header_candidates( include.filepath ).first
+          end
+          expect(headers).to eq( ['src/drivers/foo.h'] )
+        end
+      end
+
+      # A header only :files supplies sits in no search path's directory, so the test gets
+      # the directory its #include implies, and its stand-in reaches the header through it
+      it 'reaches a header no search path lists through the directory its #include implies' do
+        tree = {
+          'src/path/to/sensor.h' => "int sensor_read(void);\n",
+          'test/test_sensor.c'   => "#include \"mock_sensor.h\"\n"
+        }
+
+        extract_in_mode( tree, 'test_sensor.c', include_paths: ['.'], all_headers: ['src/path/to/sensor.h'] ) do |harness, testable|
+          expect(testable.derived_search_paths).to eq( ['src/path/to'] )
+          expect(testable.search_paths.last).to eq( 'src/path/to' )
+          expect(harness.mocks( 'test/test_sensor.c' )).to eq( ['mock_sensor.h'] )
         end
       end
 

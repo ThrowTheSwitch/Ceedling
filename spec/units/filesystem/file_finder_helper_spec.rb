@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/filesystem/file_finder_helper'
+require 'ceedling/includes/header_search'
 require 'ceedling/constants'
 require 'ceedling/loginator'
 
@@ -170,6 +171,76 @@ describe FileFinderHelper do
       end
     end
   end
+  # A HeaderSearch finds a header as the compiler does
+  describe '#resolve_file_in_collection with a HeaderSearch' do
+    def search(paths, tree, refusals: {})
+      return HeaderSearch.new( paths, ->(dir) { tree.select { |header| File.dirname( header ) == dir } }, refusals: refusals )
+    end
+
+    it 'resolves to the first search path joining to the header' do
+      headers = search( ['src'], ['src/drivers/foo.h'] )
+
+      expect(@ff_helper.resolve_file_in_collection('drivers/foo.h', headers, :error)).to eq('src/drivers/foo.h')
+    end
+
+    it 'logs the NOTICE once, naming the header the compiler finds later' do
+      headers = search( ['a', 'b'], ['a/drivers/foo.h', 'b/drivers/foo.h'] )
+      expect(@loginator).to receive(:log).once.with(
+        "Multiple files matched 'drivers/foo.h' but chose 'a/drivers/foo.h' by search-path priority. " \
+        "Other candidates: b/drivers/foo.h. Add more path to 'drivers/foo.h' at its point of reference to select a different file.",
+        Verbosity::COMPLAIN, LogLabels::NOTICE
+      )
+
+      2.times { @ff_helper.resolve_file_in_collection('drivers/foo.h', headers, :error) }
+    end
+
+    it 'raises the same message for a header no search path reaches' do
+      headers = search( ['src'], ['src/foo.h'] )
+
+      expect { @ff_helper.resolve_file_in_collection('drivers/foo.h', headers, :error) }
+        .to raise_error(CeedlingException, 'Found no file `drivers/foo.h` in search paths.')
+    end
+
+    it 'names a header in another letter case among those the search looked at' do
+      headers = search( ['src'], ['src/drivers/Foo.h'] )
+
+      expect { @ff_helper.resolve_file_in_collection('drivers/foo.h', headers, :error) }
+        .to raise_error(CeedlingException, /different capitalization was found: 'src\/drivers\/Foo.h'/)
+    end
+
+    it 'gives nil without a word when told to be silent' do
+      expect(@loginator).to_not receive(:log)
+
+      expect(@ff_helper.resolve_file_in_collection('drivers/foo.h', search( ['src'], [] ), :silent)).to be_nil
+    end
+
+    context 'for a header stage 2 refused a search path' do
+      let(:headers) { search( ['inc'], ['inc/Socket.h'], refusals: { 'socket.h' => 'Reference the parent folder.' } ) }
+
+      it 'raises with the refusal, which explains more than a letter case hint' do
+        expect { @ff_helper.resolve_file_in_collection('socket.h', headers, :error) }
+          .to raise_error(CeedlingException, 'Found no file `socket.h` in search paths. Reference the parent folder.')
+      end
+
+      it 'warns with the refusal when told to warn' do
+        expect(@loginator).to receive(:log).with( 'Found no file `socket.h` in search paths. Reference the parent folder.', Verbosity::COMPLAIN )
+
+        expect(@ff_helper.resolve_file_in_collection('socket.h', headers, :warn)).to be_nil
+      end
+
+      it 'gives nil without a word when told to be silent' do
+        expect(@loginator).to_not receive(:log)
+
+        expect(@ff_helper.resolve_file_in_collection('socket.h', headers, :silent)).to be_nil
+      end
+
+      it 'raises without it for another header' do
+        expect { @ff_helper.resolve_file_in_collection('other.h', headers, :error) }
+          .to raise_error(CeedlingException, 'Found no file `other.h` in search paths.')
+      end
+    end
+  end
+
   # A module generator path hint is matched to the configured path it resembles most
   describe '#find_best_path_in_collection' do
     PATHS = ['src', 'src/lab', 'src/lab/x', 'test/lab'].freeze

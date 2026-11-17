@@ -1,0 +1,351 @@
+# =========================================================================
+#   Ceedling - Test-Centered Build System for C
+#   ThrowTheSwitch.org
+#   Copyright (c) 2010-26 Mike Karlesky, Mark VanderVoord, & Greg Williams
+#   SPDX-License-Identifier: MIT
+# =========================================================================
+
+require 'spec_system_helper'
+
+##
+## Headers Found Through Search Paths as the Compiler Finds Them
+## =============================================================
+##
+## A test's #include names a header by its path below a search path, and the compiler
+## joins each search path with that path in turn. Ceedling finds a mock's header, and
+## checks a test's plain #includes, the same way, so a search path need not list every
+## directory below it.
+##
+
+HEADER_SEARCH_PREAMBLE = "#include \"unity.h\"\nvoid setUp(void) {}\nvoid tearDown(void) {}\n"
+
+ceedling_system_tests do
+  include_context "a fresh ceedling gem project", "header_search"
+
+  def write(path, content)
+    FileUtils.mkdir_p( File.dirname( path ) )
+    File.write( path, content )
+  end
+
+  # Merging adds to a list, so the new project's own include paths are removed first
+  def configure(include_paths, preprocessor, extra = {})
+    @c.remove_project_yml_option_for_test( :paths, :include )
+    @c.merge_project_yml_for_test( { :project => { :use_test_preprocessor => preprocessor }, :paths => { :include => include_paths } }.merge( extra ) )
+  end
+
+  def build_passes
+    output = @c.ceedling_build_exec( "test:all" )
+
+    expect(@c.last_exit_status).to eq(0), output
+    expect(output).to match(/PASSED:\s+1/)
+    return output
+  end
+
+  [:none, :mocks, :all].each do |preprocessor|
+    context "with :use_test_preprocessor #{preprocessor}" do
+      it "mocks a header named by its directory below a search path that doesn't list that directory" do
+        in_project do
+          write( 'src/drivers/foo.h', "int foo_read(void);\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+          configure( ['src'], preprocessor )
+          build_passes
+        end
+      end
+
+      it "includes a header named by its directory below a search path that doesn't list that directory" do
+        in_project do
+          write( 'src/drivers/foo.h', "#define FOO_MAGIC 7\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n" \
+                                  "void test_magic(void) { TEST_ASSERT_EQUAL_INT(7, FOO_MAGIC); }\n" )
+
+          configure( ['src'], preprocessor )
+          build_passes
+        end
+      end
+
+      it "includes the header below the first search path holding the path, as the compiler does" do
+        in_project do
+          write( 'a/drivers/foo.h', "#define FOO_MAGIC 1\n" )
+          write( 'b/drivers/foo.h', "#define FOO_MAGIC 2\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n" \
+                                  "void test_magic(void) { TEST_ASSERT_EQUAL_INT(1, FOO_MAGIC); }\n" )
+
+          configure( ['a', 'b'], preprocessor )
+          output = build_passes
+
+          # A preprocessed test file's #include names the header GCC already chose
+          expect(output).to include( "Multiple files matched 'drivers/foo.h' but chose 'a/drivers/foo.h'" ) unless preprocessor == :all
+        end
+      end
+
+      it "mocks the header below the search path TEST_INCLUDE_PATH() puts first" do
+        in_project do
+          write( 'a/drivers/foo.h', "int a_read(void);\n" )
+          write( 'b/drivers/foo.h', "int b_read(void);\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "TEST_INCLUDE_PATH(\"b\")\n#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { b_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, b_read()); }\n" )
+
+          configure( ['a', 'b'], preprocessor )
+          build_passes
+        end
+      end
+    end
+  end
+
+  # A mock's #include after stage 4 names its place below its mirror root. A header of the
+  # same path below an earlier search path is a different header. The build itself can't
+  # pass here: under :all the mock includes its header by that place, which the compiler
+  # finds below the earlier search path, so only the mock's own content is checked.
+  it "mocks the header a preprocessed test's mock was placed for, not one of the same path in an earlier search path" do
+    in_project do
+      write( 'test/support/hal/foo.h', "int fake_read(void);\n" )
+      write( 'inc/hal/foo.h', "int foo_read(void);\n" )
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_foo.h\"\n" \
+                              "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+      configure( ['inc/**'], :all, { :paths => { :include => ['inc/**'], :support => ['test/support'] } } )
+
+      output = @c.ceedling_build_exec( "gen:mocks:all" )
+      expect(@c.last_exit_status).to eq(0), output
+      expect(File.read( 'build/test/mocks/test/test_c/hal/mock_foo.h' )).to include( 'foo_read' )
+    end
+  end
+
+  it "mocks a header by a folder below a search path without naming the mock by it" do
+    in_project do
+      write( 'src/drivers/foo.h', "int foo_read(void);\n" )
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                              "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+      configure( ['src'], :none, { :cmock => { :mock_name_include_folder => false } } )
+      expect(build_passes).to include( "Added search path 'src/drivers'" )
+    end
+  end
+
+  # A header only :files ↳ :include supplies sits in no search path's directory. The
+  # directory a test's #include implies for it joins that test's search paths, last.
+  describe "a header only :files supplies" do
+    SENSOR_TEST = "void test_reads(void) { sensor_read_ExpectAndReturn(42); TEST_ASSERT_EQUAL_INT(42, sensor_read()); }\n"
+
+    def sensor_project(include_line, include_paths: ['.'], files: ['+:src/**/*.h'], preprocessor: :none, treat_inlines: :exclude)
+      write( 'src/path/to/sensor.h', "int sensor_read(void);\n" )
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + include_line + "\n" + SENSOR_TEST )
+      configure( include_paths, preprocessor, { :files => { :include => files }, :cmock => { :treat_inlines => treat_inlines } } )
+    end
+
+    [:none, :mocks, :all].each do |preprocessor|
+      [:exclude, :include].each do |treat_inlines|
+        context "with :use_test_preprocessor #{preprocessor} and :treat_inlines #{treat_inlines}" do
+          it "mocks it through the folder its #include names below a search path" do
+            in_project do
+              sensor_project( '#include "src/path/to/mock_sensor.h"', preprocessor: preprocessor, treat_inlines: treat_inlines )
+              expect(build_passes).to_not include( 'Added search path' )
+            end
+          end
+
+          it "mocks it by its bare name through the directory its #include implies" do
+            in_project do
+              sensor_project( '#include "mock_sensor.h"', preprocessor: preprocessor, treat_inlines: treat_inlines )
+              expect(build_passes).to include(
+                "Added search path 'src/path/to' for test/test_c.c after every configured search path, so \"sensor.h\" reaches src/path/to/sensor.h."
+              )
+            end
+          end
+        end
+      end
+    end
+
+    it "mocks it through its folder when no search path reaches that folder, through the directory it is measured from" do
+      in_project do
+        write( 'inc/other.h', "int other(void);\n" )
+        sensor_project( '#include "src/path/to/mock_sensor.h"', include_paths: ['inc'] )
+        expect(build_passes).to include( "Added search path '.' for test/test_c.c" )
+      end
+    end
+
+    it "mocks it through a folder that starts at a search path, through the directory that folder is measured from" do
+      in_project do
+        sensor_project( '#include "src/path/to/mock_sensor.h"', include_paths: ['src'] )
+        expect(build_passes).to include( "Added search path '.' for test/test_c.c" )
+      end
+    end
+
+    it "includes it in the runner through the directory its #include implies" do
+      in_project do
+        write( 'src/path/to/sensor_types.h', "typedef int sensor_value_t;\n" )
+        sensor_project( "#include \"sensor_types.h\"\n#include \"mock_sensor.h\"\nvoid test_type(void) { sensor_value_t v = 3; TEST_ASSERT_EQUAL_INT(3, v); }",
+                        files: ['+:src/**/*.h'] )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+2/)
+      end
+    end
+
+    it "never lets the directory it adds shadow a configured header" do
+      in_project do
+        write( 'inc/config.h', "#define CONFIG_MAGIC 1\n" )
+        write( 'src/path/to/config.h', "#define CONFIG_MAGIC 2\n" )
+        sensor_project( "#include \"config.h\"\n#include \"mock_sensor.h\"\nvoid test_config(void) { TEST_ASSERT_EQUAL_INT(1, CONFIG_MAGIC); }",
+                        include_paths: ['inc'], files: ['+:src/path/to/sensor.h'] )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+2/)
+      end
+    end
+
+    it "can't be mocked once a subtractive entry removes it" do
+      in_project do
+        sensor_project( '#include "mock_sensor.h"', files: ['+:src/**/*.h', '-:src/path/to/sensor.h'] )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to include( 'Found no file `sensor.h` in search paths.' )
+      end
+    end
+
+    # The compiler rejects such an #include, and so does the build
+    it "adds no search path for an #include that spells a search path's own directory into it" do
+      in_project do
+        write( 'src/x.h', "#define X_MAGIC 3\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"src/x.h\"\nvoid test_x(void) { TEST_ASSERT_EQUAL_INT(3, X_MAGIC); }\n" )
+        configure( ['src'], :none )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to_not include( 'Added search path' )
+      end
+    end
+  end
+
+  # glibc's socket.h sits in a multiarch directory of forwarding headers that GCC searches
+  # on its own
+  describe "a system header below a multiarch directory" do
+    before(:each) do
+      multiarch = `gcc -print-multiarch 2>#{File::NULL}`.strip
+      @multiarch_dir = "/usr/include/#{multiarch}"
+      skip "no glibc sys/socket.h below a multiarch directory" if multiarch.empty? or !File.exist?( File.join( @multiarch_dir, 'sys/socket.h' ) )
+    end
+
+    SOCKET_TEST = "void test_socket(void) { socket_ExpectAndReturn(1, 2, 3, 4); TEST_ASSERT_EQUAL_INT(4, socket(1, 2, 3)); }\n"
+
+    def socket_project(include_line, include_paths:, files: [], preprocessor: :all, cmock: {})
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include <errno.h>\n" + include_line + "\n" + SOCKET_TEST )
+      configure( include_paths, preprocessor, { :files => { :include => files }, :cmock => { :treat_externs => :include }.merge( cmock ) } )
+    end
+
+    def socket_header
+      return File.join( @multiarch_dir, 'sys/socket.h' )
+    end
+
+    it "mocks it by its subdirectory below the multiarch directory a search path lists" do
+      in_project do
+        socket_project( '#include "sys/mock_socket.h"', include_paths: [@multiarch_dir] )
+        build_passes
+      end
+    end
+
+    it "mocks it by its subdirectory through the directory its #include implies, when only :files lists it" do
+      in_project do
+        socket_project( '#include "sys/mock_socket.h"', include_paths: ['test'], files: [File.join( @multiarch_dir, 'sys/socket.h' )] )
+        # Ceedling spells a path outside the project from the working directory
+        expect(build_passes).to match( /Added search path '[^']*#{Regexp.escape( @multiarch_dir )}' for test\/test_c\.c/ )
+      end
+    end
+
+    # A failed lookup stops the build in stage 2 without test preprocessing, and later with it
+    [:none, :all].each do |preprocessor|
+      it "adds no search path for its bare name, and its error at :use_test_preprocessor #{preprocessor} names the #include that reaches it" do
+        in_project do
+          socket_project( '#include "mock_socket.h"', include_paths: ['test'], files: [socket_header], preprocessor: preprocessor )
+
+          output = @c.ceedling_build_exec( "test:all" )
+          expect(@c.last_exit_status).to_not eq(0)
+          expect(output).to include(
+            "Found no file `socket.h` in search paths. `#include \"mock_socket.h\"` in test/test_c.c needs search path '#{@multiarch_dir}/sys'. " \
+            "Because this search path is outside the working directory and could cause shadowing of other headers, " \
+            "Ceedling won't add the full search path. Instead, reference the parent folder, as in `#include \"sys/mock_socket.h\"`."
+          )
+          expect(output).to_not include( 'Added search path' )
+        end
+      end
+    end
+
+    # Captured output loses the option's arrow under a locale without UTF-8
+    def naming_option(text)
+      return Regexp.new( Regexp.escape( text ).gsub( Regexp.escape( ':cmock ↳ ' ) ) { ':cmock\s*\S*\s*' } )
+    end
+
+    it "names the option a mock without its folder needs in its error" do
+      in_project do
+        socket_project( '#include "sys/mock_socket.h"', include_paths: ['test'], files: [socket_header], cmock: { :mock_name_include_folder => false } )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to match( naming_option(
+          "Found no file `sys/socket.h` in search paths. `#include \"sys/mock_socket.h\"` in test/test_c.c needs search path '#{@multiarch_dir}/sys', " \
+          "since its mock writes `#include \"socket.h\"` with :cmock ↳ :mock_name_include_folder disabled."
+        ) )
+        expect(output).to match( naming_option( 'Instead, enable :cmock ↳ :mock_name_include_folder and reference the parent folder' ) )
+      end
+    end
+
+    # The lookup tries each header extension, and its error names the last
+    it "explains a plain #include's bare name in its error with more than one header extension" do
+      in_project do
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"socket.h\"\nvoid test_nothing(void) { TEST_ASSERT_EQUAL_INT(1, 1); }\n" )
+        configure( ['test'], :none, { :files => { :include => [socket_header] }, :extension => { :header => ['.h', '.hpp'] } } )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to include(
+          "Found no file `socket.hpp` in search paths. `#include \"socket.h\"` in test/test_c.c needs search path '#{@multiarch_dir}/sys'."
+        )
+      end
+    end
+
+    # Stage 2 reads the #include from the file's text, and only a failed lookup reports it
+    it "says nothing of a bare name test preprocessing removes" do
+      in_project do
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#ifdef NEVER_DEFINED\n#include \"mock_socket.h\"\n#endif\n" \
+                                "void test_nothing(void) { TEST_ASSERT_EQUAL_INT(1, 1); }\n" )
+        configure( ['test'], :all, { :files => { :include => [socket_header] } } )
+
+        expect(build_passes).to_not include( 'needs search path' )
+      end
+    end
+
+    it "can't mock it by its subdirectory through /usr/include alone" do
+      skip "this system links sys/socket.h into /usr/include itself" if File.exist?( '/usr/include/sys/socket.h' )
+
+      in_project do
+        socket_project( '#include "sys/mock_socket.h"', include_paths: ['/usr/include'] )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to include( 'Found no file `sys/socket.h` in search paths.' )
+      end
+    end
+  end
+
+  # CMock writes its copy of a header beside the mock with :treat_inlines :include. The mock
+  # directory is a search path, but never one a real header is found through.
+  it "mocks a header from the project, never from CMock's copy of it, on later builds" do
+    in_project do
+      write( 'src/foo.h', "int foo_read(void);\n" )
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_foo.h\"\n" \
+                              "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+      configure( ['src'], :none, { :cmock => { :treat_inlines => :include } } )
+      build_passes
+      expect(build_passes).to_not include( 'Multiple files matched' )
+
+      write( 'src/foo.h', "int foo_read(void);\nint foo_more(void);\n" )
+      write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_foo.h\"\n" \
+                              "void test_reads(void) { foo_more_ExpectAndReturn(6); TEST_ASSERT_EQUAL_INT(6, foo_more()); }\n" )
+      build_passes
+    end
+  end
+end

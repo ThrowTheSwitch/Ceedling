@@ -26,13 +26,12 @@ class FileFinderHelper
     return not_found_in_collection(filename, file_list, complain)
   end
 
-  # As `#find_file_in_collection`, but never raises on ambiguity -- a query matching
-  # more than one file resolves to the first entry in `file_list`'s own order (which
-  # already reflects real project path priority), with an ℹ️ NOTICE naming what else
-  # matched so the choice isn't silent. Every test that names the file makes the same
-  # choice, so a build notes it once.
+  # As `#find_file_in_collection`, but never raises on ambiguity. A query matching more
+  # than one file resolves to the first in `file_list`'s order, or to a HeaderSearch's
+  # first in search order, with an ℹ️ NOTICE naming what else matched so the choice isn't
+  # silent. Every test that names the file makes the same choice, so a build notes it once.
   def resolve_file_in_collection(filename, file_list, complain)
-    found, others = PathMatcher.resolve(filename, file_list)
+    found, others = resolve_in_collection(filename, file_list)
     return not_found_in_collection(filename, file_list, complain) if found.nil?
 
     unless others.empty?
@@ -44,6 +43,15 @@ class FileFinderHelper
     end
 
     return found
+  end
+
+  # The winner and the other candidates for `filename`, from a file list or a
+  # HeaderSearch, which finds a header as the compiler does
+  def resolve_in_collection(filename, collection)
+    return PathMatcher.resolve(filename, collection) unless collection.respond_to?( :header_candidates )
+
+    found = collection.header_candidates( filename )
+    return [found.first, found.drop( 1 )]
   end
 
   def find_best_path_in_collection(pathname, path_list, complain, description)
@@ -61,11 +69,11 @@ class FileFinderHelper
     return path_list[best_index( scores )]
   end
 
-  def handle_missing_file(filename, complain)
+  def handle_missing_file(filename, complain, extra_message = '')
     case (complain)
-      when :error then blow_up(filename) 
+      when :error then blow_up(filename, extra_message)
       when :warn
-        gripe(filename)
+        gripe(filename, extra_message)
         return nil
       when :ignore then return nil
     end
@@ -86,10 +94,17 @@ class FileFinderHelper
   # `complain` of :silent skips that check. A caller asks for silence when it can't know
   # whether the reference is even live, such as a scan of #includes that ignores #if, and
   # a later, authoritative lookup reports a real slip.
+  #
+  # A HeaderSearch's refusal comes first. It explains why the header lies beyond every
+  # search path, which a case check can't.
   def not_found_in_collection(filename, file_list, complain)
     return nil if complain == :silent
 
-    matches = file_list.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
+    refusal = file_list.respond_to?( :refusal ) ? file_list.refusal( filename ) : nil
+    return handle_missing_file( filename, complain, refusal ) unless refusal.nil?
+
+    files   = file_list.respond_to?( :hint_files ) ? file_list.hint_files( filename ) : file_list
+    matches = files.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
     if (matches.length > 0)
       blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")
     end

@@ -10,6 +10,7 @@ require 'rake'
 require 'ceedling/filename_extension'
 require 'ceedling/test_invoker/test_build_planner'
 require 'ceedling/test_invoker/mock_locator'
+require 'ceedling/includes/header_search'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/includes/includes'
 require 'ceedling/partials/partializer_config'
@@ -43,9 +44,13 @@ describe TestBuildPlanner do
       things.each { |k, v| block.call(k, v) }
     end
 
-    # Harmless default -- individual examples needing a specific ordered header
-    # collection stub this again with a narrower `.with(...)` match.
-    allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
+    # Harmless default -- individual examples needing a specific header search stub this
+    # again with a narrower `.with(...)` match.
+    @header_search = HeaderSearch.new( [], ->(_dir) { [] } )
+    allow(@include_pathinator).to receive(:header_search).and_return( @header_search )
+    @test_search_paths = double( "TestSearchPaths" )
+    allow(@test_search_paths).to receive(:header_paths) { |testable| testable.search_paths }
+    allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
     allow(@include_pathinator).to receive(:prioritized_header_files).and_return( [] )
     allow(@loginator).to receive(:log)
 
@@ -73,7 +78,8 @@ describe TestBuildPlanner do
         :test_source_file_directive_resolver => @test_source_file_directive_resolver,
         # Real, over the same doubles, so mock resolution expectations stay on FileFinder
         :mock_locator           => MockLocator.new(
-          configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
+          configurator: @configurator, include_pathinator: @include_pathinator, test_search_paths: @test_search_paths,
+          file_finder: @file_finder, file_path_utils: @file_path_utils
         )
       }
     )
@@ -175,7 +181,7 @@ describe TestBuildPlanner do
           .with( 'test/TestFoo.c' ).and_return( [mock] )
         allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
         allow(@file_finder).to receive(:resolve_mock)
-          .with( 'MockFoo.h', collection: [], complain: :error ).and_return( ['src/drivers/foo.h', 'drivers'] )
+          .with( 'MockFoo.h', collection: @header_search, complain: :error ).and_return( ['src/drivers/foo.h', 'drivers'] )
         allow(@file_path_utils).to receive(:form_preprocessed_file_filepath)
           .with( 'src/drivers/foo.h', 'a_test' ).and_return( 'build/test/preprocess/files/a_test/full_expansion/foo.h' )
       end
@@ -214,8 +220,8 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'a/MockFoo.h' ), MockInclude.new( 'b/MockFoo.h' )] )
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
       allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
-      allow(@file_finder).to receive(:resolve_mock).with( 'a/MockFoo.h', collection: [], complain: :error ).and_return( ['inc/a/foo.h', ''] )
-      allow(@file_finder).to receive(:resolve_mock).with( 'b/MockFoo.h', collection: [], complain: :error ).and_return( ['inc/b/foo.h', ''] )
+      allow(@file_finder).to receive(:resolve_mock).with( 'a/MockFoo.h', collection: @header_search, complain: :error ).and_return( ['inc/a/foo.h', ''] )
+      allow(@file_finder).to receive(:resolve_mock).with( 'b/MockFoo.h', collection: @header_search, complain: :error ).and_return( ['inc/b/foo.h', ''] )
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
 
       @planner.stage_determine_files( @state )
@@ -224,9 +230,9 @@ describe TestBuildPlanner do
       expect(@testable.mocks.values.map( &:source )).to contain_exactly( 'inc/a/foo.h', 'inc/b/foo.h' )
     end
 
-    # Nothing in the loop over a test's mocks changes its search paths, so one collection
-    # serves every mock. Validation lists the whole search paths, mock directories included.
-    it "builds one mock header collection for all of a test's real mocks" do
+    # Nothing in the loop over a test's mocks changes its search paths, so one search serves
+    # every mock and the #include validation after them
+    it "builds one header search for all of a test's real mocks and its #include validation" do
       mocks = %w[MockFoo.h MockBar.h MockBaz.h].map { |name| MockInclude.new( name ) }
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/TestFoo.c' ).and_return( mocks )
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
@@ -238,12 +244,28 @@ describe TestBuildPlanner do
       @testable.mock_search_paths = ['build/test/mocks/a_test']
 
       collections = 0
-      allow(@include_pathinator).to receive(:ordered_header_files).with( ['src'] ) { collections += 1; ['src/Foo.h'] }
+      allow(@include_pathinator).to receive(:header_search) { collections += 1; @header_search }
 
       @planner.stage_determine_files( @state )
 
       expect(@testable.mocks.length).to eq( 3 )
       expect(collections).to eq( 1 )
+    end
+
+    # A reconciled mock's #include names its place below its mirror root
+    it "resolves a reconciled mock by trailing path first when test files are preprocessed" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
+      allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'hal/MockFoo.h' )] )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
+      allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
+      trailing = HeaderSearch.new( [], ->(_dir) { [] } )
+      allow(@header_search).to receive(:trailing_first).and_return( trailing )
+
+      expect(@file_finder).to receive(:resolve_mock).with( 'hal/MockFoo.h', collection: trailing, complain: :error ).and_return( ['inc/hal/foo.h', 'hal'] )
+
+      @planner.stage_determine_files( @state )
     end
 
     context "with a Partial mocked header" do
@@ -255,17 +277,6 @@ describe TestBuildPlanner do
         allow(@file_path_utils).to receive(:form_partial_header_filepath)
           .with( 'a_test', 'ceedling_partial_foo_interface.h' )
           .and_return( 'build/test/partials/a_test/ceedling_partial_foo_interface.h' )
-      end
-
-      # A Partial mock has no real header to resolve against, so its directory comes
-      # from the generated #include rather than from a mirrored source location.
-      it "builds no mock header collection, having no real header to resolve" do
-        @testable.search_paths      = ['build/test/mocks/a_test', 'src']
-        @testable.mock_search_paths = ['build/test/mocks/a_test']
-
-        expect(@include_pathinator).to_not receive(:ordered_header_files).with( ['src'] )
-
-        @planner.stage_determine_files( @state )
       end
 
       it "stays flat when its generated #include names no directory" do
@@ -652,14 +663,13 @@ describe TestBuildPlanner do
       @planner.validate_header_includes( test_filepath: 'test/TestFoo.c', testable: @testable )
     end
 
-    it "resolves an ordinary header against this test's own ordered search-path header collection, hard-erroring only on no match" do
+    it "resolves an ordinary header through this test's own header search, hard-erroring only on no match" do
       allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [UserInclude.new('drivers/foo.h')] )
       @testable.search_paths = ['inc', 'src']
-      allow(@include_pathinator).to receive(:ordered_header_files)
-        .with( ['inc', 'src'] ).and_return( ['inc/drivers/foo.h'] )
+      allow(@include_pathinator).to receive(:header_search).with( ['inc', 'src'], refusals: {} ).and_return( @header_search )
 
-      expect(@file_finder).to receive(:find_header_file).with( 'drivers/foo.h', :error, collection: ['inc/drivers/foo.h'] )
+      expect(@file_finder).to receive(:find_header_file).with( 'drivers/foo.h', :error, collection: @header_search )
 
       @planner.validate_header_includes( test_filepath: 'test/TestFoo.c', testable: @testable )
     end

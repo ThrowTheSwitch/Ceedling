@@ -24,35 +24,31 @@ class FileFinder
   end
 
 
-  # `collection`, when given, is a caller's own already-ordered, per-test header list
-  # (see IncludePathinator#ordered_header_files) reflecting that one test's real search-path
-  # priority -- TEST_INCLUDE_PATH() ranked ahead of :support/:include, as a real compile would
-  # see it. Absent that (a caller with no single test in view, e.g. Partializer resolving a
-  # module generically), the project-wide collection_all_headers is the only sensible fallback.
+  # `collection`, when given, is a test's HeaderSearch (see IncludePathinator#header_search),
+  # which finds the header through that test's search paths as its compiler would, or a
+  # caller's own ordered header list. Absent either, the project-wide collection_all_headers
+  # is the fallback.
   # `complain` sets what a missing header does: :error raises, and :warn or :ignore
   # returns nil. A header matching only in letter case raises under all three; :silent
   # returns nil for that too.
   def find_header_input_for_mock(mock, collection: nil, complain: :error)
-    # Mock name/path => <mock prefix><header filename (.h)>, optionally preceded by however
-    # much path the #include itself carried (e.g. 'Mockfoo.h' or 'drivers/Mockfoo.h').
-    # Note: In some rare cases, a mock name may include a dot (ex. Sensor.44) because of versioning file naming convention
-    #       Be careful about assuming the end of the name has any sort of file extension
-    #
-    # Stripping the mock prefix from only the basename -- not the whole query -- preserves
-    # whatever disambiguating path the #include carried, so a query with a path is matched
-    # exactly as specifically as it was written, not collapsed to a bare basename that would
-    # throw away real disambiguating information.
-    dir      = File.dirname(mock)
-    basename = File.basename(mock).delete_prefix(@configurator.cmock_mock_prefix)
-    header   = dir == '.' ? basename : File.join(dir, basename)
-
     found_path = @file_finder_helper.resolve_file_in_collection(
-      header,
+      mock_header_query(mock),
       collection || @configurator.collection_all_headers,
       complain
     )
 
     return found_path
+  end
+
+  # The header a mock's #include names, as in 'Mockfoo.h' or 'drivers/Mockfoo.h'. The mock
+  # prefix drops from the filename alone, so the path the #include carried stays in the
+  # query. A mock name may hold a dot (Sensor.44) by a versioning convention, so nothing
+  # here assumes the name ends in an extension.
+  def mock_header_query(mock)
+    dir      = File.dirname(mock)
+    basename = File.basename(mock).delete_prefix(@configurator.cmock_mock_prefix)
+    return dir == '.' ? basename : File.join(dir, basename)
   end
 
   # A mock's real header and its own mirrored subdirectory below whichever configured
@@ -220,8 +216,8 @@ class FileFinder
   end
 
 
-  # `collection`, when given, overrides collection_all_headers with a caller's own
-  # already-ordered, per-test header list -- see find_header_input_for_mock's comment.
+  # `collection`, when given, overrides collection_all_headers with a test's HeaderSearch or
+  # a caller's own ordered header list -- see find_header_input_for_mock's comment.
   def find_header_file(filepath, complain = :error, collection: nil)
     return find_first_candidate(filepath, @configurator.extension_header, collection || @configurator.collection_all_headers, complain)
   end
@@ -547,7 +543,7 @@ class FileFinder
     if strict
       return PathMatcher.match(candidate, collection)
     else
-      winner, _others = PathMatcher.resolve(candidate, collection)
+      winner, _others = @file_finder_helper.resolve_in_collection(candidate, collection)
       return winner
     end
   end

@@ -12,6 +12,7 @@ require 'ceedling/test_invoker/test_includes_preprocessinator'
 require 'ceedling/test_invoker/test_includes_reconcilinator'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_search_paths'
+require 'ceedling/includes/header_search'
 require 'ceedling/test_invoker/mock_locator'
 require 'ceedling/test_invoker/standin_headerinator'
 
@@ -87,9 +88,10 @@ describe TestIncludesExtractinator do
     allow(@test_context_extractor).to receive(:lookup_source_includes_list).and_return( [] )
     allow(@test_context_extractor).to receive(:ingest_includes)
 
-    # Harmless default -- individual examples needing a specific ordered header
-    # collection stub this again with a narrower `.with(...)` match.
-    allow(@include_pathinator).to receive(:ordered_header_files).and_return( [] )
+    # Harmless default -- individual examples needing a specific header search stub this
+    # again with a narrower `.with(...)` match.
+    @header_search = HeaderSearch.new( [], ->(_dir) { [] } )
+    allow(@include_pathinator).to receive(:header_search).and_return( @header_search )
 
     # Search path defaults, so tests of a reconciling first pass, which rebuilds a test's
     # search paths, need not know every source those paths draw on
@@ -101,14 +103,14 @@ describe TestIncludesExtractinator do
     allow(@configurator).to receive(:collection_paths_vendor).and_return( [] )
     allow(@configurator).to receive(:collection_paths_test_toolchain_include).and_return( [] )
 
-    @mock_locator = MockLocator.new(
-      configurator: @configurator, include_pathinator: @include_pathinator, file_finder: @file_finder, file_path_utils: @file_path_utils
-    )
-
     # The stage's passes and collaborators are real, over the same doubles, so these
     # examples cover the whole stage and read as paths and files
     search_paths = TestSearchPaths.new(
       configurator: @configurator, include_pathinator: @include_pathinator, test_context_extractor: @test_context_extractor
+    )
+    @mock_locator = MockLocator.new(
+      configurator: @configurator, include_pathinator: @include_pathinator, test_search_paths: search_paths,
+      file_finder: @file_finder, file_path_utils: @file_path_utils
     )
     standins = StandinHeaderinator.new(
       configurator: @configurator, loginator: @loginator, reportinator: @reportinator,
