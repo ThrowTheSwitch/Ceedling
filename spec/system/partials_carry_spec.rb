@@ -169,6 +169,50 @@ PARTIALS_CARRY_BLINK_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
   }
 C
 
+# A dependency named by its directory, whose real inline body fails any test it runs in
+PARTIALS_CARRY_HW_PORT_HEADER = <<~C
+  #ifndef PORT_H
+  #define PORT_H
+  static inline int port_read(void) { return -1000; }
+  #endif
+C
+
+PARTIALS_CARRY_HW_ENGINE_SOURCE = <<~C
+  #include "engine.h"
+  #include "port.h"
+  int engine_get(void) { return port_read() + 1; }
+C
+
+PARTIALS_CARRY_HW_ENGINE_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
+  #include TEST_PARTIAL_PUBLIC_MODULE(engine)
+  #include MOCK_PARTIAL_PRIVATE_MODULE_AT(hw, port)
+  void setUp(void) {}
+  void tearDown(void) {}
+  void test_get_adds_one(void)
+  {
+      port_read_ExpectAndReturn(41);
+      TEST_ASSERT_EQUAL_INT(42, engine_get());
+  }
+C
+
+# A module tested and mocked in one test whose source never includes its own header
+PARTIALS_CARRY_VALVE_SOURCE = <<~C
+  static int valve_base(void) { return -1000; }
+  int valve_open(void) { return valve_base() + 1; }
+C
+
+PARTIALS_CARRY_VALVE_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
+  #include TEST_PARTIAL_PUBLIC_MODULE(valve)
+  #include MOCK_PARTIAL_PRIVATE_MODULE(valve)
+  void setUp(void) {}
+  void tearDown(void) {}
+  void test_open_adds_one(void)
+  {
+      valve_base_ExpectAndReturn(41);
+      TEST_ASSERT_EQUAL_INT(42, valve_open());
+  }
+C
+
 ceedling_system_tests do
   include_context "a fresh ceedling gem project", "partials_carry"
 
@@ -237,6 +281,28 @@ ceedling_system_tests do
 
         build_passing( 1 )
       end
+    end
+  end
+
+  it "mocks a dependency named by its directory in place of its real header" do
+    in_project do
+      FileUtils.mkdir_p( 'src/hw' )
+      File.write( 'src/hw/port.h', PARTIALS_CARRY_HW_PORT_HEADER )
+      File.write( 'src/engine.h', "#ifndef ENGINE_H\n#define ENGINE_H\nint engine_get(void);\n#endif\n" )
+      File.write( 'src/engine.c', PARTIALS_CARRY_HW_ENGINE_SOURCE )
+      File.write( 'test/test_engine.c', PARTIALS_CARRY_HW_ENGINE_TEST )
+
+      build_passing( 1 )
+    end
+  end
+
+  it "builds a module tested and mocked in one test whose source never includes its own header" do
+    in_project do
+      File.write( 'src/valve.h', "#ifndef VALVE_H\n#define VALVE_H\nint valve_open(void);\n#endif\n" )
+      File.write( 'src/valve.c', PARTIALS_CARRY_VALVE_SOURCE )
+      File.write( 'test/test_valve.c', PARTIALS_CARRY_VALVE_TEST )
+
+      build_passing( 1 )
     end
   end
 
