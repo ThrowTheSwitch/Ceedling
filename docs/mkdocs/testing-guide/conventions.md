@@ -126,7 +126,10 @@ A header whose own directory no search path lists needs no search path of its
 own, as is usual for one that
 [`:files` ↳ `:include`](../configuration/reference/files.md#files-include) adds.
 When a test’s `#include` names such a header, Ceedling adds the directory that
-`#include` implies to the test’s search paths.
+`#include` implies to the test’s search paths. A bare name for a header outside
+the working directory is the exception, as
+[`:files` ↳ `:include`](../configuration/reference/files.md#files-include)
+explains.
 
 In testing contexts, you have three options for assembling the core of 
 the search path list used by Ceedling for test builds:

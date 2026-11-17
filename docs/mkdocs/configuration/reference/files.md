@@ -109,12 +109,12 @@ disabled, a mock includes its header by filename alone, so each row adds
 
 A header outside the working directory, such as one in a system include
 directory, is an exception. A bare name like `"mock_socket.h"` would need the
-header’s own directory as a search path, but this could bring about problems 
-including shadowing other headers. Ceedling adds a search path of one shallower
-subdirectory and not this full search path. A build that needs the header stops 
-with an error that suggests referencing the parent folder instead, as in
-`#include "sys/mock_socket.h"`. With `:mock_name_include_folder` disabled, the
-error also suggests enabling it.
+header’s own directory as a search path, but this could bring about problems
+including shadowing other headers. Ceedling doesn’t add this full search path.
+A build that needs the header stops with an error that suggests referencing
+the parent folder instead, as in `#include "sys/mock_socket.h"`. Ceedling
+then adds the shallower search path, one subdirectory up. With
+`:mock_name_include_folder` disabled, the error also suggests enabling it.
 
 Release builds find headers through `:paths` ↳ `:include` alone.
 
