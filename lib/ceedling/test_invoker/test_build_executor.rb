@@ -181,7 +181,8 @@ class TestBuildExecutor
       # A Partial mock's own generated header is already free of inline function
       # bodies -- CMock's own inline handling has nothing to do on it and is
       # skipped for this one mock, independent of whatever the project configures
-      # for CMock's own mocks of real headers elsewhere in the same test suite.
+      # for CMock's own mocks of real headers elsewhere in the same test suite. The helpers a
+      # mock-only Partial keeps sit in its extras header, whose #include CMock skips.
       overrides = details.partial ? { treat_inlines: :exclude } : {}
 
       arg_hash = {

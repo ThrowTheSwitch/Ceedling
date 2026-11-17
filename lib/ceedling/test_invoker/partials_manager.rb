@@ -186,7 +186,12 @@ class PartialsManager
       end
 
       unless interface.nil?
-        unchanged = generate_when_stale( target: paths[:interface], outputs: [types_target].compact, kind: :interface, **record ) do
+        extras        = implementation.nil? ? plan_extras( name, config, module_contents, interface, module_include_guard ) : nil
+        extras_target = (extras.nil? or extras.empty?) ? nil : paths[:extras]
+        discard_leftover_extras( paths[:extras] ) if extras_target.nil?
+
+        outputs   = [types_target, extras_target].compact
+        unchanged = generate_when_stale( target: paths[:interface], outputs: outputs, kind: :interface, **record ) do
           @generator.generate_partial_interface(
             test:                  name,
             partial:               config.module,
@@ -195,7 +200,8 @@ class PartialsManager
             following_includes:    includes[:interface].following,
             c_module:              module_contents,
             output_path:           testable.paths[:partials],
-            include_guard:         module_include_guard
+            include_guard:         module_include_guard,
+            extras:                extras
           )
         end
 
@@ -237,15 +243,19 @@ class PartialsManager
     @loginator.log( msg, Verbosity::OBNOXIOUS )
   end
 
+  # How FilePathUtils names each file a Partial generates
+  PARTIAL_FILENAMES = {
+    types:          :form_partial_types_header_filename,
+    implementation: :form_partial_implementation_source_filename,
+    impl_header:    :form_partial_implementation_header_filename,
+    interface:      :form_partial_interface_header_filename,
+    extras:         :form_partial_extras_header_filename
+  }.freeze unless const_defined?(:PARTIAL_FILENAMES, false)
+
   # Where each file a Partial generates lives
   def partial_paths(config, testable)
     dir = testable.paths[:partials]
-    return {
-      types:          File.join( dir, @file_path_utils.form_partial_types_header_filename( config.module ) ),
-      implementation: File.join( dir, @file_path_utils.form_partial_implementation_source_filename( config.module ) ),
-      impl_header:    File.join( dir, @file_path_utils.form_partial_implementation_header_filename( config.module ) ),
-      interface:      File.join( dir, @file_path_utils.form_partial_interface_header_filename( config.module ) )
-    }
+    return PARTIAL_FILENAMES.transform_values { |form| File.join( dir, @file_path_utils.public_send( form, config.module ) ) }
   end
 
   # The files a fresh Partial would have generated, keyed by kind, or nil when the Partial must
@@ -291,6 +301,21 @@ class PartialsManager
 
     @file_wrapper.rm_f( path )
     @dependinator.invalidate( path )
+  end
+
+  # A mock-only Partial's interface stands in for its real header, so the rest of that header
+  # comes along in an extras header. A module the test also tests carries what its own code
+  # uses through its implementation instead, so it plans none.
+  def plan_extras(name, config, module_contents, interface, include_guard)
+    return @partializer.plan_interface_extras(
+      test: name, c_module: module_contents, interface: interface, header_guarded: !include_guard.nil?, config: config
+    )
+  end
+
+  # An interface that keeps nothing includes no extras header. One an earlier build left would
+  # only sit beside it.
+  def discard_leftover_extras(path)
+    @file_wrapper.rm_f( path ) if @file_wrapper.exist?( path )
   end
 
   # A module joins the test's list for each side of its Partial that exists

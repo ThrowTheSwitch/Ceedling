@@ -47,6 +47,18 @@ class Partializer
     See the docs on Partials conventions.
   NOTICE
 
+  # Explains what a mock-only Partial leaves behind because its module header has no include guard
+  UNGUARDED_EXTRAS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_EXTRAS_NOTICE, false)
+    Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.
+    %<header>s has no include guard. Without a guard the mock can't stand in for the header everywhere
+    it's included, and a copy could collide with the real one. Code that uses %<these>s compiles only where
+    another #include brings in the real header.
+
+    Give %<header>s an include guard so the mock keeps %<them>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
   include Partials
 
   constructor :configurator, :partializer_helper, :partializer_reconciler, :file_finder, :c_extractor, :file_path_utils,
@@ -107,6 +119,24 @@ class Partializer
 
     _log_plan( test, config.module, plan, config.header.filepath )
     return plan
+  end
+
+  # Decides what a mock-only Partial's extras header keeps of its real header beyond the mocked
+  # functions. See PartializerHelper#plan_interface_extras for what it keeps and withholds.
+  #
+  # @param test           [String] Test name (for log messages)
+  # @param c_module       [CExtractorTypes::CModule] The module's merged contents
+  # @param interface      [Array<Partials::FunctionDeclaration>] Functions selected to mock
+  # @param header_guarded [Boolean] Whether the module header has an include guard
+  # @param config         [PartializerConfig::Config] The Partial, named in notices
+  # @return [Partials::InterfaceExtras]
+  def plan_interface_extras(test:, c_module:, interface:, header_guarded:, config:)
+    extras = @helper.plan_interface_extras(
+      c_module: c_module, interface: interface, fallback: config.fallback?, header_guarded: header_guarded
+    )
+
+    _log_extras( "#{test}::#{config.module}", extras, config.header.filepath )
+    return extras
   end
 
   def validate_extracted_functions(name:, partial:, impl:, interface:)
@@ -666,6 +696,43 @@ class Partializer
     )
 
     @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
+  end
+
+  # Lists what a mock-only Partial keeps, and explains what an unguarded header's mock leaves behind
+  def _log_extras(partial, extras, header)
+    entries = extras.items.map { |item| _extras_entry( item ) }
+    @loginator.log_list( entries, "Kept in the mock of Partial #{partial}:", Verbosity::DEBUG ) unless entries.empty?
+    return if extras.withheld.empty?
+
+    many = extras.withheld.size > 1
+    @loginator.log(
+      format( UNGUARDED_EXTRAS_NOTICE, partial: partial, header: header, items: _withheld_phrase( extras.withheld ),
+              these: many ? 'these' : 'it', them: many ? 'them' : 'it' ),
+      Verbosity::COMPLAIN, LogLabels::NOTICE
+    )
+  end
+
+  def _extras_entry(item)
+    case item
+    when CExtractorTypes::CFunctionDefinition  then return "`#{item.name}()` (helper)"
+    when CExtractorTypes::CFunctionDeclaration then return "`#{item.name}()` (prototype)"
+    end
+
+    return "`#{item.name}` (#{item.extern? ? 'extern declaration' : 'static variable'})"
+  end
+
+  # As in "helper `twice()` and variables `a`, `b`"
+  def _withheld_phrase(items)
+    helpers, variables = items.partition { |item| item.is_a?( CExtractorTypes::CFunctionDefinition ) }
+
+    phrases = []
+    phrases << _named( 'helper', helpers.map { |f| "`#{f.name}()`" } ) unless helpers.empty?
+    phrases << _named( 'variable', variables.map { |v| "`#{v.name}`" } ) unless variables.empty?
+    return phrases.join( ' and ' )
+  end
+
+  def _named(noun, names)
+    return "#{noun}#{'s' if names.size > 1} #{names.join( ', ' )}"
   end
 
   # Log all user-defined (non-function) C content extracted from a module's source/header at OBNOXIOUS level.

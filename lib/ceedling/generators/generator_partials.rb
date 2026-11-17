@@ -51,13 +51,47 @@ class GeneratorPartials
     end
   end
 
-  def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, following_includes: [], include_guard: nil)
-    header = @file_path_utils.form_partial_interface_header_filename(name)
+  # The mockable interface header. With `extras` it also writes the extras header and includes
+  # it where the module header's items end, ahead of the source's later includes, as the rest
+  # of the real header it stands in for.
+  def generate_interface(name:, function_declarations:, includes:, c_module:, output_path:, following_includes: [], include_guard: nil,
+                         extras: nil)
+    header    = @file_path_utils.form_partial_interface_header_filename(name)
+    extras_h  = generate_extras( name: name, extras: extras, c_module: c_module, output_path: output_path )
+    following = extras_h ? [UserInclude.new( extras_h )] + following_includes : following_includes
 
     return _write( File.join(output_path, header) ) do |file|
       generate_header(file, header, includes, function_declarations, c_module,
-                      include_variables: false, include_guard: include_guard, following_includes: following_includes)
+                      include_variables: false, include_guard: include_guard, following_includes: following)
     end
+  end
+
+  # What a mock-only Partial keeps of its real header beyond the mocked functions (see
+  # PartializerHelper#plan_interface_extras), in the module's order. CMock parses only the
+  # interface header, so nothing here can read to it as a function to mock. A helper keeps its
+  # #line attribution to the real header, as carried helpers do. Returns the filename, or nil
+  # when nothing is kept, in which case nothing is written.
+  def generate_extras(name:, extras:, c_module:, output_path:)
+    return nil if extras.nil? or extras.empty?
+
+    header   = @file_path_utils.form_partial_extras_header_filename( name )
+    filepath = File.join( output_path, header )
+    context  = _header_context( nil, header, [], _variables( c_module ) )
+
+    _write( filepath ) do |file|
+      _write_extras( PartialSourceWriter.new( io: file, filepath: filepath, suppress_redundant_decls: false ), header, extras, context )
+    end
+
+    return header
+  end
+
+  def _write_extras(writer, header, extras, context)
+    guard = FileWrapper.generate_include_guard( header )
+
+    writer.preamble( [] )
+    writer.text( "#ifndef #{guard}\n#define #{guard}\n\n" )
+    extras.items.each { |item| _write_extras_item( writer, item, context ) }
+    writer.text( "#endif // #{guard}\n" )
   end
 
   # A module's typedefs and aggregate (struct/enum/union) definitions are the same
@@ -232,7 +266,7 @@ class GeneratorPartials
 
   def _header_context(io, name, function_list, variables)
     return HeaderContext.new(
-      writer: PartialHeaderWriter.new( io: io, name: name ), variables: variables, emitted: Set.new,
+      writer: io && PartialHeaderWriter.new( io: io, name: name ), variables: variables, emitted: Set.new,
       functions: function_list.to_h { |f| [f.name, f] }
     )
   end
@@ -246,6 +280,17 @@ class GeneratorPartials
     when CExtractorTypes::CFunctionDefinition, CExtractorTypes::CFunctionDeclaration
       func = context.functions.delete( item.name )
       context.writer.function( func.signature ) if func
+    end
+  end
+
+  # A helper as written, its prototype, a static variable keeping `static`, or an extern
+  def _write_extras_item(writer, item, context)
+    case item
+    when CExtractorTypes::CFunctionDefinition  then writer.function( item )
+    when CExtractorTypes::CFunctionDeclaration then writer.prototype( item )
+    when CExtractorTypes::CVariableDeclaration
+      text = item.extern? ? _header_extern( item, context ) : "static #{_definition( item )}"
+      writer.text( "#{text}\n" ) if text
     end
   end
 

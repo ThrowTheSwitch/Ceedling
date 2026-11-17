@@ -716,10 +716,11 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
       allow(@file_wrapper).to receive(:exist?).and_return( true )
-
-      expect(@file_wrapper).not_to receive(:rm_f)
+      allow(@file_wrapper).to receive(:rm_f)
 
       @manager.stage_generate_partials( @state )
+
+      expect(@file_wrapper).not_to have_received(:rm_f).with( 'build/test/partials/a_test/ceedling_partial_Foo_types.h' )
     end
 
     # Nothing else can vouch for what the module's files would generate
