@@ -204,6 +204,38 @@ describe TestDerivedSearchPaths do
         expect(@refusals['socket.h']).to end_with( "as in `#include \"sys/socket.h\"`." )
       end
 
+      # The lookup tries each header extension in turn and names the last when none is found
+      it "files a plain #include's refusal under each header extension its lookup tries" do
+        allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( ['.h', '.hpp'] ) )
+        derive( paths: ['inc'], includes: [UserInclude.new( 'socket.h' )], headers: [socket] )
+
+        expect(@refusals.keys).to eq( ['socket.h', 'socket.hpp'] )
+        expect(@refusals.values.uniq.length).to eq( 1 )
+      end
+
+      it "files a mock's refusal under its query alone, which its lookup asks for" do
+        allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( ['.h', '.hpp'] ) )
+        derive( paths: ['inc'], includes: [mock( 'mock_socket.h' )], headers: [socket] )
+
+        expect(@refusals.keys).to eq( ['socket.h'] )
+      end
+
+      # Every stage looks a test's mocks up before its other #includes
+      [[:plain_first, ->(m, p) { [p, m] }], [:mock_first, ->(m, p) { [m, p] }]].each do |order, arrange|
+        it "explains a header a mock and a plain #include share by the mock's refusal (#{order})" do
+          derive( paths: ['inc'], includes: arrange.call( mock( 'mock_socket.h' ), UserInclude.new( 'socket.h' ) ), headers: [socket] )
+
+          expect(@refusals['socket.h']).to start_with( "`#include \"mock_socket.h\"` in test/test_it.c" )
+        end
+      end
+
+      it "files a refusal under the spelling the header search looks it up by" do
+        allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
+        derive( paths: ['inc'], includes: [mock( './sys//mock_socket.h' )], headers: [socket] )
+
+        expect(@refusals.keys).to eq( ['sys/socket.h'] )
+      end
+
       it "spells a header's search path absolutely, whatever spelling the collection holds" do
         relative = ProjectPaths.relative( socket )
         derive( paths: ['inc'], includes: [mock( 'mock_socket.h' )], headers: [relative] )

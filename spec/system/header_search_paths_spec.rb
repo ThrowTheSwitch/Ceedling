@@ -292,6 +292,20 @@ ceedling_system_tests do
       end
     end
 
+    # The lookup tries each header extension, and its error names the last
+    it "explains a plain #include's bare name in its error with more than one header extension" do
+      in_project do
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"socket.h\"\nvoid test_nothing(void) { TEST_ASSERT_EQUAL_INT(1, 1); }\n" )
+        configure( ['test'], :none, { :files => { :include => [socket_header] }, :extension => { :header => ['.h', '.hpp'] } } )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to_not eq(0)
+        expect(output).to include(
+          "Found no file `socket.hpp` in search paths. `#include \"socket.h\"` in test/test_c.c needs search path '#{@multiarch_dir}/sys'."
+        )
+      end
+    end
+
     # Stage 2 reads the #include from the file's text, and only a failed lookup reports it
     it "says nothing of a bare name test preprocessing removes" do
       in_project do
