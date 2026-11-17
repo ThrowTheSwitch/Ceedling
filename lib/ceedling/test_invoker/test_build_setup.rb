@@ -111,6 +111,7 @@ class TestBuildSetup
   # cache instead of being scanned again when nothing about the file itself has changed.
   def stage_collect_test_context(state)
     skipped = 0
+    @test_derived_search_paths.forget_notices
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
       filepath = testable.filepath

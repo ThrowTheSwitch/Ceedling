@@ -5,12 +5,12 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
-require 'set'
 require 'ceedling/constants'
 require 'ceedling/includes/includes'
 require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/project_paths'
 require 'ceedling/test_invoker/test_pipeline_helpers'
+require 'ceedling/test_invoker/derived_search_path_notices'
 
 # The search paths a test's #includes imply for headers whose own directories no search
 # path lists.
@@ -32,8 +32,12 @@ class TestDerivedSearchPaths
   constructor :configurator, :include_pathinator, :test_search_paths, :test_context_extractor, :file_finder, :file_wrapper, :loginator
 
   def setup
-    @refused      = Set.new
-    @refused_lock = Mutex.new
+    @notices = DerivedSearchPathNotices.new( configurator: @configurator, loginator: @loginator )
+  end
+
+  # Starts a test build, whose NOTICEs name each directory and refused header once
+  def forget_notices
+    @notices.forget
   end
 
   # The directories `testable`'s #includes imply, in the order its #includes need them. One
@@ -85,10 +89,10 @@ class TestDerivedSearchPaths
 
     header = unlisted_header( query, search )
     return nil if header.nil?
-    return refuse( testable, include, header ) if bare_outside_project?( text, header )
+    return @notices.refused( testable, include, header ) if bare_outside_project?( text, header )
 
     root = PathMatcher.strip_tail( header, text )
-    log_root( testable, root, text, header ) unless root.nil?
+    @notices.added( testable, root, text, header ) unless root.nil?
     return root
   end
 
@@ -137,36 +141,6 @@ class TestDerivedSearchPaths
   # Ceedling's own vendor and generated headers
   def below_build_root?(header)
     return ProjectPaths.contains?( @configurator.project_build_root, header )
-  end
-
-  def log_root(testable, root, text, header)
-    msg = "Added search path '#{root}' for #{testable.filepath} after every configured search path, so \"#{text}\" reaches #{header}."
-    @loginator.log( msg, Verbosity::COMPLAIN, LogLabels::NOTICE )
-  end
-
-  # Logs once a header, however many tests name it, and gives no directory
-  def refuse(testable, include, header)
-    first = @refused_lock.synchronize { @refused.add?( header ) }
-    return nil if first.nil?
-
-    written   = include.filepath
-    suggested = File.join( File.basename( File.dirname( header ) ), File.basename( written ) )
-    @loginator.log( refusal( testable, written, header, suggested, include.is_a?( MockInclude ) ), Verbosity::COMPLAIN, LogLabels::NOTICE )
-    return nil
-  end
-
-  # Without :mock_name_include_folder a mock includes its header by name alone, whatever
-  # folder its own #include writes
-  def refusal(testable, written, header, suggested, mock)
-    opening = "#include \"#{written}\" in #{testable.filepath} names #{header}, outside the project. "
-    unless mock and !@configurator.cmock_mock_name_include_folder
-      return opening + "Ceedling adds no search path for a bare name there. " \
-                       "Include it by its path below an include directory, as in \"#{suggested}\"."
-    end
-
-    return opening + "With :cmock ↳ :mock_name_include_folder disabled, its mock includes it by bare name, " \
-                     "and Ceedling adds no search path for a bare name there. " \
-                     "Enable that option to include it by its folder, as in \"#{suggested}\"."
   end
 
 end
