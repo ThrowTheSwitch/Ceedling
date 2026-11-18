@@ -41,8 +41,8 @@ class TestBareIncludesExtractinator
       state.lock.synchronize { skipped += 1 } if cached
 
       add_candidates( testable )
-      one_mock_per_header( testable )
       place_standins( state, testable )
+      one_mock_per_header( testable )
     end
 
     log_skip_summary( task: "#include extraction", count: skipped, noun: "test files" )
@@ -93,7 +93,8 @@ class TestBareIncludesExtractinator
   end
 
   # A test that names one header's mock two ways keeps one of them, as stage 2 does, so
-  # pass 2 enters one stand-in and reconciliation keeps one mock. The cache keeps GCC's list.
+  # reconciliation keeps one mock. Every spelling already has its stand-in, since the test
+  # file still includes each. The cache keeps GCC's list.
   def one_mock_per_header(testable)
     search = @mock_locator.header_search( testable )
     from   = File.dirname( testable.filepath )

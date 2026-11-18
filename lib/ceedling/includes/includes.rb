@@ -200,14 +200,13 @@ class Includes
   # entry's literal #include text can carry more path than its candidate (a fallback text
   # scan sees only what's literally written) or less (a candidate directives-only
   # preprocessing resolved to a fuller real location than an unqualified bare #include
-  # ever names). A bare entry matching more than one user/mock candidate (typically a
-  # pathless bare entry corresponding to two same-named project files in different
-  # directories) resolves to the first candidate in `user`'s own order -- itself already
-  # real preprocessor-derived resolution order, so this mirrors the same first-by-known-
-  # priority policy applied everywhere else a query is matched against a collection of real
-  # files. `on_ambiguous`, when given, is called with the bare filepath, the chosen
-  # candidate, and every candidate passed over, so a caller with somewhere to log that
-  # (reconcile itself carries no logger) can surface it.
+  # ever names). Each bare entry pairs with one candidate, the entry with the fewest
+  # candidates first (`pair_candidates`), so a pathless entry never takes the header a
+  # same-named entry with a folder names. An entry takes the candidate its whole path names
+  # if there is one, else the first unclaimed one in `user`'s own order, which is already
+  # real preprocessor-derived resolution order. `on_ambiguous`, when given, is called with
+  # the bare filepath, the chosen candidate, and every candidate no entry took, so a caller
+  # with somewhere to log that (reconcile itself carries no logger) can surface it.
   #
   # System includes are still matched by filename alone: a system header commonly reaches
   # the same basename through more than one real file (a compiler-provided header
@@ -281,7 +280,8 @@ class Includes
       SystemInclude.new(include.filepath, include_path: original.filepath)
     end.uniq( &:to_s )
 
-    user_filepaths = user.map(&:filepath)
+    # One file a preprocessor names two ways, as `drivers/./foo.h`, is one candidate
+    user_filepaths = user.map(&:filepath).uniq { |filepath| ProjectPaths.segments(filepath) }
     user_by_filepath = {}
     user.each { |include| user_by_filepath[include.filepath] ||= include }
 
@@ -299,7 +299,9 @@ class Includes
       # candidate directives-only preprocessing resolved to a fuller real location) --
       # either side may be the more specific one, so whichever is shorter sets how many
       # of the longer one's trailing segments must match.
+      # The candidate the entry's whole path names comes first
       matched = user_filepaths.select { |filepath| paths_correspond?(bare_filepath, filepath) }
+      matched = matched.partition { |filepath| ProjectPaths.segments(filepath) == ProjectPaths.segments(bare_filepath) }.flatten
 
       [bare_include, bare_filepath, matched]
     end

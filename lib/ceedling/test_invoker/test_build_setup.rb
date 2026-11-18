@@ -246,17 +246,6 @@ class TestBuildSetup
     @include_pathinator.augment_environment_header_files( headers )
   end
 
-  # Every mocked header's own mirrored directory below this test's mock root -- a mock is
-  # only ever findable by the compiler via a search path pointing directly at wherever it
-  # actually lives, since C's own #include resolution has no notion of a recursive search
-  # path, so this feeds directly into this test's own search paths (TestSearchPaths).
-  #
-  # These come from the text-scanned #includes, which ignore #if. With test preprocessing
-  # on, stage 4 settles which mocks the build uses, and where it reconciles it sets these
-  # paths again from the preprocessor's list. A scanned mock without a header, or with one
-  # matching only in letter case, may be one the preprocessor discards, so it is skipped
-  # here silently. With preprocessing off, the scanned list is the build's own, and a
-  # missing or mis-cased header stops the build.
   # A test that names one header's mock two ways keeps one of them, which the planner, the
   # runner and the rebuilt test file all read (MockLocator#one_per_header). The lookup
   # needs the test's derived search paths, so it follows them.
@@ -271,6 +260,17 @@ class TestBuildSetup
     @context_extractor.ingest_includes( filepath, distinct + @context_extractor.lookup_source_includes_list( filepath ) )
   end
 
+  # Every mocked header's own mirrored directory below this test's mock root -- a mock is
+  # only ever findable by the compiler via a search path pointing directly at wherever it
+  # actually lives, since C's own #include resolution has no notion of a recursive search
+  # path, so this feeds directly into this test's own search paths (TestSearchPaths).
+  #
+  # These come from the text-scanned #includes, which ignore #if. With test preprocessing
+  # on, stage 4 settles which mocks the build uses, and where it reconciles it sets these
+  # paths again from the preprocessor's list. A scanned mock without a header, or with one
+  # matching only in letter case, may be one the preprocessor discards, so it is skipped
+  # here silently. With preprocessing off, the scanned list is the build's own, and a
+  # missing or mis-cased header stops the build.
   def collect_mock_search_paths(testable)
     return [] unless testable.paths[:mocks]
 
