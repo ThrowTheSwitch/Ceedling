@@ -70,8 +70,7 @@ class Partializer
     • Without one, a kept copy could collide with the real one, so the mock leaves %<them>s out.
     • Code that uses %<these>s compiles only where another #include brings in the real header.
 
-    OPTIONS:
-    1. Replace `#pragma once` in %<header>s with an include guard so the mock keeps %<them>s.
+    Replace `#pragma once` in %<header>s with an include guard so the mock keeps %<them>s.
 
     See the docs on Partials conventions.
   NOTICE

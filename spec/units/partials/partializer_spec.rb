@@ -1072,8 +1072,7 @@ describe Partializer do
         • Without one, a kept copy could collide with the real one, so the mock leaves them out.
         • Code that uses these compiles only where another #include brings in the real header.
 
-        OPTIONS:
-        1. Replace `#pragma once` in src/sensor.h with an include guard so the mock keeps them.
+        Replace `#pragma once` in src/sensor.h with an include guard so the mock keeps them.
 
         See the docs on Partials conventions.
       NOTICE
