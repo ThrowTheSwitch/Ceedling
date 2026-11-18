@@ -420,6 +420,24 @@ ceedling_system_tests do
       end
     end
 
+    # A mock includes its header through the folder the test named it by. A search path listing
+    # only the header's own directory joins no such folder.
+    [[:none, ['fff']], [:all, ['fff']], [:none, []]].each do |preprocessor, plugins|
+      kind = plugins.empty? ? 'a mock' : 'an FFF fake'
+
+      it "reach a header from #{kind} through its folder where a search path lists only the header's own directory under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          body = plugins.empty? ? 'foo_read_ExpectAndReturn(5);' : 'foo_read_fake.return_val = 5;'
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { #{body} TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+          configure( ['src/drivers/**'], preprocessor, { :plugins => { :enabled => plugins } } )
+          build_passes
+        end
+      end
+    end
+
     [:none, :all].each do |preprocessor|
       it "reach a header below the search path from an FFF fake under :use_test_preprocessor #{preprocessor}" do
         in_project do
