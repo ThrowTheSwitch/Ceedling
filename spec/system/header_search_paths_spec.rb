@@ -500,6 +500,35 @@ ceedling_system_tests do
       end
     end
 
+    # The compiler includes the header a mock's own #include reaches, even where the mock was
+    # located by a same-named header's trailing path
+    [:tests, :all].each do |preprocessor|
+      it "include in a mock the same-named header its folder reaches under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', "#ifndef SDFOO_H\n#define SDFOO_H\ntypedef int foo_t;\n#define FOO_WHICH 1\nfoo_t foo_read(void);\n#endif\n" )
+          write( 'src/app/drivers/foo.h', "#ifndef ADFOO_H\n#define ADFOO_H\ntypedef int foo_t;\n#define FOO_WHICH 2\nfoo_t foo_read(void);\n#endif\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); " \
+                                  "TEST_ASSERT_EQUAL_INT(1, FOO_WHICH); }\n" )
+
+          configure( ['src/', 'src/app/drivers/'], preprocessor )
+          build_passes
+        end
+      end
+    end
+
+    # A format writing more than the text between quotes keeps the text CMock gives it
+    it "include in a mock its header through a project's :orig_header_include_fmt around the folder" do
+      in_project do
+        write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+        configure( ['src/drivers/'], :none, { :cmock => { :orig_header_include_fmt => '#include "../%s"' } } )
+        build_passes
+      end
+    end
+
     [:none, :all].each do |preprocessor|
       it "reach a header below the search path from an FFF fake under :use_test_preprocessor #{preprocessor}" do
         in_project do

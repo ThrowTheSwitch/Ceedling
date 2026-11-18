@@ -164,6 +164,10 @@ describe MockLocator do
   # CMock includes a mock's real header by the folder it is given and the header's filename.
   # A search path listing the header's own directory joins no such folder.
   describe "#header_include and #header_respelling" do
+    before(:each) do
+      allow(@configurator).to receive(:get_cmock_config).and_return( {} )
+    end
+
     def search_over(paths, headers)
       return HeaderSearch.new( paths, ->(dir) { headers.select { |header| File.expand_path( File.dirname( header ) ) == File.expand_path( dir ) } } )
     end
@@ -182,11 +186,28 @@ describe MockLocator do
       expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'foo.h' )
     end
 
-    # A search path earlier in the order can join CMock's text to a same-named header
-    it "takes the text that reaches the header where CMock's reaches another" do
-      search = search_over( ['lib', 'src'], ['lib/drivers/foo.h', 'src/hw/drivers/foo.h'] )
+    # The compiler includes the same-named header CMock's text reaches, whichever header the
+    # mock was located by
+    it "keeps CMock's text where it reaches another same-named header" do
+      search = search_over( ['lib', 'src/hw/drivers'], ['lib/drivers/foo.h', 'src/hw/drivers/foo.h'] )
 
-      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/hw/drivers/foo.h', search )).to eq( 'hw/drivers/foo.h' )
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/hw/drivers/foo.h', search )).to be_nil
+      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/hw/drivers/foo.h', search )).to eq( 'drivers/foo.h' )
+    end
+
+    # A respelling is judged as the whole operand of the #include
+    it "keeps CMock's text where :orig_header_include_fmt writes more around it than quotes" do
+      allow(@configurator).to receive(:get_cmock_config).and_return( { orig_header_include_fmt: '#include "../%s"' } )
+      search = search_over( ['src/drivers'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to be_nil
+    end
+
+    it "respells within a bracketed :orig_header_include_fmt" do
+      allow(@configurator).to receive(:get_cmock_config).and_return( { orig_header_include_fmt: '#include <%s>' } )
+      search = search_over( ['src/drivers'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'foo.h' )
     end
 
     it "keeps CMock's text where nothing reaches the header" do

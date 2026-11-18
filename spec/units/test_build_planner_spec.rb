@@ -239,6 +239,7 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'drivers/MockFoo.h' )] )
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
       allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+      allow(@configurator).to receive(:get_cmock_config).and_return( {} )
       allow(@file_finder).to receive(:resolve_mock).with( 'drivers/MockFoo.h', collection: search, complain: :error ).and_return( ['src/drivers/foo.h', ''] )
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
       allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
