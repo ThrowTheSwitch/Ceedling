@@ -981,8 +981,9 @@ class Partializer
         PartializerRuntime.raise_on_option( others )
       end
 
-    # Remove any duplicates
+    # Remove any duplicates, and fallback's unresolved text beside the header it names
     Includes.sanitize!(_includes)
+    Includes.drop_shadowed!(_includes)
 
     @loginator.log_list(
       _includes.reject { |include| include.equal?( INCLUDE_BOUNDARY ) },

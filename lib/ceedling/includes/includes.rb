@@ -142,8 +142,6 @@ class Includes
     # same entry and collapsed down to one.
     includes.uniq!( &:filepath )
 
-    self.drop_shadowed!( includes )
-
     # Apply custom rejection with access to full list if block provided
     if block_given?
       includes.reject! { |include| yield(include, includes) }
@@ -156,7 +154,9 @@ class Includes
   end
 
   # Drops any include that carries no path of its own while another entry resolves to a
-  # real file of the same basename.
+  # real file of the same basename. Only a list that mixes unresolved text with resolved
+  # headers needs it, as a Partial's does under fallback. In a bare or scanned list every
+  # entry is an #include as written, and a pathless one can name a different header.
   #
   # An unresolved include holds only the text as written, so its filepath has no
   # directory. Beside a resolved sibling of the same basename it can only reach a file by
@@ -178,7 +178,6 @@ class Includes
 
     return includes
   end
-  private_class_method :drop_shadowed!
 
   # Class method to reconcile bare, user, and system includes returning a list of
   # reconciled user and system includes.

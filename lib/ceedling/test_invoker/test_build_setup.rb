@@ -192,6 +192,7 @@ class TestBuildSetup
         testable.search_path_refusals = refusals
       end
 
+      one_mock_per_header( testable )
       testable.mock_search_paths = collect_mock_search_paths( testable )
     end
 
@@ -256,6 +257,20 @@ class TestBuildSetup
   # matching only in letter case, may be one the preprocessor discards, so it is skipped
   # here silently. With preprocessing off, the scanned list is the build's own, and a
   # missing or mis-cased header stops the build.
+  # A test that names one header's mock two ways keeps one of them, which the planner, the
+  # runner and the rebuilt test file all read (MockLocator#one_per_header). The lookup
+  # needs the test's derived search paths, so it follows them.
+  def one_mock_per_header(testable)
+    return unless testable.paths[:mocks]
+
+    filepath = testable.filepath
+    headers  = @context_extractor.lookup_all_header_includes_list( filepath )
+    distinct = @mock_locator.one_per_header( headers, collection: @mock_locator.header_search( testable ) )
+    return if distinct.length == headers.length
+
+    @context_extractor.ingest_includes( filepath, distinct + @context_extractor.lookup_source_includes_list( filepath ) )
+  end
+
   def collect_mock_search_paths(testable)
     return [] unless testable.paths[:mocks]
 

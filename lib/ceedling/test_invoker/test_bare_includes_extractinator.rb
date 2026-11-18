@@ -26,7 +26,8 @@ class TestBareIncludesExtractinator
     :file_path_utils,
     :dependinator,
     :test_search_paths,
-    :standin_headerinator
+    :standin_headerinator,
+    :mock_locator
   )
 
   # The list is needed right away for stand-ins and again by reconciliation, so a cache
@@ -40,6 +41,7 @@ class TestBareIncludesExtractinator
       state.lock.synchronize { skipped += 1 } if cached
 
       add_candidates( testable )
+      one_mock_per_header( testable )
       place_standins( state, testable )
     end
 
@@ -88,6 +90,17 @@ class TestBareIncludesExtractinator
     log_module_progress( 'Skipping preprocessing for #includes in favor of cached #includes for', testable, Verbosity::OBNOXIOUS )
 
     return @preprocessinator.load_includes_list( test: testable.name, filepath: testable.filepath )
+  end
+
+  # A test that names one header's mock two ways keeps one of them, as stage 2 does, so
+  # pass 2 enters one stand-in and reconciliation keeps one mock. The cache keeps GCC's list.
+  def one_mock_per_header(testable)
+    search = @mock_locator.header_search( testable )
+    from   = File.dirname( testable.filepath )
+
+    [:includes, :candidates].each do |list|
+      testable.preprocess[list] = @mock_locator.one_per_header( testable.preprocess[list], collection: search, from: from )
+    end
   end
 
   def add_candidates(testable)

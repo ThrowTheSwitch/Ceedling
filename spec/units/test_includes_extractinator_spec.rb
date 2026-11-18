@@ -120,7 +120,8 @@ describe TestIncludesExtractinator do
 
     @extractinator = described_class.new(
       test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
-        **common, file_path_utils: @file_path_utils, dependinator: @dependinator, test_search_paths: search_paths, standin_headerinator: standins
+        **common, file_path_utils: @file_path_utils, dependinator: @dependinator, test_search_paths: search_paths, standin_headerinator: standins,
+        mock_locator: @mock_locator
       ),
       test_includes_preprocessinator: TestIncludesPreprocessinator.new(
         **common, file_path_utils: @file_path_utils, file_wrapper: @file_wrapper, dependinator: @dependinator
