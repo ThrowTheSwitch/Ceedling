@@ -628,6 +628,24 @@ RSpec.describe Preprocessinator do
       expect(call_it()).to eq('/build/preprocessed/module.h')
     end
 
+    # CMock copies the header beside the mock under :treat_inlines :include, so its #includes
+    # are written as the test's search paths reach each header
+    it "spells the header's #includes through the test's search before assembling" do
+      search = double( 'HeaderSearch' )
+      allow(search).to receive(:header_candidates).with( 'drivers/foo.h' ).and_return( ['src/drivers/foo.h'] )
+      allow(search).to receive(:spelling).with( 'src/drivers/foo.h' ).and_return( 'drivers/foo.h' )
+      allow(subject).to receive(:preprocess_file_includes_common).and_return( [UserInclude.new( 'drivers/foo.h' ), SystemInclude.new( 'stdint.h' )] )
+
+      expect(@file_assembler).to receive(:assemble_preprocessed_header_file) do |includes:, **|
+        expect( includes.map( &:to_s ) ).to eq( ['#include "drivers/foo.h"', '#include <stdint.h>'] )
+      end
+
+      subject.preprocess_mockable_header_file(
+        test: 'test', filepath: filepath, directives_only_filepath: nil, fallback: false, flags: [], include_paths: [],
+        vendor_paths: [], defines: [], include_search: search
+      )
+    end
+
     it "fires pre_mock_preprocess before assembling and post_mock_preprocess after" do
       order = []
       allow(@plugin_manager).to receive(:pre_mock_preprocess) { order << :pre }

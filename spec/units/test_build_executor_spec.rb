@@ -1503,12 +1503,24 @@ describe TestBuildExecutor do
         :directives_only_filepath => nil
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
+      allow(@executor.instance_variable_get( :@mock_locator )).to receive(:header_search).and_return( double( 'HeaderSearch' ) )
     end
 
     it "preprocesses and marks fresh the mockable header when the dependency tracker reports it stale" do
       allow(@dependinator).to receive(:stale?).and_return( true )
       expect(@preprocessinator).to receive(:preprocess_mockable_header_file)
       expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/MockFoo.h')
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "hands mockable header preprocessing the test's header search" do
+      search = double( 'HeaderSearch' )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@executor.instance_variable_get( :@mock_locator )).to receive(:header_search).with( @testable ).and_return( search )
+
+      expect(@preprocessinator).to receive(:preprocess_mockable_header_file).with( hash_including( include_search: search ) )
 
       @executor.stage_preprocess_mocks( @state )
     end
