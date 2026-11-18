@@ -90,7 +90,8 @@ class TestBuildPlanner
           source:   source,
           input:    input,
           partial:  partial,
-          include_path: include.filepath
+          include_path: include.filepath,
+          header_include: @mock_locator.header_respelling( include, source, collection )
         )
       end
 

@@ -101,10 +101,18 @@ class FffCMockWrapper
 
     puts( "Creating fake functions: #{path}.h and #{path}.c" ) unless @verbosity < 3
     File.write( "#{path}.h", FffMockGenerator.create_mock_header( module_name, mock_name, parsed_header,
-      @includes_h_pre_orig_header, @includes_h_post_orig_header, c_name: c_name, folder: folder ) )
+      @includes_h_pre_orig_header, @includes_h_post_orig_header, c_name: c_name, header_include: header_include( module_name, folder ) ) )
 
     File.write( "#{path}.c", FffMockGenerator.create_mock_source( mock_name, parsed_header,
       @includes_c_pre_header, @includes_c_post_header, c_name: c_name ) )
+  end
+
+  # The text a fake includes the original header by: the folder its #include names and the
+  # header's filename, as CMock writes it, or the text Ceedling gives where the test's search
+  # paths reach the header only by another (:orig_header_include)
+  def header_include(module_name, folder)
+    respelled = @cm_config.respond_to?( :orig_header_include ) ? @cm_config.orig_header_include : nil
+    return respelled || File.join( *[folder].compact, "#{module_name}.h" )
   end
 
   # Joins include lists, each named once, as #include operands. A name holding `<` is

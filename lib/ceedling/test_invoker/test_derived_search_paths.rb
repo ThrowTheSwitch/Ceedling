@@ -23,10 +23,6 @@ require 'ceedling/test_invoker/derived_search_path_notices'
 # else gets the directory as a search path, after every configured path. Nothing
 # configured is shadowed.
 #
-# A mock writes its header's #include through the folder the test named it by, which no
-# search path listing only the header's own directory joins. Its directory is added all the
-# same. A plain #include written that way is the test's own, which the compiler rejects too.
-#
 # A bare name gives the header's own directory. Outside the working directory that can be
 # a system directory of forwarding headers, such as glibc's sys/, where one header includes
 # another by a name the directory itself holds. No directory is added for a bare name
@@ -95,7 +91,7 @@ class TestDerivedSearchPaths
     query, text = query_and_text( include )
     return nil if reaches?( testable, include, text, search )
 
-    header = unlisted_header( query, search, (include.is_a?( MockInclude ) and File.dirname( text ) != '.') )
+    header = unlisted_header( query, search )
     return nil if header.nil?
     return refuse( refusals, include, query, refusal( testable, include, text, header ) ) if bare_outside_project?( text, header )
 
@@ -143,12 +139,11 @@ class TestDerivedSearchPaths
            "Instead, enable #{FOLDER_OPTION} and reference the parent folder, as in #{suggested}."
   end
 
-  # The header `query` names, when Ceedling didn't generate it and no search path lists its
-  # directory. A mock's #include `through_folder` reaches it from no listed directory.
-  def unlisted_header(query, search, through_folder)
+  # The header `query` names, when no search path lists its directory and Ceedling didn't
+  # generate it
+  def unlisted_header(query, search)
     header = search.header_candidates( query ).first || @include_pathinator.collection_candidates( query, search.paths ).first
-    return nil if header.nil? or below_build_root?( header )
-    return nil if listed?( header, search ) and !through_folder
+    return nil if header.nil? or listed?( header, search ) or below_build_root?( header )
 
     return header
   end

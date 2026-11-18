@@ -77,16 +77,16 @@ class StandinHeaderinator
     return nil if source.nil?
 
     placement = @mock_locator.placement( mocks_root: testable.paths[:mocks], subdir: subdir, include_path: include.filepath )
-    write_placed_mock( testable.name, placement, include, source )
+    write_placed_mock( testable.name, placement, include, @mock_locator.header_include( include, source, collection ) )
 
     return @mock_locator.search_directories( placement )
   end
 
   # The test's #include reaches a climbing folder's mock only from the directory it climbs
-  # from, so that is made too
-  def write_placed_mock(test, placement, include, source)
+  # from, so that is made too. `header_include` is the text the mock includes its header by.
+  def write_placed_mock(test, placement, include, header_include)
     @file_wrapper.mkdir( placement.reach ) unless ProjectPaths.contains?( placement.reach, placement.directory )
-    write_mock( test, File.join( placement.directory, include.filename.ext( EXTENSION_CORE_HEADER ) ), include, source, placement.folder )
+    write_mock( test, File.join( placement.directory, include.filename.ext( EXTENSION_CORE_HEADER ) ), include, header_include )
   end
 
   # A Partial's generated #include names whatever directory its module was named by, and
@@ -105,21 +105,13 @@ class StandinHeaderinator
     @file_wrapper.write_blank_file( filepath )
   end
 
-  def write_mock(test, filepath, include, header, folder)
-    contents = "#{MARKER}\n#{header_include( header, folder )}\n"
+  def write_mock(test, filepath, include, header_include)
+    contents = "#{MARKER}\n#{@mock_locator.header_include_line( header_include )}\n"
     return if current?( filepath, contents )
 
     log_placement( test, include )
     @file_wrapper.mkdir( File.dirname( filepath ) )
     @file_wrapper.write( filepath, contents )
-  end
-
-  # The line CMock opens a mock with: its :orig_header_include_fmt around the header's name,
-  # below the folder CMock is given, if any
-  def header_include( header, folder )
-    format = @configurator.get_cmock_config[:orig_header_include_fmt] || '#include "%s"'
-    name   = folder.nil? ? File.basename( header ) : File.join( folder, File.basename( header ) )
-    return format.gsub( '%s', name )
   end
 
   # A file that is not a stand-in, such as a real mock, counts as current. Only its first

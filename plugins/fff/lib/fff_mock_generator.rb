@@ -23,15 +23,15 @@ class FffMockGenerator
   class << self
 
     # `c_name` names the include guard and control functions. It differs from the file's
-    # `mock_name` when the mock is named by the folder its #include names. `folder` is that
-    # folder, which the original header's #include names too, as CMock's does.
+    # `mock_name` when the mock is named by the folder its #include names. `header_include` is
+    # the text the original header is included by.
     def create_mock_header(module_name, mock_name, parsed_header, pre_includes=nil,
-      post_includes=nil, c_name: mock_name, folder: nil)
+      post_includes=nil, c_name: mock_name, header_include: "#{module_name}.h")
       output = StringIO.new
       write_opening_include_guard(c_name, output)
       output.puts
       write_extra_includes(pre_includes, output)
-      write_header_includes(module_name, output, folder)
+      write_header_includes(header_include, output)
       write_extra_includes(post_includes, output)
       output.puts
       write_typedefs(parsed_header, output)
@@ -66,10 +66,10 @@ class FffMockGenerator
       output.puts "#define #{mock_name}_H"
     end
 
-    def write_header_includes(module_name, output, folder = nil)
+    def write_header_includes(header_include, output)
       output.puts %{#include "fff.h"}
       output.puts %{#include "fff_unity_helper.h"}
-      output.puts %{#include "#{folder.nil? ? "#{module_name}.h" : File.join( folder, "#{module_name}.h" )}"}
+      output.puts %{#include "#{header_include}"}
     end
 
     def write_typedefs(parsed_header, output)
