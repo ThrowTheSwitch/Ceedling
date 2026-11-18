@@ -226,9 +226,9 @@ class Includes
   #
   # A matched user include renders filename-only whenever its basename is unique
   # among this reconciliation's own results, not with the path its candidate resolved
-  # to. That path is project-relative, as `src/Types.h` is, and no search path reaches
-  # a project-relative spelling from a generated file living somewhere else entirely.
-  # The reconciled list records which headers a file includes. Each file Ceedling
+  # to. That path is project-relative, as `src/Types.h` is. From a generated file living
+  # somewhere else entirely, it reaches the header only when the project root is a search
+  # path. The reconciled list records which headers a file includes. Each file Ceedling
   # generates from it spells them for itself, as the test's search paths reach each
   # header (see Include#spelled_by), so a header reached only through a folder below
   # a search path is written with that folder.
