@@ -21,7 +21,8 @@ class PartialsManager
     :generator,
     :dependinator,
     :file_path_utils,
-    :file_wrapper
+    :file_wrapper,
+    :mock_locator
   )
 
   # Stage 8: Extract and generate partial implementation and interface files.
@@ -50,6 +51,9 @@ class PartialsManager
     # How many of each kind of generated file were fresh and so left alone
     skipped = Hash.new( 0 )
 
+    # Each test's search, built before the batch, which shares it between that test's Partials
+    searches = partials.map { |partial| partial[:testable] }.uniq.to_h { |testable| [testable.name, @mock_locator.header_search( testable )] }
+
     @batchinator.exec(workload: :compile, things: partials) do |partial|
       config   = partial[:config]
       testable = partial[:testable]
@@ -68,7 +72,8 @@ class PartialsManager
       antecedent_files     = partial_antecedent_files( config )
       module_include_guard = @partializer.extract_module_include_guard( config.header.filepath )
       # Generation's lists are the ones logged, so the record's are computed without a test name
-      record_includes      = remap_partial_includes( config, testable.partials.configs, nil, nil )
+      spelled              = spell_partial_includes( config, searches[name] )
+      record_includes      = remap_partial_includes( config, testable.partials.configs, nil, nil, spelled )
 
       antecedent_meta  = {
         flags:        testable.preprocess_flags,
@@ -109,7 +114,7 @@ class PartialsManager
       types_header = module_contents.types? ? @file_path_utils.form_partial_types_header_filename( config.module ) : nil
       discard_leftover_types( paths[:types] ) if types_header.nil?
 
-      includes = remap_partial_includes( config, testable.partials.configs, types_header, name )
+      includes = remap_partial_includes( config, testable.partials.configs, types_header, name, spelled )
 
       # The implementation and interface include the types header, so each vouches for it
       types_target = types_header && paths[:types]
@@ -348,15 +353,24 @@ class PartialsManager
   # interface headers carry the shared types header when the module has one. Each generated
   # header gets its includes in groups (Partials::IncludeGroups), split where the source
   # includes the module's header.
-  def remap_partial_includes(config, partials, types_header, test)
+  def remap_partial_includes(config, partials, types_header, test, spelled)
     common = { name: config.module, partials: partials, test: test }
-    split  = { **common, source_includes: config.source.includes, header_includes: config.header.includes }
+    split  = { **common, source_includes: spelled[:source], header_includes: spelled[:header] }
 
     return {
       types:       @partializer.remap_types_header_includes( **split ),
       impl_header: @partializer.remap_implementation_header_includes( **split, types_header: types_header ),
-      impl_source: @partializer.remap_implementation_source_includes( **common, includes: config.source.includes + config.header.includes ),
+      impl_source: @partializer.remap_implementation_source_includes( **common, includes: spelled[:source] + spelled[:header] ),
       interface:   @partializer.remap_interface_header_includes( **split, types_header: types_header )
+    }
+  end
+
+  # A Partial's #includes spelled as the test's search paths reach each header, so a generated
+  # file reaches it from the Partials directory, and modules are matched by that header
+  def spell_partial_includes(config, search)
+    return {
+      source: config.source.includes.map { |include| include.spelled_by( search ) },
+      header: config.header.includes.map { |include| include.spelled_by( search ) }
     }
   end
 

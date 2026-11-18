@@ -219,21 +219,21 @@ describe HeaderSearch do
 
   # A generated file writes a header's #include by the text that reaches it, and a Partial
   # matches modules by the header the include names
-  describe "#spelled" do
+  describe "Include#spelled_by" do
     it "spells a user #include as the search paths reach its header, and names that header" do
-      spelled = search( ['src'], ['src/drivers/foo.h'] ).spelled( UserInclude.new( 'drivers/foo.h' ) )
+      spelled = UserInclude.new( 'drivers/foo.h' ).spelled_by( search( ['src'], ['src/drivers/foo.h'] ) )
 
       expect( [spelled.filepath, spelled.include_path, spelled.to_s] ).to eq( ['src/drivers/foo.h', 'drivers/foo.h', '#include "drivers/foo.h"'] )
     end
 
     it "keeps the filename where it reaches the same header" do
-      spelled = search( ['src'], ['src/foo.h'] ).spelled( UserInclude.new( 'src/foo.h' ) )
+      spelled = UserInclude.new( 'src/foo.h' ).spelled_by( search( ['src'], ['src/foo.h'] ) )
 
       expect( [spelled.filepath, spelled.to_s] ).to eq( ['src/foo.h', '#include "foo.h"'] )
     end
 
     it "keeps an #include's anchoring" do
-      spelled = search( ['src'], ['src/foo.h'] ).spelled( UserInclude.new( 'src/foo.h', directory_relative: true ) )
+      spelled = UserInclude.new( 'src/foo.h', directory_relative: true ).spelled_by( search( ['src'], ['src/foo.h'] ) )
 
       expect( spelled.directory_relative? ).to be( true )
     end
@@ -244,8 +244,8 @@ describe HeaderSearch do
       mock    = MockInclude.new( 'mock_foo.h' )
       lost    = UserInclude.new( 'gone.h' )
 
-      expect( [system, mock, lost].map { |include| headers.spelled( include ) } ).to eq( [system, mock, lost] )
-      expect( headers.spelled( lost ) ).to equal( lost )
+      expect( [system, mock, lost].map { |include| include.spelled_by( headers ) } ).to eq( [system, mock, lost] )
+      expect( lost.spelled_by( headers ) ).to equal( lost )
     end
   end
 

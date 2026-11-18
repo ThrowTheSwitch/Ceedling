@@ -465,6 +465,15 @@ class Include
     return self.class.new( resolved, include_path: @include_path, directory_relative: true )
   end
 
+  # This #include spelled as `search`, a HeaderSearch, reaches its header (see
+  # HeaderSearch#spelling). Its path becomes the header found, so a caller weighing which header
+  # it names reads the header itself. One whose header isn't found or reached comes back as it is.
+  def spelled_by(search)
+    header   = search.header_candidates( @filepath ).first
+    spelling = header && search.spelling( header )
+    return spelling ? self.class.new( header, include_path: spelling, directory_relative: @directory_relative ) : self
+  end
+
   # Method specialized by subclasses
   def to_s()
     # Simple string representation of class contents with no additional formatting or #include decoration
@@ -556,6 +565,11 @@ class MockInclude < UserInclude
   def to_s()
     "#include \"#{filepath}\""
   end
+
+  # A mock's #include names its generated header, which no header search holds
+  def spelled_by(_search)
+    return self
+  end
 end
 
 
@@ -563,5 +577,10 @@ end
 class SystemInclude < Include
   def to_s()
     "#include <#{include}>"
+  end
+
+  # The compiler finds a system header through its own directories, which no header search holds
+  def spelled_by(_search)
+    return self
   end
 end

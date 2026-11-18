@@ -1064,7 +1064,15 @@ class Partializer
     return !_claimed_by_directory?( include, _module, partials ) if File.dirname( _module ) == '.'
 
     header = partials.dig( _module )&.header&.filepath
-    return (header.nil? or _same_header_path?( include.filepath, header ))
+    return true if header.nil? or _unanchored?( include )
+
+    return _same_header_path?( include.filepath, header )
+  end
+
+  # Fallback anchors a `..` #include to its file's own directory. One naming no file there was
+  # found elsewhere through a search path, so its path says nothing and its filename decides.
+  def _unanchored?(include)
+    return (include.directory_relative? and !@file_wrapper.exist?( include.filepath ))
   end
 
   # Whether a module sharing `_module`'s basename, named by directory, claims `include` by its header's path

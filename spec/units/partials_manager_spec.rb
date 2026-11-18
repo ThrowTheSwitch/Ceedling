@@ -27,7 +27,7 @@ describe PartialsManager do
     @header_search    = double( "HeaderSearch" )
 
     allow(@mock_locator).to receive(:header_search).and_return( @header_search )
-    allow(@header_search).to receive(:spelled) { |include| include }
+    allow(@header_search).to receive(:header_candidates).and_return( [] )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
@@ -518,10 +518,10 @@ describe PartialsManager do
     it "hands the remaps each include spelled as the test's search paths reach its header" do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
-      written = UserInclude.new( 'drivers/foo.h' )
+      @config.source.includes = [UserInclude.new( 'drivers/foo.h' )]
       spelled = UserInclude.new( 'src/drivers/foo.h', include_path: 'drivers/foo.h' )
-      @config.source.includes = [written]
-      allow(@header_search).to receive(:spelled).with( written ).and_return( spelled )
+      allow(@header_search).to receive(:header_candidates).with( 'drivers/foo.h' ).and_return( ['src/drivers/foo.h'] )
+      allow(@header_search).to receive(:spelling).with( 'src/drivers/foo.h' ).and_return( 'drivers/foo.h' )
 
       expect(@partializer).to receive(:remap_types_header_includes)
         .with( hash_including( source_includes: [spelled] ) ).twice.and_return( Partials::IncludeGroups.new )
