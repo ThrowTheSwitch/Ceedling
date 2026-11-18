@@ -14,8 +14,9 @@ require 'ceedling/test_invoker/test_pipeline_helpers'
 # Where a test's mocks come from and where they go. A mock's real header resolves
 # through the test's search paths as the compiler resolves it, and the mock is written to
 # a directory below the test's mock root mirroring that header's location. Stand-ins,
-# mock search paths, and the real mock must all agree on that directory, and a stand-in and
-# its mock on the #include of the real header, so every stage locates mocks here.
+# mock search paths, and the real mock must all agree on that directory, so every stage
+# locates mocks here. A stand-in includes the real header as its mock does, except where the
+# mock includes CMock's copy of it.
 class MockLocator
 
   include TestPipelineHelpers
@@ -83,24 +84,26 @@ class MockLocator
     return MockPlacement.new( folder: folder, directory: spot[:directory], root: (folder ? spot[:reach] : spot[:directory]), reach: spot[:reach] )
   end
 
-  # The text the mock `include` names includes its real `header` by, which its stand-in
-  # includes too. CMock writes the folder it is given and the header's filename. Where the
-  # test's `search` reaches the header only by another text, the mock takes that one.
+  # The text the stand-in for the mock `include` names includes its real `header` by, inside
+  # :orig_header_include_fmt. It's CMock's, the folder CMock is given and the header's
+  # filename, unless the format takes a respelling (`header_respelling`). The mock includes the
+  # same text, except under :treat_inlines :include, where CMock's reaches its copy of the
+  # header. The copy doesn't exist yet when the stand-in is written.
   def header_include(include, header, search)
-    return header_respelling( include, header, search ) || cmock_header_include( include.filepath, header )
+    respelled = header_respelling( include, header, search )
+    return (respelled and respellable_format?) ? respelled : cmock_header_include( include.filepath, header )
   end
 
   # A respelling of the #include a mock opens with: the spelling `search` reaches its real
   # `header` by (see HeaderSearch on spellings), in place of CMock's, when CMock's reaches no
   # header, as through a search path listing the header's own directory. Nil when CMock's
-  # reaches a header, or nothing reaches this one.
+  # reaches a header, or nothing reaches this one. It's the whole operand of the #include. An
+  # FFF fake writes it as it is, and CMock and a stand-in only into a format that takes it.
   #
   # CMock's stays wherever the respelling can't be judged:
   # - CMock's reaches a same-named header. The compiler includes that one, whichever header
   #   the mock was located by.
   # - Its folder climbs. The compiler joins `..` as written, which a search can't follow.
-  # - :orig_header_include_fmt writes more around the text than quotes or angle brackets,
-  #   which a respelling is never weighed with.
   # - It's a Partial mock, whose header is Ceedling's own, in the mock root.
   def header_respelling(include, header, search)
     return nil if mock_partial?( include )
@@ -108,8 +111,13 @@ class MockLocator
     written = cmock_header_include( include.filepath, header )
     return nil if ProjectPaths.segments( written ).include?( '..' ) or search.joins?( written )
 
-    spelled = search.spelling( header )
-    return (spelled and header_include_format.match?( OPERAND_FORMAT )) ? spelled : nil
+    return search.spelling( header )
+  end
+
+  # Whether :orig_header_include_fmt takes a respelling: its text is the whole operand, between
+  # quotes or angle brackets. A respelling is never weighed with more around it.
+  def respellable_format?
+    return header_include_format.match?( OPERAND_FORMAT )
   end
 
   # The line CMock opens a mock with: its :orig_header_include_fmt around `text`

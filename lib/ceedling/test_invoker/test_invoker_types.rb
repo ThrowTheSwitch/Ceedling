@@ -37,8 +37,9 @@ module TestInvokerTypes
   # mock is Ceedling's own generated Partial content rather than a mock of a
   # real header (`partial`). `include_path` is the #include as the test wrote
   # it. It names the mock for CMock and the runner alike. `header_include` is the
-  # respelling the mock includes its real header by in place of CMock's spelling
-  # (MockLocator#header_respelling), and nil when CMock's reaches the header.
+  # respelling of CMock's text for the mock's real header
+  # (MockLocator#header_respelling), or nil where CMock's text stays. An FFF fake
+  # includes the header by it, and CMock does where its format takes it.
   MockDetails = Struct.new(:name, :filepath, :path, :source, :input, :partial, :include_path, :header_include, keyword_init: true) unless const_defined?(:MockDetails, false)
 
   # A test's generated Unity runner: the C file to be compiled (`output_filepath`)

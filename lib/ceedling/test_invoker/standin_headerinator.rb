@@ -83,7 +83,8 @@ class StandinHeaderinator
   end
 
   # The test's #include reaches a climbing folder's mock only from the directory it climbs
-  # from, so that is made too. `header_include` is the text the mock includes its header by.
+  # from, so that is made too. `header_include` is the text the stand-in includes the mock's
+  # real header by (MockLocator#header_include).
   def write_placed_mock(test, placement, include, header_include)
     @file_wrapper.mkdir( placement.reach ) unless ProjectPaths.contains?( placement.reach, placement.directory )
     write_mock( test, File.join( placement.directory, include.filename.ext( EXTENSION_CORE_HEADER ) ), include, header_include )

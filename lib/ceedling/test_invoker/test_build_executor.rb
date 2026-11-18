@@ -554,13 +554,14 @@ class TestBuildExecutor
 
   # The settings that have a mock include its real header by `header_include` in place of
   # CMock's own text. `:orig_header_include` is Ceedling's, which CMock ignores and an FFF
-  # fake reads. Under :treat_inlines :include CMock's own text reaches the copy of the header
-  # it writes beside the mock, so CMock keeps it. A fake writes no copy.
+  # fake reads. CMock keeps its own text under an :orig_header_include_fmt that takes no
+  # respelling. It keeps it under :treat_inlines :include too, where its text reaches the copy
+  # of the header it writes beside the mock. A fake writes no format and no copy.
   def header_include_overrides(header_include)
     return {} if header_include.nil?
 
     overrides = { orig_header_include: header_include }
-    return overrides if @configurator.cmock_treat_inlines == :include
+    return overrides if @configurator.cmock_treat_inlines == :include or !@mock_locator.respellable_format?
 
     return overrides.merge( orig_header_include_fmt: @mock_locator.header_include_line( header_include ) )
   end
