@@ -623,6 +623,7 @@ partials_manager:
     - dependinator
     - file_path_utils
     - file_wrapper
+    - mock_locator
 
 release_invoker:
   compose:

@@ -74,11 +74,19 @@ When creating a Partial, Ceedling:
 | Testable header | <ul><li>Declares functions</li><li>`extern`s variables</li></ul> | `ceedling_partial_<module>_impl.h` |
 | Testable source | <ul><li>Defines functions</li><li>Defines `static`-less variables</li><li>Carries what the functions rely on</li></ul> | `ceedling_partial_<module>_impl.c` |
 | Mockable header | <ul><li>Declares function signatures</li></ul> | `ceedling_partial_<module>_interface.h` |
+| Mockable header extras | <ul><li>Keeps the rest of your header for the code that includes it</li></ul> | `ceedling_partial_<module>_extras.h` |
 
 Ceedling uses CMock to generate mocks from Partials interface header files
 just as it does for any other mockable header files. An interface header holds
 only declarations Ceedling has already resolved, with no inline bodies, so CMock
 reads it as generated, without the preprocessing other mocked headers get.
+
+A module your test mocks but doesn't test can also get an extras header. It
+keeps your header's helpers, `static` variables, and other declarations the
+mock leaves out
+([details](conventions.md#what-a-mock-partial-keeps-from-your-header)), and
+exists only when it keeps something. The interface header includes it, and
+CMock never reads it.
 
 !!! danger "Do not directly access generated Partials files"
     You as the test author will never directly interact with generated 

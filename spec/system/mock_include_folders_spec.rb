@@ -99,4 +99,63 @@ ceedling_system_tests do
       build( ['inc/**'], preprocessor: :all )
     end
   end
+
+  # Test preprocessing finds each mock at its place below its mirror root, which can carry
+  # folders the test's #include never wrote. A mock keeps the name its #include gives it, so a
+  # test calling a mock's own functions calls them by that name in every preprocessing mode.
+  context "named by its #include in every preprocessing mode" do
+    [:mocks, :tests, :all].product( [false, true] ).each do |preprocessor, fallback|
+      mode = fallback ? ' with fallback preprocessing' : ''
+
+      it "names a mock of a header below its glob root by its #include under :use_test_preprocessor #{preprocessor}#{mode}" do
+        in_project do
+          @c.merge_project_yml_for_test( { :test_build => { :preprocess_force_fallback => true } } ) if fallback
+          write( 'rtos/include/task.h', "int task_run(int x);\n" )
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"mock_task.h\"\n" \
+                                  "void test_run(void) { task_run_ExpectAndReturn(1, 2); TEST_ASSERT_EQUAL_INT(2, task_run(1)); mock_task_Verify(); }\n" )
+
+          build( ['rtos/**'], preprocessor: preprocessor )
+        end
+      end
+    end
+
+    it "names two same-named mocks by the folders their #includes write under :use_test_preprocessor all" do
+      in_project do
+        write( 'inc/x/a/foo.h', "int a_read(void);\n" )
+        write( 'inc/y/b/foo.h', "int b_read(void);\n" )
+        write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"a/mock_foo.h\"\n#include \"b/mock_foo.h\"\n" \
+                                "void test_reads(void) { a_read_ExpectAndReturn(5); b_read_ExpectAndReturn(6); " \
+                                "TEST_ASSERT_EQUAL_INT(11, a_read() + b_read()); a_mock_foo_Verify(); b_mock_foo_Verify(); }\n" )
+
+        build( ['inc/**'], preprocessor: :all )
+      end
+    end
+
+    # The mock stays in its header's mirrored directory either way, so only its names change
+    [:none, :all].each do |preprocessor|
+      it "regenerates a mock whose #include drops its folder under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'rtos/include/task.h', "int task_run(int x);\n" )
+          body = "void test_run(void) { task_run_ExpectAndReturn(1, 2); TEST_ASSERT_EQUAL_INT(2, task_run(1)); }\n"
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"include/mock_task.h\"\n" + body )
+          build( ['rtos/**'], preprocessor: preprocessor )
+
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"mock_task.h\"\n" + body )
+          output = @c.ceedling_build_exec( "test:all" )
+          expect(@c.last_exit_status).to eq(0), output
+          expect(output).to match(/PASSED:\s+1/)
+        end
+      end
+    end
+
+    it "names a mock a macro in the test file names by that #include under :use_test_preprocessor all" do
+      in_project do
+        write( 'rtos/include/task.h', "int task_run(int x);\n" )
+        write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#define TASK_MOCK \"mock_task.h\"\n#include TASK_MOCK\n" \
+                                "void test_run(void) { task_run_ExpectAndReturn(1, 2); TEST_ASSERT_EQUAL_INT(2, task_run(1)); mock_task_Verify(); }\n" )
+
+        build( ['rtos/**'], preprocessor: :all )
+      end
+    end
+  end
 end

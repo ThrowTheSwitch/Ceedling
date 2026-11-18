@@ -21,7 +21,8 @@ class PartialsManager
     :generator,
     :dependinator,
     :file_path_utils,
-    :file_wrapper
+    :file_wrapper,
+    :mock_locator
   )
 
   # Stage 8: Extract and generate partial implementation and interface files.
@@ -50,6 +51,9 @@ class PartialsManager
     # How many of each kind of generated file were fresh and so left alone
     skipped = Hash.new( 0 )
 
+    # Each test's search, built before the batch, which shares it between that test's Partials
+    searches = partials.map { |partial| partial[:testable] }.uniq.to_h { |testable| [testable.name, @mock_locator.header_search( testable )] }
+
     @batchinator.exec(workload: :compile, things: partials) do |partial|
       config   = partial[:config]
       testable = partial[:testable]
@@ -68,7 +72,8 @@ class PartialsManager
       antecedent_files     = partial_antecedent_files( config )
       module_include_guard = @partializer.extract_module_include_guard( config.header.filepath )
       # Generation's lists are the ones logged, so the record's are computed without a test name
-      record_includes      = remap_partial_includes( config, testable.partials.configs, nil, nil )
+      spelled              = spell_partial_includes( config, searches[name] )
+      record_includes      = remap_partial_includes( config, testable.partials.configs, nil, nil, spelled )
 
       antecedent_meta  = {
         flags:        testable.preprocess_flags,
@@ -109,7 +114,7 @@ class PartialsManager
       types_header = module_contents.types? ? @file_path_utils.form_partial_types_header_filename( config.module ) : nil
       discard_leftover_types( paths[:types] ) if types_header.nil?
 
-      includes = remap_partial_includes( config, testable.partials.configs, types_header, name )
+      includes = remap_partial_includes( config, testable.partials.configs, types_header, name, spelled )
 
       # The implementation and interface include the types header, so each vouches for it
       types_target = types_header && paths[:types]
@@ -186,7 +191,13 @@ class PartialsManager
       end
 
       unless interface.nil?
-        unchanged = generate_when_stale( target: paths[:interface], outputs: [types_target].compact, kind: :interface, **record ) do
+        extras = implementation.nil? ? plan_extras( name, config, module_contents, interface, module_include_guard ) : nil
+        explain_tested_mock( testable, config, module_contents, interface, module_include_guard ) unless implementation.nil?
+        extras_target = (extras.nil? or extras.empty?) ? nil : paths[:extras]
+        discard_leftover_extras( paths[:extras] ) if extras_target.nil?
+
+        outputs   = [types_target, extras_target].compact
+        unchanged = generate_when_stale( target: paths[:interface], outputs: outputs, kind: :interface, **record ) do
           @generator.generate_partial_interface(
             test:                  name,
             partial:               config.module,
@@ -195,7 +206,8 @@ class PartialsManager
             following_includes:    includes[:interface].following,
             c_module:              module_contents,
             output_path:           testable.paths[:partials],
-            include_guard:         module_include_guard
+            include_guard:         module_include_guard,
+            extras:                extras
           )
         end
 
@@ -237,15 +249,19 @@ class PartialsManager
     @loginator.log( msg, Verbosity::OBNOXIOUS )
   end
 
+  # How FilePathUtils names each file a Partial generates
+  PARTIAL_FILENAMES = {
+    types:          :form_partial_types_header_filename,
+    implementation: :form_partial_implementation_source_filename,
+    impl_header:    :form_partial_implementation_header_filename,
+    interface:      :form_partial_interface_header_filename,
+    extras:         :form_partial_extras_header_filename
+  }.freeze unless const_defined?(:PARTIAL_FILENAMES, false)
+
   # Where each file a Partial generates lives
   def partial_paths(config, testable)
     dir = testable.paths[:partials]
-    return {
-      types:          File.join( dir, @file_path_utils.form_partial_types_header_filename( config.module ) ),
-      implementation: File.join( dir, @file_path_utils.form_partial_implementation_source_filename( config.module ) ),
-      impl_header:    File.join( dir, @file_path_utils.form_partial_implementation_header_filename( config.module ) ),
-      interface:      File.join( dir, @file_path_utils.form_partial_interface_header_filename( config.module ) )
-    }
+    return PARTIAL_FILENAMES.transform_values { |form| File.join( dir, @file_path_utils.public_send( form, config.module ) ) }
   end
 
   # The files a fresh Partial would have generated, keyed by kind, or nil when the Partial must
@@ -293,6 +309,28 @@ class PartialsManager
     @dependinator.invalidate( path )
   end
 
+  # A mock-only Partial's interface stands in for its real header, so the rest of that header
+  # comes along in an extras header. A module the test also tests carries what its own code
+  # uses through its implementation instead, so it plans none.
+  def plan_extras(name, config, module_contents, interface, include_guard)
+    return @partializer.plan_interface_extras(
+      test: name, c_module: module_contents, interface: interface, header_guarded: !include_guard.nil?, config: config
+    )
+  end
+
+  def explain_tested_mock(testable, config, module_contents, interface, include_guard)
+    @partializer.explain_tested_mock(
+      test: testable.name, c_module: module_contents, interface: interface, header_guarded: !include_guard.nil?, config: config,
+      partials: testable.partials.configs
+    )
+  end
+
+  # An interface that keeps nothing includes no extras header. One an earlier build left would
+  # only sit beside it.
+  def discard_leftover_extras(path)
+    @file_wrapper.rm_f( path ) if @file_wrapper.exist?( path )
+  end
+
   # A module joins the test's list for each side of its Partial that exists
   def join_partial_lists(partials, partial_module, kinds)
     partials.tests << partial_module if kinds.include?( :implementation )
@@ -315,16 +353,33 @@ class PartialsManager
   # interface headers carry the shared types header when the module has one. Each generated
   # header gets its includes in groups (Partials::IncludeGroups), split where the source
   # includes the module's header.
-  def remap_partial_includes(config, partials, types_header, test)
+  def remap_partial_includes(config, partials, types_header, test, spelled)
     common = { name: config.module, partials: partials, test: test }
-    split  = { **common, source_includes: config.source.includes, header_includes: config.header.includes }
+    split  = { **common, source_includes: spelled[:source], header_includes: spelled[:header] }
 
     return {
       types:       @partializer.remap_types_header_includes( **split ),
       impl_header: @partializer.remap_implementation_header_includes( **split, types_header: types_header ),
-      impl_source: @partializer.remap_implementation_source_includes( **common, includes: config.source.includes + config.header.includes ),
+      impl_source: @partializer.remap_implementation_source_includes( **common, includes: spelled[:source] + spelled[:header] ),
       interface:   @partializer.remap_interface_header_includes( **split, types_header: types_header )
     }
+  end
+
+  # A Partial's #includes, each by a spelling the test's search paths reach its header by (see
+  # HeaderSearch on spellings), so a generated file reaches it from the Partials directory, and
+  # modules are matched by that header
+  def spell_partial_includes(config, search)
+    return {
+      source: spelled_includes( config.source, search ),
+      header: spelled_includes( config.header, search )
+    }
+  end
+
+  # One module file's #includes. Fallback's text scan holds each as written, which names a header
+  # beside the file first. The preprocessor's hold the path it found each header by.
+  def spelled_includes(file_info, search)
+    from = file_info.filepath && File.dirname( file_info.filepath )
+    return file_info.includes.map { |include| include.spelled_by( search, from: from, resolved: !file_info.fallback ) }
   end
 
   # Build threads finish in any order. Each test's Partial modules return to its configuration

@@ -19,6 +19,9 @@ require 'spec_system_helper'
 
 HEADER_SEARCH_PREAMBLE = "#include \"unity.h\"\nvoid setUp(void) {}\nvoid tearDown(void) {}\n"
 
+# A header below a search path that doesn't list its directory
+HEADER_SEARCH_DRIVERS_FOO = "#ifndef FOO_H\n#define FOO_H\ntypedef int foo_t;\nint foo_read(void);\n#endif\n"
+
 ceedling_system_tests do
   include_context "a fresh ceedling gem project", "header_search"
 
@@ -94,11 +97,9 @@ ceedling_system_tests do
     end
   end
 
-  # A mock's #include after stage 4 names its place below its mirror root. A header of the
-  # same path below an earlier search path is a different header. The build itself can't
-  # pass here: under :all the mock includes its header by that place, which the compiler
-  # finds below the earlier search path, so only the mock's own content is checked.
-  it "mocks the header a preprocessed test's mock was placed for, not one of the same path in an earlier search path" do
+  # A preprocessed test's mock keeps the #include the test wrote. A header of the path its
+  # mirrored place would name, below an earlier search path, is a different header.
+  it "mocks and includes the header a preprocessed test's #include names, not one of its mirrored path in an earlier search path" do
     in_project do
       write( 'test/support/hal/foo.h', "int fake_read(void);\n" )
       write( 'inc/hal/foo.h', "int foo_read(void);\n" )
@@ -106,9 +107,24 @@ ceedling_system_tests do
                               "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
       configure( ['inc/**'], :all, { :paths => { :include => ['inc/**'], :support => ['test/support'] } } )
 
-      output = @c.ceedling_build_exec( "gen:mocks:all" )
-      expect(@c.last_exit_status).to eq(0), output
+      build_passes
       expect(File.read( 'build/test/mocks/test/test_c/hal/mock_foo.h' )).to include( 'foo_read' )
+    end
+  end
+
+  # The compiler joins a mock's #include with each search path in order, under test
+  # preprocessing as without it
+  [:none, :all].each do |preprocessor|
+    it "mocks the header a mock's folder joins to first under :use_test_preprocessor #{preprocessor}" do
+      in_project do
+        write( 'test/support/hal/foo.h', "int fake_read(void);\n" )
+        write( 'inc/hal/foo.h', "int foo_read(void);\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"hal/mock_foo.h\"\n" \
+                                "void test_reads(void) { fake_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, fake_read()); }\n" )
+        configure( ['inc/**'], preprocessor, { :paths => { :include => ['inc/**'], :support => ['test/support'] } } )
+
+        build_passes
+      end
     end
   end
 
@@ -326,6 +342,230 @@ ceedling_system_tests do
         output = @c.ceedling_build_exec( "test:all" )
         expect(@c.last_exit_status).to_not eq(0)
         expect(output).to include( 'Found no file `sys/socket.h` in search paths.' )
+      end
+    end
+  end
+
+  # A generated file carries a header's #includes. Each names the header as the test's search
+  # paths reach it, so a header below a non-recursive search path is found from there too.
+  describe "a generated file's #includes" do
+    [:none, :mocks, :all].each do |preprocessor|
+      it "reach a header below the search path from a Partial under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'src/sensor.h', "#ifndef SENSOR_H\n#define SENSOR_H\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void);\n#endif\n" )
+          write( 'src/sensor.c', "#include \"sensor.h\"\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void) { return 3; }\n" )
+          write( 'test/test_sensor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                       "#include TEST_PARTIAL_ALL_MODULE(sensor)\nvoid test_get(void) { TEST_ASSERT_EQUAL_INT(3, sensor_get()); }\n" )
+
+          configure( ['src'], preprocessor, { :project => { :use_test_preprocessor => preprocessor, :use_partials => true } } )
+          build_passes
+        end
+      end
+
+      it "reach a header below the search path from a mocked Partial under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'src/sensor.h', "#ifndef SENSOR_H\n#define SENSOR_H\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void);\n#endif\n" )
+          write( 'test/test_sensor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                       "#include MOCK_PARTIAL_PUBLIC_MODULE(sensor)\n" \
+                                       "void test_get(void) { sensor_get_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, sensor_get()); }\n" )
+
+          configure( ['src'], preprocessor, { :project => { :use_test_preprocessor => preprocessor, :use_partials => true } } )
+          build_passes
+        end
+      end
+    end
+
+    [:mocks, :all].each do |preprocessor|
+      it "reach a header below the search path from CMock's copy under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'src/sensor.h', "#ifndef SENSOR_H\n#define SENSOR_H\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void);\n#endif\n" )
+          write( 'test/test_sensor.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_sensor.h\"\n" \
+                                       "void test_get(void) { sensor_get_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, sensor_get()); }\n" )
+
+          configure( ['src'], preprocessor, { :cmock => { :treat_inlines => :include } } )
+          build_passes
+        end
+      end
+    end
+
+    # A preprocessor names each #include by the path it found the header by. A later search path
+    # joined with that path can name another header, which must never take its place.
+    it "include the header the compiler found, never one a later search path joins its path to" do
+      in_project do
+        write( 'include/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define GAIN 3\n#endif\n" )
+        write( 'third_party/mylib/include/config.h', "#ifndef MYLIB_CONFIG_H\n#define MYLIB_CONFIG_H\n#define GAIN 99\n#endif\n" )
+        write( 'include/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n#include \"config.h\"\nint motor_run(void);\n" \
+                                  "static inline int motor_peek(void) { return GAIN; }\n#endif\n" )
+        write( 'src/motor.c', "#include \"motor.h\"\nint motor_run(void) { return GAIN; }\n" )
+        write( 'test/test_motor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                    "#include TEST_PARTIAL_PUBLIC_MODULE(motor)\nvoid test_run(void) { TEST_ASSERT_EQUAL_INT(3, motor_run()); }\n" )
+        write( 'test/test_cm.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_motor.h\"\nvoid test_gain(void) { TEST_ASSERT_EQUAL_INT(3, GAIN); }\n" )
+
+        configure( ['include/**', 'third_party/**'], :all, { :project => { :use_test_preprocessor => :all, :use_partials => true },
+                                                             :cmock => { :treat_inlines => :include } } )
+        output = @c.ceedling_build_exec( "test:all" )
+
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+2/)
+      end
+    end
+
+    it "include in the runner the header the compiler found, never one a later search path joins its path to" do
+      in_project do
+        write( 'include/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define GAIN 3\n#endif\n" )
+        write( 'third_party/mylib/include/config.h', "#error The library's config.h reached the runner\n" )
+        write( 'test/test_gain.c', HEADER_SEARCH_PREAMBLE + "#include \"config.h\"\nvoid test_gain(void) { TEST_ASSERT_EQUAL_INT(3, GAIN); }\n" )
+
+        configure( ['include/**', 'third_party/**'], :all )
+        build_passes
+      end
+    end
+
+    # The compiler joins an #include with each search path. A header directly in a search path
+    # isn't reached through the directory that path names.
+    it "include in the runner by a text the compiler joins, never one only a header's trailing path matches" do
+      in_project do
+        write( 'test/hw/config.h', "#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\n#define HW_GAIN 3\n#endif\n" )
+        write( 'lib/app/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define APP_GAIN 5\n#endif\n" )
+        write( 'test/test_gain.c', HEADER_SEARCH_PREAMBLE + "#include \"hw/config.h\"\n#include \"app/config.h\"\n" \
+                                   "void test_gain(void) { TEST_ASSERT_EQUAL_INT(15, HW_GAIN * APP_GAIN); }\n" )
+
+        configure( ['lib/'], :all )
+        build_passes
+      end
+    end
+
+    # A quoted #include looks beside the test file first. One there that no search path reaches
+    # leaves the runner the header the search paths find.
+    it "include in the runner the search paths' header where none reaches the one beside the test" do
+      in_project do
+        write( 'test/drivers/foo.h', "#ifndef TFOO_H\n#define TFOO_H\n#define FOO_ARG 7\n#endif\n" )
+        write( 'src/drivers/foo.h', "#ifndef SFOO_H\n#define SFOO_H\n#define FOO_ARG 7\n#endif\n" )
+        write( 'test/test_b.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\nvoid test_b(void) { TEST_ASSERT_EQUAL_INT(7, FOO_ARG); }\n" )
+
+        configure( ['src/'], :none )
+        @c.remove_project_yml_option_for_test( :paths, :test )
+        @c.merge_project_yml_for_test( { :paths => { :test => ['test/'] } } )
+        build_passes
+      end
+    end
+
+    # Reconciliation spells two same-named headers apart. A directory searched ahead of the
+    # project's, such as the one holding CMock's copy of one of them, must never capture the other.
+    it "keep the paths that tell two same-named headers apart" do
+      in_project do
+        write( 'src/hw/config.h', "#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\ntypedef int hw_t;\n" \
+                                  "static inline int hw_peek(void) { return -1; }\nint hw_read(void);\n#endif\n" )
+        write( 'src/app/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define APP_GAIN 5\ntypedef int app_t;\n#endif\n" )
+        write( 'src/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n#include \"hw/config.h\"\n#include \"app/config.h\"\nhw_t motor_run(app_t a);\n#endif\n" )
+        write( 'src/motor.c', "#include \"motor.h\"\n#include \"hw/config.h\"\n#include \"app/config.h\"\n" \
+                              "hw_t motor_run(app_t a) { return APP_GAIN * a * hw_read(); }\n" )
+        write( 'test/test_motor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                    "#include TEST_PARTIAL_PUBLIC_MODULE(motor)\n#include \"hw/mock_config.h\"\n" \
+                                    "void test_run(void) { hw_read_ExpectAndReturn(1); TEST_ASSERT_EQUAL_INT(5, motor_run(1)); }\n" )
+
+        configure( ['src/**'], :all, { :project => { :use_test_preprocessor => :all, :use_partials => true },
+                                       :cmock => { :treat_inlines => :include } } )
+        build_passes
+      end
+    end
+
+    # A mock includes its header through the folder the test named it by. A search path listing
+    # only the header's own directory joins no such folder.
+    [[:none, ['fff']], [:all, ['fff']], [:none, []]].each do |preprocessor, plugins|
+      kind = plugins.empty? ? 'a mock' : 'an FFF fake'
+
+      it "reach a header from #{kind} through its folder where a search path lists only the header's own directory under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          body = plugins.empty? ? 'foo_read_ExpectAndReturn(5);' : 'foo_read_fake.return_val = 5;'
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { #{body} TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+          configure( ['src/drivers/**'], preprocessor, { :plugins => { :enabled => plugins } } )
+          build_passes
+        end
+      end
+    end
+
+    # A mock includes its header by the text the listed directory reaches it by. A directory
+    # added for the folder's parent would hold the project's string.h, shadowing the system's.
+    [[:mocks, [], :include], [:all, [], :include], [:none, ['fff'], :exclude]].each do |preprocessor, plugins, treat_inlines|
+      kind = plugins.empty? ? "a mock under :treat_inlines #{treat_inlines}" : 'an FFF fake'
+
+      it "keep a project header named like a system one out of reach of #{kind} through its folder under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', "#ifndef FOO_H\n#define FOO_H\ntypedef int foo_t;\n" \
+                                      "static inline foo_t foo_peek(void) { return -1000; }\nfoo_t foo_read(void);\n#endif\n" )
+          write( 'src/string.h', "#error \"src/string.h shadowed <string.h>\"\n" )
+          body = plugins.empty? ? 'foo_read_ExpectAndReturn(5);' : 'foo_read_fake.return_val = 5;'
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include <string.h>\n#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { #{body} TEST_ASSERT_EQUAL_INT(5, foo_read()); " \
+                                  "TEST_ASSERT_EQUAL_INT(0, (int)strlen(\"\")); }\n" )
+
+          configure( [plugins.empty? ? 'src/drivers/**' : 'src/drivers/'], preprocessor,
+                     { :plugins => { :enabled => plugins }, :cmock => { :treat_inlines => treat_inlines } } )
+          build_passes
+        end
+      end
+    end
+
+    # The compiler includes the header a mock's own #include reaches, even where the mock was
+    # located by a same-named header's trailing path
+    [:tests, :all].each do |preprocessor|
+      it "include in a mock the same-named header its folder reaches under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', "#ifndef SDFOO_H\n#define SDFOO_H\ntypedef int foo_t;\n#define FOO_WHICH 1\nfoo_t foo_read(void);\n#endif\n" )
+          write( 'src/app/drivers/foo.h', "#ifndef ADFOO_H\n#define ADFOO_H\ntypedef int foo_t;\n#define FOO_WHICH 2\nfoo_t foo_read(void);\n#endif\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); " \
+                                  "TEST_ASSERT_EQUAL_INT(1, FOO_WHICH); }\n" )
+
+          configure( ['src/', 'src/app/drivers/'], preprocessor )
+          build_passes
+        end
+      end
+    end
+
+    # A format writing more than the text between quotes keeps the text CMock gives it
+    it "include in a mock its header through a project's :orig_header_include_fmt around the folder" do
+      in_project do
+        write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+        configure( ['src/drivers/'], :none, { :cmock => { :orig_header_include_fmt => '#include "../%s"' } } )
+        build_passes
+      end
+    end
+
+    # A fake writes no format, so the text a format keeps for CMock never reaches it
+    [:none, :all].each do |preprocessor|
+      it "reach a header through its search path from an FFF fake under a project's :orig_header_include_fmt around the folder, under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { foo_read_fake.return_val = 5; TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+          configure( ['src/drivers/'], preprocessor, { :cmock => { :orig_header_include_fmt => '#include "../%s"' }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
+      end
+    end
+
+    [:none, :all].each do |preprocessor|
+      it "reach a header below the search path from an FFF fake under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { foo_read_fake.return_val = 5; TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+          configure( ['src'], preprocessor, { :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
       end
     end
   end

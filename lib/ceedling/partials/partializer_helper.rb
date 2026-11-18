@@ -249,7 +249,8 @@ class PartializerHelper
       statements = _static_statements( func )
       next [] if statements.empty?
 
-      _promote( func, statements, module_name ).tap { |vars| _log_promoted( func, vars, "#{file_type} to be promoted for Partial #{name}::#{module_name}" ) }
+      _promote( func, statements, module_name ).each { |var| var.promoted_from = func.name }
+        .tap { |vars| _log_promoted( func, vars, "#{file_type} to be promoted for Partial #{name}::#{module_name}" ) }
     end
   end
 
@@ -503,6 +504,274 @@ class PartializerHelper
     _plan_all_prototypes( plan, facts, fallback, references )
 
     return plan
+  end
+
+  # What a mock-only Partial's extras header keeps of the module's header beyond the mocked
+  # functions. The interface header stands in for the real header wherever generated code
+  # includes it, so whatever else the real header supplied has to come along:
+  #   - each header helper the mock leaves out, written as it is, with its prototypes and the
+  #     statics promoted from it;
+  #   - the header's static variables, which keep `static`, and its extern declarations;
+  #   - the header's plain prototypes of functions the mock leaves out, which a caller may need.
+  #
+  # The extras compile and link in every file of the test that includes the interface, so:
+  #   - nothing from the source comes along, nor a definition without `static`, which each of
+  #     those files would define again;
+  #   - nor a static or inline prototype of a function with no helper body here;
+  #   - nor a prototype a function-like macro of its name rewrites, since calls use the macro;
+  #   - fallback's duplicates come along once when alike and not at all when they differ;
+  #   - GCC emits an unused static variable or non-inline static function at -O0, so one
+  #     naming a module function the mock leaves undefined stays behind, as does anything
+  #     naming an item left behind (see _drop_unlinkable).
+  # A header without an include guard may still arrive through another include, so its helpers
+  # and static variables are withheld rather than copied.
+  #
+  # @return [Partials::InterfaceExtras]
+  def plan_interface_extras(c_module:, interface:, fallback:, header_guarded:)
+    scan   = _extras_scan( c_module, Set.new( Array( interface ).map( &:name ) ), fallback )
+    extras = Partials::InterfaceExtras.new
+
+    _header_items( c_module ).each do |item|
+      _place_extra( extras, item, _extras_role( item, scan ), header_guarded )
+    end
+
+    return extras
+  end
+
+  # What deciding each header item's role consults
+  ExtrasScan = Struct.new( :selected, :helpers, :statics, :declared, :rewritten, :conflicting, keyword_init: true ) unless const_defined?(:ExtrasScan, false)
+
+  def _extras_scan(c_module, selected, fallback)
+    scan = ExtrasScan.new(
+      selected: selected, helpers: _interface_helpers( c_module, selected, fallback ), statics: _interface_statics( c_module, fallback ),
+      declared: Set.new, rewritten: _function_like_macros( c_module ), conflicting: _conflicting_prototypes( c_module, fallback )
+    )
+    _drop_unlinkable( c_module, scan, fallback )
+
+    return scan
+  end
+
+  # The names `text` uses as code, for a notice weighing what another Partial uses
+  def names_in(text)
+    return _statement_references( text )
+  end
+
+  def _header_items(c_module)
+    return c_module.element_sequence.select { |item| item.respond_to?( :origin ) and item.origin == :header }
+  end
+
+  def _place_extra(extras, item, role, header_guarded)
+    case role
+    when :copy    then (header_guarded ? extras.items : extras.withheld) << item
+    when :follow  then extras.items << item if header_guarded
+    when :declare then extras.items << item
+    end
+  end
+
+  # Each header helper the mock leaves out, by name, as its first definition
+  def _interface_helpers(c_module, selected, fallback)
+    helpers = c_module.function_definitions.group_by( &:name ).select do |name, defs|
+      !selected.include?( name ) and _kept_helper?( defs, fallback )
+    end
+
+    return helpers.transform_values( &:first )
+  end
+
+  # A helper fallback found with two different bodies stays behind, since either could be wrong
+  def _kept_helper?(defs, fallback)
+    return (_helper?( defs ) and !(fallback and _conflicting?( defs.map( &:code_block ) )))
+  end
+
+  # The header's own static variables, by identity. Every declaration comes along, since a
+  # tentative definition may precede the one that initializes it. Fallback keeps both sides of a
+  # conditional, so there a name's initialized copies come along once when alike and not at all
+  # when they differ.
+  def _interface_statics(c_module, fallback)
+    statics = c_module.variable_declarations.select { |var| _own_static?( var ) }
+    return Set.new.compare_by_identity.merge( statics ) unless fallback
+
+    kept = statics.group_by( &:name ).flat_map { |_, vars| _fallback_statics( vars ) }
+    return Set.new.compare_by_identity.merge( kept )
+  end
+
+  # A name's tentative definitions, with the first initialized one. Nothing when any two declare
+  # the name differently, initializers aside, or the initialized ones differ.
+  def _fallback_statics(vars)
+    initialized = vars.select { |var| _initialized?( var ) }
+    return [] if _redeclared?( vars, initialized )
+
+    return vars.reject { |var| _initialized?( var ) and !var.equal?( initialized.first ) }
+  end
+
+  def _initialized?(var)
+    return var.text.to_s.include?( '=' )
+  end
+
+  def _redeclared?(vars, initialized)
+    return (_conflicting?( vars.map { |var| _declared_as( var ) } ) or _conflicting?( initialized.map( &:text ) ))
+  end
+
+  # A variable's declaration without its initializer, as in "static const int x"
+  def _declared_as(var)
+    return "#{var.decorators.sort.join( ' ' )} #{var.text.to_s.sub( /\s*(?:=.*)?;\s*\z/m, '' )}"
+  end
+
+  # A static variable the header itself declares, not one promoted from a function
+  def _own_static?(var)
+    return (var.origin == :header and var.promoted_from.nil? and !var.extern? and var.decorators.include?( 'static' ))
+  end
+
+  # Narrows the helpers and statics to those every file including the extras can compile and
+  # link. GCC emits an unused static variable, promoted static or non-inline static function at
+  # -O0, so one naming a module function the mock leaves undefined stays behind. A static inline
+  # helper is never emitted unused, so that rule passes it by. Whatever names a function whose
+  # prototypes conflict stays behind, and so does whatever names an item left behind, since its
+  # text wouldn't compile. A worklist carries each item left behind to the items naming it, so
+  # each item's names are read once.
+  def _drop_unlinkable(c_module, scan, fallback)
+    candidates = scan.helpers.values + scan.statics.to_a + _promoted_statics( c_module, scan.helpers )
+    names      = _candidate_names( c_module, candidates, fallback )
+
+    _walk_drops( _drops_alone( c_module, scan, candidates, names ), _referrers( names ), scan.helpers, scan.statics )
+  end
+
+  # The candidates that stay behind on their own names, before any other does
+  def _drops_alone(c_module, scan, candidates, names)
+    undefined = _function_names( c_module ) - scan.selected - scan.helpers.keys
+    return candidates.select { |item| _unlinkable_alone?( item, names[item], undefined, scan.conflicting ) }
+  end
+
+  # Leaves each queued item behind, then queues whatever names it. A promoted static left behind
+  # takes its function along.
+  def _walk_drops(queue, referrers, helpers, statics)
+    owners = helpers.dup
+    gone   = Set.new.compare_by_identity
+
+    until queue.empty?
+      item = queue.shift
+      next unless gone.add?( item )
+
+      _forget( item, helpers, statics )
+      queue.concat( referrers.fetch( item.name, [] ) )
+      queue << owners[item.promoted_from] if item.respond_to?( :promoted_from ) and owners.key?( item.promoted_from )
+    end
+  end
+
+  def _promoted_statics(c_module, helpers)
+    return c_module.variable_declarations.select { |var| var.origin == :header and helpers.key?( var.promoted_from ) }
+  end
+
+  # Whether an item stays behind on its own names, before any other item does
+  def _unlinkable_alone?(item, names, undefined, conflicting)
+    return true if names.intersect?( conflicting )
+
+    emitted = !item.is_a?( CExtractorTypes::CFunctionDefinition ) || !Partials.inline?( item.decorators )
+    return (emitted and names.intersect?( undefined ))
+  end
+
+  # Each candidate's names as code, by identity, through the module's own macros. They come from
+  # its expansion where reconciliation found one, since the compiler reads that. Fallback may
+  # pair a variable with the other side of a conditional, or not at all, so there the written
+  # text counts too, and a doubtful item stays behind. Every name a body uses counts, its locals'
+  # too, since a wrong guess at a local could hide an item left behind.
+  def _candidate_names(c_module, candidates, fallback)
+    macros = _macro_names( c_module )
+
+    return candidates.each_with_object( {}.compare_by_identity ) do |item, names|
+      names[item] = _through_macros( _statement_references( _candidate_texts( item, fallback ).compact.join( "\n" ) ), macros )
+    end
+  end
+
+  def _candidate_texts(item, fallback)
+    texts = _written_and_expanded( item )
+    return fallback ? texts : [texts.last || texts.first]
+  end
+
+  def _written_and_expanded(item)
+    return [item.code_block, _scan_text( item )] if item.is_a?( CExtractorTypes::CFunctionDefinition )
+
+    return [item.text, item.expanded_text]
+  end
+
+  # Each macro's name, with the names its replacement uses
+  def _macro_names(c_module)
+    return c_module.macro_definitions.each_with_object( {} ) do |macro, names|
+      name, body = macro.text.match( /\A\s*#\s*define\s+([A-Za-z_]\w*)(?:\([^)]*\))?(.*)\z/m )&.captures
+      names[name] = _statement_references( body ) if name
+    end
+  end
+
+  def _through_macros(names, macros)
+    found   = Set.new( names )
+    pending = names.select { |name| macros.key?( name ) }
+
+    until pending.empty?
+      macros.fetch( pending.shift ).each { |name| pending << name if found.add?( name ) and macros.key?( name ) }
+    end
+
+    return found
+  end
+
+  # Each name, with the candidates whose names include it
+  def _referrers(names)
+    return names.each_with_object( Hash.new { |index, name| index[name] = [] } ) do |(item, used), index|
+      used.each { |name| index[name] << item }
+    end
+  end
+
+  def _function_names(c_module)
+    return Set.new( (c_module.function_definitions + c_module.function_declarations).map( &:name ) )
+  end
+
+  def _forget(item, helpers, statics)
+    item.is_a?( CExtractorTypes::CFunctionDefinition ) ? helpers.delete( item.name ) : statics.delete( item )
+  end
+
+  # Names a function-like macro of the module defines
+  def _function_like_macros(c_module)
+    return Set.new( c_module.macro_definitions.filter_map { |macro| macro.text[/\A\s*#\s*define\s+([A-Za-z_]\w*)\(/, 1] } )
+  end
+
+  # Names fallback found with differing header prototypes
+  def _conflicting_prototypes(c_module, fallback)
+    return Set.new unless fallback
+
+    decls = c_module.function_declarations.select { |decl| decl.origin == :header }.group_by( &:name )
+    return Set.new( decls.select { |_, group| _conflicting?( group.map( &:signature_stripped ) ) }.keys )
+  end
+
+  # What the extras header does with one header item: :copy a helper or static variable,
+  # which an unguarded header withholds; :follow a helper with its prototype or promoted
+  # static; :declare an extern or a plain prototype; or nil to leave it out
+  def _extras_role(item, scan)
+    case item
+    when CExtractorTypes::CFunctionDefinition  then return (scan.helpers[item.name].equal?( item ) ? :copy : nil)
+    when CExtractorTypes::CFunctionDeclaration then return _prototype_role( item, scan )
+    when CExtractorTypes::CVariableDeclaration then return _variable_role( item, scan )
+    end
+
+    return nil
+  end
+
+  def _prototype_role(decl, scan)
+    return :follow if scan.helpers.key?( decl.name )
+    return nil unless _plain_prototype?( decl, scan )
+
+    return scan.declared.add?( decl.name ) ? :declare : nil
+  end
+
+  # A prototype of a function with no helper here, which the mock leaves out and nothing rewrites
+  def _plain_prototype?(decl, scan)
+    return false if Partials.static?( decl.decorators ) or Partials.inline?( decl.decorators )
+
+    return [scan.selected, scan.rewritten, scan.conflicting].none? { |names| names.include?( decl.name ) }
+  end
+
+  def _variable_role(var, scan)
+    return (scan.helpers.key?( var.promoted_from ) ? :follow : nil) if var.promoted_from
+    return :declare if var.extern?
+
+    return scan.statics.include?( var ) ? :copy : nil
   end
 
   def _plan_all_prototypes(plan, facts, fallback, references)

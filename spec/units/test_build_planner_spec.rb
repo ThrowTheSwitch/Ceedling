@@ -230,6 +230,25 @@ describe TestBuildPlanner do
       expect(@testable.mocks.values.map( &:source )).to contain_exactly( 'inc/a/foo.h', 'inc/b/foo.h' )
     end
 
+    # CMock includes a mock's header by the folder the test named the mock by, which a search
+    # path listing the header's own directory doesn't join
+    it "records the text the search paths reach a mock's header by where CMock's own reaches nothing" do
+      search = HeaderSearch.new( ['src/drivers'], ->(dir) { dir == 'src/drivers' ? ['src/drivers/foo.h'] : [] } )
+      allow(@include_pathinator).to receive(:header_search).and_return( search )
+      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'drivers/MockFoo.h' )] )
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
+      allow(@configurator).to receive(:get_cmock_config).and_return( {} )
+      allow(@file_finder).to receive(:resolve_mock).with( 'drivers/MockFoo.h', collection: search, complain: :error ).and_return( ['src/drivers/foo.h', ''] )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
+      allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
+
+      @planner.stage_determine_files( @state )
+
+      expect(@testable.mocks.values.map( &:header_include )).to eq( ['foo.h'] )
+    end
+
     # Nothing in the loop over a test's mocks changes its search paths, so one search serves
     # every mock and the #include validation after them
     it "builds one header search for all of a test's real mocks and its #include validation" do
@@ -252,18 +271,17 @@ describe TestBuildPlanner do
       expect(collections).to eq( 1 )
     end
 
-    # A reconciled mock's #include names its place below its mirror root
-    it "resolves a reconciled mock by trailing path first when test files are preprocessed" do
+    # A reconciled mock keeps the #include the test wrote, which the compiler joins with each
+    # search path in order
+    it "resolves a mock through the test's header search when test files are preprocessed" do
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( true )
       allow(@configurator).to receive(:project_use_test_preprocessor_mocks).and_return( false )
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/TestFoo.c' ).and_return( [MockInclude.new( 'hal/MockFoo.h' )] )
       allow(@file_path_utils).to receive(:form_preprocessed_file_filepath).and_return( 'unused' )
       allow(@file_path_utils).to receive(:form_mock_output_path) { |root, subdir| subdir.to_s.empty? ? root : File.join( root, subdir ) }
-      trailing = HeaderSearch.new( [], ->(_dir) { [] } )
-      allow(@header_search).to receive(:trailing_first).and_return( trailing )
 
-      expect(@file_finder).to receive(:resolve_mock).with( 'hal/MockFoo.h', collection: trailing, complain: :error ).and_return( ['inc/hal/foo.h', 'hal'] )
+      expect(@file_finder).to receive(:resolve_mock).with( 'hal/MockFoo.h', collection: @header_search, complain: :error ).and_return( ['inc/hal/foo.h', 'hal'] )
 
       @planner.stage_determine_files( @state )
     end

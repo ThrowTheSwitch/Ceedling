@@ -125,10 +125,13 @@ module CExtractorTypes
     :origin,        # :header or :source when the caller knows the file's role, otherwise nil
     :defined_type,  # The CStatement for a type the declaration defines, as `struct { int count; }` in
                     # `static struct { int count; } s_ctx;`, shared by every variable it declares. Otherwise nil.
+    :promoted_from, # The name of the function a promoted function-scope static came from, otherwise nil
+    :expanded_text, # :text as the full expansion spells it, every macro expanded, or nil before reconciliation.
+                    # Every twin's text, joined, when fallback left the name written more often than expanded.
     keyword_init: true
   ) do
     def initialize(original: nil, name: nil, type: nil, array_suffix: '', decorators: [], text: nil, line_num: nil, declarator: nil,
-                   asm_label: nil, origin: nil, defined_type: nil)
+                   asm_label: nil, origin: nil, defined_type: nil, promoted_from: nil, expanded_text: nil)
       super
     end
 

@@ -552,6 +552,12 @@ class FilePathUtils
     return form_partial_filename( _module, PARTIAL_SUFFIX_TYPES, EXTENSION_CORE_HEADER )
   end
 
+  # What a mock-only Partial keeps of its real header beyond the mocked functions, which its
+  # interface header includes and CMock never reads
+  def form_partial_extras_header_filename(_module)
+    return form_partial_filename( _module, PARTIAL_SUFFIX_EXTRAS, EXTENSION_CORE_HEADER )
+  end
+
   def form_mock_partial_interface_header_filename(_module)
     return form_partial_filename( _module, PARTIAL_SUFFIX_INTERFACE, EXTENSION_CORE_HEADER, prefix: @configurator.cmock_mock_prefix )
   end

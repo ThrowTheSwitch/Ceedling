@@ -75,7 +75,7 @@ module PartialsGeneration
   # was selected to test.
   Result = Struct.new(
     :dir, :module_name, :mode,
-    :types_h, :impl_h, :impl_c, :interface_h,
+    :types_h, :impl_h, :impl_c, :interface_h, :extras_h,
     :pp_header, :pp_source, :carry,
     keyword_init: true
   ) do
@@ -88,6 +88,7 @@ module PartialsGeneration
       when :impl_h      then impl_h
       when :impl_c      then impl_c
       when :interface_h then interface_h
+      when :extras_h    then extras_h
       else raise ArgumentError, "unknown generated file '#{file}'"
       end
     end
@@ -210,6 +211,7 @@ module PartialsGenerationHelpers
   #
   # `header_includes` and `source_includes` are include spellings; `<name>` marks a system
   # header and anything else a user header, matching what reconciliation hands the assembler.
+  # `source: nil` makes a header-only module, which has no source to write or preprocess.
   # `extra` writes additional headers into the working directory, where the preprocessor and
   # the later compile resolve them. `partials` defaults to empty: this module is partialized,
   # which the remap methods handle from `name:` alone. The hash names *other* partialized
@@ -228,6 +230,7 @@ module PartialsGenerationHelpers
       mocks_expose: PartializerConfig::DEDUCT,
       tests_subtract: [],
       mocks_add: [],
+      mocks_subtract: [],
       suppress_redundant_decls: true,
       extern_variables: :weak,
       dir: nil
@@ -238,16 +241,22 @@ module PartialsGenerationHelpers
 
     # Byte for byte, so a module's line endings are the same on every platform
     File.binwrite( File.join( dir, "#{module_name}.h" ), header )
-    File.binwrite( File.join( dir, "#{module_name}.c" ), source )
+    File.binwrite( File.join( dir, "#{module_name}.c" ), source ) unless source.nil?
     extra.each { |name, text| File.binwrite( File.join( dir, name ), text ) }
 
     # Each file is preprocessed as stages 6 and 7 preprocess it, into the record they fill in
     header_file = preprocess_partial_file(
       dir: dir, filename: "#{module_name}.h", kind: :header, includes: header_includes, defines: defines, mode: mode
     )
-    source_file = preprocess_partial_file(
-      dir: dir, filename: "#{module_name}.c", kind: :source, includes: source_includes, defines: defines, mode: mode
-    )
+    # A header-only module's source keeps the empty record PartialsManager leaves it
+    source_file =
+      if source.nil?
+        Partials::ConfigFileInfo.new
+      else
+        preprocess_partial_file(
+          dir: dir, filename: "#{module_name}.c", kind: :source, includes: source_includes, defines: defines, mode: mode
+        )
+      end
 
     # DEDUCT with no subtractions is what TEST_PARTIAL_ALL_MODULE resolves to -- every function
     # exposed. The two sides are separate because a module is routinely tested at one visibility
@@ -257,7 +266,7 @@ module PartialsGenerationHelpers
     config = PartializerConfig::Config.new(
       module: module_name,
       tests: PartializerConfig::PartialFunctions.new( type: tests_expose, subtractions: tests_subtract ),
-      mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose, additions: mocks_add ),
+      mocks: PartializerConfig::PartialFunctions.new( type: mocks_expose, additions: mocks_add, subtractions: mocks_subtract ),
       header: header_file,
       source: source_file
     )
@@ -355,6 +364,15 @@ module PartialsGenerationHelpers
       extern_variables: extern_variables
     )
 
+    # A mock-only Partial's interface keeps the rest of its real header in an extras header,
+    # planned as PartialsManager plans it
+    extras = nil
+    if implementation.nil? and !interface.nil?
+      extras = partializer.plan_interface_extras(
+        test: 'PartialsGenerationTest', c_module: c_module, interface: interface, header_guarded: !include_guard.nil?, config: config
+      )
+    end
+
     # The mockable interface header is what CMock mocks in place of the real module header,
     # and it carries the same types header the implementation header does. Both land in one
     # translation unit when a module is tested and mocked in the same test file.
@@ -365,7 +383,8 @@ module PartialsGenerationHelpers
       following_includes: interface_list.following,
       c_module: c_module,
       output_path: dir,
-      include_guard: include_guard
+      include_guard: include_guard,
+      extras: extras
     )
 
     PartialsGeneration::Result.new(
@@ -376,8 +395,9 @@ module PartialsGenerationHelpers
       impl_h: read_generated( dir, "ceedling_partial_#{module_name}_impl.h" ),
       impl_c: read_generated( dir, "ceedling_partial_#{module_name}_impl.c" ),
       interface_h: read_generated( dir, "ceedling_partial_#{module_name}_interface.h" ),
+      extras_h: read_generated( dir, "ceedling_partial_#{module_name}_extras.h" ),
       pp_header: File.read( header_file.assembled_filepath, encoding: 'UTF-8' ),
-      pp_source: File.read( source_file.assembled_filepath, encoding: 'UTF-8' ),
+      pp_source: source_file.assembled_filepath && File.read( source_file.assembled_filepath, encoding: 'UTF-8' ),
       carry: carry
     )
   end
@@ -508,6 +528,15 @@ module PartialsGenerationHelpers
       #include "ceedling_partial_#{result.module_name}_interface.h"
       int main(void) { return 0; }
     C
+
+    syntax_only( result, probe )
+  end
+
+  # Compiles a translation unit that includes the generated interface header, the way the mock
+  # CMock generates from it includes it
+  def compile_interface(result)
+    probe = File.join( result.dir, "probe_#{result.module_name}_interface.c" )
+    File.write( probe, "#include \"ceedling_partial_#{result.module_name}_interface.h\"\nint main(void) { return 0; }\n" )
 
     syntax_only( result, probe )
   end

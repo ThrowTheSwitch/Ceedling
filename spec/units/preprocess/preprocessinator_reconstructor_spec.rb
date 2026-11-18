@@ -878,6 +878,20 @@ describe PreprocessinatorReconstructor do
     end
   end
 
+  context "#pragma_once?" do
+    it "finds `#pragma once` in a header's leading code" do
+      expect( @extractor.pragma_once?( "#pragma once\nint x;\n" ) ).to be( true )
+      expect( @extractor.pragma_once?( "/* License */\n\n  #  pragma   once\nint x;\n" ) ).to be( true )
+    end
+
+    it "finds none in a guarded header, another pragma, or a comment" do
+      expect( @extractor.pragma_once?( "#ifndef X_H\n#define X_H\nint x;\n#endif\n" ) ).to be( false )
+      expect( @extractor.pragma_once?( "#pragma pack(1)\nint x;\n" ) ).to be( false )
+      expect( @extractor.pragma_once?( "// #pragma once\n/* #pragma once */\nint x;\n" ) ).to be( false )
+      expect( @extractor.pragma_once?( "#pragma onceler\n" ) ).to be( false )
+    end
+  end
+
   context "#extract_include_guard" do
     it "should extract a simple include guard from among file text" do
       file_text = <<~FILE_TEXT

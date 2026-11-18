@@ -34,10 +34,10 @@ describe GeneratorPartials do
   end
 
   # Helper to create CVariableDeclaration structs for testing
-  def make_var(name:, type:, text:, decorators: [], line_num: nil)
+  def make_var(name:, type:, text:, decorators: [], line_num: nil, array_suffix: '', origin: nil)
     CExtractorTypes::CVariableDeclaration.new(
-      name: name, type: type, decorators: decorators,
-      text: text, original: text, line_num: line_num
+      name: name, type: type, decorators: decorators, array_suffix: array_suffix,
+      text: text, original: text, line_num: line_num, origin: origin
     )
   end
 
@@ -318,7 +318,7 @@ describe GeneratorPartials do
         includes,
         decls,
         c_module,
-        { include_variables: false, include_guard: nil, following_includes: [] }
+        { include_variables: false, include_guard: nil, following_includes: [], extras_flag: nil }
       )
 
       # Verify file path utilities were called
@@ -329,6 +329,143 @@ describe GeneratorPartials do
 
       # Verify return value is the header filepath
       expect(result).to eq(expected_filepath)
+    end
+  end
+
+  # A mock-only Partial's interface stands in for its real header, so what that header supplied
+  # beyond the mocked functions goes in an extras header the interface includes
+  context "#generate_extras" do
+    def extras_module
+      table = make_var(name: 'table', type: 'int', text: 'int table[] = { 1, 2 };', decorators: ['static', 'const'])
+      count = make_var(name: 'count', type: 'int', text: 'int count;', decorators: ['extern'])
+      init  = CExtractorTypes::CFunctionDeclaration.new(name: 'init', signature: 'int init(void);')
+      twice = CExtractorTypes::CFunctionDefinition.new(name: 'twice', code_block: 'static inline int twice(int x) { return 2 * x; }')
+      return make_module(table, count, init, twice), Partials::InterfaceExtras.new(items: [table, count, init, twice])
+    end
+
+    it "writes the kept items in the module's order, guarded, and returns the filename" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(buf)
+      c_module, extras = extras_module
+
+      result = @generator.generate_extras( name: 'sensor', extras: extras, c_module: c_module, output_path: '/out' )
+
+      expect( mask_include_guard_hashes( buf.string ) ).to eq( <<~CONTENTS )
+        // Ceedling generated file
+
+        #ifndef GEN<HASH>_SENSOR_EXTRAS_H_CEEDLING
+        #define GEN<HASH>_SENSOR_EXTRAS_H_CEEDLING
+
+        static const int table[] = { 1, 2 };
+        extern int count;
+        int init(void);
+
+        static inline int twice(int x) { return 2 * x; }
+
+        #endif // GEN<HASH>_SENSOR_EXTRAS_H_CEEDLING
+      CONTENTS
+      expect( result ).to eq( 'sensor_extras.h' )
+    end
+
+    # The source may size or type the variable with what the extras never see
+    it "writes an extern as the header declares it, not as the source defines it" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('port').and_return('port_extras.h')
+      buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/port_extras.h', 'wb').and_yield(buf)
+      header_extern = make_var(name: 'port_buf', type: 'int', text: 'int port_buf[];', decorators: ['extern'], array_suffix: '[]', origin: :header)
+      definition    = make_var(name: 'port_buf', type: 'int', text: 'int port_buf[PORT_BUF_LEN];', array_suffix: '[PORT_BUF_LEN]', origin: :source)
+
+      @generator.generate_extras( name: 'port', extras: Partials::InterfaceExtras.new(items: [header_extern]),
+                                  c_module: make_module(header_extern, definition), output_path: '/out' )
+
+      expect( buf.string ).to include( "extern int port_buf[];\n" )
+    end
+
+    it "keeps an extern's qualifiers and an asm label another declaration holds" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('port').and_return('port_extras.h')
+      buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/port_extras.h', 'wb').and_yield(buf)
+      header_extern = make_var(name: 'port_k', type: 'int', text: 'int port_k;', decorators: ['extern', 'const'], origin: :header)
+      labelled      = CExtractorTypes::CVariableDeclaration.new( name: 'port_k', type: 'int', text: 'int port_k __asm__("k_sym") = 1;',
+                                                                 decorators: ['const'], asm_label: '__asm__("k_sym")', origin: :source )
+
+      @generator.generate_extras( name: 'port', extras: Partials::InterfaceExtras.new(items: [header_extern]),
+                                  c_module: make_module(header_extern, labelled), output_path: '/out' )
+
+      expect( buf.string ).to include( "extern const int port_k __asm__(\"k_sym\");\n" )
+    end
+
+    # The real header may arrive before the interface, through another include. Its helpers are
+    # then already defined, so the extras hold their content only where the interface spoofed it.
+    it "holds its items under the flag an interface sets when it spoofs the real header" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(buf)
+      c_module, extras = extras_module
+
+      @generator.generate_extras( name: 'sensor', extras: extras, c_module: c_module, output_path: '/out', flag: 'SENSOR_EXTRAS_WANTED' )
+
+      expect( buf.string ).to match( %r{#ifdef SENSOR_EXTRAS_WANTED\n.*static const int table.*static inline int twice.*\n#endif\n#endif // }m )
+    end
+
+    it "sets that flag in the interface ahead of the spoof, only where the real header's guard isn't yet defined" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename).with('sensor').and_return('sensor_interface.h')
+      interface = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(StringIO.new)
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_interface.h', 'wb').and_yield(interface)
+      c_module, extras = extras_module
+
+      @generator.generate_interface(
+        name: 'sensor', function_declarations: [], includes: [], c_module: c_module, output_path: '/out',
+        include_guard: 'SENSOR_H', extras: extras
+      )
+
+      flag = "#{FileWrapper.generate_include_guard( 'sensor_extras.h' )}_WANTED"
+      expect( interface.string ).to include( "#ifndef SENSOR_H\n#define #{flag}\n#endif\n#define SENSOR_H\n" )
+    end
+
+    it "sets no flag for a header without an include guard, whose extras hold only declarations" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename).with('sensor').and_return('sensor_interface.h')
+      extras_buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(extras_buf)
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_interface.h', 'wb').and_yield(StringIO.new)
+      c_module, extras = extras_module
+
+      @generator.generate_interface( name: 'sensor', function_declarations: [], includes: [], c_module: c_module, output_path: '/out', extras: extras )
+
+      expect( extras_buf.string ).not_to include( '#ifdef' )
+    end
+
+    it "writes nothing and returns nil without extras" do
+      allow(@file_wrapper).to receive(:open)
+
+      expect( @generator.generate_extras( name: 'sensor', extras: Partials::InterfaceExtras.new, c_module: make_module, output_path: '/out' ) ).to be_nil
+      expect( @generator.generate_extras( name: 'sensor', extras: nil, c_module: make_module, output_path: '/out' ) ).to be_nil
+      expect( @file_wrapper ).not_to have_received(:open)
+    end
+
+    # It stands for the rest of the real header, which comes before the source's later includes
+    it "is included by the interface where the header's items end, ahead of the source's later includes" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('sensor').and_return('sensor_extras.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename).with('sensor').and_return('sensor_interface.h')
+      interface = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_extras.h', 'wb').and_yield(StringIO.new)
+      allow(@file_wrapper).to receive(:open).with('/out/sensor_interface.h', 'wb').and_yield(interface)
+      allow(@generator).to receive(:generate_header)
+      c_module, extras = extras_module
+
+      @generator.generate_interface(
+        name: 'sensor', function_declarations: [], includes: [], c_module: c_module, output_path: '/out',
+        following_includes: [UserInclude.new('later.h')], extras: extras
+      )
+
+      expect(@generator).to have_received(:generate_header).with(
+        interface, 'sensor_interface.h', [], [], c_module,
+        { include_variables: false, include_guard: nil, following_includes: [UserInclude.new('sensor_extras.h'), UserInclude.new('later.h')], extras_flag: nil }
+      )
     end
   end
 

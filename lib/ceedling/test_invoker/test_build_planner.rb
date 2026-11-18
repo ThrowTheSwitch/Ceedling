@@ -50,10 +50,8 @@ class TestBuildPlanner
       _mocks  = @context_extractor.lookup_mock_header_includes_list( filepath )
 
       # Shared by every mock and the #include validation, since nothing here changes this
-      # test's search paths. A mock reconciled from a preprocessed test file names its place
-      # below its mirror root, so its header is matched by trailing path first.
+      # test's search paths
       collection = test_header_search( testable )
-      mock_headers = @configurator.project_use_test_preprocessor_tests ? collection.trailing_first : collection
 
       _mocks.each do |include|
         name    = File.basename( include.filename ).ext()
@@ -67,7 +65,7 @@ class TestBuildPlanner
           input  = source
           subdir = partial_mock_subdir( include )
         else
-          source, subdir     = @mock_locator.locate( include, collection: mock_headers )
+          source, subdir     = @mock_locator.locate( include, collection: collection )
           preprocessed_input = @file_path_utils.form_preprocessed_file_filepath( source, test )
           input             = (@configurator.project_use_test_preprocessor_mocks ? preprocessed_input : source)
         end
@@ -90,7 +88,8 @@ class TestBuildPlanner
           source:   source,
           input:    input,
           partial:  partial,
-          include_path: include.filepath
+          include_path: include.filepath,
+          header_include: @mock_locator.header_respelling( include, source, collection )
         )
       end
 

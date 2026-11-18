@@ -106,6 +106,16 @@ describe TestDerivedSearchPaths do
       expect(derive( paths: ['src'], includes: [mock( 'src/path/to/mock_sensor.h' )] )).to eq( ['.'] )
     end
 
+    # The mock includes its header by the text the listed directory reaches it by. A directory
+    # added for its folder could hold a header named like a system one, such as string.h.
+    it "adds nothing for a mock through a folder where a search path lists the header's own directory" do
+      expect(derive( paths: ['src/path/to'], includes: [mock( 'path/to/mock_sensor.h' )] )).to eq( [] )
+    end
+
+    it "adds nothing for a plain #include through a folder where a search path lists the header's own directory" do
+      expect(derive( paths: ['src/path/to'], includes: [UserInclude.new( 'path/to/sensor.h' )] )).to eq( [] )
+    end
+
     it "adds the header's own directory for a mock named without its folder" do
       allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
 

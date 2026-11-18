@@ -14,6 +14,8 @@ require 'ceedling/c_extractor/c_extractor'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_types'
 require 'ceedling/constants'
+require 'ceedling/filesystem/path_matcher'
+require 'ceedling/filesystem/project_paths'
 require 'ceedling/filesystem/path_mirror'
 require 'ceedling/encodinator'
 
@@ -22,6 +24,10 @@ class Partializer
   # Holds the place between a generated header's include groups while a list is remapped.
   # Matched by identity, and named so no real include or module can match it.
   INCLUDE_BOUNDARY = UserInclude.new( '<ceedling include group boundary>' ) unless const_defined?(:INCLUDE_BOUNDARY, false)
+
+  # Holds the place of a module's own header in a list from a source that never includes it.
+  # Matched by identity, so it names no module. Whatever replaces the header takes its place.
+  OWN_HEADER_PLACE = UserInclude.new( '<ceedling own header place>' ) unless const_defined?(:OWN_HEADER_PLACE, false)
 
   # A typedef of a struct or union, whose type a variable may hold before it is complete
   AGGREGATE_TYPEDEF = /\Atypedef\s+(?:struct|union)(?![\w$])/ unless const_defined?(:AGGREGATE_TYPEDEF, false)
@@ -37,6 +43,68 @@ class Partializer
       1. Give %<header>s an include guard so the Partial can stand in for it.
       2. Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other
          header this module includes pulls in %<header>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
+  # Explains what a mock-only Partial leaves behind because its module header has no include guard
+  UNGUARDED_EXTRAS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_EXTRAS_NOTICE, false)
+    Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.
+    %<header>s has no include guard. Without a guard the mock can't stand in for the header everywhere
+    it's included, and a copy could collide with the real one. Code that uses %<these>s compiles only where
+    another #include brings in the real header.
+
+    Give %<header>s an include guard so the mock keeps %<them>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
+  # The same for a header that guards itself with `#pragma once`, which no generated file can
+  # define the way it defines an include guard
+  PRAGMA_ONCE_EXTRAS_NOTICE = <<~NOTICE unless const_defined?(:PRAGMA_ONCE_EXTRAS_NOTICE, false)
+    Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.
+
+    HOW THIS HAPPENS:
+    • %<header>s uses `#pragma once`, which is not an include guard.
+    • A mock stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+    • Without one, a kept copy could collide with the real one, so the mock leaves %<them>s out.
+    • Code that uses %<these>s compiles only where another #include brings in the real header.
+
+    Replace `#pragma once` in %<header>s with an include guard so the mock keeps %<them>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
+  # The same for a module header that guards itself with `#pragma once`
+  PRAGMA_ONCE_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:PRAGMA_ONCE_HELPERS_NOTICE, false)
+    Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
+
+    HOW THIS HAPPENS:
+    • Selected functions call %<these>s.
+    • %<header>s uses `#pragma once`, which is not an include guard.
+    • A Partial stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+    • Without one, a carried copy could collide with the real one.
+
+    OPTIONS:
+    1. Replace `#pragma once` in %<header>s with an include guard so the Partial can stand in for it.
+    2. Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other header this module includes pulls in %<header>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
+  # Explains what other Partials go without from a module a test both tests and mocks. The
+  # notice follows the linker failure guidance: what happened, why, then numbered options.
+  TESTED_MOCK_NOTICE = <<~NOTICE unless const_defined?(:TESTED_MOCK_NOTICE, false)
+    Partial %<partial>s ⏩️ Other Partials in this test include %<header>s's mock, which leaves %<items>s out.
+
+    HOW THIS HAPPENS:
+    • A module both tested and mocked in one test keeps its header's helpers and static variables in its own implementation.
+    • Every other Partial that includes %<header>s gets the mock's interface in its place, which declares only the mocked functions.
+    • Code in those Partials that uses %<them>s fails to compile or link.
+
+    OPTIONS:
+    1. Test %<module>s in a test file of its own, and only mock it in this one.
+    2. Move what the other Partials use into a header that %<header>s includes, which the mock keeps.
 
     See the docs on Partials conventions.
   NOTICE
@@ -101,6 +169,39 @@ class Partializer
 
     _log_plan( test, config.module, plan, config.header.filepath )
     return plan
+  end
+
+  # Decides what a mock-only Partial's extras header keeps of its real header beyond the mocked
+  # functions. See PartializerHelper#plan_interface_extras for what it keeps and withholds.
+  #
+  # @param test           [String] Test name (for log messages)
+  # @param c_module       [CExtractorTypes::CModule] The module's merged contents
+  # @param interface      [Array<Partials::FunctionDeclaration>] Functions selected to mock
+  # @param header_guarded [Boolean] Whether the module header has an include guard
+  # @param config         [PartializerConfig::Config] The Partial, named in notices
+  # @return [Partials::InterfaceExtras]
+  def plan_interface_extras(test:, c_module:, interface:, header_guarded:, config:)
+    extras = @helper.plan_interface_extras(
+      c_module: c_module, interface: interface, fallback: config.fallback?, header_guarded: header_guarded
+    )
+
+    _log_extras( "#{test}::#{config.module}", extras, config.header.filepath )
+    return extras
+  end
+
+  # Explains what other Partials go without from a module the test both tests and mocks: its
+  # implementation carries what its own code uses, but its interface keeps no extras, so another
+  # Partial including its header gets only the mocked functions. Names only what the code of
+  # the other Partials including the header uses, and says nothing when that's nothing.
+  def explain_tested_mock(test:, c_module:, interface:, header_guarded:, config:, partials:)
+    items = _extras_others_use( c_module, interface, header_guarded, config, partials )
+    return if items.empty?
+
+    notice = format(
+      TESTED_MOCK_NOTICE, partial: "#{test}::#{config.module}", header: config.header.filepath, module: config.module,
+      items: _withheld_phrase( items ), them: items.size > 1 ? 'them' : 'it'
+    )
+    @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
 
   def validate_extracted_functions(name:, partial:, impl:, interface:)
@@ -249,7 +350,7 @@ class Partializer
   def remap_implementation_source_includes(name:, includes:, partials:, test: nil)
     _remap_includes(
       name:        name,
-      includes:    includes,
+      includes:    _own_header_index( name, includes, partials ) ? includes : includes + [OWN_HEADER_PLACE],
       partials:    partials,
       replacement: @file_path_utils.form_partial_implementation_header_filename(name),
       others:      :mock_or_keep,
@@ -653,13 +754,96 @@ class Partializer
   def _log_unguarded_helpers(test, partial, names, header)
     many   = names.size > 1
     notice = format(
-      UNGUARDED_HELPERS_NOTICE,
+      _pragma_once?( header ) ? PRAGMA_ONCE_HELPERS_NOTICE : UNGUARDED_HELPERS_NOTICE,
       partial: "#{test}::#{partial}", header: header, first: names.first,
       helpers: names.map { |n| "`#{n}()`" }.join( ', ' ),
       noun: many ? 'helpers' : 'helper', these: many ? 'these helpers' : 'this helper'
     )
 
     @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
+  end
+
+  # Lists what a mock-only Partial keeps, and explains what an unguarded header's mock leaves behind
+  def _log_extras(partial, extras, header)
+    entries = extras.items.map { |item| _extras_entry( item ) }
+    @loginator.log_list( entries, "Kept in the mock of Partial #{partial}:", Verbosity::DEBUG ) unless entries.empty?
+    return if extras.withheld.empty?
+
+    many   = extras.withheld.size > 1
+    notice = _pragma_once?( header ) ? PRAGMA_ONCE_EXTRAS_NOTICE : UNGUARDED_EXTRAS_NOTICE
+    @loginator.log(
+      format( notice, partial: partial, header: header, items: _withheld_phrase( extras.withheld ),
+              these: many ? 'these' : 'it', them: many ? 'them' : 'it' ),
+      Verbosity::COMPLAIN, LogLabels::NOTICE
+    )
+  end
+
+  # The header is read again only when something stays behind, to say what guards it
+  def _pragma_once?(header)
+    return @preprocessinator_reconstructor.pragma_once?( @file_wrapper.read( header ).clean_encoding )
+  end
+
+  def _extras_entry(item)
+    case item
+    when CExtractorTypes::CFunctionDefinition  then return "`#{item.name}()` (helper)"
+    when CExtractorTypes::CFunctionDeclaration then return "`#{item.name}()` (prototype)"
+    end
+
+    return "`#{item.name}` (#{item.extern? ? 'extern declaration' : 'static variable'})"
+  end
+
+  # As in "helper `twice()` and variables `a`, `b`", or "helper `twice()`, variable `a` and prototype `get()`"
+  def _withheld_phrase(items)
+    phrases = EXTRAS_NOUNS.filter_map do |kind, noun|
+      named = items.select { |item| item.is_a?( kind ) }
+      _named( noun, named.map { |item| kind == CExtractorTypes::CVariableDeclaration ? "`#{item.name}`" : "`#{item.name}()`" } ) unless named.empty?
+    end
+
+    return phrases.size > 1 ? "#{phrases[0..-2].join( ', ' )} and #{phrases.last}" : phrases.join
+  end
+
+  # What an extras item is called in a notice
+  EXTRAS_NOUNS = {
+    CExtractorTypes::CFunctionDefinition  => 'helper',
+    CExtractorTypes::CVariableDeclaration => 'variable',
+    CExtractorTypes::CFunctionDeclaration => 'prototype'
+  }.freeze unless const_defined?(:EXTRAS_NOUNS, false)
+
+  # What a module's mock would keep in extras that the code of other Partials including its header uses
+  def _extras_others_use(c_module, interface, header_guarded, config, partials)
+    extras = @helper.plan_interface_extras(
+      c_module: c_module, interface: interface, fallback: config.fallback?, header_guarded: header_guarded
+    )
+    return [] if extras.items.empty?
+
+    used = _names_used_by_includers( config.module, partials )
+    return extras.items.select { |item| used.include?( item.name ) }
+  end
+
+  # The names the code of every other Partial including the module's header uses, from each
+  # file's full expansion, which shows a use through a macro, or else the file stages 6 and 7
+  # assembled for it
+  def _names_used_by_includers(_module, partials)
+    paths = _includers( _module, partials ).flat_map { |config| _module_files( config ) }.filter_map do |file|
+      file.expansion_filepath || file.assembled_filepath
+    end
+
+    return paths.each_with_object( Set.new ) { |path, used| used.merge( @helper.names_in( @file_wrapper.read( path ).clean_encoding ) ) }
+  end
+
+  # Every other Partial whose files include the module's header
+  def _includers(_module, partials)
+    return partials.reject { |other, _| other == _module }.values.select do |config|
+      _module_files( config ).flat_map { |file| Array( file.includes ) }.any? { |include| _names_module?( include, _module, partials ) }
+    end
+  end
+
+  def _module_files(config)
+    return [config.source, config.header].compact
+  end
+
+  def _named(noun, names)
+    return "#{noun}#{'s' if names.size > 1} #{names.join( ', ' )}"
   end
 
   # Log all user-defined (non-function) C content extracted from a module's source/header at OBNOXIOUS level.
@@ -729,21 +913,27 @@ class Partializer
 
   # A generated header's includes in the order the source compiles them: the source's includes
   # ahead of the module's header, the header's own, then the source's after it. The last make
-  # up the following group (see Partials::IncludeGroups). A source that never includes its own
-  # header leaves that group empty, as if its header came last.
+  # up the following group (see Partials::IncludeGroups).
+  #
+  # A source that never includes its own header, or a header-only module's absent source, is
+  # read as including it last. OWN_HEADER_PLACE holds that place, so whatever replaces the
+  # module's header lands there, in the leading group, ahead of the declarations. The following
+  # group is then empty.
   #
   # The whole list is remapped at once, so deduplication, redirects, and sorting see every
   # include. An include in both groups keeps its earlier place. A marker holds the boundary.
   def _remap_include_groups(name:, source:, header:, **remap)
-    index    = _own_header_index( name, source )
-    remapped = _remap_includes( name: name, includes: source[0..index] + header + [INCLUDE_BOUNDARY] + source[(index + 1)..], **remap )
+    index     = _own_header_index( name, source, remap[:partials] )
+    leading   = index.nil? ? source + [OWN_HEADER_PLACE] : source[0..index]
+    following = index.nil? ? [] : source[(index + 1)..]
+    remapped  = _remap_includes( name: name, includes: leading + header + [INCLUDE_BOUNDARY] + following, **remap )
 
     return Partials::IncludeGroups.split( remapped, INCLUDE_BOUNDARY )
   end
 
-  # Where the source includes the module's own header, or its last include when it never does
-  def _own_header_index(name, source)
-    return source.index { |include| include.filename.ext().downcase() == module_basename( name ) } || (source.size - 1)
+  # Where the source includes the module's own header, or nil when it never does
+  def _own_header_index(name, source, partials)
+    return source.index { |include| _names_module?( include, name, partials ) }
   end
 
   # One body behind all four public remaps. Each differs only in what replaces this module's
@@ -758,12 +948,12 @@ class Partializer
     _includes = includes.clone()
 
     # A nil replacement strips this module's own header and substitutes nothing.
-    _includes = splice_in_replacement( includes: _includes, name: name, replacement: replacement )
+    _includes = splice_in_replacement( includes: _includes, name: name, replacement: replacement, partials: partials )
 
     _includes =
       case others
       when :drop
-        remove_matching_includes( includes: _includes, modules: (partials.keys - [name]) )
+        remove_matching_includes( includes: _includes, modules: (partials.keys - [name]), partials: partials )
       when :mock_or_keep, :mock_or_drop
         # The types header differs from the generated source in two ways at once, which is why
         # both flags below read from one condition.
@@ -820,27 +1010,33 @@ class Partializer
 
     partials.each do |_module, config|
       next if skip_self && _module == name
-      next unless original.any? { |include| include.filename.ext().downcase() == _module.downcase() }
+      next unless _named_in?( original, _module, name, partials )
 
       if config.mocks.type.nil?
         retired << _module if drop_unmocked
       else
-        _place_interface_header( includes, _module, (_module == name) ? replacement : nil )
+        _place_interface_header( includes, _module, (_module == name) ? replacement : nil, partials )
         retired << _module
       end
     end
 
-    remove_matching_includes( includes: includes, modules: retired )
+    remove_matching_includes( includes: includes, modules: retired, partials: partials )
+  end
+
+  # Whether a list names a partialized module. The module being generated is named by the
+  # place a source that never includes its own header holds for it, too.
+  def _named_in?(includes, _module, name, partials)
+    return includes.any? { |include| (_module == name) ? _own_header?( include, name, partials ) : _names_module?( include, _module, partials ) }
   end
 
   # An interface header declares what its module's real header declared, which the includes
   # after it may rely on. So it takes that header's place. The module being generated has
   # already had its header replaced, so its interface header follows the replacement. With
   # neither in the list, it goes last.
-  def _place_interface_header(includes, _module, replacement)
+  def _place_interface_header(includes, _module, replacement, partials)
     interface = UserInclude.new( @file_path_utils.form_partial_interface_header_filename(_module) )
 
-    index = includes.index { |include| include.filename.ext().downcase() == module_basename( _module ) }
+    index = includes.index { |include| _names_module?( include, _module, partials ) }
     return includes[index] = interface if index
 
     index = replacement && includes.index { |include| include.filename == File.basename( replacement ) }
@@ -866,38 +1062,76 @@ class Partializer
   # depends on that came before it in the source's own working include order (e.g. a
   # shared Types.h), while still landing ahead of anything transitively re-reaching the
   # real header afterward.
-  def splice_in_replacement(includes:, name:, replacement:)
-    return remove_matching_includes(includes: includes, modules: [name]) unless replacement
+  def splice_in_replacement(includes:, name:, replacement:, partials: {})
+    spliced = includes.dup
+    index   = spliced.index { |include| _own_header?( include, name, partials ) }
 
-    replaced = false
-    spliced = includes.map do |include|
-      if !replaced && module_basename( name ) == include.filename.ext().downcase()
-        replaced = true
-        UserInclude.new(replacement)
-      else
-        include
-      end
+    # Every remap holds a place for the module's own header (see OWN_HEADER_PLACE). A list
+    # without one has no position to preserve, so the replacement goes last.
+    if replacement
+      index ? (spliced[index] = UserInclude.new( replacement )) : (spliced << UserInclude.new( replacement ))
     end
-    # This module's own header wasn't in the includes list at all -- no original
-    # position to preserve, so fall back to appending.
-    spliced << UserInclude.new(replacement) unless replaced
 
     # A duplicate/case-variant entry beyond the first match (e.g. both 'module.h' and
-    # 'MODULE.H' present) has no meaningful position of its own to preserve -- drop it
-    # like remove_matching_includes always has.
-    spliced = remove_matching_includes(includes: spliced, modules: [name])
-    spliced
+    # 'MODULE.H' present) has no meaningful position of its own to preserve -- drop it too.
+    return spliced.reject { |include| _own_header?( include, name, partials ) }
   end
 
-  # Remove includes that match the given module names (case-insensitive)
-  # Returns a new array with matching includes removed
-  def remove_matching_includes(includes:, modules:)
-    normalized_modules = modules.map { |_module| module_basename( _module ) }
+  # The module's own header, or the place a source that never includes it holds for it
+  def _own_header?(include, name, partials)
+    return (include.equal?( OWN_HEADER_PLACE ) or _names_module?( include, name, partials ))
+  end
 
-    # Filter out includes (minus extension) that match any module name
+  # Remove includes that name any of the given modules (see _names_module?)
+  # Returns a new array with matching includes removed
+  def remove_matching_includes(includes:, modules:, partials: {})
     return includes.reject do |include|
-      normalized_modules.include?(include.filename.ext().downcase())
+      modules.any? { |_module| _names_module?( include, _module, partials ) }
     end
+  end
+
+  # Whether `include` names partialized module `_module`: its filename, less extension and in
+  # any case, is the module's basename.
+  #
+  # A module named without a directory is named by its basename alone, as its own #include
+  # spells it, short of a header a same-named module named by directory claims. Naming a
+  # module by directory says its basename isn't enough, since another header, partialized or
+  # not, may share it, so that module's header path decides (see _same_header_path?). One
+  # whose header path is unknown is named by basename alone.
+  def _names_module?(include, _module, partials)
+    return false unless include.filename.ext().downcase() == module_basename( _module )
+    return !_claimed_by_directory?( include, _module, partials ) if File.dirname( _module ) == '.'
+
+    header = partials.dig( _module )&.header&.filepath
+    return true if header.nil? or _unanchored?( include )
+
+    return _same_header_path?( include.filepath, header )
+  end
+
+  # Fallback anchors a `..` #include to its file's own directory. One naming no file there was
+  # found elsewhere through a search path, so its path says nothing and its filename decides.
+  def _unanchored?(include)
+    return (include.directory_relative? and !@file_wrapper.exist?( include.filepath ))
+  end
+
+  # Whether a module sharing `_module`'s basename, named by directory, claims `include` by its header's path
+  def _claimed_by_directory?(include, _module, partials)
+    headers = partials.filter_map do |other, config|
+      config&.header&.filepath if File.dirname( other ) != '.' and module_basename( other ) == module_basename( _module )
+    end
+
+    return headers.any? { |header| _same_header_path?( include.filepath, header ) }
+  end
+
+  # Whether an include's path ends the way a header's path does, in any case, as a
+  # case-insensitive filesystem reaches the header by either. A bare #include, as fallback
+  # preprocessing leaves one, ends any such path. An absolute path and a relative one, such as
+  # `../shared/x.h` from a project's paths, are compared as the absolute paths they name.
+  def _same_header_path?(include_path, header_path)
+    return true if PathMatcher.correspond?( include_path.downcase(), header_path.downcase() )
+    return false unless PathMatcher.absolute?( include_path ) or PathMatcher.absolute?( header_path )
+
+    return ProjectPaths.absolute( include_path ).downcase() == ProjectPaths.absolute( header_path ).downcase()
   end
 
   # A module name reduced to what an #include actually carries. An #include names a

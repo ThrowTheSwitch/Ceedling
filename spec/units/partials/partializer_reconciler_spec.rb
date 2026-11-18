@@ -308,6 +308,29 @@ describe PartializerReconciler do
       expect( written ).to have_attributes( original: "orig counter", line_num: 7, name: "counter", origin: :source )
     end
 
+    # A mock's extras read what an initializer names after every macro, from any header, expands
+    it "records the expanded text of every variable it pairs, written text kept" do
+      written = var( name: "handlers", type: "port_fn_t", text: "port_fn_t handlers[] = { PORT_HANDLER };", decorators: ["static"] )
+      twin    = var( name: "handlers", type: "port_fn_t", text: "port_fn_t handlers[] = { port_a };", decorators: ["static"] )
+
+      reconcile_vars( [written], [twin] )
+
+      expect( written ).to have_attributes( text: "port_fn_t handlers[] = { PORT_HANDLER };", expanded_text: "port_fn_t handlers[] = { port_a };" )
+    end
+
+    # Fallback keeps both sides of a conditional, so a name can be written more often than the
+    # expansion holds it. Each copy then records every twin's text, so nothing it names hides.
+    it "records every twin's expanded text where the counts differ" do
+      written = [var( name: "t", type: "fn_t", text: "fn_t t[] = { HANDLER };", decorators: ["static"] ),
+                 var( name: "t", type: "fn_t", text: "fn_t t[] = { HANDLER };", decorators: ["static"] )]
+      twin    = var( name: "t", type: "fn_t", text: "fn_t t[] = { ex_a };", decorators: ["static"] )
+
+      reconcile_vars( written, [twin] )
+
+      expect( written.map( &:expanded_text ) ).to eq( ["fn_t t[] = { ex_a };", "fn_t t[] = { ex_a };"] )
+      expect( written.map( &:text ) ).to eq( ["fn_t t[] = { HANDLER };", "fn_t t[] = { HANDLER };"] )
+    end
+
     it "takes an extern a macro spells" do
       written = var( name: "shared", type: "EXTERN int", text: "EXTERN int shared;" )
       twin    = var( name: "shared", type: "int", text: "int shared;", decorators: ["extern"] )

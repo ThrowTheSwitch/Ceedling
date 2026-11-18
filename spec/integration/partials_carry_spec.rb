@@ -233,6 +233,44 @@ describe 'What a Partial carries' do
       expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
     end
 
+    # A mock-only Partial's interface stands in for its real header wherever another Partial
+    # includes it, so that header's helpers, statics and types still reach the other's code
+    it "compiles a module using a mocked header-only module's helper, table and types" do
+      dir    = shared_partials_dir
+      header = <<~C
+        #ifndef SENSOR_INTERFACE_H
+        #define SENSOR_INTERFACE_H
+        #define SENSOR_SCALE 2
+        typedef struct { int raw; } sensor_reading_t;
+        static const int sensor_table[] = { 1, 2 };
+        static inline int sensor_twice(int x) { return SENSOR_SCALE * x; }
+        static sensor_reading_t sensor_inf_read(void);
+        #endif
+      C
+
+      mock = generate_partial(
+        module_name: 'sensor_interface', header: header, source: nil, tests_expose: nil,
+        mocks_expose: PartializerConfig::PRIVATE, mocks_subtract: ['sensor_twice'], dir: dir
+      )
+
+      expect( mock.extras_h ).to include( 'static const int sensor_table[] = { 1, 2 };' )
+      expect( mock.extras_h ).to include( 'static inline int sensor_twice(int x)' )
+      expect( mock.interface_h ).to include( 'sensor_reading_t sensor_inf_read(void);' )
+
+      @result = generate_partial(
+        module_name: 'sensor_manager',
+        header: "#ifndef SENSOR_MANAGER_H\n#define SENSOR_MANAGER_H\nint sensor_get(void);\n#endif\n",
+        source: "#include \"sensor_manager.h\"\n#include \"sensor_interface.h\"\n" \
+                "int sensor_get(void) { sensor_reading_t r = sensor_inf_read(); return sensor_twice(r.raw) * sensor_table[0]; }\n",
+        source_includes: ['sensor_manager.h', 'sensor_interface.h'],
+        tests_expose: PartializerConfig::PUBLIC, mocks_expose: nil,
+        partials: other_partial( 'sensor_interface', mocked: true ), dir: dir
+      )
+
+      compile = compile_objects( @result, flags: '-Wall -Werror' )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
     # A call through a member that shares a helper's name is not a use of the helper. Carrying
     # the helper anyway leaves an unused static function, which -Wall -Werror rejects.
     it 'carries no helper that only a member access names' do

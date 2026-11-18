@@ -438,6 +438,39 @@ describe 'Partial header composition' do
       expect( @result.type_names( :types_h ) ).to include('valve_t')
     end
 
+    # A header-only module has no source to place its header, so its types header has no
+    # position to take. It still has to come ahead of the prototypes that use its types.
+    it 'compiles for a header-only module whose prototypes use its own types' do
+      @result = generate_partial(
+        module_name: 'gpio', source: nil, tests_expose: nil, mocks_expose: PartializerConfig::PUBLIC,
+        header: <<~C,
+          #ifndef GPIO_H
+          #define GPIO_H
+          #include <stdint.h>
+          typedef enum { GPIO_IN, GPIO_OUT } gpio_dir_t;
+          void gpio_set(uint32_t pin, gpio_dir_t dir);
+          #endif
+        C
+        header_includes: ['<stdint.h>']
+      )
+
+      compile = compile_interface( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
+    it 'compiles for a module whose source never includes its own header' do
+      @result = generate_partial(
+        module_name: 'valve', tests_expose: nil, mocks_expose: PartializerConfig::PUBLIC,
+        header: "#ifndef VALVE_H\n#define VALVE_H\ntypedef struct { int port; } valve_t;\nvoid valve_open(valve_t* v);\n#endif\n",
+        source: "#include \"base.h\"\nint valve_count(void) { return 0; }\n",
+        source_includes: ['base.h'],
+        extra: { 'base.h' => "#ifndef BASE_H\n#define BASE_H\n#endif\n" }
+      )
+
+      compile = compile_interface( @result )
+      expect( compile.ok ).to be(true), "expected a clean compile, got: #{compile.first_error}"
+    end
+
   end
 
   # ---------------------------------------------------------------------------

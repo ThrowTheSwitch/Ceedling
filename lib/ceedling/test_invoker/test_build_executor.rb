@@ -124,7 +124,8 @@ class TestBuildExecutor
         include_paths:            testable.search_paths,
         vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines,
-        extras:                   extras
+        extras:                   extras,
+        include_search:           @mock_locator.header_search( testable )
       }
 
       @preprocessinator.preprocess_mockable_header_file( **arg_hash )
@@ -165,7 +166,15 @@ class TestBuildExecutor
       # there or an earlier stand-in is out of date (StandinHeaderinator), independent of
       # this mock's antecedents. The recorded hash catches a stand-in in the mock's place
       # and regenerates the mock.
-      @dependinator.register( target, files: [details.input], meta: { cmock: cmock_meta }, outputs: [mock_header] )
+      #
+      # CMock names the mock by its folder, which an #include can change while the mock's
+      # place stays. A mock with no folder records nil, since a record holding no folder
+      # can't tell it from one named by a folder the record never held. A respelling of the
+      # real header's #include (MockLocator#header_respelling) follows the test's search
+      # paths, which CMock's configuration doesn't hold. Both are recorded too.
+      meta = { cmock: cmock_meta, folder: placement.folder }
+      meta[:header_include] = details.header_include if details.header_include
+      @dependinator.register( target, files: [details.input], meta: meta, outputs: [mock_header] )
 
       unless @dependinator.stale?( target )
         msg = @reportinator.generate_module_progress(
@@ -181,8 +190,9 @@ class TestBuildExecutor
       # A Partial mock's own generated header is already free of inline function
       # bodies -- CMock's own inline handling has nothing to do on it and is
       # skipped for this one mock, independent of whatever the project configures
-      # for CMock's own mocks of real headers elsewhere in the same test suite.
-      overrides = details.partial ? { treat_inlines: :exclude } : {}
+      # for CMock's own mocks of real headers elsewhere in the same test suite. The helpers a
+      # mock-only Partial keeps sit in its extras header, whose #include CMock skips.
+      overrides = details.partial ? { treat_inlines: :exclude } : header_include_overrides( details.header_include )
 
       arg_hash = {
         context:        state.context,
@@ -540,6 +550,20 @@ class TestBuildExecutor
   # The :libraries entries a test links, whatever form each takes
   def test_library_entries()
     return ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+  end
+
+  # The settings that have a mock include its real header by `header_include` in place of
+  # CMock's own text. `:orig_header_include` is Ceedling's, which CMock ignores and an FFF
+  # fake reads. CMock keeps its own text under an :orig_header_include_fmt that takes no
+  # respelling. It keeps it under :treat_inlines :include too, where its text reaches the copy
+  # of the header it writes beside the mock. A fake writes no format and no copy.
+  def header_include_overrides(header_include)
+    return {} if header_include.nil?
+
+    overrides = { orig_header_include: header_include }
+    return overrides if @configurator.cmock_treat_inlines == :include or !@mock_locator.respellable_format?
+
+    return overrides.merge( orig_header_include_fmt: @mock_locator.header_include_line( header_include ) )
   end
 
   # Compile a single C or assembly source file into an object file. Returns

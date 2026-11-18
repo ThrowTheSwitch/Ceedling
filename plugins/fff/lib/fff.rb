@@ -66,7 +66,7 @@ class FffCMockWrapper
     # Parse the header file so we know what to mock.
     parsed_header = @cm_parser.parse(module_name, File.read(header_file_to_mock))
 
-    write_fake( "#{mock_path_for( folder )}/#{mock_name}", module_name, mock_name, parsed_header, c_name_for( mock_name, folder ) )
+    write_fake( "#{mock_path_for( folder )}/#{mock_name}", module_name, mock_name, parsed_header, folder )
   end
 
   # The name for a fake's guard and control functions, as CMock forms it. With
@@ -92,16 +92,27 @@ class FffCMockWrapper
     return @cm_config.subdir ? "#{mock_path}/#{@cm_config.subdir}" : mock_path
   end
 
-  # Writes the fake's header and source at `path`, which ends in the mock's name
-  def write_fake(path, module_name, mock_name, parsed_header, c_name)
+  # Writes the fake's header and source at `path`, which ends in the mock's name. `folder` is
+  # the one its #include names, which names the fake's C identifiers and through which the fake
+  # includes the original header.
+  def write_fake(path, module_name, mock_name, parsed_header, folder)
+    c_name = c_name_for( mock_name, folder )
     FileUtils.mkdir_p( File.dirname( path ) )
 
     puts( "Creating fake functions: #{path}.h and #{path}.c" ) unless @verbosity < 3
     File.write( "#{path}.h", FffMockGenerator.create_mock_header( module_name, mock_name, parsed_header,
-      @includes_h_pre_orig_header, @includes_h_post_orig_header, c_name: c_name ) )
+      @includes_h_pre_orig_header, @includes_h_post_orig_header, c_name: c_name, header_include: header_include( module_name, folder ) ) )
 
     File.write( "#{path}.c", FffMockGenerator.create_mock_source( mock_name, parsed_header,
       @includes_c_pre_header, @includes_c_post_header, c_name: c_name ) )
+  end
+
+  # The text a fake includes the original header by: the folder its #include names and the
+  # header's filename, as CMock writes it, or Ceedling's respelling where the test's search
+  # paths reach the header only by another spelling (:orig_header_include)
+  def header_include(module_name, folder)
+    respelled = @cm_config.respond_to?( :orig_header_include ) ? @cm_config.orig_header_include : nil
+    return respelled || File.join( *[folder].compact, "#{module_name}.h" )
   end
 
   # Joins include lists, each named once, as #include operands. A name holding `<` is

@@ -8,8 +8,7 @@
 require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/project_paths'
 
-# Directory listings of headers, each indexed by filename, listed once and shared by a
-# search and its views
+# Directory listings of headers, each indexed by filename, listed once for a search
 class HeaderListings
 
   def initialize(lister)
@@ -46,12 +45,17 @@ end
 # order, joined with the path an #include names. A bare name joins to a search path's
 # own listing, so it finds exactly the headers a flat listing of every search path holds.
 #
+# An #include's spelling is the text it names its header by, between its quotes. One header
+# can have several. With `src` and `src/drivers` both searched, `foo.h` and `drivers/foo.h`
+# both name `src/drivers/foo.h`. A spelling reaches a header when the compiler, joining it
+# with each search path in order, finds that header first. A file Ceedling generates lives
+# away from the file it comes from, so it includes each header by a spelling that reaches it
+# (`spelling`). A respelling replaces a text that reaches another header, or none.
+#
 # An #include after stage 4 can carry a path the test never wrote: GCC's resolved
-# path for a plain #include, or a mock's place below its mirror root. When no search
-# path joins to a query, the query matches the trailing path of a header directly in a
-# search path, and then names a header itself when one lies below a search path. A
-# mock's place is measured from its mirror root, so its search tries the trailing match
-# first (`trailing_first`).
+# path for a plain #include, or a computed mock's place below its mirror root. When no
+# search path joins to a query, the query matches the trailing path of a header directly
+# in a search path, and then names a header itself when one lies below a search path.
 #
 # Each directory is listed once for the search's lifetime, so one search serves a
 # test's every lookup in one stage.
@@ -73,28 +77,24 @@ class HeaderSearch
     return root + ProjectPaths.segments( rest ).join( '/' )
   end
 
+  # The ways a query names headers, tried in turn: the compiler's join first
+  TIERS = [:joined, :trailing, :named].freeze
+
   # `paths` in search order. `lister` gives a directory's headers. `refusals` explain, by
   # the query a test's #include asks for, why no search path reaches its header.
-  def initialize(paths, lister, trailing_first: false, listings: nil, refusals: {})
-    @paths          = paths
-    @trailing_first = trailing_first
-    @listings       = listings || HeaderListings.new( lister )
-    @refusals       = refusals.to_h { |query, why| [normalized( query ), why] }
-  end
-
-  # The same search, trying a header's trailing path before a join, for a mock whose
-  # #include names its place below its mirror root
-  def trailing_first
-    return HeaderSearch.new( @paths, nil, trailing_first: true, listings: @listings, refusals: @refusals )
+  def initialize(paths, lister, refusals: {})
+    @paths    = paths
+    @listings = HeaderListings.new( lister )
+    @refusals = refusals.to_h { |query, why| [normalized( query ), why] }
   end
 
   # The headers `query` names, the one the compiler includes first. Empty for none.
   def header_candidates(query)
     query = normalized( query )
-    tiers = @trailing_first ? [:trailing, :joined, :named] : [:joined, :trailing, :named]
 
-    tiers.each do |tier|
-      next if tier != :joined and !with_directory?( query )
+    # A bare name names no directory, so only a join can find it
+    TIERS.each do |tier|
+      next if tier != :joined and File.dirname( query ) == '.'
 
       found = send( tier, query )
       return distinct( found ) unless found.empty?
@@ -123,14 +123,22 @@ class HeaderSearch
     return @refusals[normalized( query )]
   end
 
-  # The #include text through which these search paths find `header` first: its filename
-  # when that does, otherwise its path below the earliest search path that does. Nil for none.
-  def spelling(header)
-    target = location( header )
-    texts  = [File.basename( header )] + @paths.filter_map { |path| ProjectPaths.subdir_below( path, header ) }
+  # The header at `path` itself, as its directory lists it, or nil. A preprocessor's #include
+  # names its header by such a path, which a search path joined with it could name another by.
+  def at(path)
+    path = normalized( path )
+    return nameable?( path ) ? named_in( File.dirname( path ), File.basename( path ) ) : nil
+  end
 
-    return texts.uniq.find do |text|
-      found = header_candidates( text ).first
+  # A spelling that reaches `header` through these search paths: `preferring` when it does,
+  # then the header's filename, otherwise its path below the earliest search path that reaches
+  # it. Nil for none.
+  def spelling(header, preferring: nil)
+    target = location( header )
+    texts  = [preferring, File.basename( header )] + @paths.filter_map { |path| ProjectPaths.subdir_below( path, header ) }
+
+    return texts.compact.uniq.find do |text|
+      found = joined( normalized( text ) ).first
       !found.nil? and location( found ) == target
     end
   end
@@ -161,13 +169,9 @@ class HeaderSearch
 
   # The query itself, when it names a header at or below a search path
   def named(query)
-    return [] unless nameable?( query )
+    return [] unless @paths.any? { |path| ProjectPaths.contains?( path, File.dirname( query ) ) }
 
-    dir = File.dirname( query )
-    return [] unless @paths.any? { |path| ProjectPaths.contains?( path, dir ) }
-
-    found = named_in( dir, File.basename( query ) )
-    return found.nil? ? [] : [found]
+    return [at( query )].compact
   end
 
   # A relative path the compiler would join: no `..` and no glob character in its
@@ -181,10 +185,6 @@ class HeaderSearch
   def nameable?(query)
     dir = File.dirname( query )
     return (dir != '.' and !dir.match?( GLOB_CHARACTERS ))
-  end
-
-  def with_directory?(query)
-    return File.dirname( query ) != '.'
   end
 
   def joined_directory(path, query)

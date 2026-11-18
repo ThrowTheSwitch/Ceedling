@@ -451,6 +451,19 @@ describe PartializerHelper do
         expect(func.code_block).to include('static int count')
       end
 
+      # A mocked Partial keeps a helper's promoted statics with the helper, so each knows its function
+      it "names the function each promoted variable came from" do
+        func = OpenStruct.new(
+          name:       'process',
+          body:       "{\n  static int count, total;\n  return count + total;\n}",
+          code_block: "void process(void) {\n  static int count, total;\n  return count + total;\n}"
+        )
+
+        result = real_helper.extract_function_scope_static_vars([func], name: 'test', module_name: 'mod', file_type: 'source')
+
+        expect(result.map(&:promoted_from)).to eq(['process', 'process'])
+      end
+
       # A function pointer's declarator wraps its name, so the new name has to reach it too
       it "promotes a function-scope static function pointer under its new name, declarator and all" do
         func = OpenStruct.new(

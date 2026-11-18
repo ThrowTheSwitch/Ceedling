@@ -12,6 +12,7 @@ require 'ceedling/c_identifier'
 require 'ceedling/c_extractor/c_extractor_constants'
 require 'ceedling/c_extractor/c_extractor_declarator'
 require 'ceedling/partials/carry_plan'
+require 'ceedling/partials/interface_extras'
 require 'ceedling/partials/include_groups'
 
 module Partials

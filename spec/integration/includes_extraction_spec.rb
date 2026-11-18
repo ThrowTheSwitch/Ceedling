@@ -277,12 +277,11 @@ describe 'Includes extraction (integration)' do
   # --- Path / search-path shapes -----------------------------------------
 
   it 'renders a subdir-qualified quoted include by basename alone when nothing else in the file collides with it' do
-    # Ceedling adds every real directory as its own individual search path, so a
-    # unique basename already finds the right file -- preserving more of the
-    # directive's own written path here would add nothing findable a plain
-    # basename doesn't already provide, and (see the collision cases below) can
-    # actively break the build the moment it reaches further than any one
-    # configured search directory covers.
+    # The reconciled list records which header a file includes, not how to reach
+    # it. A file generated from it spells each header for itself as the test's
+    # search paths reach it (Include#spelled_by), so the basename here loses
+    # nothing. A collision below keeps more path, since a basename alone would
+    # name only one of the colliding headers.
     tree = {
       'app.c'          => %(#include "drivers/uart.h"\nint a(void){return UART_BAUD;}\n),
       'drivers/uart.h' => %(#ifndef DRIVERS_UART_H\n#define DRIVERS_UART_H\n#define UART_BAUD 115200\n#endif\n)

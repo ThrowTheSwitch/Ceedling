@@ -20,6 +20,8 @@ require 'spec_system_helper'
 ## Assets: assets/fixtures/same_named_modules/
 ##
 
+PARTIALS_DISAMBIG_PREAMBLE = "#include \"unity.h\"\n#include \"ceedling.h\"\n"
+
 ceedling_system_tests do
   include_context "a fresh ceedling gem project", "partial_disambig"
 
@@ -135,6 +137,129 @@ ceedling_system_tests do
           expect(mocks.length).to eq(2)
           expect(mocks.any? { |path| path.include?('drivers/uart') }).to be true
           expect(mocks.any? { |path| path.include?('drivers/spi') }).to be true
+        end
+      end
+    end
+
+    # A module named by directory claims only its own header. Another header sharing its
+    # basename, partialized or not, keeps its place in every generated file.
+    context "with a module named by directory beside a same-named header" do
+      def include_paths(paths)
+        @c.remove_project_yml_option_for_test( :paths, :include )
+        @c.merge_project_yml_for_test( { :paths => { :include => paths } } )
+      end
+
+      def write(path, text)
+        FileUtils.mkdir_p( File.dirname( path ) )
+        File.write( path, text )
+      end
+
+      def build_passing
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+1/)
+      end
+
+      # The mocked module's real inline body fails any test it runs in
+      def same_named_configs
+        write( 'include/drivers/uart/config.h', "#ifndef UART_CONFIG_H\n#define UART_CONFIG_H\nint uart_config_baud(void);\n#endif\n" )
+        write( 'include/drivers/spi/config.h',
+               "#ifndef SPI_CONFIG_H\n#define SPI_CONFIG_H\ntypedef struct spi_cfg { int div; } spi_cfg_t;\n" \
+               "static inline int spi_read(void) { return -1000; }\nint spi_config_clock_div(void);\n#endif\n" )
+        write( 'src/drivers/uart/config.c',
+               "#include \"drivers/uart/config.h\"\n#include \"drivers/spi/config.h\"\n" \
+               "int uart_config_baud(void) { spi_cfg_t c = { spi_read() }; return c.div + 1; }\n" )
+        write( 'src/drivers/spi/config.c', "#include \"drivers/spi/config.h\"\nint spi_config_clock_div(void) { return 8; }\n" )
+        write( 'test/test_uart.c', PARTIALS_DISAMBIG_PREAMBLE +
+               "#include TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)\n#include MOCK_PARTIAL_PRIVATE_MODULE_AT(drivers/spi, config)\n" \
+               "void setUp(void) {}\nvoid tearDown(void) {}\n" \
+               "void test_baud(void) { spi_read_ExpectAndReturn(41); TEST_ASSERT_EQUAL_INT(42, uart_config_baud()); }\n" )
+      end
+
+      # An application header sharing the Partial's basename, which a tested module's header uses
+      def app_config_beside(partial_macro, body)
+        write( 'src/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define GAIN 3\n#endif\n" )
+        write( 'include/drivers/uart/config.h', "#ifndef UART_CONFIG_H\n#define UART_CONFIG_H\nint uart_config_baud(void);\n#endif\n" )
+        write( 'src/drivers/uart/config.c', "#include \"drivers/uart/config.h\"\nint uart_config_baud(void) { return 9600; }\n" )
+        write( 'src/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n#include \"config.h\"\ntypedef struct motor { int v[GAIN]; } motor_t;\nint motor_run(void);\n#endif\n" )
+        write( 'src/motor.c', "#include \"motor.h\"\nint motor_run(void) { motor_t m = {{0}}; (void)m; return GAIN; }\n" )
+        write( 'test/test_motor.c', PARTIALS_DISAMBIG_PREAMBLE +
+               "#include TEST_PARTIAL_PUBLIC_MODULE(motor)\n#include #{partial_macro}\n" \
+               "void setUp(void) {}\nvoid tearDown(void) {}\nvoid test_run(void) { TEST_ASSERT_EQUAL_INT(3, motor_run()); #{body} }\n" )
+      end
+
+      # Fallback reads an #include as written, which the compiler looks for beside the file
+      # holding it before any search path
+      [false, true].each do |fallback|
+        it "takes a module's own header from beside its source#{' under fallback preprocessing' if fallback}" do
+          in_project do
+            include_paths( ['src/**'] )
+            @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => fallback } } )
+            write( 'src/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define GAIN 3\n#endif\n" )
+            write( 'src/drivers/uart/config.h', "#ifndef UART_CONFIG_H\n#define UART_CONFIG_H\n" \
+                                                "typedef struct uart_cfg { int baud; } uart_cfg_t;\nint uart_config_baud(void);\n#endif\n" )
+            write( 'src/drivers/uart/uses.h', "#ifndef UART_USES_H\n#define UART_USES_H\nint uart_use(uart_cfg_t *c);\n#endif\n" )
+            write( 'src/drivers/uart/config.c', "#include \"config.h\"\n#include \"uses.h\"\nint uart_use(uart_cfg_t *c) { return c->baud; }\n" \
+                                                "int uart_config_baud(void) { uart_cfg_t c = { 11 }; return uart_use(&c); }\n" )
+            write( 'test/test_uart.c', PARTIALS_DISAMBIG_PREAMBLE + "#include TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)\n" \
+                                       "void setUp(void) {}\nvoid tearDown(void) {}\nvoid test_baud(void) { TEST_ASSERT_EQUAL_INT(11, uart_config_baud()); }\n" )
+
+            build_passing
+          end
+        end
+      end
+
+      [false, true].each do |fallback|
+        it "mocks a same-named module a tested Partial includes by its path#{' under fallback preprocessing' if fallback}" do
+          in_project do
+            include_paths( ['src/**', 'include/**'] )
+            @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => fallback } } )
+            same_named_configs
+
+            build_passing
+          end
+        end
+      end
+
+      # A bare #include under fallback names the header the test's search paths reach first
+      [false, true].each do |fallback|
+        mode = fallback ? ' under fallback preprocessing' : ''
+
+        it "keeps an application header sharing the basename of a mocked Partial#{mode}" do
+          in_project do
+            include_paths( ['src/**', 'include/**'] )
+            @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => fallback } } )
+            app_config_beside( 'MOCK_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)',
+                               'uart_config_baud_ExpectAndReturn(2); TEST_ASSERT_EQUAL_INT(2, uart_config_baud());' )
+
+            build_passing
+          end
+        end
+
+        it "keeps an application header sharing the basename of a tested Partial#{mode}" do
+          in_project do
+            include_paths( ['src/**', 'include/**'] )
+            @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => fallback } } )
+            app_config_beside( 'TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)', 'TEST_ASSERT_EQUAL_INT(9600, uart_config_baud());' )
+
+            build_passing
+          end
+        end
+      end
+
+      # Fallback anchors a `..` #include to its file's own directory, which may name no file at
+      # all when the compiler finds the header through a search path
+      it "takes a `..` #include fallback can't anchor for a module's own header" do
+        in_project do
+          include_paths( ['include/**'] )
+          @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => true } } )
+          write( 'include/hw/port.h', "#ifndef PORT_H\n#define PORT_H\ntypedef struct port_cfg { int pin; } port_cfg_t;\nint port_open(void);\n#endif\n" )
+          write( 'include/hw/sub/placeholder.h', "#ifndef PLACEHOLDER_H\n#define PLACEHOLDER_H\n#endif\n" )
+          write( 'src/hw/port.c', "#include \"../port.h\"\nint port_open(void) { port_cfg_t c = { 7 }; return c.pin; }\n" )
+          write( 'test/test_port.c', PARTIALS_DISAMBIG_PREAMBLE + "#include TEST_PARTIAL_PUBLIC_MODULE_AT(hw, port)\n" \
+                                     "void setUp(void) {}\nvoid tearDown(void) {}\nvoid test_open(void) { TEST_ASSERT_EQUAL_INT(7, port_open()); }\n" )
+
+          build_passing
         end
       end
     end

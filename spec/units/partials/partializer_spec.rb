@@ -62,10 +62,11 @@ describe Partializer do
   # A stand-in for another partialized module's config. Only the two visibility types matter to
   # include remapping: a non-nil mocks type means that module has a generated interface header
   # to redirect to.
-  def make_partial_config(mocks_type: nil, tests_type: nil)
+  def make_partial_config(mocks_type: nil, tests_type: nil, header: nil)
     OpenStruct.new(
       mocks: OpenStruct.new(type: mocks_type),
-      tests: OpenStruct.new(type: tests_type)
+      tests: OpenStruct.new(type: tests_type),
+      header: OpenStruct.new(filepath: header)
     )
   end
 
@@ -549,6 +550,10 @@ describe Partializer do
   ###
 
   context "#plan_carry" do
+    before(:each) do
+      allow(@file_wrapper).to receive(:read).with( 'src/engine.h' ).and_return( "int engine_get(void);\n" )
+    end
+
     it "returns the helper's plan for the module and both selections" do
       c_module = CExtractorTypes::CModule.new
       impl     = [Partials.manufacture_function_definition( name: 'get', signature: 'int get(void)', code_block: '' )]
@@ -585,8 +590,9 @@ describe Partializer do
       plan
     end
 
-    def carry_with(plan)
+    def carry_with(plan, pragma_once: false)
       allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+      allow(@preprocessinator_reconstructor).to receive(:pragma_once?).and_return( pragma_once )
       @partializer.plan_carry(
         test: 'test_engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil, header_guarded: true,
         config: carry_config( 'engine' )
@@ -709,6 +715,31 @@ describe Partializer do
         LogLabels::NOTICE
       )
       expect(@loginator).to have_received(:log).once
+    end
+
+    # Ceedling stands a Partial in for a header only by defining its include guard
+    it "explains that a #pragma once module header keeps its helpers out, as the toolchain guidance does" do
+      plan = plan_for( skipped: [['clamp', :unguarded_helper], ['counter', :unguarded_helper]] )
+
+      allow(@loginator).to receive(:log)
+
+      carry_with( plan, pragma_once: true )
+
+      expect(@loginator).to have_received(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_engine::engine ⏩️ Not carrying helpers `clamp()`, `counter()` from src/engine.h.
+
+        HOW THIS HAPPENS:
+        • Selected functions call these helpers.
+        • src/engine.h uses `#pragma once`, which is not an include guard.
+        • A Partial stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+        • Without one, a carried copy could collide with the real one.
+
+        OPTIONS:
+        1. Replace `#pragma once` in src/engine.h with an include guard so the Partial can stand in for it.
+        2. Select the helpers with `+name` (for example `+clamp`). This works only when no other header this module includes pulls in src/engine.h.
+
+        See the docs on Partials conventions.
+      NOTICE
     end
 
     it "words the unguarded-header notice for a single helper" do
@@ -969,6 +1000,245 @@ describe Partializer do
   end
 
   ###
+  ### plan_interface_extras()
+  ###
+
+  context "#plan_interface_extras" do
+    before(:each) do
+      @config = OpenStruct.new( module: 'sensor', fallback?: false, header: OpenStruct.new( filepath: 'src/sensor.h' ) )
+      allow(@file_wrapper).to receive(:read).with( 'src/sensor.h' ).and_return( "int sensor_read(void);\n" )
+      allow(@preprocessinator_reconstructor).to receive(:pragma_once?).with( "int sensor_read(void);\n" ).and_return( false )
+    end
+
+    def plan_with(extras)
+      allow(@partializer_helper).to receive(:plan_interface_extras)
+        .with( c_module: :module, interface: :interface, fallback: false, header_guarded: true ).and_return( extras )
+
+      return @partializer.plan_interface_extras(
+        test: 'test_sensor', c_module: :module, interface: :interface, header_guarded: true, config: @config
+      )
+    end
+
+    it "lists what the mock keeps at DEBUG" do
+      extras = Partials::InterfaceExtras.new( items: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'table', decorators: ['static'] ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'count', decorators: ['extern'] ),
+        CExtractorTypes::CFunctionDeclaration.new( name: 'init' )
+      ] )
+
+      expect(@loginator).to receive(:log_list).with(
+        ['`twice()` (helper)', '`table` (static variable)', '`count` (extern declaration)', '`init()` (prototype)'],
+        'Kept in the mock of Partial test_sensor::sensor:', Verbosity::DEBUG
+      )
+
+      expect( plan_with( extras ) ).to equal( extras )
+    end
+
+    it "explains what an unguarded header's mock leaves behind" do
+      extras = Partials::InterfaceExtras.new( withheld: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'table', decorators: ['static'] )
+      ] )
+
+      expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_sensor::sensor ⏩️ Its mock leaves helper `twice()` and variable `table` from src/sensor.h behind.
+        src/sensor.h has no include guard. Without a guard the mock can't stand in for the header everywhere
+        it's included, and a copy could collide with the real one. Code that uses these compiles only where
+        another #include brings in the real header.
+
+        Give src/sensor.h an include guard so the mock keeps them.
+
+        See the docs on Partials conventions.
+      NOTICE
+
+      plan_with( extras )
+    end
+
+    # Ceedling stands a mock in for a header only by defining its include guard
+    it "explains that a #pragma once header's mock leaves items behind, since #pragma once is not an include guard" do
+      allow(@preprocessinator_reconstructor).to receive(:pragma_once?).with( "int sensor_read(void);\n" ).and_return( true )
+      extras = Partials::InterfaceExtras.new( withheld: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'table', decorators: ['static'] )
+      ] )
+
+      expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_sensor::sensor ⏩️ Its mock leaves helper `twice()` and variable `table` from src/sensor.h behind.
+
+        HOW THIS HAPPENS:
+        • src/sensor.h uses `#pragma once`, which is not an include guard.
+        • A mock stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+        • Without one, a kept copy could collide with the real one, so the mock leaves them out.
+        • Code that uses these compiles only where another #include brings in the real header.
+
+        Replace `#pragma once` in src/sensor.h with an include guard so the mock keeps them.
+
+        See the docs on Partials conventions.
+      NOTICE
+
+      plan_with( extras )
+    end
+
+    it "names one item it leaves behind in the singular" do
+      extras = Partials::InterfaceExtras.new( withheld: [CExtractorTypes::CFunctionDefinition.new( name: 'twice' )] )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'Its mock leaves helper `twice()` from src/sensor.h behind.' )
+        expect( notice ).to include( 'Code that uses it compiles' )
+        expect( notice ).to include( 'so the mock keeps it.' )
+      end
+
+      plan_with( extras )
+    end
+
+    it "names several helpers and variables in the plural" do
+      extras = Partials::InterfaceExtras.new( withheld: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ), CExtractorTypes::CFunctionDefinition.new( name: 'half' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'a' ), CExtractorTypes::CVariableDeclaration.new( name: 'b' )
+      ] )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'Its mock leaves helpers `twice()`, `half()` and variables `a`, `b` from src/sensor.h behind.' )
+      end
+
+      plan_with( extras )
+    end
+
+    it "says nothing when the mock withholds nothing" do
+      expect(@loginator).not_to receive(:log)
+
+      plan_with( Partials::InterfaceExtras.new )
+    end
+  end
+
+  ###
+  ### explain_tested_mock()
+  ###
+
+  context "#explain_tested_mock" do
+    before(:each) do
+      @config   = OpenStruct.new( module: 'port', fallback?: false, header: OpenStruct.new( filepath: 'src/port.h', includes: [] ),
+                                  source: OpenStruct.new( includes: [UserInclude.new( 'port.h' )] ) )
+      @engine   = OpenStruct.new( module: 'engine', header: OpenStruct.new( includes: [] ),
+                                  source: OpenStruct.new( includes: [UserInclude.new( 'engine.h' ), UserInclude.new( 'port.h' )],
+                                                          assembled_filepath: 'pp/engine.c' ) )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return port_twice(port_read()) + port_k; }' )
+      @extras   = Partials::InterfaceExtras.new( items: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'port_twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'port_k', decorators: ['static'] )
+      ] )
+      allow(@partializer_helper).to receive(:plan_interface_extras)
+        .with( c_module: :module, interface: :interface, fallback: false, header_guarded: true ).and_return( @extras )
+      allow(@partializer_helper).to receive(:names_in) { |text| Set.new( text.scan( /[A-Za-z_]\w*/ ) ) }
+    end
+
+    def explain(partials)
+      @partializer.explain_tested_mock(
+        test: 'test_engine', c_module: :module, interface: :interface, header_guarded: true, config: @config, partials: partials
+      )
+    end
+
+    # A module tested and mocked in one test keeps its header's content in its own implementation
+    it "explains what other Partials including a tested and mocked module's header go without" do
+      expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_engine::port ⏩️ Other Partials in this test include src/port.h's mock, which leaves helper `port_twice()` and variable `port_k` out.
+
+        HOW THIS HAPPENS:
+        • A module both tested and mocked in one test keeps its header's helpers and static variables in its own implementation.
+        • Every other Partial that includes src/port.h gets the mock's interface in its place, which declares only the mocked functions.
+        • Code in those Partials that uses them fails to compile or link.
+
+        OPTIONS:
+        1. Test port in a test file of its own, and only mock it in this one.
+        2. Move what the other Partials use into a header that src/port.h includes, which the mock keeps.
+
+        See the docs on Partials conventions.
+      NOTICE
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "lists helpers, variables and prototypes as one list" do
+      @extras.items << CExtractorTypes::CFunctionDeclaration.new( name: 'port_scaled' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int g(void) { return port_twice(port_k) + port_scaled(); }' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves helper `port_twice()`, variable `port_k` and prototype `port_scaled()` out.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    # Only what another Partial's code uses can fail there
+    it "names only what the other Partials use, in the singular for one" do
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return port_twice(port_read()); }' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves helper `port_twice()` out.' )
+        expect( notice ).to include( 'Code in those Partials that uses it fails to compile or link.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "says nothing when the other Partials use none of it" do
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return port_read(); }' )
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "reads a Partial that includes the header from its own header" do
+      @engine.source.includes = [UserInclude.new( 'engine.h' )]
+      @engine.header          = OpenStruct.new( includes: [UserInclude.new( 'port.h' )], assembled_filepath: 'pp/engine.h' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( '' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.h').and_return( 'static inline int e(void) { return port_k; }' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves variable `port_k` out.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    # A use through a macro shows only in the expansion
+    it "reads another Partial's expansion where it has one" do
+      @engine.source.expansion_filepath = 'pp/engine.expanded.c'
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return PORT_TWICE(1); }' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.expanded.c').and_return( 'int engine_get(void) { return port_twice(1); }' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves helper `port_twice()` out.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "never counts the module itself among the Partials including its header" do
+      @config.source.assembled_filepath = 'pp/port.c'
+      allow(@file_wrapper).to receive(:read).with('pp/port.c').and_return( 'int port_scaled(void) { return port_twice(port_k); }' )
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'port' => @config } )
+    end
+
+    it "says nothing when no other Partial includes the module's header" do
+      @engine.source.includes = [UserInclude.new( 'engine.h' )]
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "says nothing when the mock would leave nothing out" do
+      allow(@partializer_helper).to receive(:plan_interface_extras).and_return( Partials::InterfaceExtras.new )
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+  end
+
+  ###
   ### remap_implementation_header_includes()
   ###
 
@@ -1044,7 +1314,7 @@ describe Partializer do
     it "removes partialized module headers from includes" do
       includes = [UserInclude.new('header1.h'), UserInclude.new('partial_module.h'), UserInclude.new('header2.h')]
       partials = {
-        'partial_module' => { types: [:test_public] }
+        'partial_module' => make_partial_config(tests_type: :public)
       }
       result = @partializer.remap_implementation_header_includes(
         name: 'module',
@@ -1256,19 +1526,27 @@ describe Partializer do
       ])
     end
 
-    it "appends the shared types header when the module's own header wasn't in the includes list to begin with" do
-      includes = [UserInclude.new('header1.h')]
-      result = @partializer.remap_implementation_header_includes(
+    # A source that never includes its own header leaves the header's place after its last
+    # include. The types header stands there, ahead of the declarations that use its types.
+    it "puts the types header after the source's includes when the source never includes the module's header" do
+      groups = @partializer.remap_implementation_header_includes(
         name: 'module',
-        source_includes: includes,
-        partials: {},
-        types_header: 'ceedling_partial_module_types.h'
-      ).to_a
+        source_includes: [UserInclude.new( 'a.h' ), UserInclude.new( 'b.h' )],
+        header_includes: [UserInclude.new( 'c.h' )], partials: {}, types_header: 'module_types.h'
+      )
 
-      expect(result).to eq([
-        UserInclude.new('header1.h'),
-        UserInclude.new('ceedling_partial_module_types.h')
-      ])
+      expect( groups.leading.map( &:filename ) ).to eq( ['a.h', 'b.h', 'module_types.h', 'c.h'] )
+      expect( groups.following ).to eq( [] )
+    end
+
+    it "puts a header-only module's types header ahead of its declarations" do
+      groups = @partializer.remap_implementation_header_includes(
+        name: 'module', source_includes: [], header_includes: [UserInclude.new( 'base.h' )], partials: {},
+        types_header: 'module_types.h'
+      )
+
+      expect( groups.leading.map( &:filename ) ).to eq( ['module_types.h', 'base.h'] )
+      expect( groups.following ).to eq( [] )
     end
   end
 
@@ -1287,6 +1565,51 @@ describe Partializer do
 
       expect( groups.leading.map( &:filename ) ).to eq( ['config.h', 'module_types.h', 'base.h'] )
       expect( groups.following.map( &:filename ) ).to eq( ['log.h'] )
+    end
+
+    # The split comes at the module's own header, not at an unrelated header sharing its basename
+    it "splits the groups at a directory-named module's own header" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'drivers/uart/config',
+        source_includes: [UserInclude.new( 'src/config.h' ), UserInclude.new( 'a.h' ), UserInclude.new( 'include/drivers/uart/config.h' ), UserInclude.new( 'b.h' )],
+        header_includes: [UserInclude.new( 'h.h' )], types_header: 'module_types.h',
+        partials: { 'drivers/uart/config' => make_partial_config(mocks_type: :public, header: 'include/drivers/uart/config.h') }
+      )
+
+      expect( groups.leading.map( &:filepath ) ).to eq( ['src/config.h', 'a.h', 'module_types.h', 'h.h'] )
+      expect( groups.following.map( &:filepath ) ).to eq( ['b.h'] )
+    end
+
+    # A tested Partial's header is dropped from another module's interface, and only its header
+    it "keeps an unpartialized header sharing a tested Partial's basename" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'motor', source_includes: [UserInclude.new( 'src/motor.h' )],
+        header_includes: [UserInclude.new( 'src/config.h' ), UserInclude.new( 'include/drivers/uart/config.h' )],
+        partials: { 'drivers/uart/config' => make_partial_config(tests_type: :public, header: 'include/drivers/uart/config.h') }
+      )
+
+      expect( groups.leading.map( &:filepath ) ).to eq( ['src/config.h'] )
+    end
+
+    it "puts a header-only module's types header ahead of its declarations" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'module', source_includes: [], header_includes: [UserInclude.new( 'base.h' )], partials: {},
+        types_header: 'module_types.h'
+      )
+
+      expect( groups.leading.map( &:filename ) ).to eq( ['module_types.h', 'base.h'] )
+      expect( groups.following ).to eq( [] )
+    end
+
+    it "puts the types header after the source's includes when the source never includes the module's header" do
+      groups = @partializer.remap_interface_header_includes(
+        name: 'module',
+        source_includes: [UserInclude.new( 'a.h' ), UserInclude.new( 'b.h' )],
+        header_includes: [UserInclude.new( 'c.h' )], partials: {}, types_header: 'module_types.h'
+      )
+
+      expect( groups.leading.map( &:filename ) ).to eq( ['a.h', 'b.h', 'module_types.h', 'c.h'] )
+      expect( groups.following ).to eq( [] )
     end
 
     it "returns empty array when input is empty and no partials" do
@@ -1554,6 +1877,227 @@ describe Partializer do
       expect( result.map( &:filename ) ).to eq(
         ['first.h', 'ceedling_partial_other_interface.h', 'ceedling_partial_module_impl.h', 'last.h']
       )
+    end
+
+    # A source that never includes its own header is read as including it last, so the
+    # interface header still follows the implementation header
+    it "carries this module's own interface header when its source never includes its header" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('module').and_return('ceedling_partial_module_interface.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('first.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public, mocks_type: :private) }
+      )
+
+      expect( result.map( &:filename ) ).to eq(
+        ['first.h', 'ceedling_partial_module_impl.h', 'ceedling_partial_module_interface.h']
+      )
+    end
+
+    # A module named by directory is keyed by that directory, but its header is included by name
+    it "puts the interface header of a mocked dependency named by directory where its real header was" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+      allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+        .with('hw/port').and_return('hw/ceedling_partial_port_interface.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('port.h')],
+        partials: { 'hw/port' => make_partial_config(mocks_type: :private, header: 'src/hw/port.h') }
+      )
+
+      expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_module_impl.h', 'hw/ceedling_partial_port_interface.h'] )
+    end
+
+    # Two modules sharing a basename are told apart by where each header lives
+    context "with a mocked module sharing this module's basename" do
+      before do
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .with('drivers/uart/config').and_return('drivers/uart/ceedling_partial_config_impl.h')
+        allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+          .with('drivers/spi/config').and_return('drivers/spi/ceedling_partial_config_interface.h')
+        @partials = {
+          'drivers/uart/config' => make_partial_config(tests_type: :public, header: 'src/drivers/uart/config.h'),
+          'drivers/spi/config'  => make_partial_config(mocks_type: :private, header: 'src/drivers/spi/config.h')
+        }
+      end
+
+      it "puts the mocked module's interface header where its real header was" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'drivers/uart/config', partials: @partials,
+          includes: [UserInclude.new('src/drivers/uart/config.h'), UserInclude.new('src/drivers/spi/config.h')]
+        )
+
+        expect( result.map( &:filepath ) ).to eq(
+          ['drivers/uart/ceedling_partial_config_impl.h', 'drivers/spi/ceedling_partial_config_interface.h']
+        )
+      end
+
+      it "replaces the mocked module's header in place when it comes first" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'drivers/uart/config', partials: @partials,
+          includes: [UserInclude.new('src/drivers/spi/config.h'), UserInclude.new('src/drivers/uart/config.h'), UserInclude.new('last.h')]
+        )
+
+        expect( result.map( &:filepath ) ).to eq(
+          ['drivers/spi/ceedling_partial_config_interface.h', 'drivers/uart/ceedling_partial_config_impl.h', 'last.h']
+        )
+      end
+
+      # A case-insensitive filesystem reaches the module's header by any case of its path
+      it "takes a case variant of this module's own header path for its header" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'drivers/uart/config', partials: @partials, includes: [UserInclude.new('src/drivers/uart/Config.h')]
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['drivers/uart/ceedling_partial_config_impl.h'] )
+      end
+
+      it "never takes this module's own header for the mocked module's" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'drivers/uart/config', partials: @partials, includes: [UserInclude.new('src/drivers/uart/config.h')]
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['drivers/uart/ceedling_partial_config_impl.h'] )
+      end
+    end
+
+    # A module named by directory claims only its own header, even with no other Partial
+    # sharing its basename
+    context "with an unpartialized header sharing a Partial's basename" do
+      before do
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .with('motor').and_return('ceedling_partial_motor_impl.h')
+        allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+          .with('drivers/uart/config').and_return('drivers/uart/ceedling_partial_config_interface.h')
+      end
+
+      it "keeps that header where a mocked Partial would take it" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'motor', includes: [UserInclude.new('src/motor.h'), UserInclude.new('src/config.h')],
+          partials: { 'drivers/uart/config' => make_partial_config(mocks_type: :public, header: 'include/drivers/uart/config.h') }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_motor_impl.h', 'src/config.h'] )
+      end
+
+      it "places a mocked Partial's interface header at its own header, not at that header" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'motor',
+          includes: [UserInclude.new('src/config.h'), UserInclude.new('include/drivers/uart/config.h'), UserInclude.new('src/motor.h')],
+          partials: { 'drivers/uart/config' => make_partial_config(mocks_type: :public, header: 'include/drivers/uart/config.h') }
+        )
+
+        expect( result.map( &:filepath ) ).to eq(
+          ['src/config.h', 'drivers/uart/ceedling_partial_config_interface.h', 'ceedling_partial_motor_impl.h']
+        )
+      end
+
+      it "keeps that header where a tested Partial's header would be dropped" do
+        groups = @partializer.remap_types_header_includes(
+          name: 'motor', source_includes: [UserInclude.new('src/motor.h')], header_includes: [UserInclude.new('src/config.h')],
+          partials: { 'drivers/uart/config' => make_partial_config(tests_type: :public, header: 'include/drivers/uart/config.h') }
+        )
+
+        expect( groups.leading.map( &:filepath ) ).to eq( ['src/config.h'] )
+      end
+    end
+
+    # Fallback anchors a `..` #include to its file's own directory. One that names no file there
+    # was found elsewhere through a search path, so its path says nothing and its filename decides.
+    it "takes an anchored #include naming no file for a directory-named module's own header" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('hw/port').and_return('hw/ceedling_partial_port_impl.h')
+      allow(@file_wrapper).to receive(:exist?).with('src/port.h').and_return( false )
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'hw/port', includes: [UserInclude.new( 'src/port.h', directory_relative: true )],
+        partials: { 'hw/port' => make_partial_config(tests_type: :public, header: 'include/hw/port.h') }
+      )
+
+      expect( result.map( &:filepath ) ).to eq( ['hw/ceedling_partial_port_impl.h'] )
+    end
+
+    it "matches an anchored #include naming a file by its path" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('hw/port').and_return('hw/ceedling_partial_port_impl.h')
+      allow(@file_wrapper).to receive(:exist?).with('src/port.h').and_return( true )
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'hw/port', includes: [UserInclude.new( 'src/port.h', directory_relative: true )],
+        partials: { 'hw/port' => make_partial_config(tests_type: :public, header: 'include/hw/port.h') }
+      )
+
+      expect( result.map( &:filepath ) ).to eq( ['src/port.h', 'hw/ceedling_partial_port_impl.h'] )
+    end
+
+    # A module named without a directory is named by its basename, however an #include spells
+    # the path to its header
+    context "with this module's own header spelled another way" do
+      before do
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .with('module').and_return('ceedling_partial_module_impl.h')
+        allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+          .with('shared/module').and_return('shared/ceedling_partial_module_impl.h')
+      end
+
+      it "takes an absolute #include of a header outside the project for its own header" do
+        header = '../shared/module.h'
+        result = @partializer.remap_implementation_source_includes(
+          name: 'module', includes: [UserInclude.new( ProjectPaths.absolute( header ) )],
+          partials: { 'module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_module_impl.h'] )
+      end
+
+      # A module named by directory is matched by path, so both sides are compared absolutely
+      it "takes an absolute #include of a directory-named module's header outside the project for its own" do
+        header = '../shared/module.h'
+        result = @partializer.remap_implementation_source_includes(
+          name: 'shared/module', includes: [UserInclude.new( ProjectPaths.absolute( header ) )],
+          partials: { 'shared/module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['shared/ceedling_partial_module_impl.h'] )
+      end
+
+      it "takes a relative #include of a directory-named module's header the project names absolutely" do
+        header = ProjectPaths.absolute( '../shared/module.h' )
+        result = @partializer.remap_implementation_source_includes(
+          name: 'shared/module', includes: [UserInclude.new( '../shared/module.h' )],
+          partials: { 'shared/module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['shared/ceedling_partial_module_impl.h'] )
+      end
+
+      # A case-insensitive filesystem reaches the header by either case of its absolute path
+      it "takes a case variant of a directory-named module's absolute header path for its own" do
+        header = '../shared/module.h'
+        result = @partializer.remap_implementation_source_includes(
+          name: 'shared/module', includes: [UserInclude.new( ProjectPaths.absolute( header ).sub( 'shared', 'SHARED' ) )],
+          partials: { 'shared/module' => make_partial_config(tests_type: :public, header: header) }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['shared/ceedling_partial_module_impl.h'] )
+      end
+
+      # Fallback preprocessing anchors a `..` #include to the file's own directory, which need
+      # not be where the compiler finds the header
+      it "takes a fallback-anchored #include for its own header" do
+        result = @partializer.remap_implementation_source_includes(
+          name: 'module', includes: [UserInclude.new( 'src/module.h', directory_relative: true )],
+          partials: { 'module' => make_partial_config(tests_type: :public, header: 'include/module.h') }
+        )
+
+        expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_module_impl.h'] )
+      end
     end
 
     it "carries no interface header for a module that is tested but not mocked" do
@@ -1999,6 +2543,40 @@ describe Partializer do
         groups = types_groups( ['module.h', 'base.h'], ['base.h'] )
 
         expect( filenames( groups ) ).to eq( [['base.h'], []] )
+      end
+
+      # The place a missing own header holds is no header, so it can't name another module
+      it "names no mocked module through the place a missing own header holds" do
+        allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+          .with('calibration').and_return('ceedling_partial_calibration_interface.h')
+
+        groups = @partializer.remap_types_header_includes(
+          name: 'sensors/Calibration', source_includes: [], header_includes: [UserInclude.new( 'base.h' )],
+          partials: {
+            'sensors/Calibration' => make_partial_config(mocks_type: :private, header: 'src/sensors/Calibration.h'),
+            'calibration'         => make_partial_config(mocks_type: :private, header: 'src/calibration.h')
+          }
+        )
+
+        expect( filenames( groups ) ).to eq( [['base.h'], []] )
+      end
+
+      # A bare name claims its basename, but not a header that a same-named module named by
+      # directory claims by its path
+      it "leaves a same-named module named by directory its own header" do
+        allow(@file_path_utils).to receive(:form_partial_interface_header_filename)
+          .with('drivers/zspi/config').and_return('drivers/zspi/ceedling_partial_config_interface.h')
+
+        groups = @partializer.remap_types_header_includes(
+          name: 'config', source_includes: [], header_includes: [UserInclude.new( 'include/drivers/zspi/config.h' )],
+          partials: {
+            'config'              => make_partial_config(tests_type: :public, header: 'include/drivers/uart/config.h'),
+            'drivers/zspi/config' => make_partial_config(mocks_type: :private, header: 'include/drivers/zspi/config.h')
+          }
+        )
+
+        expect( groups.leading.map( &:filepath ) ).to eq( ['drivers/zspi/ceedling_partial_config_interface.h'] )
+        expect( groups.following ).to eq( [] )
       end
 
       it "leaves nothing to follow when the source never includes the module's header" do

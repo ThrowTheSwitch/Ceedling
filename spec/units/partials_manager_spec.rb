@@ -11,6 +11,7 @@ require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_config'
 require 'ceedling/includes/includes'
+require 'ceedling/includes/header_search'
 
 describe PartialsManager do
   before(:each) do
@@ -23,6 +24,12 @@ describe PartialsManager do
     @dependinator     = double( "Dependinator" )
     @file_path_utils  = double( "FilePathUtils" )
     @file_wrapper     = double( "FileWrapper" )
+    @mock_locator     = double( "MockLocator" )
+    @header_search    = double( "HeaderSearch" )
+
+    allow(@mock_locator).to receive(:header_search).and_return( @header_search )
+    allow(@header_search).to receive(:header_candidates).and_return( [] )
+    allow(@header_search).to receive(:at).and_return( nil )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
@@ -48,7 +55,8 @@ describe PartialsManager do
         :generator        => @generator,
         :dependinator     => @dependinator,
         :file_path_utils  => @file_path_utils,
-        :file_wrapper     => @file_wrapper
+        :file_wrapper     => @file_wrapper,
+        :mock_locator     => @mock_locator
       }
     )
   end
@@ -84,6 +92,8 @@ describe PartialsManager do
       allow(@partializer).to receive(:remap_types_header_includes).and_return( Partials::IncludeGroups.new )
       allow(@partializer).to receive(:extract_module_include_guard).and_return( 'FOO_H' )
       allow(@partializer).to receive(:plan_carry).and_return( Partials::CarryPlan.new )
+      allow(@partializer).to receive(:plan_interface_extras).and_return( Partials::InterfaceExtras.new )
+      allow(@partializer).to receive(:explain_tested_mock)
       allow(@configurator).to receive(:partials_suppress_redundant_decls).and_return( true )
       allow(@configurator).to receive(:partials_extern_variables).and_return( :weak )
       allow(@generator).to receive(:generate_partial_types)
@@ -94,6 +104,7 @@ describe PartialsManager do
       allow(@file_path_utils).to receive(:form_partial_implementation_source_filename).and_return( 'ceedling_partial_Foo_impl.c' )
       allow(@file_path_utils).to receive(:form_partial_implementation_header_filename).and_return( 'ceedling_partial_Foo_impl.h' )
       allow(@file_path_utils).to receive(:form_partial_interface_header_filename).and_return( 'ceedling_partial_Foo_interface.h' )
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).and_return( 'ceedling_partial_Foo_extras.h' )
 
       allow(@dependinator).to receive(:register)
       allow(@dependinator).to receive(:stale?).and_return( true )
@@ -201,6 +212,80 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
       expect(@partializer).not_to receive(:plan_carry)
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # A mock-only Partial's interface stands in for the real header, so it keeps the rest of it
+    it "plans what a mock-only Partial's interface keeps from the module, its selection and the guard" do
+      interface = [double("FunctionDeclaration")]
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( interface )
+
+      expect(@partializer).to receive(:plan_interface_extras).with(
+        test: 'a_test', c_module: @module_contents, interface: interface, header_guarded: true, config: @config
+      ).and_return( Partials::InterfaceExtras.new )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # The module's implementation carries what its own code uses
+    it "plans no extras for a module the test also tests" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@partializer).not_to receive(:plan_interface_extras)
+      expect(@generator).to receive(:generate_partial_interface).with( hash_including( extras: nil ) )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "explains what other Partials go without when the test both tests and mocks a module" do
+      interface = [double("FunctionDeclaration")]
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( interface )
+
+      expect(@partializer).to receive(:explain_tested_mock).with(
+        test: 'a_test', c_module: @module_contents, interface: interface, header_guarded: true, config: @config,
+        partials: @testable.partials.configs
+      )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "explains nothing for a mock-only Partial" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@partializer).not_to receive(:explain_tested_mock)
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "hands the extras to interface generation, which vouches for the extras header" do
+      extras = Partials::InterfaceExtras.new( items: [double("CFunctionDefinition")] )
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@partializer).to receive(:plan_interface_extras).and_return( extras )
+
+      expect(@generator).to receive(:generate_partial_interface).with( hash_including( extras: extras ) )
+
+      @manager.stage_generate_partials( @state )
+
+      expect(@dependinator).to have_received(:register).with(
+        'build/test/partials/a_test/ceedling_partial_Foo_interface.h',
+        hash_including( outputs: ['build/test/partials/a_test/ceedling_partial_Foo_extras.h'] )
+      )
+    end
+
+    # An extras header an earlier build left would sit beside an interface that no longer includes it
+    it "removes an extras header an earlier build left once the interface keeps nothing" do
+      extras = 'build/test/partials/a_test/ceedling_partial_Foo_extras.h'
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( nil )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      allow(@file_wrapper).to receive(:exist?).with( extras ).and_return( true )
+
+      expect(@file_wrapper).to receive(:rm_f).with( extras )
 
       @manager.stage_generate_partials( @state )
     end
@@ -427,6 +512,70 @@ describe PartialsManager do
       end
       expect(@partializer).to receive(:remap_implementation_source_includes)
         .with( hash_including( includes: @config.source.includes + @config.header.includes ) ).twice.and_return( [] )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # A real search over `tree`, a list of header paths, as IncludePathinator lists a directory
+    def header_search_over(paths, tree)
+      return HeaderSearch.new( paths, ->(dir) { tree.select { |header| File.dirname( header ) == dir }.sort } )
+    end
+
+    # The source includes both remaps of the module's includes receive
+    def expect_source_includes(includes)
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      expect(@partializer).to receive(:remap_types_header_includes)
+        .with( hash_including( source_includes: includes ) ).twice.and_return( Partials::IncludeGroups.new )
+      expect(@partializer).to receive(:remap_implementation_source_includes)
+        .with( hash_including( includes: includes ) ).twice.and_return( [] )
+    end
+
+    # A generated file writes each #include by the text the test's search paths reach its header by
+    it "hands the remaps each include spelled as the test's search paths reach its header" do
+      @config.source.includes = [UserInclude.new( 'src/drivers/foo.h' )]
+      allow(@mock_locator).to receive(:header_search).and_return( header_search_over( ['src'], ['src/drivers/foo.h'] ) )
+
+      expect_source_includes( [UserInclude.new( 'src/drivers/foo.h', include_path: 'drivers/foo.h' )] )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # A preprocessor's #include holds the path the compiler found its header by
+    it "spells a preprocessed #include by the header the compiler found" do
+      @config.source.includes = [UserInclude.new( 'include/config.h' )]
+      allow(@mock_locator).to receive(:header_search)
+        .and_return( header_search_over( ['include', 'third_party/mylib'], ['include/config.h', 'third_party/mylib/include/config.h'] ) )
+
+      expect_source_includes( [UserInclude.new( 'include/config.h', include_path: 'config.h' )] )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Fallback's text scan holds an #include as written, which the compiler looks for beside the
+    # file holding it before any search path
+    it "spells a fallback #include by the header beside the file holding it" do
+      @config.source = Partials::ConfigFileInfo.new( filepath: 'src/drivers/uart/config.c', fallback: true, includes: [UserInclude.new( 'config.h' )] )
+      allow(@mock_locator).to receive(:header_search)
+        .and_return( header_search_over( ['src', 'src/drivers/uart'], ['src/config.h', 'src/drivers/uart/config.h'] ) )
+
+      expect(@partializer).to receive(:remap_types_header_includes) do |source_includes:, **|
+        expect( source_includes.map( &:filepath ) ).to eq( ['src/drivers/uart/config.h'] )
+        Partials::IncludeGroups.new
+      end.twice
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    it "searches once per test, however many Partials it holds" do
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
+      @testable.partials.configs = { 'Foo' => @config, 'Bar' => @config.dup.tap { |c| c.module = 'Bar' } }
+
+      expect(@mock_locator).to receive(:header_search).with( @testable ).once.and_return( @header_search )
 
       @manager.stage_generate_partials( @state )
     end
@@ -662,10 +811,11 @@ describe PartialsManager do
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
       allow(@file_wrapper).to receive(:exist?).and_return( true )
-
-      expect(@file_wrapper).not_to receive(:rm_f)
+      allow(@file_wrapper).to receive(:rm_f)
 
       @manager.stage_generate_partials( @state )
+
+      expect(@file_wrapper).not_to have_received(:rm_f).with( 'build/test/partials/a_test/ceedling_partial_Foo_types.h' )
     end
 
     # Nothing else can vouch for what the module's files would generate

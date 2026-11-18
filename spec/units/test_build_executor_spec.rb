@@ -1503,12 +1503,24 @@ describe TestBuildExecutor do
         :directives_only_filepath => nil
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
+      allow(@executor.instance_variable_get( :@mock_locator )).to receive(:header_search).and_return( double( 'HeaderSearch' ) )
     end
 
     it "preprocesses and marks fresh the mockable header when the dependency tracker reports it stale" do
       allow(@dependinator).to receive(:stale?).and_return( true )
       expect(@preprocessinator).to receive(:preprocess_mockable_header_file)
       expect(@dependinator).to receive(:mark_fresh).with('build/preprocess/MockFoo.h')
+
+      @executor.stage_preprocess_mocks( @state )
+    end
+
+    it "hands mockable header preprocessing the test's header search" do
+      search = double( 'HeaderSearch' )
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@executor.instance_variable_get( :@mock_locator )).to receive(:header_search).with( @testable ).and_return( search )
+
+      expect(@preprocessinator).to receive(:preprocess_mockable_header_file).with( hash_including( include_search: search ) )
 
       @executor.stage_preprocess_mocks( @state )
     end
@@ -1687,7 +1699,7 @@ describe TestBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         'build/test/mocks/sub/MockFoo.c',
         files:   anything,
-        meta:    { cmock: { mock_prefix: 'Custom' } },
+        meta:    hash_including( cmock: { mock_prefix: 'Custom' } ),
         outputs: anything
       )
 
@@ -1711,6 +1723,67 @@ describe TestBuildExecutor do
       expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { treat_inlines: :exclude } ) )
 
       @executor.stage_generate_mocks( @state )
+    end
+
+    # CMock includes a mock's real header by the folder it is given and the header's filename.
+    # Stage 5 records another text where the test's search paths reach the header only by it.
+    context "with a respelled #include of the mock's real header" do
+      before(:each) do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@dependinator).to receive(:mark_fresh)
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+        @state.mocks_list.first.details.include_path   = 'drivers/MockFoo.h'
+        @state.mocks_list.first.details.header_include = 'foo.h'
+      end
+
+      it "has CMock include the header by that text, and passes the text on for an FFF fake" do
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( overrides: { orig_header_include: 'foo.h', orig_header_include_fmt: '#include "foo.h"' } ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "puts the text in the project's CMock :orig_header_include_fmt" do
+        allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock', orig_header_include_fmt: '#include <%s>' } )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( overrides: hash_including( orig_header_include_fmt: '#include <foo.h>' ) ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # CMock's own text reaches the copy of the header CMock writes beside the mock. A fake
+      # writes no copy.
+      it "keeps CMock's own #include under :treat_inlines :include, passing the text on for an FFF fake" do
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+
+        expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { orig_header_include: 'foo.h' } ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # A respelling is never weighed with more around it than quotes. A fake writes no format.
+      it "keeps CMock's own #include under an :orig_header_include_fmt writing more around the text, passing the text on for an FFF fake" do
+        allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock', orig_header_include_fmt: '#include "../%s"' } )
+
+        expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { orig_header_include: 'foo.h' } ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The text follows the test's search paths, which CMock's configuration doesn't hold
+      it "records the text as meta, so a change regenerates the mock" do
+        allow(@generator).to receive(:generate_mock)
+
+        expect(@dependinator).to receive(:register).with(
+          'build/test/mocks/drivers/MockFoo.c',
+          files:   anything,
+          meta:    { cmock: { mock_prefix: 'Mock' }, folder: 'drivers', header_include: 'foo.h' },
+          outputs: anything
+        )
+
+        @executor.stage_generate_mocks( @state )
+      end
     end
 
     # CMock and the runner both name a mock by the folder its #include names. CMock writes
@@ -1785,6 +1858,28 @@ describe TestBuildExecutor do
         expect(@file_wrapper).to receive(:mkdir).with( 'build/test/mocks/_up_/_up_' )
         expect(@generator).to receive(:generate_mock)
           .with( hash_including( output_path: 'build/test/mocks/_up_/x', mock_root: 'build/test/mocks/_up_/_up_', folder: '../x' ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # CMock names the mock by its folder, which an #include can change while the mock's place stays
+      it "records the folder as meta, so a change of folder regenerates the mock" do
+        include_as( 'sub/MockFoo.h' )
+        allow(@generator).to receive(:generate_mock)
+
+        expect(@dependinator).to receive(:register)
+          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, folder: 'sub' }, outputs: anything )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # A record holding no folder can't tell a mock named without one from one named by a folder it never held
+      it "records a nil folder as meta for a mock named without one" do
+        include_as( 'MockFoo.h' )
+        allow(@generator).to receive(:generate_mock)
+
+        expect(@dependinator).to receive(:register)
+          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, folder: nil }, outputs: anything )
 
         @executor.stage_generate_mocks( @state )
       end

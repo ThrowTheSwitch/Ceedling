@@ -8,6 +8,7 @@
 require 'set'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/path_matcher'
+require 'ceedling/filesystem/project_paths'
 
 class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
@@ -224,17 +225,13 @@ class Includes
   # collapsing to `<stat.h>`.
   #
   # A matched user include renders filename-only whenever its basename is unique
-  # among this reconciliation's own results -- deliberately not the literal,
-  # as-written subdirectory spelling, even when one was available. Ceedling adds
-  # every real source/test/include directory as its OWN individual search path
-  # (nothing project-root-relative), so a header's basename alone already finds the
-  # right file precisely when nothing else in this same file's own includes shares
-  # it; preserving more path than that would achieve nothing (see the class comment
-  # on `best_bare_match` for the analogous reasoning already applied to a resolved
-  # `gcc -M` bare entry) and can actively break the build the moment it reaches
-  # further than a single configured search directory ever will (there is no
-  # project-root search path for a fuller, project-relative spelling to resolve
-  # against once rendered into a generated file living somewhere else entirely).
+  # among this reconciliation's own results, not with the path its candidate resolved
+  # to. That path is project-relative, as `src/Types.h` is. From a generated file living
+  # somewhere else entirely, it reaches the header only when the project root is a search
+  # path. The reconciled list records which headers a file includes. Each file Ceedling
+  # generates from it spells them for itself, as the test's search paths reach each
+  # header (see Include#spelled_by), so a header reached only through a folder below
+  # a search path is written with that folder.
   #
   # When two or more matched user includes DO share a basename -- the genuinely
   # destructive case, since a plain basename-only render for either one would then
@@ -316,7 +313,7 @@ class Includes
 
       on_ambiguous&.call(bare_include.filepath, filepath, matched[1..]) if matched.length > 1
 
-      user_includes << user_by_filepath[filepath]
+      user_includes << as_written(user_by_filepath[filepath], bare_include, bare_filepath)
     end
 
     # Disambiguate same-basename results -- see the class comment above. A group of
@@ -334,6 +331,21 @@ class Includes
     self.sort!(reconciled)
     return reconciled
   end
+
+  # A mock's #include names it for CMock and the runner, so a mock keeps its bare entry's
+  # text, anchored as `bare_filepath` is. GCC's entry names it first, with the #include as
+  # written less a leading `./`, or a macro's expansion. Its candidate is the mock's place
+  # below its mirror root, which can carry folders the #include never wrote. A bare entry
+  # carrying more path than its candidate is the line-marker path of a computed #include,
+  # which wrote no text, so the candidate stays. Any other #include keeps its candidate, the
+  # header's real path.
+  def self.as_written(candidate, bare_include, bare_filepath)
+    return candidate unless candidate.is_a?(MockInclude)
+    return candidate if ProjectPaths.segments(bare_filepath).length > ProjectPaths.segments(candidate.filepath).length
+
+    return MockInclude.new(bare_filepath, directory_relative: bare_filepath != bare_include.filepath)
+  end
+  private_class_method :as_written
 
   # Two filepaths correspond if the shorter one's path segments equal the longer one's
   # own trailing segments, exactly, in order -- checked without regard for which side is
@@ -465,6 +477,23 @@ class Include
     return self.class.new( resolved, include_path: @include_path, directory_relative: true )
   end
 
+  # This #include by a spelling through which `search`, a HeaderSearch, reaches its header
+  # (see HeaderSearch on spellings). Its own text stays wherever it already reaches the header.
+  # Its path becomes the header, so a caller weighing which header it names reads the header
+  # itself.
+  #
+  # A `resolved` #include holds the path the compiler found its header by. One as written names
+  # the header beside its includer, in directory `from`, ahead of any a search path finds, as the
+  # compiler's quote rule does. Where no search path reaches that one, it is spelled by the header
+  # the search paths find, which the compiler finds from where a generated file lives. One whose
+  # header isn't found or reached comes back as it is.
+  def spelled_by(search, from: nil, resolved: false)
+    header     = header_in( search, from, resolved )
+    spelling   = header && search.spelling( header, preferring: include )
+    spelling ||= searched_spelling( search ) unless resolved or header.nil?
+    return spelling ? self.class.new( header, include_path: spelling, directory_relative: @directory_relative ) : self
+  end
+
   # Method specialized by subclasses
   def to_s()
     # Simple string representation of class contents with no additional formatting or #include decoration
@@ -527,6 +556,25 @@ class Include
 
   private
 
+  # The header this #include names in `search` (see spelled_by). A resolved path with no header
+  # at it, in another letter case or never resolved at all, is searched for as written.
+  def header_in(search, from, resolved)
+    found = resolved ? search.at( @filepath ) : header_beside( search, from )
+    return found || search.header_candidates( @filepath ).first
+  end
+
+  # The spelling of the header the search paths find for this #include's path, or nil
+  def searched_spelling(search)
+    found = search.header_candidates( @filepath ).first
+    return found && search.spelling( found, preferring: include )
+  end
+
+  # The header an #include as written names beside its includer, or at its anchored path
+  def header_beside(search, from)
+    path = @directory_relative ? @filepath : (from && File.join( from, @filepath ))
+    return path && search.at( path )
+  end
+
   def clean(line)
     # Remove any initial `#include` statement
     _line = line.gsub(/#\s*include/, '')
@@ -556,6 +604,11 @@ class MockInclude < UserInclude
   def to_s()
     "#include \"#{filepath}\""
   end
+
+  # A mock's #include names its generated header, which no header search holds
+  def spelled_by(_search, **)
+    return self
+  end
 end
 
 
@@ -563,5 +616,10 @@ end
 class SystemInclude < Include
   def to_s()
     "#include <#{include}>"
+  end
+
+  # The compiler finds a system header through its own directories, which no header search holds
+  def spelled_by(_search, **)
+    return self
   end
 end
