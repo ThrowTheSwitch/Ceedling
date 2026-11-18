@@ -273,7 +273,7 @@ PARTIALS_CARRY_LED_TEST = PARTIALS_CARRY_PREAMBLE + <<~C
   }
 C
 
-# A mocked module whose header has no include guard
+# A mocked module whose header uses #pragma once, which is not an include guard
 PARTIALS_CARRY_ONCE_PORT_HEADER = <<~C
   #pragma once
   static inline int oport_twice(int x) { return 2 * x; }
@@ -416,7 +416,7 @@ ceedling_system_tests do
     end
   end
 
-  it "leaves a mocked unguarded header's helpers behind with a notice, and still builds" do
+  it "leaves a mocked #pragma once header's helpers behind with a notice, and still builds" do
     in_project do
       File.write( 'src/oport.h', PARTIALS_CARRY_ONCE_PORT_HEADER )
       File.write( 'src/oengine.h', "#ifndef OENGINE_H\n#define OENGINE_H\nint oengine_get(void);\n#endif\n" )
@@ -425,6 +425,7 @@ ceedling_system_tests do
 
       output = build_passing( 1 )
       expect( output ).to include( 'Its mock leaves helper `oport_twice()` from src/oport.h behind.' )
+      expect( output ).to include( 'src/oport.h uses `#pragma once`, which is not an include guard.' )
     end
   end
 

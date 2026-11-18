@@ -976,6 +976,8 @@ describe Partializer do
   context "#plan_interface_extras" do
     before(:each) do
       @config = OpenStruct.new( module: 'sensor', fallback?: false, header: OpenStruct.new( filepath: 'src/sensor.h' ) )
+      allow(@file_wrapper).to receive(:read).with( 'src/sensor.h' ).and_return( "int sensor_read(void);\n" )
+      allow(@preprocessinator_reconstructor).to receive(:pragma_once?).with( "int sensor_read(void);\n" ).and_return( false )
     end
 
     def plan_with(extras)
@@ -1016,6 +1018,28 @@ describe Partializer do
         another #include brings in the real header.
 
         Give src/sensor.h an include guard so the mock keeps them.
+
+        See the docs on Partials conventions.
+      NOTICE
+
+      plan_with( extras )
+    end
+
+    # Ceedling stands a mock in for a header only by defining its include guard
+    it "explains that a #pragma once header's mock leaves items behind, since #pragma once is not an include guard" do
+      allow(@preprocessinator_reconstructor).to receive(:pragma_once?).with( "int sensor_read(void);\n" ).and_return( true )
+      extras = Partials::InterfaceExtras.new( withheld: [
+        CExtractorTypes::CFunctionDefinition.new( name: 'twice' ),
+        CExtractorTypes::CVariableDeclaration.new( name: 'table', decorators: ['static'] )
+      ] )
+
+      expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_sensor::sensor ⏩️ Its mock leaves helper `twice()` and variable `table` from src/sensor.h behind.
+        src/sensor.h uses `#pragma once`, which is not an include guard. Ceedling relies on include guards. Without
+        one the mock can't stand in for the header everywhere it's included, and a copy could collide with the
+        real one. Code that uses these compiles only where another #include brings in the real header.
+
+        Replace `#pragma once` in src/sensor.h with an include guard so the mock keeps them.
 
         See the docs on Partials conventions.
       NOTICE
