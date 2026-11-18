@@ -1424,16 +1424,53 @@ describe "Includes reconciliation" do
       expect("#{result[0]}").to eq('#include "Types.h"')
     end
 
-    it "renders a matched MockInclude the same way regardless of the include_path fix, since MockInclude#to_s never consults it" do
-      bare = [Include.new("mock_module.h")]
-      user = [MockInclude.new("mocks/subdir/mock_module.h")]
-      system = []
+    # A mock's #include names it for CMock and the runner. Its candidate holds its place below
+    # its mirror root, which can carry folders the test never wrote.
+    context "for a mock" do
+      it "keeps the #include the test wrote, not the mock's place below its mirror root" do
+        result = Includes.reconcile(bare: [Include.new("mock_task.h")], user: [MockInclude.new("include/mock_task.h")], system: [])
 
-      result = Includes.reconcile(bare: bare, user: user, system: system)
+        expect(result.length).to eq(1)
+        expect(result[0]).to be_a(MockInclude)
+        expect("#{result[0]}").to eq('#include "mock_task.h"')
+      end
 
-      expect(result.length).to eq(1)
-      expect(result[0]).to be_a(MockInclude)
-      expect("#{result[0]}").to eq('#include "mocks/subdir/mock_module.h"')
+      # As the text scan records it, so the mock keeps one name in every preprocessing mode
+      it "keeps a climbing #include anchored to the test file's directory" do
+        result = Includes.reconcile(
+          bare: [Include.new("../x/mock_foo.h")], user: [MockInclude.new("_up_/x/mock_foo.h")], system: [], test_filepath: "test/test_c.c"
+        )
+
+        expect(result[0].filepath).to eq("x/mock_foo.h")
+        expect(result[0]).to be_directory_relative
+      end
+
+      # A computed #include's bare entry is the path its line marker names, which carries the
+      # mock root ahead of the mock's place
+      it "keeps the mock's place for a computed #include, whose bare entry is its line-marker path" do
+        result = Includes.reconcile(
+          bare: [Include.new("build/test/mocks/test_t/include/mock_task.h")], user: [MockInclude.new("include/mock_task.h")], system: []
+        )
+
+        expect("#{result[0]}").to eq('#include "include/mock_task.h"')
+      end
+
+      it "keeps the #include the test wrote when a computed #include's line-marker path names the same mock" do
+        bare = [Include.new("mock_task.h"), Include.new("build/test/mocks/test_t/include/mock_task.h")]
+        result = Includes.reconcile(bare: bare, user: [MockInclude.new("include/mock_task.h")], system: [])
+
+        expect(result.map(&:to_s)).to eq(['#include "mock_task.h"'])
+      end
+
+      it "keeps two same-named mocks apart by the folders the test wrote" do
+        bare = [Include.new("a/mock_foo.h"), Include.new("b/mock_foo.h")]
+        user = [MockInclude.new("x/a/mock_foo.h"), MockInclude.new("y/b/mock_foo.h")]
+
+        result = Includes.reconcile(bare: bare, user: user, system: [])
+
+        expect(result.map(&:to_s)).to contain_exactly('#include "a/mock_foo.h"', '#include "b/mock_foo.h"')
+        expect(result).to all( be_a(MockInclude) )
+      end
     end
 
     it "keeps one of two same-named system headers, a normal toolchain wrapper-chain pattern rather than a project-file conflict" do

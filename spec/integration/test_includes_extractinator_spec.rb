@@ -143,9 +143,35 @@ describe 'Test file #include extraction (integration)' do
         }
 
         extract_in_mode( tree, 'test_reader.c' ) do |harness, testable|
-          expect(harness.mocks( 'test/test_reader.c' )).to eq( ['mock_widget.h'] )
-          # The macro's #include resolves as `drivers/mock_widget.h`, reached from the mock root
-          expect(testable.mock_search_paths).to eq( ['build/mocks/test_reader/drivers', 'build/mocks/test_reader'] )
+          expect(harness.mock_filepaths( 'test/test_reader.c' )).to eq( ['mock_widget.h'] )
+          # The macro's #include names the mock without a folder, reached in its mirrored directory
+          expect(testable.mock_search_paths).to eq( ['build/mocks/test_reader/drivers'] )
+        end
+      end
+
+      # The preprocessor finds a mock at its place below its mirror root, which can carry
+      # folders the test's #include never wrote. CMock and the runner name the mock by its #include.
+      it 'names a mock by the #include the test wrote, not its header\'s mirrored folder' do
+        tree = {
+          'src/include/task.h' => "int task_run(int x);\n",
+          'test/test_task.c'   => "#include \"mock_task.h\"\n"
+        }
+
+        extract_in_mode( tree, 'test_task.c' ) do |harness, testable|
+          expect(harness.mock_filepaths( 'test/test_task.c' )).to eq( ['mock_task.h'] )
+          expect(testable.mock_search_paths).to eq( ['build/mocks/test_task/include'] )
+        end
+      end
+
+      it 'keeps same-named mocks apart by the folders the test wrote' do
+        tree = {
+          'src/x/a/foo.h'  => "int a_read(void);\n",
+          'src/y/b/foo.h'  => "int b_read(void);\n",
+          'test/test_ab.c' => "#include \"a/mock_foo.h\"\n#include \"b/mock_foo.h\"\n"
+        }
+
+        extract_in_mode( tree, 'test_ab.c' ) do |harness, _testable|
+          expect(harness.mock_filepaths( 'test/test_ab.c' )).to contain_exactly( 'a/mock_foo.h', 'b/mock_foo.h' )
         end
       end
 

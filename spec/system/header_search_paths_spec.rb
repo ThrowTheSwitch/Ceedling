@@ -97,11 +97,9 @@ ceedling_system_tests do
     end
   end
 
-  # A mock's #include after stage 4 names its place below its mirror root. A header of the
-  # same path below an earlier search path is a different header. The build itself can't
-  # pass here: under :all the mock includes its header by that place, which the compiler
-  # finds below the earlier search path, so only the mock's own content is checked.
-  it "mocks the header a preprocessed test's mock was placed for, not one of the same path in an earlier search path" do
+  # A preprocessed test's mock keeps the #include the test wrote. A header of the path its
+  # mirrored place would name, below an earlier search path, is a different header.
+  it "mocks and includes the header a preprocessed test's #include names, not one of its mirrored path in an earlier search path" do
     in_project do
       write( 'test/support/hal/foo.h', "int fake_read(void);\n" )
       write( 'inc/hal/foo.h', "int foo_read(void);\n" )
@@ -109,8 +107,7 @@ ceedling_system_tests do
                               "void test_reads(void) { foo_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
       configure( ['inc/**'], :all, { :paths => { :include => ['inc/**'], :support => ['test/support'] } } )
 
-      output = @c.ceedling_build_exec( "gen:mocks:all" )
-      expect(@c.last_exit_status).to eq(0), output
+      build_passes
       expect(File.read( 'build/test/mocks/test/test_c/hal/mock_foo.h' )).to include( 'foo_read' )
     end
   end

@@ -218,6 +218,11 @@ module IntegrationSpecHelpers
       @context_extractor.lookup_mock_header_includes_list( filepath ).map( &:filename )
     end
 
+    # The #includes the rest of the build names `filepath`'s mocks by, folders and all
+    def mock_filepaths(filepath)
+      @context_extractor.lookup_mock_header_includes_list( filepath ).map( &:filepath )
+    end
+
     # How the later stages find `testable`'s real headers
     def header_search(testable)
       return @locator.header_search( testable )
