@@ -286,10 +286,7 @@ class Includes
     user_by_filepath = {}
     user.each { |include| user_by_filepath[include.filepath] ||= include }
 
-    user_includes = []
-    seen = Set.new
-
-    bare.each do |bare_include|
+    entries = bare.map do |bare_include|
       # A directory-relative #include's own literal text is anchored to the one file
       # a bare scan could have found it in -- the test file itself, never a header,
       # since bare extraction never recurses into one. Resolving here, once, means
@@ -305,13 +302,18 @@ class Includes
       # of the longer one's trailing segments must match.
       matched = user_filepaths.select { |filepath| paths_correspond?(bare_filepath, filepath) }
 
-      next if matched.empty?
+      [bare_include, bare_filepath, matched]
+    end
 
-      filepath = matched.first
-      next if seen.include?(filepath)
-      seen << filepath
+    chosen = pair_candidates(entries)
 
-      on_ambiguous&.call(bare_include.filepath, filepath, matched[1..]) if matched.length > 1
+    user_includes = []
+    entries.each_with_index do |(bare_include, bare_filepath, matched), index|
+      filepath = chosen[index]
+      next if filepath.nil?
+
+      passed_over = matched - chosen.values
+      on_ambiguous&.call(bare_include.filepath, filepath, passed_over) unless passed_over.empty?
 
       user_includes << as_written(user_by_filepath[filepath], bare_include, bare_filepath)
     end
@@ -331,6 +333,43 @@ class Includes
     self.sort!(reconciled)
     return reconciled
   end
+
+  # Pairs bare entries with candidates, as { entry index => candidate filepath }. The most
+  # constrained entry claims first, so a pathless #include never takes the header an
+  # #include naming its folder needs. Ties go in bare order, which puts GCC's text ahead of
+  # the text scan's. A computed #include's line-marker path, longer than its candidates,
+  # claims after every written text. A repeat of an earlier entry's path claims nothing, as
+  # GCC's `drivers/foo.h` and the text scan's `./drivers/foo.h` name one #include.
+  def self.pair_candidates(entries)
+    chosen = {}
+    claimants(entries).sort_by { |index| claim_order( entries[index], index ) }.each do |index|
+      filepath = entries[index][2].find { |candidate| !chosen.value?(candidate) }
+      chosen[index] = filepath if filepath
+    end
+
+    return chosen
+  end
+  private_class_method :pair_candidates
+
+  # The entries with a candidate, less any repeat of an earlier entry's path
+  def self.claimants(entries)
+    firsts = {}
+    entries.each_with_index { |(_, bare_filepath, _), index| firsts[ProjectPaths.segments(bare_filepath)] ||= index }
+
+    return entries.each_index.select do |index|
+      _, bare_filepath, matched = entries[index]
+      !matched.empty? and firsts[ProjectPaths.segments(bare_filepath)] == index
+    end
+  end
+  private_class_method :claimants
+
+  def self.claim_order(entry, index)
+    _, bare_filepath, matched = entry
+    length   = ProjectPaths.segments(bare_filepath).length
+    computed = matched.all? { |candidate| length > ProjectPaths.segments(candidate).length }
+    return [computed ? 1 : 0, matched.length, index]
+  end
+  private_class_method :claim_order
 
   # A mock's #include names it for CMock and the runner, so a mock keeps its bare entry's
   # text, anchored as `bare_filepath` is. GCC's entry names it first, with the #include as
