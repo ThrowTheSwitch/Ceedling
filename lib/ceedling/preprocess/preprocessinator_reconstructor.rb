@@ -232,6 +232,12 @@ class PreprocessinatorReconstructor
   end
 
 
+  # Whether a header guards itself with `#pragma once`, looked for in the same leading code as
+  # an include guard
+  def pragma_once?(file_contents)
+    return leading_code( file_contents, INCLUDE_GUARD_SCAN_BYTES ).match?( /^\s*#\s*pragma\s+once\b/ )
+  end
+
   # Find include guard in a whole file's contents as string. Only code counts toward the scan
   # window, so a long license comment ahead of the guard doesn't hide it.
   def extract_include_guard(file_contents)

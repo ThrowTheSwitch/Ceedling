@@ -59,6 +59,19 @@ class Partializer
     See the docs on Partials conventions.
   NOTICE
 
+  # The same for a header that guards itself with `#pragma once`, which no generated file can
+  # define the way it defines an include guard
+  PRAGMA_ONCE_EXTRAS_NOTICE = <<~NOTICE unless const_defined?(:PRAGMA_ONCE_EXTRAS_NOTICE, false)
+    Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.
+    %<header>s uses `#pragma once`, which is not an include guard. Ceedling relies on include guards. Without
+    one the mock can't stand in for the header everywhere it's included, and a copy could collide with the
+    real one. Code that uses %<these>s compiles only where another #include brings in the real header.
+
+    Replace `#pragma once` in %<header>s with an include guard so the mock keeps %<them>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
   # Explains what other Partials go without from a module a test both tests and mocks. The
   # notice follows the linker failure guidance: what happened, why, then numbered options.
   TESTED_MOCK_NOTICE = <<~NOTICE unless const_defined?(:TESTED_MOCK_NOTICE, false)
@@ -736,12 +749,18 @@ class Partializer
     @loginator.log_list( entries, "Kept in the mock of Partial #{partial}:", Verbosity::DEBUG ) unless entries.empty?
     return if extras.withheld.empty?
 
-    many = extras.withheld.size > 1
+    many   = extras.withheld.size > 1
+    notice = _pragma_once?( header ) ? PRAGMA_ONCE_EXTRAS_NOTICE : UNGUARDED_EXTRAS_NOTICE
     @loginator.log(
-      format( UNGUARDED_EXTRAS_NOTICE, partial: partial, header: header, items: _withheld_phrase( extras.withheld ),
+      format( notice, partial: partial, header: header, items: _withheld_phrase( extras.withheld ),
               these: many ? 'these' : 'it', them: many ? 'them' : 'it' ),
       Verbosity::COMPLAIN, LogLabels::NOTICE
     )
+  end
+
+  # The header is read again only when its mock leaves something behind, to say what guards it
+  def _pragma_once?(header)
+    return @preprocessinator_reconstructor.pragma_once?( @file_wrapper.read( header ).clean_encoding )
   end
 
   def _extras_entry(item)
