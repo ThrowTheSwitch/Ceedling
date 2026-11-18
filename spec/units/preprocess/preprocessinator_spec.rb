@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/preprocess/preprocessinator'
 require 'ceedling/includes/includes'
+require 'ceedling/includes/header_search'
 require 'ceedling/tools/tool_executor'
 
 RSpec.describe Preprocessinator do
@@ -628,22 +629,47 @@ RSpec.describe Preprocessinator do
       expect(call_it()).to eq('/build/preprocessed/module.h')
     end
 
+    # A real search over `tree`, a list of header paths, as IncludePathinator lists a directory
+    def header_search_over(paths, tree)
+      return HeaderSearch.new( paths, ->(dir) { tree.select { |header| File.dirname( header ) == dir }.sort } )
+    end
+
+    # The #includes the assembled header writes, from a header preprocessed with `fallback`
+    def assembled_includes(includes, search, fallback: false, header: filepath)
+      allow(subject).to receive(:preprocess_file_includes_common).and_return( includes )
+      written = nil
+      allow(@file_assembler).to receive(:assemble_preprocessed_header_file) { |includes:, **| written = includes.map( &:to_s ) }
+
+      subject.preprocess_mockable_header_file(
+        test: 'test', filepath: header, directives_only_filepath: nil, fallback: fallback, flags: [], include_paths: [],
+        vendor_paths: [], defines: [], include_search: search
+      )
+      return written
+    end
+
     # CMock copies the header beside the mock under :treat_inlines :include, so its #includes
     # are written as the test's search paths reach each header
     it "spells the header's #includes through the test's search before assembling" do
-      search = double( 'HeaderSearch' )
-      allow(search).to receive(:header_candidates).with( 'drivers/foo.h' ).and_return( ['src/drivers/foo.h'] )
-      allow(search).to receive(:spelling).with( 'src/drivers/foo.h' ).and_return( 'drivers/foo.h' )
-      allow(subject).to receive(:preprocess_file_includes_common).and_return( [UserInclude.new( 'drivers/foo.h' ), SystemInclude.new( 'stdint.h' )] )
+      search = header_search_over( ['/src'], ['/src/drivers/foo.h'] )
 
-      expect(@file_assembler).to receive(:assemble_preprocessed_header_file) do |includes:, **|
-        expect( includes.map( &:to_s ) ).to eq( ['#include "drivers/foo.h"', '#include <stdint.h>'] )
-      end
+      expect( assembled_includes( [UserInclude.new( '/src/drivers/foo.h' ), SystemInclude.new( 'stdint.h' )], search ) )
+        .to eq( ['#include "drivers/foo.h"', '#include <stdint.h>'] )
+    end
 
-      subject.preprocess_mockable_header_file(
-        test: 'test', filepath: filepath, directives_only_filepath: nil, fallback: false, flags: [], include_paths: [],
-        vendor_paths: [], defines: [], include_search: search
-      )
+    # A preprocessor's #include holds the path the compiler found its header by
+    it "spells a preprocessed #include by the header the compiler found" do
+      search = header_search_over( ['include', 'lib'], ['include/config.h', 'lib/include/config.h'] )
+
+      expect( assembled_includes( [UserInclude.new( 'include/config.h' )], search ) ).to eq( ['#include "config.h"'] )
+    end
+
+    # Fallback's text scan holds an #include as written, which the compiler looks for beside the
+    # header holding it before any search path
+    it "spells a fallback #include by the header beside the mockable header" do
+      search   = header_search_over( ['/src', '/src/drivers'], ['/src/config.h', '/src/drivers/config.h'] )
+      includes = assembled_includes( [UserInclude.new( 'config.h' )], search, fallback: true, header: '/src/drivers/module.h' )
+
+      expect( includes ).to eq( ['#include "drivers/config.h"'] )
     end
 
     it "fires pre_mock_preprocess before assembling and post_mock_preprocess after" do

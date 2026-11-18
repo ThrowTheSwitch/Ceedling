@@ -188,6 +188,27 @@ ceedling_system_tests do
                "void setUp(void) {}\nvoid tearDown(void) {}\nvoid test_run(void) { TEST_ASSERT_EQUAL_INT(3, motor_run()); #{body} }\n" )
       end
 
+      # Fallback reads an #include as written, which the compiler looks for beside the file
+      # holding it before any search path
+      [false, true].each do |fallback|
+        it "takes a module's own header from beside its source#{' under fallback preprocessing' if fallback}" do
+          in_project do
+            include_paths( ['src/**'] )
+            @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => fallback } } )
+            write( 'src/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define GAIN 3\n#endif\n" )
+            write( 'src/drivers/uart/config.h', "#ifndef UART_CONFIG_H\n#define UART_CONFIG_H\n" \
+                                                "typedef struct uart_cfg { int baud; } uart_cfg_t;\nint uart_config_baud(void);\n#endif\n" )
+            write( 'src/drivers/uart/uses.h', "#ifndef UART_USES_H\n#define UART_USES_H\nint uart_use(uart_cfg_t *c);\n#endif\n" )
+            write( 'src/drivers/uart/config.c', "#include \"config.h\"\n#include \"uses.h\"\nint uart_use(uart_cfg_t *c) { return c->baud; }\n" \
+                                                "int uart_config_baud(void) { uart_cfg_t c = { 11 }; return uart_use(&c); }\n" )
+            write( 'test/test_uart.c', PARTIALS_DISAMBIG_PREAMBLE + "#include TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)\n" \
+                                       "void setUp(void) {}\nvoid tearDown(void) {}\nvoid test_baud(void) { TEST_ASSERT_EQUAL_INT(11, uart_config_baud()); }\n" )
+
+            build_passing
+          end
+        end
+      end
+
       [false, true].each do |fallback|
         it "mocks a same-named module a tested Partial includes by its path#{' under fallback preprocessing' if fallback}" do
           in_project do

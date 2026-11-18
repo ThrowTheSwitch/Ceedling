@@ -11,6 +11,7 @@ require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/partials/partials'
 require 'ceedling/partials/partializer_config'
 require 'ceedling/includes/includes'
+require 'ceedling/includes/header_search'
 
 describe PartialsManager do
   before(:each) do
@@ -28,6 +29,7 @@ describe PartialsManager do
 
     allow(@mock_locator).to receive(:header_search).and_return( @header_search )
     allow(@header_search).to receive(:header_candidates).and_return( [] )
+    allow(@header_search).to receive(:at).and_return( nil )
 
     allow(@reportinator).to receive(:generate_module_progress).and_return( '' )
     allow(@reportinator).to receive(:generate_skip_summary).and_return( nil )
@@ -514,19 +516,56 @@ describe PartialsManager do
       @manager.stage_generate_partials( @state )
     end
 
-    # A generated file writes each #include by the text the test's search paths reach its header by
-    it "hands the remaps each include spelled as the test's search paths reach its header" do
+    # A real search over `tree`, a list of header paths, as IncludePathinator lists a directory
+    def header_search_over(paths, tree)
+      return HeaderSearch.new( paths, ->(dir) { tree.select { |header| File.dirname( header ) == dir }.sort } )
+    end
+
+    # The source includes both remaps of the module's includes receive
+    def expect_source_includes(includes)
       allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
       allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
-      @config.source.includes = [UserInclude.new( 'drivers/foo.h' )]
-      spelled = UserInclude.new( 'src/drivers/foo.h', include_path: 'drivers/foo.h' )
-      allow(@header_search).to receive(:header_candidates).with( 'drivers/foo.h' ).and_return( ['src/drivers/foo.h'] )
-      allow(@header_search).to receive(:spelling).with( 'src/drivers/foo.h' ).and_return( 'drivers/foo.h' )
 
       expect(@partializer).to receive(:remap_types_header_includes)
-        .with( hash_including( source_includes: [spelled] ) ).twice.and_return( Partials::IncludeGroups.new )
+        .with( hash_including( source_includes: includes ) ).twice.and_return( Partials::IncludeGroups.new )
       expect(@partializer).to receive(:remap_implementation_source_includes)
-        .with( hash_including( includes: [spelled] ) ).twice.and_return( [] )
+        .with( hash_including( includes: includes ) ).twice.and_return( [] )
+    end
+
+    # A generated file writes each #include by the text the test's search paths reach its header by
+    it "hands the remaps each include spelled as the test's search paths reach its header" do
+      @config.source.includes = [UserInclude.new( 'src/drivers/foo.h' )]
+      allow(@mock_locator).to receive(:header_search).and_return( header_search_over( ['src'], ['src/drivers/foo.h'] ) )
+
+      expect_source_includes( [UserInclude.new( 'src/drivers/foo.h', include_path: 'drivers/foo.h' )] )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # A preprocessor's #include holds the path the compiler found its header by
+    it "spells a preprocessed #include by the header the compiler found" do
+      @config.source.includes = [UserInclude.new( 'include/config.h' )]
+      allow(@mock_locator).to receive(:header_search)
+        .and_return( header_search_over( ['include', 'third_party/mylib'], ['include/config.h', 'third_party/mylib/include/config.h'] ) )
+
+      expect_source_includes( [UserInclude.new( 'include/config.h', include_path: 'config.h' )] )
+
+      @manager.stage_generate_partials( @state )
+    end
+
+    # Fallback's text scan holds an #include as written, which the compiler looks for beside the
+    # file holding it before any search path
+    it "spells a fallback #include by the header beside the file holding it" do
+      @config.source = Partials::ConfigFileInfo.new( filepath: 'src/drivers/uart/config.c', fallback: true, includes: [UserInclude.new( 'config.h' )] )
+      allow(@mock_locator).to receive(:header_search)
+        .and_return( header_search_over( ['src', 'src/drivers/uart'], ['src/config.h', 'src/drivers/uart/config.h'] ) )
+
+      expect(@partializer).to receive(:remap_types_header_includes) do |source_includes:, **|
+        expect( source_includes.map( &:filepath ) ).to eq( ['src/drivers/uart/config.h'] )
+        Partials::IncludeGroups.new
+      end.twice
+      allow(@partializer).to receive(:extract_implementation_functions).and_return( [double("FunctionDefinition")] )
+      allow(@partializer).to receive(:extract_interface_functions).and_return( [double("FunctionDeclaration")] )
 
       @manager.stage_generate_partials( @state )
     end

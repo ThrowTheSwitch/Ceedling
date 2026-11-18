@@ -378,6 +378,48 @@ ceedling_system_tests do
       end
     end
 
+    # A preprocessor names each #include by the path it found the header by. A later search path
+    # joined with that path can name another header, which must never take its place.
+    it "include the header the compiler found, never one a later search path joins its path to" do
+      in_project do
+        write( 'include/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define GAIN 3\n#endif\n" )
+        write( 'third_party/mylib/include/config.h', "#ifndef MYLIB_CONFIG_H\n#define MYLIB_CONFIG_H\n#define GAIN 99\n#endif\n" )
+        write( 'include/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n#include \"config.h\"\nint motor_run(void);\n" \
+                                  "static inline int motor_peek(void) { return GAIN; }\n#endif\n" )
+        write( 'src/motor.c', "#include \"motor.h\"\nint motor_run(void) { return GAIN; }\n" )
+        write( 'test/test_motor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                    "#include TEST_PARTIAL_PUBLIC_MODULE(motor)\nvoid test_run(void) { TEST_ASSERT_EQUAL_INT(3, motor_run()); }\n" )
+        write( 'test/test_cm.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_motor.h\"\nvoid test_gain(void) { TEST_ASSERT_EQUAL_INT(3, GAIN); }\n" )
+
+        configure( ['include/**', 'third_party/**'], :all, { :project => { :use_test_preprocessor => :all, :use_partials => true },
+                                                             :cmock => { :treat_inlines => :include } } )
+        output = @c.ceedling_build_exec( "test:all" )
+
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+2/)
+      end
+    end
+
+    # Reconciliation spells two same-named headers apart. A directory searched ahead of the
+    # project's, such as the one holding CMock's copy of one of them, must never capture the other.
+    it "keep the paths that tell two same-named headers apart" do
+      in_project do
+        write( 'src/hw/config.h', "#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\ntypedef int hw_t;\n" \
+                                  "static inline int hw_peek(void) { return -1; }\nint hw_read(void);\n#endif\n" )
+        write( 'src/app/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define APP_GAIN 5\ntypedef int app_t;\n#endif\n" )
+        write( 'src/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n#include \"hw/config.h\"\n#include \"app/config.h\"\nhw_t motor_run(app_t a);\n#endif\n" )
+        write( 'src/motor.c', "#include \"motor.h\"\n#include \"hw/config.h\"\n#include \"app/config.h\"\n" \
+                              "hw_t motor_run(app_t a) { return APP_GAIN * a * hw_read(); }\n" )
+        write( 'test/test_motor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                    "#include TEST_PARTIAL_PUBLIC_MODULE(motor)\n#include \"hw/mock_config.h\"\n" \
+                                    "void test_run(void) { hw_read_ExpectAndReturn(1); TEST_ASSERT_EQUAL_INT(5, motor_run(1)); }\n" )
+
+        configure( ['src/**'], :all, { :project => { :use_test_preprocessor => :all, :use_partials => true },
+                                       :cmock => { :treat_inlines => :include } } )
+        build_passes
+      end
+    end
+
     [:none, :all].each do |preprocessor|
       it "reach a header below the search path from an FFF fake under :use_test_preprocessor #{preprocessor}" do
         in_project do
