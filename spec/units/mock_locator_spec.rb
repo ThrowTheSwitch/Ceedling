@@ -195,12 +195,14 @@ describe MockLocator do
       expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/hw/drivers/foo.h', search )).to eq( 'drivers/foo.h' )
     end
 
-    # A respelling is judged as the whole operand of the #include
-    it "keeps CMock's text where :orig_header_include_fmt writes more around it than quotes" do
+    # A respelling is judged as the whole operand of the #include. CMock and a stand-in write
+    # the format around their text. An FFF fake writes no format.
+    it "keeps CMock's text where :orig_header_include_fmt writes more around it than quotes, respelling it for a fake" do
       allow(@configurator).to receive(:get_cmock_config).and_return( { orig_header_include_fmt: '#include "../%s"' } )
       search = search_over( ['src/drivers'], ['src/drivers/foo.h'] )
 
-      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to be_nil
+      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'drivers/foo.h' )
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'foo.h' )
     end
 
     it "respells within a bracketed :orig_header_include_fmt" do
@@ -252,6 +254,24 @@ describe MockLocator do
 
       expect(@locator.header_respelling( MockInclude.new( '../x/MockFoo.h' ), 'inc/x/foo.h', search )).to be_nil
       expect(@locator.header_include( MockInclude.new( '../x/MockFoo.h' ), 'inc/x/foo.h', search )).to eq( '../x/foo.h' )
+    end
+  end
+
+  describe "#respellable_format?" do
+    it "takes a respelling into a format whose text is the whole operand" do
+      [nil, '#include "%s"', '#include <%s>', '  #  include "%s"  '].each do |format|
+        allow(@configurator).to receive(:get_cmock_config).and_return( { orig_header_include_fmt: format }.compact )
+
+        expect(@locator.respellable_format?).to be( true ), format.inspect
+      end
+    end
+
+    it "takes no respelling into a format that writes more around the text" do
+      ['#include "../%s"', '#include "inc/%s"', '#include "%s" /* mock */'].each do |format|
+        allow(@configurator).to receive(:get_cmock_config).and_return( { orig_header_include_fmt: format } )
+
+        expect(@locator.respellable_format?).to be( false ), format
+      end
     end
   end
 

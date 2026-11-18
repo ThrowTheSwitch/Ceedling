@@ -542,6 +542,20 @@ ceedling_system_tests do
       end
     end
 
+    # A fake writes no format, so the text a format keeps for CMock never reaches it
+    [:none, :all].each do |preprocessor|
+      it "reach a header through its search path from an FFF fake under a project's :orig_header_include_fmt around the folder, under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { foo_read_fake.return_val = 5; TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+          configure( ['src/drivers/'], preprocessor, { :cmock => { :orig_header_include_fmt => '#include "../%s"' }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
+      end
+    end
+
     [:none, :all].each do |preprocessor|
       it "reach a header below the search path from an FFF fake under :use_test_preprocessor #{preprocessor}" do
         in_project do

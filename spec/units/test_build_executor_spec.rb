@@ -1762,6 +1762,15 @@ describe TestBuildExecutor do
         @executor.stage_generate_mocks( @state )
       end
 
+      # A respelling is never weighed with more around it than quotes. A fake writes no format.
+      it "keeps CMock's own #include under an :orig_header_include_fmt writing more around the text, passing the text on for an FFF fake" do
+        allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock', orig_header_include_fmt: '#include "../%s"' } )
+
+        expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { orig_header_include: 'foo.h' } ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
       # The text follows the test's search paths, which CMock's configuration doesn't hold
       it "records the text as meta, so a change regenerates the mock" do
         allow(@generator).to receive(:generate_mock)
