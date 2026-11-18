@@ -140,10 +140,13 @@ class Preprocessinator
   end
 
   # CMock copies a mockable header beside the mock under :treat_inlines :include, so each of its
-  # #includes is written as the test's search paths reach its header. Without a search they
-  # stay as reconciled.
-  def spelled(includes, search)
-    return search ? includes.map { |include| include.spelled_by( search ) } : includes
+  # #includes is written as the test's search paths reach its header. Fallback's text scan holds
+  # each as written, which names a header beside `filepath` first. Without a search they stay as
+  # reconciled.
+  def spelled(includes, search, filepath, fallback)
+    return includes unless search
+
+    return includes.map { |include| include.spelled_by( search, from: File.dirname( filepath ), resolved: !fallback ) }
   end
 
   def preprocess_mockable_header_file(
@@ -194,7 +197,7 @@ class Preprocessinator
     # already determined, via its own DependencyTracker target (antecedent +
     # flags/defines/search_paths/extras meta), that this header's
     # preprocessing is stale, so the extraction below always runs for real.
-    includes = spelled( preprocess_file_includes_common( **arg_hash ), include_search )
+    includes = spelled( preprocess_file_includes_common( **arg_hash ), include_search, filepath, fallback )
 
     header = "Discovered #includes for mockable header from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )

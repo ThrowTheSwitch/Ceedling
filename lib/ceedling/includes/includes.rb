@@ -462,11 +462,15 @@ class Include
   end
 
   # This #include spelled as `search`, a HeaderSearch, reaches its header (see
-  # HeaderSearch#spelling). Its path becomes the header found, so a caller weighing which header
-  # it names reads the header itself. One whose header isn't found or reached comes back as it is.
-  def spelled_by(search)
-    header   = search.header_candidates( @filepath ).first
-    spelling = header && search.spelling( header )
+  # HeaderSearch#spelling). Its own text stays wherever it already reaches the header. Its path
+  # becomes the header, so a caller weighing which header it names reads the header itself.
+  #
+  # A `resolved` #include holds the path the compiler found its header by. One as written names
+  # the header beside its includer, in directory `from`, ahead of any a search path finds, as the
+  # compiler's quote rule does. One whose header isn't found or reached comes back as it is.
+  def spelled_by(search, from: nil, resolved: false)
+    header   = header_in( search, from, resolved )
+    spelling = header && search.spelling( header, preferring: include )
     return spelling ? self.class.new( header, include_path: spelling, directory_relative: @directory_relative ) : self
   end
 
@@ -532,6 +536,14 @@ class Include
 
   private
 
+  # The header this #include names in `search` (see spelled_by)
+  def header_in(search, from, resolved)
+    return search.at( @filepath ) if resolved
+
+    beside = @directory_relative ? @filepath : (from && File.join( from, @filepath ))
+    return (beside && search.at( beside )) || search.header_candidates( @filepath ).first
+  end
+
   def clean(line)
     # Remove any initial `#include` statement
     _line = line.gsub(/#\s*include/, '')
@@ -563,7 +575,7 @@ class MockInclude < UserInclude
   end
 
   # A mock's #include names its generated header, which no header search holds
-  def spelled_by(_search)
+  def spelled_by(_search, **)
     return self
   end
 end
@@ -576,7 +588,7 @@ class SystemInclude < Include
   end
 
   # The compiler finds a system header through its own directories, which no header search holds
-  def spelled_by(_search)
+  def spelled_by(_search, **)
     return self
   end
 end

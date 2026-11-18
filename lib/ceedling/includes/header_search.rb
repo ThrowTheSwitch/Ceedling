@@ -93,8 +93,9 @@ class HeaderSearch
     query = normalized( query )
     tiers = @trailing_first ? [:trailing, :joined, :named] : [:joined, :trailing, :named]
 
+    # A bare name names no directory, so only a join can find it
     tiers.each do |tier|
-      next if tier != :joined and !with_directory?( query )
+      next if tier != :joined and File.dirname( query ) == '.'
 
       found = send( tier, query )
       return distinct( found ) unless found.empty?
@@ -123,13 +124,21 @@ class HeaderSearch
     return @refusals[normalized( query )]
   end
 
-  # The #include text through which these search paths find `header` first: its filename
-  # when that does, otherwise its path below the earliest search path that does. Nil for none.
-  def spelling(header)
-    target = location( header )
-    texts  = [File.basename( header )] + @paths.filter_map { |path| ProjectPaths.subdir_below( path, header ) }
+  # The header at `path` itself, as its directory lists it, or nil. A preprocessor's #include
+  # names its header by such a path, which a search path joined with it could name another by.
+  def at(path)
+    path = normalized( path )
+    return nameable?( path ) ? named_in( File.dirname( path ), File.basename( path ) ) : nil
+  end
 
-    return texts.uniq.find do |text|
+  # The #include text through which these search paths find `header` first: `preferring` when
+  # that does, then its filename, otherwise its path below the earliest search path that does.
+  # Nil for none.
+  def spelling(header, preferring: nil)
+    target = location( header )
+    texts  = [preferring, File.basename( header )] + @paths.filter_map { |path| ProjectPaths.subdir_below( path, header ) }
+
+    return texts.compact.uniq.find do |text|
       found = header_candidates( text ).first
       !found.nil? and location( found ) == target
     end
@@ -161,13 +170,9 @@ class HeaderSearch
 
   # The query itself, when it names a header at or below a search path
   def named(query)
-    return [] unless nameable?( query )
+    return [] unless @paths.any? { |path| ProjectPaths.contains?( path, File.dirname( query ) ) }
 
-    dir = File.dirname( query )
-    return [] unless @paths.any? { |path| ProjectPaths.contains?( path, dir ) }
-
-    found = named_in( dir, File.basename( query ) )
-    return found.nil? ? [] : [found]
+    return [at( query )].compact
   end
 
   # A relative path the compiler would join: no `..` and no glob character in its
@@ -181,10 +186,6 @@ class HeaderSearch
   def nameable?(query)
     dir = File.dirname( query )
     return (dir != '.' and !dir.match?( GLOB_CHARACTERS ))
-  end
-
-  def with_directory?(query)
-    return File.dirname( query ) != '.'
   end
 
   def joined_directory(path, query)

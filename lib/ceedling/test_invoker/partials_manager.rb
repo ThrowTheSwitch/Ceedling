@@ -369,9 +369,16 @@ class PartialsManager
   # file reaches it from the Partials directory, and modules are matched by that header
   def spell_partial_includes(config, search)
     return {
-      source: config.source.includes.map { |include| include.spelled_by( search ) },
-      header: config.header.includes.map { |include| include.spelled_by( search ) }
+      source: spelled_includes( config.source, search ),
+      header: spelled_includes( config.header, search )
     }
+  end
+
+  # One module file's #includes. Fallback's text scan holds each as written, which names a header
+  # beside the file first. The preprocessor's hold the path it found each header by.
+  def spelled_includes(file_info, search)
+    from = file_info.filepath && File.dirname( file_info.filepath )
+    return file_info.includes.map { |include| include.spelled_by( search, from: from, resolved: !file_info.fallback ) }
   end
 
   # Build threads finish in any order. Each test's Partial modules return to its configuration
