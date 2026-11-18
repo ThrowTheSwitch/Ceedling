@@ -542,14 +542,20 @@ class PartializerHelper
   ExtrasScan = Struct.new( :selected, :helpers, :statics, :declared, :rewritten, :conflicting, keyword_init: true ) unless const_defined?(:ExtrasScan, false)
 
   def _extras_scan(c_module, selected, fallback)
-    helpers = _interface_helpers( c_module, selected, fallback )
-    statics = _interface_statics( c_module, fallback )
-    _drop_unlinkable( c_module, selected, helpers, statics )
+    helpers     = _interface_helpers( c_module, selected, fallback )
+    statics     = _interface_statics( c_module, fallback )
+    conflicting = _conflicting_prototypes( c_module, fallback )
+    _drop_unlinkable( c_module, selected, helpers, statics, conflicting )
 
     return ExtrasScan.new(
       selected: selected, helpers: helpers, statics: statics, declared: Set.new,
-      rewritten: _function_like_macros( c_module ), conflicting: _conflicting_prototypes( c_module, fallback )
+      rewritten: _function_like_macros( c_module ), conflicting: conflicting
     )
+  end
+
+  # The names `text` uses as code, for a notice weighing what another Partial uses
+  def names_in(text)
+    return _statement_references( text )
   end
 
   def _header_items(c_module)
@@ -578,11 +584,15 @@ class PartializerHelper
     return (_helper?( defs ) and !(fallback and _conflicting?( defs.map( &:code_block ) )))
   end
 
-  # The header's own static variables, by identity, each name's first when its copies are alike
+  # The header's own static variables, by identity. Fallback keeps both sides of a conditional,
+  # so there a name's copies come along once when alike and not at all when they differ.
+  # Otherwise every declaration comes along, since a tentative definition may precede the one
+  # that initializes it.
   def _interface_statics(c_module, fallback)
-    groups = c_module.variable_declarations.select { |var| _own_static?( var ) }.group_by( &:name )
-    kept   = groups.reject { |_, vars| fallback and _conflicting?( vars.map( &:text ) ) }
+    statics = c_module.variable_declarations.select { |var| _own_static?( var ) }
+    return Set.new.compare_by_identity.merge( statics ) unless fallback
 
+    kept = statics.group_by( &:name ).reject { |_, vars| _conflicting?( vars.map( &:text ) ) }
     return Set.new.compare_by_identity.merge( kept.values.map( &:first ) )
   end
 
@@ -591,21 +601,84 @@ class PartializerHelper
     return (var.origin == :header and var.promoted_from.nil? and !var.extern? and var.decorators.include?( 'static' ))
   end
 
-  # Narrows the helpers and statics to those every file including the extras can link. A static
-  # variable or non-inline static helper naming a module function the mock leaves undefined
-  # stays behind, since GCC emits it unused. Anything naming an item left behind stays behind
-  # too, since its text wouldn't compile. A static inline helper is never emitted unused, so only
-  # the second rule reaches it. Repeats until nothing more stays behind.
-  def _drop_unlinkable(c_module, selected, helpers, statics)
-    undefined = _function_names( c_module ) - selected - helpers.keys
-    dropped   = Set.new
+  # Narrows the helpers and statics to those every file including the extras can compile and
+  # link. GCC emits an unused static variable, promoted static or non-inline static function at
+  # -O0, so one naming a module function the mock leaves undefined stays behind. A static inline
+  # helper is never emitted unused, so that rule passes it by. Whatever names a function whose
+  # prototypes conflict stays behind, and so does whatever names an item left behind, since its
+  # text wouldn't compile. A worklist carries each item left behind to the items naming it, so
+  # each item's names are read once.
+  def _drop_unlinkable(c_module, selected, helpers, statics, conflicting)
+    candidates = helpers.values + statics.to_a + _promoted_statics( c_module, helpers )
+    names      = _candidate_names( c_module, candidates )
+    undefined  = _function_names( c_module ) - selected - helpers.keys
+    queue      = candidates.select { |item| _unlinkable_alone?( item, names[item], undefined, conflicting ) }
 
-    loop do
-      gone = _unlinkable( helpers, statics, undefined, dropped )
-      break if gone.empty?
+    _walk_drops( queue, _referrers( names ), helpers, statics )
+  end
 
-      _forget( gone, helpers, statics )
-      dropped.merge( gone.map( &:name ) )
+  # Leaves each queued item behind, then queues whatever names it. A promoted static left behind
+  # takes its function along.
+  def _walk_drops(queue, referrers, helpers, statics)
+    owners = helpers.dup
+    gone   = Set.new.compare_by_identity
+
+    until queue.empty?
+      item = queue.shift
+      next unless gone.add?( item )
+
+      _forget( item, helpers, statics )
+      queue.concat( referrers.fetch( item.name, [] ) )
+      queue << owners[item.promoted_from] if item.respond_to?( :promoted_from ) and owners.key?( item.promoted_from )
+    end
+  end
+
+  def _promoted_statics(c_module, helpers)
+    return c_module.variable_declarations.select { |var| var.origin == :header and helpers.key?( var.promoted_from ) }
+  end
+
+  # Whether an item stays behind on its own names, before any other item does
+  def _unlinkable_alone?(item, names, undefined, conflicting)
+    return true if names.intersect?( conflicting )
+
+    emitted = !item.is_a?( CExtractorTypes::CFunctionDefinition ) || !Partials.inline?( item.decorators )
+    return (emitted and names.intersect?( undefined ))
+  end
+
+  # Each candidate's names as code, by identity: a body's as carrying reads it, a variable's from
+  # its initializer, each through the macros that hide names
+  def _candidate_names(c_module, candidates)
+    macros = _macro_names( c_module )
+
+    return candidates.each_with_object( {}.compare_by_identity ) do |item, names|
+      own = item.is_a?( CExtractorTypes::CFunctionDefinition ) ? _body_references( item ) : _statement_references( item.text )
+      names[item] = _through_macros( own, macros )
+    end
+  end
+
+  # Each macro's name, with the names its replacement uses
+  def _macro_names(c_module)
+    return c_module.macro_definitions.each_with_object( {} ) do |macro, names|
+      name, body = macro.text.match( /\A\s*#\s*define\s+([A-Za-z_]\w*)(?:\([^)]*\))?(.*)\z/m )&.captures
+      names[name] = _statement_references( body ) if name
+    end
+  end
+
+  def _through_macros(names, macros)
+    found   = Set.new( names )
+    pending = names.select { |name| macros.key?( name ) }
+
+    until pending.empty?
+      macros.fetch( pending.shift ).each { |name| pending << name if found.add?( name ) and macros.key?( name ) }
+    end
+
+    return found
+  end
+
+  # Each name, with the candidates whose names include it
+  def _referrers(names)
+    return names.each_with_object( Hash.new { |index, name| index[name] = [] } ) do |(item, used), index|
+      used.each { |name| index[name] << item }
     end
   end
 
@@ -613,22 +686,8 @@ class PartializerHelper
     return Set.new( (c_module.function_definitions + c_module.function_declarations).map( &:name ) )
   end
 
-  def _forget(items, helpers, statics)
-    items.each { |item| item.is_a?( CExtractorTypes::CFunctionDefinition ) ? helpers.delete( item.name ) : statics.delete( item ) }
-  end
-
-  def _unlinkable(helpers, statics, undefined, dropped)
-    from_helpers = helpers.values.select do |func|
-      _names_any?( func.code_block, Partials.inline?( func.decorators ) ? dropped : (undefined | dropped) )
-    end
-
-    return from_helpers + statics.select { |var| _names_any?( var.text, undefined | dropped ) }
-  end
-
-  def _names_any?(text, names)
-    return false if names.empty?
-
-    return text.to_s.scan( /[A-Za-z_]\w*/ ).any? { |word| names.include?( word ) }
+  def _forget(item, helpers, statics)
+    item.is_a?( CExtractorTypes::CFunctionDefinition ) ? helpers.delete( item.name ) : statics.delete( item )
   end
 
   # Names a function-like macro of the module defines

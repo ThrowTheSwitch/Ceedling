@@ -158,17 +158,15 @@ class Partializer
 
   # Explains what other Partials go without from a module the test both tests and mocks: its
   # implementation carries what its own code uses, but its interface keeps no extras, so another
-  # Partial including its header gets only the mocked functions. Says nothing unless another
-  # Partial in `partials` includes the header and the mock would leave something out.
+  # Partial including its header gets only the mocked functions. Names only what the code of
+  # the other Partials including the header uses, and says nothing when that's nothing.
   def explain_tested_mock(test:, c_module:, interface:, header_guarded:, config:, partials:)
-    extras = @helper.plan_interface_extras(
-      c_module: c_module, interface: interface, fallback: config.fallback?, header_guarded: header_guarded
-    )
-    return if extras.items.empty? or !_included_by_others?( config.module, partials )
+    items = _extras_others_use( c_module, interface, header_guarded, config, partials )
+    return if items.empty?
 
     notice = format(
       TESTED_MOCK_NOTICE, partial: "#{test}::#{config.module}", header: config.header.filepath, module: config.module,
-      items: _withheld_phrase( extras.items ), them: extras.items.size > 1 ? 'them' : 'it'
+      items: _withheld_phrase( items ), them: items.size > 1 ? 'them' : 'it'
     )
     @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
@@ -772,15 +770,36 @@ class Partializer
     CExtractorTypes::CFunctionDeclaration => 'prototype'
   }.freeze unless const_defined?(:EXTRAS_NOUNS, false)
 
-  # Whether another Partial in `partials` includes the module's header
-  def _included_by_others?(_module, partials)
-    return partials.any? do |other, config|
-      other != _module and _module_includes( config ).any? { |include| _names_module?( include, _module, partials ) }
+  # What a module's mock would keep in extras that the code of other Partials including its header uses
+  def _extras_others_use(c_module, interface, header_guarded, config, partials)
+    extras = @helper.plan_interface_extras(
+      c_module: c_module, interface: interface, fallback: config.fallback?, header_guarded: header_guarded
+    )
+    return [] if extras.items.empty?
+
+    used = _names_used_by_includers( config.module, partials )
+    return extras.items.select { |item| used.include?( item.name ) }
+  end
+
+  # The names the code of every other Partial including the module's header uses, from the
+  # files stages 6 and 7 assembled for it
+  def _names_used_by_includers(_module, partials)
+    files = _includers( _module, partials ).flat_map { |config| _module_files( config ) }.select( &:assembled_filepath )
+
+    return files.each_with_object( Set.new ) do |file, used|
+      used.merge( @helper.names_in( @file_wrapper.read( file.assembled_filepath ).clean_encoding ) )
     end
   end
 
-  def _module_includes(config)
-    return Array( config.source&.includes ) + Array( config.header&.includes )
+  # Every other Partial whose files include the module's header
+  def _includers(_module, partials)
+    return partials.reject { |other, _| other == _module }.values.select do |config|
+      _module_files( config ).flat_map { |file| Array( file.includes ) }.any? { |include| _names_module?( include, _module, partials ) }
+    end
+  end
+
+  def _module_files(config)
+    return [config.source, config.header].compact
   end
 
   def _named(noun, names)

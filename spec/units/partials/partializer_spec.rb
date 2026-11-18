@@ -1073,6 +1073,7 @@ describe Partializer do
       ] )
       allow(@partializer_helper).to receive(:plan_interface_extras)
         .with( c_module: :module, interface: :interface, fallback: false, header_guarded: true ).and_return( @extras )
+      allow(@partializer_helper).to receive(:names_in) { |text| Set.new( text.scan( /[A-Za-z_]\w*/ ) ) }
     end
 
     def explain(partials)

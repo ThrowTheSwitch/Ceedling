@@ -49,9 +49,9 @@ describe PartializerHelper do
     )
   end
 
-  def var(text, decorators: [], origin: :header, promoted_from: nil)
+  def var(text, decorators: [], origin: :header, promoted_from: nil, name: nil)
     CExtractorTypes::CVariableDeclaration.new(
-      name: text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators, origin: origin, promoted_from: promoted_from
+      name: name || text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators, origin: origin, promoted_from: promoted_from
     )
   end
 
@@ -256,10 +256,18 @@ describe PartializerHelper do
 
     # A promoted static is data at file scope, which GCC emits even where the helper is unused
     it 'leaves out an inline helper whose promoted static names it' do
-      promoted = var( 'int (*partial_port_h_cb)(void) = port_a;', decorators: ['static'], promoted_from: 'port_h' )
+      promoted = var( 'int (*partial_port_h_cb)(void) = port_a;', decorators: ['static'], promoted_from: 'port_h', name: 'partial_port_h_cb' )
       helper   = defn( 'static inline int port_h(void) { return partial_port_h_cb(); }' )
 
       expect( plan( port_module( promoted, helper ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    it 'leaves out what names a helper its promoted static took along' do
+      promoted = var( 'int (*partial_port_h_cb)(void) = port_a;', decorators: ['static'], promoted_from: 'port_h', name: 'partial_port_h_cb' )
+      helper   = defn( 'static inline int port_h(void) { return 1; }' )
+      caller   = defn( 'static inline int port_g(void) { return port_h(); }' )
+
+      expect( plan( port_module( promoted, helper, caller ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
     end
 
     it 'reads a name a macro hides' do
