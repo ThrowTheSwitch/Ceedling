@@ -108,8 +108,8 @@ class FffCMockWrapper
   end
 
   # The text a fake includes the original header by: the folder its #include names and the
-  # header's filename, as CMock writes it, or the text Ceedling gives where the test's search
-  # paths reach the header only by another (:orig_header_include)
+  # header's filename, as CMock writes it, or Ceedling's respelling where the test's search
+  # paths reach the header only by another spelling (:orig_header_include)
   def header_include(module_name, folder)
     respelled = @cm_config.respond_to?( :orig_header_include ) ? @cm_config.orig_header_include : nil
     return respelled || File.join( *[folder].compact, "#{module_name}.h" )

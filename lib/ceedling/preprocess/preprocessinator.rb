@@ -140,9 +140,9 @@ class Preprocessinator
   end
 
   # CMock copies a mockable header beside the mock under :treat_inlines :include, so each of its
-  # #includes is written as the test's search paths reach its header. Fallback's text scan holds
-  # each as written, which names a header beside `filepath` first. Without a search they stay as
-  # reconciled.
+  # #includes is written by a spelling the test's search paths reach its header by (see
+  # HeaderSearch on spellings). Fallback's text scan holds each as written, which names a header
+  # beside `filepath` first. Without a search they stay as reconciled.
   def spelled(includes, search, filepath, fallback)
     return includes unless search
 

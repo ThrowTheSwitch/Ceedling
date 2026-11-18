@@ -46,6 +46,13 @@ end
 # order, joined with the path an #include names. A bare name joins to a search path's
 # own listing, so it finds exactly the headers a flat listing of every search path holds.
 #
+# An #include's spelling is the text it names its header by, between its quotes. One header
+# can have several. With `src` and `src/drivers` both searched, `foo.h` and `drivers/foo.h`
+# both name `src/drivers/foo.h`. A spelling reaches a header when the compiler, joining it
+# with each search path in order, finds that header first. A file Ceedling generates lives
+# away from the file it comes from, so it includes each header by a spelling that reaches it
+# (`spelling`). A respelling replaces a text that reaches another header, or none.
+#
 # An #include after stage 4 can carry a path the test never wrote: GCC's resolved
 # path for a plain #include, or a mock's place below its mirror root. When no search
 # path joins to a query, the query matches the trailing path of a header directly in a
@@ -131,9 +138,9 @@ class HeaderSearch
     return nameable?( path ) ? named_in( File.dirname( path ), File.basename( path ) ) : nil
   end
 
-  # The #include text through which these search paths find `header` first, as the compiler
-  # joins it with each: `preferring` when that does, then its filename, otherwise its path below
-  # the earliest search path that does. Nil for none.
+  # A spelling that reaches `header` through these search paths: `preferring` when it does,
+  # then the header's filename, otherwise its path below the earliest search path that reaches
+  # it. Nil for none.
   def spelling(header, preferring: nil)
     target = location( header )
     texts  = [preferring, File.basename( header )] + @paths.filter_map { |path| ProjectPaths.subdir_below( path, header ) }

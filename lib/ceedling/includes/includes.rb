@@ -461,9 +461,10 @@ class Include
     return self.class.new( resolved, include_path: @include_path, directory_relative: true )
   end
 
-  # This #include spelled as `search`, a HeaderSearch, reaches its header (see
-  # HeaderSearch#spelling). Its own text stays wherever it already reaches the header. Its path
-  # becomes the header, so a caller weighing which header it names reads the header itself.
+  # This #include by a spelling through which `search`, a HeaderSearch, reaches its header
+  # (see HeaderSearch on spellings). Its own text stays wherever it already reaches the header.
+  # Its path becomes the header, so a caller weighing which header it names reads the header
+  # itself.
   #
   # A `resolved` #include holds the path the compiler found its header by. One as written names
   # the header beside its includer, in directory `from`, ahead of any a search path finds, as the

@@ -365,8 +365,9 @@ class PartialsManager
     }
   end
 
-  # A Partial's #includes spelled as the test's search paths reach each header, so a generated
-  # file reaches it from the Partials directory, and modules are matched by that header
+  # A Partial's #includes, each by a spelling the test's search paths reach its header by (see
+  # HeaderSearch on spellings), so a generated file reaches it from the Partials directory, and
+  # modules are matched by that header
   def spell_partial_includes(config, search)
     return {
       source: spelled_includes( config.source, search ),

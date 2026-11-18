@@ -87,7 +87,8 @@ class MockLocator
     return header_respelling( include, header, search ) || cmock_header_include( include.filepath, header )
   end
 
-  # The text `search` reaches a mock's real `header` by, when the one CMock writes reaches
+  # A respelling of the #include a mock opens with: the spelling `search` reaches its real
+  # `header` by (see HeaderSearch on spellings), in place of CMock's, when CMock's reaches
   # another header or none, as through a search path listing the header's own directory.
   # Nil when CMock's reaches it, or nothing does. The compiler joins a folder that climbs as
   # written, which a search can't judge, so CMock's stays. A Partial mock's header is

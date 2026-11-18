@@ -167,8 +167,8 @@ class TestBuildExecutor
       # this mock's antecedents. The recorded hash catches a stand-in in the mock's place
       # and regenerates the mock.
       #
-      # A respelled #include of the real header follows the test's search paths, which
-      # CMock's configuration doesn't hold, so it is recorded too.
+      # A respelling of the real header's #include (MockLocator#header_respelling) follows
+      # the test's search paths, which CMock's configuration doesn't hold, so it is recorded too.
       meta = { cmock: cmock_meta }
       meta[:header_include] = details.header_include if details.header_include
       @dependinator.register( target, files: [details.input], meta: meta, outputs: [mock_header] )
