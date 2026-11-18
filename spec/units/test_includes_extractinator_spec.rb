@@ -422,6 +422,20 @@ describe TestIncludesExtractinator do
 
         @extractinator.stage_collect_preprocessor_context( @state )
       end
+
+      # GCC lists an #include as written. The text scan anchors a climbing one to the test
+      # file's directory, and stages 5 and 10 find and place its mock by that text.
+      it "places a climbing mock's stand-in by its #include anchored to the test file's directory, keeping the list as written" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('../x/MockFoo.h') ] )
+
+        expect(@file_finder).to receive(:resolve_mock).with( 'x/MockFoo.h', collection: anything, complain: anything ).and_return( ['inc/x/foo.h', 'x'] )
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/x/MockFoo.h', anything )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+
+        expect(@testable.preprocess[:includes].map(&:filepath)).to eq( ['../x/MockFoo.h'] )
+      end
     end
   end
 
