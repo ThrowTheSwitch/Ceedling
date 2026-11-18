@@ -100,6 +100,58 @@ describe MockLocator do
       expect(@locator.directories( [MockInclude.new( 'MockGone.h' )], mocks_root: 'mocks', collection: [], complain: :ignore )).to eq( [] )
     end
   end
+  # A test can name one header's mock two ways, as `MockTask.h` and `drivers/MockTask.h` both
+  # do for src/drivers/task.h. CMock and the runner would make two mocks of it, which can't
+  # both link.
+  describe "#one_per_header" do
+    def resolving(map)
+      allow(@file_finder).to receive(:resolve_mock) { |query, **| map.fetch( query, [nil, nil] ) }
+    end
+
+    def kept(includes, from: nil)
+      return @locator.one_per_header( includes, collection: [], from: from ).map(&:filepath)
+    end
+
+    it "keeps the mocks of two headers that share a name" do
+      resolving( 'MockTask.h' => ['rtos/include/task.h', 'include'], 'other/MockTask.h' => ['rtos/other/task.h', 'other'] )
+
+      expect(kept( [MockInclude.new('MockTask.h'), MockInclude.new('other/MockTask.h')] )).to eq( ['MockTask.h', 'other/MockTask.h'] )
+    end
+
+    # A pathless #include reaches the mock the one with more path names, but not the reverse
+    it "keeps the #include with the most path of two that mock one header" do
+      resolving( 'MockTask.h' => ['src/drivers/task.h', 'drivers'], 'drivers/MockTask.h' => ['src/drivers/task.h', 'drivers'] )
+
+      expect(kept( [UserInclude.new('unity.h'), MockInclude.new('MockTask.h'), MockInclude.new('drivers/MockTask.h')] ))
+        .to eq( ['unity.h', 'drivers/MockTask.h'] )
+    end
+
+    it "keeps the first of two #includes with as much path that mock one header" do
+      resolving( 'drivers/MockTask.h' => ['src/drivers/task.h', 'drivers'], './drivers/MockTask.h' => ['src/drivers/task.h', 'drivers'] )
+
+      expect(kept( [Include.new('drivers/MockTask.h'), Include.new('./drivers/MockTask.h')] )).to eq( ['drivers/MockTask.h'] )
+    end
+
+    it "keeps every mock whose header isn't found" do
+      resolving( {} )
+
+      expect(kept( [MockInclude.new('MockGone.h'), MockInclude.new('lost/MockGone.h')] )).to eq( ['MockGone.h', 'lost/MockGone.h'] )
+    end
+
+    it "looks a climbing #include up anchored to `from`, and keeps it as written" do
+      resolving( 'x/MockFoo.h' => ['inc/x/foo.h', 'x'] )
+
+      expect(kept( [Include.new('../x/MockFoo.h'), Include.new('x/MockFoo.h')], from: 'test' )).to eq( ['../x/MockFoo.h'] )
+    end
+
+    it "leaves Partial mocks and other headers alone" do
+      expect(@file_finder).to_not receive(:resolve_mock)
+
+      includes = [MockInclude.new("Mock#{PARTIAL_FILENAME_PREFIX}foo_interface.h"), UserInclude.new('task.h'), SystemInclude.new('MockSys.h')]
+      expect(kept( includes )).to eq( includes.map(&:filepath) )
+    end
+  end
+
   # CMock writes a mock below its root at the folder the #include names, and names the mock
   # by that folder. The compiler reaches the mock through the #include as written, from
   # the directory that folder leads down or climbs from (`reach`).

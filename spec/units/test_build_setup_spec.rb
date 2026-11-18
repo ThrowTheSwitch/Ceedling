@@ -397,6 +397,37 @@ describe TestBuildSetup do
       @setup.stage_collect_test_context( @state )
     end
 
+    # One header's mock named two ways would become two mocks that can't both link
+    it "keeps one mock per real header in a test's #includes before finding its mock search paths" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+      @testable.paths = { mocks: 'build/test/mocks/a_test' }
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .and_return( [UserInclude.new('unity.h'), MockInclude.new('MockTask.h'), MockInclude.new('drivers/MockTask.h')] )
+      allow(@test_context_extractor).to receive(:lookup_source_includes_list).and_return( [UserInclude.new('foo.c')] )
+      allow(@file_finder).to receive(:resolve_mock).and_return( ['src/drivers/task.h', 'drivers'] )
+
+      expect(@test_context_extractor).to receive(:ingest_includes).ordered do |filepath, includes|
+        expect(filepath).to eq( 'test/TestFoo.c' )
+        expect(includes.map(&:filepath)).to eq( ['unity.h', 'drivers/MockTask.h', 'foo.c'] )
+      end
+      expect(@setup).to receive(:collect_mock_search_paths).with( @testable ).ordered.and_return( [] )
+
+      @setup.stage_collect_test_context( @state )
+    end
+
+    it "leaves a test's #includes as they are when each mock names a header of its own" do
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
+      @testable.paths = { mocks: 'build/test/mocks/a_test' }
+      allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+        .and_return( [MockInclude.new('MockTask.h'), MockInclude.new('other/MockTask.h')] )
+      allow(@file_finder).to receive(:resolve_mock) { |query, **| query == 'MockTask.h' ? ['rtos/include/task.h', 'include'] : ['rtos/other/task.h', 'other'] }
+      allow(@setup).to receive(:collect_mock_search_paths).and_return( [] )
+
+      expect(@test_context_extractor).to_not receive(:ingest_includes)
+
+      @setup.stage_collect_test_context( @state )
+    end
+
     # A header lookup that fails later explains itself with the refusal
     it "keeps a test's search path refusals for its header lookups" do
       allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )

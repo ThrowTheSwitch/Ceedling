@@ -119,6 +119,32 @@ ceedling_system_tests do
       end
     end
 
+    # A pathless mock and one naming a folder can mock two headers of one name, and two
+    # #includes of one header's mock give it one mock, named by the one with more path
+    [:none, :mocks, :tests, :all].each do |preprocessor|
+      it "keeps a pathless mock beside a same-named mock its folder names under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'rtos/include/task.h', "int task_run(int x);\n" )
+          write( 'rtos/other/task.h', "int other_run(int x);\n" )
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"mock_task.h\"\n#include \"other/mock_task.h\"\n" \
+                                  "void test_run(void) { task_run_ExpectAndReturn(1, 2); other_run_ExpectAndReturn(3, 4); " \
+                                  "TEST_ASSERT_EQUAL_INT(6, task_run(1) + other_run(3)); mock_task_Verify(); other_mock_task_Verify(); }\n" )
+
+          build( ['rtos/**'], preprocessor: preprocessor )
+        end
+      end
+
+      it "gives one header one mock when two #includes name it under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'rtos/include/task.h', "int task_run(int x);\n" )
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"mock_task.h\"\n#include \"include/mock_task.h\"\n" \
+                                  "void test_run(void) { task_run_ExpectAndReturn(1, 2); TEST_ASSERT_EQUAL_INT(2, task_run(1)); include_mock_task_Verify(); }\n" )
+
+          build( ['rtos/**'], preprocessor: preprocessor )
+        end
+      end
+    end
+
     it "names two same-named mocks by the folders their #includes write under :use_test_preprocessor all" do
       in_project do
         write( 'inc/x/a/foo.h', "int a_read(void);\n" )

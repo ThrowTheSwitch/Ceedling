@@ -107,4 +107,26 @@ ceedling_system_tests do
       expect(header).to match(/^void __enable_irq\(void\);$/)
     end
   end
+
+  # A pathless #include and one naming a folder reach two headers of one name. The header
+  # prepared for CMock keeps both, in either order.
+  [:mocks, :all].product( [%w[config.h app/config.h], %w[app/config.h config.h]] ).each do |preprocessor, order|
+    it "keeps both same-named #includes of a mocked header, #{order.join(' then ')}, under :use_test_preprocessor #{preprocessor}" do
+      in_project do
+        FileUtils.mkdir_p( ['src/hw', 'lib/app'] )
+        File.write( 'src/hw/config.h', "#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\ntypedef int hw_t;\n#endif\n" )
+        File.write( 'lib/app/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\ntypedef int app_t;\n#endif\n" )
+        File.write( 'lib/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n" + order.map { |text| "#include \"#{text}\"\n" }.join +
+                                   "static inline int motor_peek(void) { return 0; }\nhw_t motor_run(app_t a);\n#endif\n" )
+        File.write( 'test/test_motor.c', "#include \"unity.h\"\n#include \"mock_motor.h\"\nvoid setUp(void) {}\nvoid tearDown(void) {}\n" \
+                                         "void test_run(void) { motor_run_ExpectAndReturn(1, 9); TEST_ASSERT_EQUAL_INT(9, motor_run(1)); }\n" )
+        @c.remove_project_yml_option_for_test( :paths, :include )
+        @c.merge_project_yml_for_test( { :project => { :use_test_preprocessor => preprocessor }, :paths => { :include => ['src/hw/', 'lib/', 'test/stubs'] } } )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+3/)
+      end
+    end
+  end
 end

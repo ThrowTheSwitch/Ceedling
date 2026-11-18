@@ -531,7 +531,8 @@ describe "Includes sorting" do
 end
 
 describe "Includes sanitization" do
-  describe "sanitize!()" do
+  # A list that mixes an unresolved text with resolved headers, as a Partial's does
+  describe "drop_shadowed!()" do
     # An unresolved include carries only the text as written, so its filepath has no
     # directory of its own. Beside a resolved entry for the same basename it can only
     # ever reach a file by search-path accident, and which file that is depends on
@@ -546,7 +547,7 @@ describe "Includes sanitization" do
         UserInclude.new('include/drivers/spi/config.h', include_path: 'spi/config.h')
       ]
 
-      result = Includes.sanitize!(includes)
+      result = Includes.drop_shadowed!(includes)
 
       expect( result.map(&:filepath) )
         .to eq(['include/drivers/uart/config.h', 'include/drivers/spi/config.h'])
@@ -558,7 +559,7 @@ describe "Includes sanitization" do
         UserInclude.new('include/drivers/uart/config.h', include_path: 'uart/config.h')
       ]
 
-      result = Includes.sanitize!(includes)
+      result = Includes.drop_shadowed!(includes)
 
       expect( result.map(&:filepath) )
         .to eq(['include/config.h', 'include/drivers/uart/config.h'])
@@ -570,9 +571,31 @@ describe "Includes sanitization" do
         UserInclude.new('include/drivers/uart/other.h', include_path: 'uart/other.h')
       ]
 
-      result = Includes.sanitize!(includes)
+      result = Includes.drop_shadowed!(includes)
 
       expect( result.map(&:filepath) ).to include('config.h')
+    end
+  end
+
+  describe "sanitize!()" do
+    # Every entry of a bare or scanned list is an #include as written, and a pathless one
+    # can name a different header than a same-named one with a folder
+    it "keeps a pathless #include beside a same-named one with a folder" do
+      includes = [Include.new('config.h'), Include.new('app/config.h')]
+
+      expect( Includes.sanitize!(includes).map(&:filepath) ).to eq(['config.h', 'app/config.h'])
+    end
+
+    it "keeps a pathless mock beside a same-named mock with a folder" do
+      includes = [MockInclude.new('mock_task.h'), MockInclude.new('other/mock_task.h')]
+
+      expect( Includes.sanitize!(includes).map(&:filepath) ).to eq(['mock_task.h', 'other/mock_task.h'])
+    end
+
+    it "keeps a user #include beside a same-named system #include" do
+      includes = [SystemInclude.new('sys/types.h'), UserInclude.new('types.h')]
+
+      expect( Includes.sanitize!(includes).map(&:filepath) ).to eq(['sys/types.h', 'types.h'])
     end
 
     it "removes duplicate includes" do

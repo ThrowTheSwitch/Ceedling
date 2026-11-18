@@ -193,6 +193,13 @@ describe TestContextExtractor do
       expect( @extractor.lookup_mock_header_includes_list( "test/test_c.c" ) ).to eq( [MockInclude.new( 'x/mock_foo.h' )] )
     end
 
+    # The two can mock different headers, which stage 2 tells apart through the search paths
+    it "keeps a pathless mock #include beside a same-named one with a folder" do
+      @extractor.collect_context( "test/test_c.c", StringIO.new( "#include \"mock_task.h\"\n#include \"other/mock_task.h\"\n" ), TestContextExtractor::Context::INCLUDES )
+
+      expect( @extractor.lookup_mock_header_includes_list( "test/test_c.c" ).map(&:filepath) ).to eq( ['mock_task.h', 'other/mock_task.h'] )
+    end
+
     it "keeps a non-mock #include that climbs with `..`, resolved against the test file's directory" do
       @extractor.collect_context( "test/test_c.c", StringIO.new( "#include \"../inc/x/foo.h\"\n" ), TestContextExtractor::Context::INCLUDES )
 

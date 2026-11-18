@@ -1820,6 +1820,21 @@ describe Partializer do
   ###
 
   context "#remap_implementation_source_includes" do
+    # Fallback holds an #include as written beside the header it resolved to elsewhere, and
+    # the two are one header
+    it "drops an unresolved #include beside the resolved header of the same name" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('module').and_return('ceedling_partial_module_impl.h')
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'module',
+        includes: [UserInclude.new('module.h'), UserInclude.new('config.h'), UserInclude.new('include/drivers/config.h')],
+        partials: { 'module' => make_partial_config(tests_type: :public) }
+      )
+
+      expect( result.map( &:filepath ) ).to eq( ['ceedling_partial_module_impl.h', 'include/drivers/config.h'] )
+    end
+
     # A module tested and mocked in one test file splits its own content across two generated
     # headers: the implementation carries the public bodies and the interface declares the
     # private functions those bodies call. The generated source needs both, so this module's own
