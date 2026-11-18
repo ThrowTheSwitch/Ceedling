@@ -105,13 +105,22 @@ class TestBareIncludesExtractinator
   # doesn't exist or matches one only in letter case, so a mock only the text scan found
   # gets no stand-in without an exact header, and nothing is said. A mock on GCC's list
   # must have its header.
+  #
+  # Both lists hold each #include as written. A stand-in is placed by the #include anchored
+  # to the test file's directory, as the text scan anchors it and later stages place the real
+  # mock. The lists themselves stay as written for reconciliation.
   def place_standins(state, testable)
     bare    = testable.preprocess[:includes]
     literal = testable.preprocess[:candidates].reject { |include| bare.any? { |each| each.filepath == include.filepath } }
 
-    mock_dirs  = @standin_headerinator.place( testable, bare )
-    mock_dirs += @standin_headerinator.place( testable, literal, complain: :silent )
+    mock_dirs  = @standin_headerinator.place( testable, anchored( testable, bare ) )
+    mock_dirs += @standin_headerinator.place( testable, anchored( testable, literal ), complain: :silent )
     @test_search_paths.assign_mock_search_paths( testable, mock_dirs.uniq, state.lock )
+  end
+
+  def anchored(testable, includes)
+    anchor = File.dirname( testable.filepath )
+    return includes.map { |include| include.anchored( anchor ) }
   end
 
 end
