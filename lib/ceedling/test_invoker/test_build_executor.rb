@@ -168,11 +168,11 @@ class TestBuildExecutor
       # and regenerates the mock.
       #
       # CMock names the mock by its folder, which an #include can change while the mock's
-      # place stays. A respelling of the real header's #include (MockLocator#header_respelling)
-      # follows the test's search paths, which CMock's configuration doesn't hold. Both are
-      # recorded too.
-      meta = { cmock: cmock_meta }
-      meta[:folder]         = placement.folder if placement.folder
+      # place stays. A mock with no folder records nil, since a record holding no folder
+      # can't tell it from one named by a folder the record never held. A respelling of the
+      # real header's #include (MockLocator#header_respelling) follows the test's search
+      # paths, which CMock's configuration doesn't hold. Both are recorded too.
+      meta = { cmock: cmock_meta, folder: placement.folder }
       meta[:header_include] = details.header_include if details.header_include
       @dependinator.register( target, files: [details.input], meta: meta, outputs: [mock_header] )
 
