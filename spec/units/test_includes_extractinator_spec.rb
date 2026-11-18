@@ -447,12 +447,26 @@ describe TestIncludesExtractinator do
 
         expect(@preprocessinator).to receive(:store_includes_list)
           .with( hash_including( includes: satisfy { |list| list.map(&:filepath) == ['MockFoo.h', 'drivers/MockFoo.h'] } ) )
-        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', anything ).once
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', anything ).at_least( :once )
 
         @extractinator.stage_collect_preprocessor_context( @state )
 
         expect(@testable.preprocess[:includes].map(&:filepath)).to eq( ['drivers/MockFoo.h'] )
         expect(@testable.preprocess[:candidates].map(&:filepath)).to eq( ['drivers/MockFoo.h'] )
+      end
+
+      # The test file still names the mock both ways, and pass 2 must reach a file for each
+      it "places a stand-in for every spelling of one header's mock, keeping one on the lists" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('drivers/MockFoo.h'), Include.new('src/drivers/MockFoo.h') ] )
+        allow(@file_finder).to receive(:resolve_mock).and_return( ['src/drivers/foo.h', 'drivers'] )
+
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', anything )
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/src/drivers/MockFoo.h', anything )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+
+        expect(@testable.preprocess[:includes].map(&:filepath)).to eq( ['src/drivers/MockFoo.h'] )
       end
     end
   end

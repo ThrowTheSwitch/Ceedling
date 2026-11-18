@@ -1330,6 +1330,34 @@ describe "Includes reconciliation" do
       expect(result.map(&:filepath)).to eq(['test/config.h'])
     end
 
+    # A mock named by its #include's own place keeps that text, not a shorter candidate's
+    it "pairs an #include with the candidate its whole path names before one it only ends" do
+      bare = [Include.new("drivers/mock_task.h"), Include.new("src/drivers/mock_task.h")]
+      user = [MockInclude.new("drivers/mock_task.h"), MockInclude.new("src/drivers/mock_task.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: [])
+
+      expect(result.map(&:filepath)).to eq(['drivers/mock_task.h', 'src/drivers/mock_task.h'])
+    end
+
+    it "pairs one #include alone with the candidate its whole path names" do
+      bare = [Include.new("src/drivers/mock_task.h")]
+      user = [MockInclude.new("drivers/mock_task.h"), MockInclude.new("src/drivers/mock_task.h")]
+
+      expect(Includes.reconcile(bare: bare, user: user, system: []).map(&:filepath)).to eq(['src/drivers/mock_task.h'])
+    end
+
+    # A preprocessor can name one file two ways, as `drivers/./mock_task.h`
+    it "counts candidates naming one path once" do
+      bare = [Include.new("drivers/mock_task.h")]
+      user = [MockInclude.new("build/m/drivers/mock_task.h"), MockInclude.new("build/m/drivers/./mock_task.h")]
+
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: []) { |*args| calls << args }
+
+      expect(calls).to be_empty
+    end
+
     # A header another #include took was not passed over
     it "does not call on_ambiguous for a same-named header another #include took" do
       bare = [Include.new("config.h"), Include.new("app/config.h")]

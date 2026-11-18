@@ -134,6 +134,18 @@ ceedling_system_tests do
         end
       end
 
+      # The pathless mock's source sits in the test's mock root, which the other's name ends too
+      it "keeps a pathless mock of a header at a search path's root beside a same-named mock under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'inc/task.h', "int r_run(int x);\n" )
+          write( 'inc/b/task.h', "int b_run(int x);\n" )
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"mock_task.h\"\n#include \"b/mock_task.h\"\n" \
+                                  "void test_run(void) { r_run_ExpectAndReturn(0, 1); b_run_ExpectAndReturn(3, 4); TEST_ASSERT_EQUAL_INT(5, r_run(0) + b_run(3)); }\n" )
+
+          build( ['inc/**'], preprocessor: preprocessor )
+        end
+      end
+
       it "gives one header one mock when two #includes name it under :use_test_preprocessor #{preprocessor}" do
         in_project do
           write( 'rtos/include/task.h', "int task_run(int x);\n" )
@@ -141,6 +153,19 @@ ceedling_system_tests do
                                   "void test_run(void) { task_run_ExpectAndReturn(1, 2); TEST_ASSERT_EQUAL_INT(2, task_run(1)); include_mock_task_Verify(); }\n" )
 
           build( ['rtos/**'], preprocessor: preprocessor )
+        end
+      end
+    end
+
+    # Neither folder reaches the other's mock, so each spelling keeps a file to reach
+    [:tests, :all].each do |preprocessor|
+      it "builds a test that names one header's mock by two folders under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/task.h', "int task_run(int x);\n" )
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"drivers/mock_task.h\"\n#include \"src/drivers/mock_task.h\"\n" \
+                                  "void test_run(void) { task_run_ExpectAndReturn(1, 2); TEST_ASSERT_EQUAL_INT(2, task_run(1)); }\n" )
+
+          build( ['src/**'], preprocessor: preprocessor )
         end
       end
     end

@@ -518,6 +518,25 @@ describe FileFinder do
       expect(found).to eq('build/test/mocks/test[1]/test_foo/Mockwidget.c')
     end
 
+    # A mock of a header at a search path's root sits in the test's mock root, and a same-named
+    # mock below it ends with the same name
+    it 'resolves a mock in the test\'s mock root beside a same-named mock below it' do
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_t.c'] )
+      allow(@file_wrapper).to receive(:directory_listing).and_return(
+        ['build/test/mocks/test/test_t/b/Mocktask.c', 'build/test/mocks/test/test_t/Mocktask.c']
+      )
+
+      allow(@file_path_utils).to receive(:form_test_build_path).and_return('build/test/out/test/test_t')
+
+      # The planner asks by each mock's #include
+      found = @file_finder.find_build_input_file( filepath: 'Mocktask.h', complain: :error, context: TEST_SYM, test: 'test/test_t' )
+      expect(found).to eq('build/test/mocks/test/test_t/Mocktask.c')
+
+      found = @file_finder.find_build_input_file( filepath: 'b/Mocktask.h', complain: :error, context: TEST_SYM, test: 'test/test_t' )
+      expect(found).to eq('build/test/mocks/test/test_t/b/Mocktask.c')
+    end
+
     it 'still raises when the very same test mocks two different same-named headers from different directories' do
       allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       allow(@file_wrapper).to receive(:directory_listing).and_return(
