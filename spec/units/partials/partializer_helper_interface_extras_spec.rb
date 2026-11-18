@@ -164,6 +164,14 @@ describe PartializerHelper do
 
   # Fallback keeps both sides of a conditional, so a name can arrive twice
   context 'fallback preprocessing' do
+    # A tentative definition and the definition that initializes it are both C
+    it 'keeps every declaration of a static variable outside fallback' do
+      tentative = var( 'int port_x;', decorators: ['static'] )
+      defined   = var( 'int port_x = 5;', decorators: ['static'] )
+
+      expect( plan( c_module( tentative, defined ) ).items ).to eq( [tentative, defined] )
+    end
+
     it 'keeps one copy of a static variable found twice alike' do
       first  = var( 'int gain = 1;', decorators: ['static', 'const'] )
       second = var( 'int gain = 1;', decorators: ['static', 'const'] )
@@ -181,12 +189,28 @@ describe PartializerHelper do
     it 'leaves out a plain prototype found twice with different signatures' do
       expect( plan( c_module( decl( 'int init(void);' ), decl( 'long init(void);' ) ), fallback: true ).items ).to eq( [] )
     end
+
+    # A helper calling a function whose prototype stays behind wouldn't compile
+    it 'leaves out a helper calling a function whose prototypes conflict' do
+      twice = defn( 'static inline int port_twice(void) { return 2 * (int)port_mode(); }' )
+
+      extras = plan( c_module( decl( 'unsigned long port_mode(void);' ), decl( 'unsigned short port_mode(void);' ), twice ), fallback: true )
+
+      expect( extras.items ).to eq( [] )
+    end
   end
 
   # ---- names a macro rewrites ------------------------------------------------------
 
   # The interface writes every macro ahead of the extras, so a function-like macro of the
   # same name would rewrite the prototype. Calls go through the macro anyway.
+  # An object-like macro of a function's name renames the prototype into one callers still reach
+  it 'keeps a prototype an object-like macro of its name renames' do
+    reg = decl( 'int read_reg(void);' )
+
+    expect( plan( c_module( reg, macro( '#define read_reg read_reg_v2' ) ) ).items ).to eq( [reg] )
+  end
+
   it 'leaves out a prototype a function-like macro of the same name rewrites' do
     alloc = decl( 'void *port_alloc(unsigned n);' )
     dbg   = decl( 'void *port_alloc_dbg(unsigned n, int line);' )
@@ -228,6 +252,40 @@ describe PartializerHelper do
       table = var( 'port_fn_t port_table[] = { port_twice };', decorators: ['static', 'const'] )
 
       expect( plan( port_module( sum, twice, table ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    # A promoted static is data at file scope, which GCC emits even where the helper is unused
+    it 'leaves out an inline helper whose promoted static names it' do
+      promoted = var( 'int (*partial_port_h_cb)(void) = port_a;', decorators: ['static'], promoted_from: 'port_h' )
+      helper   = defn( 'static inline int port_h(void) { return partial_port_h_cb(); }' )
+
+      expect( plan( port_module( promoted, helper ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    it 'reads a name a macro hides' do
+      handlers = var( 'port_fn_t port_handlers[] = { PORT_HANDLER };', decorators: ['static', 'const'] )
+
+      extras = plan( port_module( macro( '#define PORT_HANDLER port_a' ), handlers ), interface: mocked( 'port_read' ) )
+
+      expect( extras.items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    # A string, a comment or a member access only reads like a use
+    it 'keeps an item whose string, comment or member access spells the name' do
+      names  = var( 'const char *port_names[] = { "port_a" };', decorators: ['static'] )
+      helper = defn( 'static int port_h(struct port *p) { /* not port_a */ return p->port_a; }' )
+
+      extras = plan( port_module( names, helper ), interface: mocked( 'port_read' ) )
+
+      expect( extras.items.map( &:name ) ).to eq( ['port_a', 'port_names', 'port_h'] )
+    end
+
+    it 'keeps an item naming a function that only starts with the name' do
+      table = var( 'port_fn_t port_table[] = { port_ab };', decorators: ['static', 'const'] )
+
+      extras = plan( port_module( decl( 'int port_ab(void);' ), table ), interface: mocked( 'port_read', 'port_ab' ) )
+
+      expect( extras.items.map( &:name ) ).to eq( ['port_a', 'port_table'] )
     end
 
     it 'keeps a static variable naming a mocked function or a kept helper' do

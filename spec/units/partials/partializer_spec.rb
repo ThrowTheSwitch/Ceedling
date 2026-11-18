@@ -1064,7 +1064,9 @@ describe Partializer do
       @config   = OpenStruct.new( module: 'port', fallback?: false, header: OpenStruct.new( filepath: 'src/port.h', includes: [] ),
                                   source: OpenStruct.new( includes: [UserInclude.new( 'port.h' )] ) )
       @engine   = OpenStruct.new( module: 'engine', header: OpenStruct.new( includes: [] ),
-                                  source: OpenStruct.new( includes: [UserInclude.new( 'engine.h' ), UserInclude.new( 'port.h' )] ) )
+                                  source: OpenStruct.new( includes: [UserInclude.new( 'engine.h' ), UserInclude.new( 'port.h' )],
+                                                          assembled_filepath: 'pp/engine.c' ) )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return port_twice(port_read()) + port_k; }' )
       @extras   = Partials::InterfaceExtras.new( items: [
         CExtractorTypes::CFunctionDefinition.new( name: 'port_twice' ),
         CExtractorTypes::CVariableDeclaration.new( name: 'port_k', decorators: ['static'] )
@@ -1101,9 +1103,42 @@ describe Partializer do
 
     it "lists helpers, variables and prototypes as one list" do
       @extras.items << CExtractorTypes::CFunctionDeclaration.new( name: 'port_scaled' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int g(void) { return port_twice(port_k) + port_scaled(); }' )
 
       expect(@loginator).to receive(:log) do |notice, *|
         expect( notice ).to include( 'which leaves helper `port_twice()`, variable `port_k` and prototype `port_scaled()` out.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    # Only what another Partial's code uses can fail there
+    it "names only what the other Partials use, in the singular for one" do
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return port_twice(port_read()); }' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves helper `port_twice()` out.' )
+        expect( notice ).to include( 'Code in those Partials that uses it fails to compile or link.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "says nothing when the other Partials use none of it" do
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return port_read(); }' )
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "reads a Partial that includes the header from its own header" do
+      @engine.source.includes = [UserInclude.new( 'engine.h' )]
+      @engine.header          = OpenStruct.new( includes: [UserInclude.new( 'port.h' )], assembled_filepath: 'pp/engine.h' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( '' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.h').and_return( 'static inline int e(void) { return port_k; }' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves variable `port_k` out.' )
       end
 
       explain( { 'engine' => @engine, 'port' => @config } )

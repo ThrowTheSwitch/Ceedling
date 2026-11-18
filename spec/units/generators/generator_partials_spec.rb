@@ -382,6 +382,20 @@ describe GeneratorPartials do
       expect( buf.string ).to include( "extern int port_buf[];\n" )
     end
 
+    it "keeps an extern's qualifiers and an asm label another declaration holds" do
+      allow(@file_path_utils).to receive(:form_partial_extras_header_filename).with('port').and_return('port_extras.h')
+      buf = StringIO.new
+      allow(@file_wrapper).to receive(:open).with('/out/port_extras.h', 'wb').and_yield(buf)
+      header_extern = make_var(name: 'port_k', type: 'int', text: 'int port_k;', decorators: ['extern', 'const'], origin: :header)
+      labelled      = CExtractorTypes::CVariableDeclaration.new( name: 'port_k', type: 'int', text: 'int port_k __asm__("k_sym") = 1;',
+                                                                 decorators: ['const'], asm_label: '__asm__("k_sym")', origin: :source )
+
+      @generator.generate_extras( name: 'port', extras: Partials::InterfaceExtras.new(items: [header_extern]),
+                                  c_module: make_module(header_extern, labelled), output_path: '/out' )
+
+      expect( buf.string ).to include( "extern const int port_k __asm__(\"k_sym\");\n" )
+    end
+
     # The real header may arrive before the interface, through another include. Its helpers are
     # then already defined, so the extras hold their content only where the interface spoofed it.
     it "holds its items under the flag an interface sets when it spoofs the real header" do
