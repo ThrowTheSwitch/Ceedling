@@ -8,6 +8,7 @@
 require 'set'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/path_matcher'
+require 'ceedling/filesystem/project_paths'
 
 class Includes
   # Class method to convert mixed list of Include objects into an order-preserving list of hashes
@@ -312,7 +313,7 @@ class Includes
 
       on_ambiguous&.call(bare_include.filepath, filepath, matched[1..]) if matched.length > 1
 
-      user_includes << user_by_filepath[filepath]
+      user_includes << as_written(user_by_filepath[filepath], bare_include, bare_filepath)
     end
 
     # Disambiguate same-basename results -- see the class comment above. A group of
@@ -330,6 +331,19 @@ class Includes
     self.sort!(reconciled)
     return reconciled
   end
+
+  # A mock's #include names it for CMock and the runner, so a mock keeps the text the file
+  # wrote, anchored as `bare_filepath` is. Its candidate is the mock's place below its mirror
+  # root, which can carry folders the #include never wrote. A bare entry carrying more path
+  # than its candidate is the line-marker path of a computed #include, which wrote no text,
+  # so the candidate stays. Any other #include keeps its candidate, the header's real path.
+  def self.as_written(candidate, bare_include, bare_filepath)
+    return candidate unless candidate.is_a?(MockInclude)
+    return candidate if ProjectPaths.segments(bare_filepath).length > ProjectPaths.segments(candidate.filepath).length
+
+    return MockInclude.new(bare_filepath, directory_relative: bare_filepath != bare_include.filepath)
+  end
+  private_class_method :as_written
 
   # Two filepaths correspond if the shorter one's path segments equal the longer one's
   # own trailing segments, exactly, in order -- checked without regard for which side is
