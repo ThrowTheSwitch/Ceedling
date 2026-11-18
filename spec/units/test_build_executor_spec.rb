@@ -1699,7 +1699,7 @@ describe TestBuildExecutor do
       expect(@dependinator).to receive(:register).with(
         'build/test/mocks/sub/MockFoo.c',
         files:   anything,
-        meta:    { cmock: { mock_prefix: 'Custom' } },
+        meta:    hash_including( cmock: { mock_prefix: 'Custom' } ),
         outputs: anything
       )
 
@@ -1864,12 +1864,13 @@ describe TestBuildExecutor do
         @executor.stage_generate_mocks( @state )
       end
 
-      it "records no folder as meta for a mock named without one" do
+      # A record holding no folder can't tell a mock named without one from one named by a folder it never held
+      it "records a nil folder as meta for a mock named without one" do
         include_as( 'MockFoo.h' )
         allow(@generator).to receive(:generate_mock)
 
         expect(@dependinator).to receive(:register)
-          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' } }, outputs: anything )
+          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, folder: nil }, outputs: anything )
 
         @executor.stage_generate_mocks( @state )
       end
