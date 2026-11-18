@@ -25,6 +25,9 @@ class MockLocator
   # the mock from (`reach`), which a search path must name
   MockPlacement = Struct.new( :folder, :directory, :root, :reach, keyword_init: true )
 
+  # An :orig_header_include_fmt whose text is the whole operand, between quotes or brackets
+  OPERAND_FORMAT = /\A\s*#\s*include\s*(?:"%s"|<%s>)\s*\z/
+
   constructor :configurator, :include_pathinator, :test_search_paths, :file_finder, :file_path_utils
 
   # How a test's real headers are found: through its search paths in order, without the
@@ -88,28 +91,37 @@ class MockLocator
   end
 
   # A respelling of the #include a mock opens with: the spelling `search` reaches its real
-  # `header` by (see HeaderSearch on spellings), in place of CMock's, when CMock's reaches
-  # another header or none, as through a search path listing the header's own directory.
-  # Nil when CMock's reaches it, or nothing does. The compiler joins a folder that climbs as
-  # written, which a search can't judge, so CMock's stays. A Partial mock's header is
-  # Ceedling's own, which CMock reaches in the mock root.
+  # `header` by (see HeaderSearch on spellings), in place of CMock's, when CMock's reaches no
+  # header, as through a search path listing the header's own directory. Nil when CMock's
+  # reaches a header, or nothing reaches this one.
+  #
+  # CMock's stays wherever the respelling can't be judged:
+  # - CMock's reaches a same-named header. The compiler includes that one, whichever header
+  #   the mock was located by.
+  # - Its folder climbs. The compiler joins `..` as written, which a search can't follow.
+  # - :orig_header_include_fmt writes more around the text than quotes or angle brackets,
+  #   which a respelling is never weighed with.
+  # - It's a Partial mock, whose header is Ceedling's own, in the mock root.
   def header_respelling(include, header, search)
     return nil if mock_partial?( include )
 
     written = cmock_header_include( include.filepath, header )
-    return nil if ProjectPaths.segments( written ).include?( '..' )
+    return nil if ProjectPaths.segments( written ).include?( '..' ) or search.joins?( written )
 
-    spelled = search.spelling( header, preferring: written )
-    return spelled == written ? nil : spelled
+    spelled = search.spelling( header )
+    return (spelled and header_include_format.match?( OPERAND_FORMAT )) ? spelled : nil
   end
 
   # The line CMock opens a mock with: its :orig_header_include_fmt around `text`
   def header_include_line(text)
-    format = @configurator.get_cmock_config[:orig_header_include_fmt] || '#include "%s"'
-    return format.gsub( '%s' ) { text }
+    return header_include_format.gsub( '%s' ) { text }
   end
 
   private
+
+  def header_include_format
+    return @configurator.get_cmock_config[:orig_header_include_fmt] || '#include "%s"'
+  end
 
   # The folder CMock is given for a mock's #include, or nil without :mock_name_include_folder
   def cmock_folder(include_path)
