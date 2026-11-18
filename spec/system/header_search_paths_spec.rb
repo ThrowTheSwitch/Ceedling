@@ -411,6 +411,35 @@ ceedling_system_tests do
       end
     end
 
+    # The compiler joins an #include with each search path. A header directly in a search path
+    # isn't reached through the directory that path names.
+    it "include in the runner by a text the compiler joins, never one only a header's trailing path matches" do
+      in_project do
+        write( 'test/hw/config.h', "#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\n#define HW_GAIN 3\n#endif\n" )
+        write( 'lib/app/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define APP_GAIN 5\n#endif\n" )
+        write( 'test/test_gain.c', HEADER_SEARCH_PREAMBLE + "#include \"hw/config.h\"\n#include \"app/config.h\"\n" \
+                                   "void test_gain(void) { TEST_ASSERT_EQUAL_INT(15, HW_GAIN * APP_GAIN); }\n" )
+
+        configure( ['lib/'], :all )
+        build_passes
+      end
+    end
+
+    # A quoted #include looks beside the test file first. One there that no search path reaches
+    # leaves the runner the header the search paths find.
+    it "include in the runner the search paths' header where none reaches the one beside the test" do
+      in_project do
+        write( 'test/drivers/foo.h', "#ifndef TFOO_H\n#define TFOO_H\n#define FOO_ARG 7\n#endif\n" )
+        write( 'src/drivers/foo.h', "#ifndef SFOO_H\n#define SFOO_H\n#define FOO_ARG 7\n#endif\n" )
+        write( 'test/test_b.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\nvoid test_b(void) { TEST_ASSERT_EQUAL_INT(7, FOO_ARG); }\n" )
+
+        configure( ['src/'], :none )
+        @c.remove_project_yml_option_for_test( :paths, :test )
+        @c.merge_project_yml_for_test( { :paths => { :test => ['test/'] } } )
+        build_passes
+      end
+    end
+
     # Reconciliation spells two same-named headers apart. A directory searched ahead of the
     # project's, such as the one holding CMock's copy of one of them, must never capture the other.
     it "keep the paths that tell two same-named headers apart" do
