@@ -12,6 +12,8 @@ A project names one place in many spellings. A `:paths` entry may read `src/**`,
 
 Comparing these spellings as text gives wrong answers in two ways. Two spellings of one place compare unequal. A text prefix also suggests containment where there is none. The text `..` begins `../../../Keil_v5/Include`, yet that directory lies far outside `..`.
 
+An `#include`'s spelling, the text it names a header by, is a separate idea. [Finding a test's headers](../test_invoker/PIPELINE.md#finding-a-tests-headers) defines it.
+
 Placement poses a second challenge. Same-named sources live in many directories. Some lie outside the project or on another drive. Each build file needs a place that belongs to its source alone and still lies inside the build root.
 
 ### The rules

@@ -237,6 +237,14 @@ Each include setting puts its headers in a fake where CMock puts them in a mock.
 A [Unity helper](../configuration/reference/cmock.md#unity_helper_path) is
 included in a fake’s header and source, as it is in a mock’s.
 
+A fake includes its original header as a mock does, by the folder the fake’s
+own `#include` names and the header’s filename. A fake included as
+`drivers/mock_foo.h` includes `drivers/foo.h`. With `:cmock` ↳
+`:mock_name_include_folder` disabled, it includes the filename alone. Where that
+text reaches no header, as `drivers/foo.h` doesn’t with only `src/drivers/`
+listed, the fake includes the header by the text a search path reaches it by,
+here `foo.h`.
+
 ### Fakes of same-named headers
 
 With `:cmock` ↳ `:mock_name_include_folder` enabled, Ceedling’s default, a fake

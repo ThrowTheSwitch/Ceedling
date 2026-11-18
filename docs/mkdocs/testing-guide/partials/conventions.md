@@ -114,6 +114,8 @@ code calls functions it only declares, and its header may define small
 `static` or `inline` helpers. A Partial holding only the selected functions
 would fail to compile or link without them. Ceedling copies them into the
 Partial's generated implementation source, written as your module writes them.
+A mock keeps its own share of your header, as
+[described below](#what-a-mock-partial-keeps-from-your-header).
 
 ### What is carried
 
@@ -218,6 +220,84 @@ one function, such as both sides of a conditional it cannot evaluate. A Partial
 carries neither copy. When it generates the Partial, it logs a notice naming the
 function. For a helper, the notice suggests selecting it with `+name`, which
 selects the first copy.
+
+## What a Mock Partial Keeps From Your Header
+
+A Mock Partial keeps the rest of your module header for the code that includes
+it. Its interface header stands in for your real header wherever your test
+build includes it, and CMock mocks only the functions you select. Code that
+includes your header may still use the rest of it, such as a `static inline`
+helper, a `static const` table, an `extern` variable, or a function you leave
+unmocked. A module your test mocks but doesn't test keeps that content in a
+header of its own, `ceedling_partial_<module>_extras.h`.
+
+The interface header includes the extras header where your header's own
+declarations end, so a kept helper can call a mocked function your header
+declares. CMock never reads the extras header, so nothing in it becomes a
+mock. Your test file sees what it keeps too, through the mock.
+
+!!! tip "See what a mock keeps"
+    Run a test build with `--verbosity=debug` that generates the Partial, such
+    as the first build after `ceedling clobber`. Each mock lists what it kept.
+
+### What is kept
+
+* **Helpers your header defines.** Each `static` or `inline` function in your
+  header that your test doesn't mock is kept as your header writes it. A
+  function-scope `static` in it is promoted, as in every Partial.
+* **`static` variables your header defines.**
+* **`extern` declarations** of variables, as your header writes them.
+* **Prototypes of functions your test doesn't mock.**
+
+### What is left out
+
+Some content stays behind, because keeping it could break a build that works.
+
+* Anything your module's source defines. A mock stands in for your header
+  alone.
+* A variable your header defines without `static`. Every file that includes
+  the header would define it again.
+* A `static` or `inline` prototype whose helper isn't kept.
+* A prototype that a function-like macro of the same name rewrites, since
+  calls use the macro.
+* A `static` variable, or a `static` helper that isn't `inline`, that names a
+  function your module declares and your test doesn't mock. Your test build may
+  hold no definition of that function. A compiler can emit such an item even
+  where nothing uses it, and the test would fail to link. An item that names
+  anything left out this way stays behind too.
+* Under [fallback preprocessing](#fallback-preprocessing), an item with two
+  different copies, such as both sides of a conditional. Identical copies are
+  kept once. An item that names a function with two different prototypes stays
+  behind too, `inline` helpers included.
+
+### A mocked header without an include guard
+
+A header without an include guard can still arrive through another include,
+helpers and all, as it can for a
+[Test Partial](#a-module-header-without-an-include-guard). A kept copy of a
+helper or a `static` variable would then collide with the real one. A mock of
+such a header keeps only its `extern` declarations and prototypes. When it
+generates the Partial, Ceedling logs a notice naming the helpers and variables
+the mock leaves behind. Give the header an include guard to have them kept.
+`#pragma once` is not an include guard. Ceedling relies on include guards to
+stand a mock in for a header, so a `#pragma once` header is treated as one
+without a guard.
+
+### A module both tested and mocked
+
+A module that one test both tests and mocks gets no extras header. Its
+implementation source carries what its own code uses, as
+[described above](#what-a-partial-carries-from-your-module). Another Partial in
+that test that includes the module's header gets the mock's interface in its
+place, which declares only the mocked functions. Code in that Partial that uses
+the header's helpers or `static` variables fails to compile or link.
+
+When it generates the Partial, Ceedling logs a notice naming what the other
+Partials use. Two changes work around it:
+
+1. Test the module in a test file of its own, and only mock it in this one.
+1. Move what the other Partials use into a header your module header includes.
+   The mock keeps that header's `#include`.
 
 ## Function Pointers
 
