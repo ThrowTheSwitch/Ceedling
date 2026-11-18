@@ -478,6 +478,28 @@ ceedling_system_tests do
       end
     end
 
+    # A mock includes its header by the text the listed directory reaches it by. A directory
+    # added for the folder's parent would hold the project's string.h, shadowing the system's.
+    [[:mocks, [], :include], [:all, [], :include], [:none, ['fff'], :exclude]].each do |preprocessor, plugins, treat_inlines|
+      kind = plugins.empty? ? "a mock under :treat_inlines #{treat_inlines}" : 'an FFF fake'
+
+      it "keep a project header named like a system one out of reach of #{kind} through its folder under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', "#ifndef FOO_H\n#define FOO_H\ntypedef int foo_t;\n" \
+                                      "static inline foo_t foo_peek(void) { return -1000; }\nfoo_t foo_read(void);\n#endif\n" )
+          write( 'src/string.h', "#error \"src/string.h shadowed <string.h>\"\n" )
+          body = plugins.empty? ? 'foo_read_ExpectAndReturn(5);' : 'foo_read_fake.return_val = 5;'
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include <string.h>\n#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { #{body} TEST_ASSERT_EQUAL_INT(5, foo_read()); " \
+                                  "TEST_ASSERT_EQUAL_INT(0, (int)strlen(\"\")); }\n" )
+
+          configure( [plugins.empty? ? 'src/drivers/**' : 'src/drivers/'], preprocessor,
+                     { :plugins => { :enabled => plugins }, :cmock => { :treat_inlines => treat_inlines } } )
+          build_passes
+        end
+      end
+    end
+
     [:none, :all].each do |preprocessor|
       it "reach a header below the search path from an FFF fake under :use_test_preprocessor #{preprocessor}" do
         in_project do

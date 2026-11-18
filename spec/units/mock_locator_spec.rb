@@ -8,6 +8,7 @@
 require 'spec_helper'
 require 'ceedling/constants'
 require 'ceedling/includes/includes'
+require 'ceedling/includes/header_search'
 require 'ceedling/test_invoker/mock_locator'
 require 'ceedling/test_invoker/test_invoker_types'
 
@@ -157,6 +158,93 @@ describe MockLocator do
           [spot.directory, spot.root, spot.reach].each { |dir| expect(dir.split( '/' )).to_not include( '..' ), include_path }
         end
       end
+    end
+  end
+
+  # CMock includes a mock's real header by the folder it is given and the header's filename.
+  # A search path listing the header's own directory joins no such folder.
+  describe "#header_include and #header_respelling" do
+    def search_over(paths, headers)
+      return HeaderSearch.new( paths, ->(dir) { headers.select { |header| File.expand_path( File.dirname( header ) ) == File.expand_path( dir ) } } )
+    end
+
+    it "keeps CMock's text where a search path joins the folder to the header" do
+      search = search_over( ['src'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'drivers/foo.h' )
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to be_nil
+    end
+
+    it "takes the text the search paths reach the header by where none joins CMock's" do
+      search = search_over( ['src/drivers'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'foo.h' )
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'foo.h' )
+    end
+
+    # A search path earlier in the order can join CMock's text to a same-named header
+    it "takes the text that reaches the header where CMock's reaches another" do
+      search = search_over( ['lib', 'src'], ['lib/drivers/foo.h', 'src/hw/drivers/foo.h'] )
+
+      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/hw/drivers/foo.h', search )).to eq( 'hw/drivers/foo.h' )
+    end
+
+    it "keeps CMock's text where nothing reaches the header" do
+      search = search_over( ['inc'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'drivers/foo.h' )
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to be_nil
+    end
+
+    it "includes the header by its filename for a bare #include" do
+      search = search_over( ['src/drivers'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_include( MockInclude.new( 'MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'foo.h' )
+      expect(@locator.header_respelling( MockInclude.new( 'MockFoo.h' ), 'src/drivers/foo.h', search )).to be_nil
+    end
+
+    it "drops a leading ./ from the folder, as CMock is given it" do
+      search = search_over( ['src'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_include( MockInclude.new( './drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'drivers/foo.h' )
+    end
+
+    it "includes by the filename CMock writes, and respells nothing, when :mock_name_include_folder is disabled" do
+      allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( false )
+      search = search_over( ['src/drivers'], ['src/drivers/foo.h'] )
+
+      expect(@locator.header_include( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to eq( 'foo.h' )
+      expect(@locator.header_respelling( MockInclude.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', search )).to be_nil
+    end
+
+    # A Partial mock's header is Ceedling's own, generated where no search path for real headers looks
+    it "respells nothing for a Partial mock" do
+      header = 'build/test/partials/t/ceedling_partial_foo_interface.h'
+      search = search_over( ['.'], [header] )
+
+      expect(@locator.header_respelling( MockInclude.new( "Mock#{PARTIAL_FILENAME_PREFIX}foo_interface.h" ), header, search )).to be_nil
+    end
+
+    # The compiler joins a climbing folder as written, which a search can't judge
+    it "keeps CMock's text for a folder that climbs" do
+      search = search_over( ['inc/x'], ['inc/x/foo.h'] )
+
+      expect(@locator.header_respelling( MockInclude.new( '../x/MockFoo.h' ), 'inc/x/foo.h', search )).to be_nil
+      expect(@locator.header_include( MockInclude.new( '../x/MockFoo.h' ), 'inc/x/foo.h', search )).to eq( '../x/foo.h' )
+    end
+  end
+
+  describe "#header_include_line" do
+    it "puts the text in CMock's default #include" do
+      allow(@configurator).to receive(:get_cmock_config).and_return( {} )
+
+      expect(@locator.header_include_line( 'drivers/foo.h' )).to eq( '#include "drivers/foo.h"' )
+    end
+
+    it "puts the text in the project's CMock :orig_header_include_fmt" do
+      allow(@configurator).to receive(:get_cmock_config).and_return( { orig_header_include_fmt: '#include <%s>' } )
+
+      expect(@locator.header_include_line( 'foo.h' )).to eq( '#include <foo.h>' )
     end
   end
 end

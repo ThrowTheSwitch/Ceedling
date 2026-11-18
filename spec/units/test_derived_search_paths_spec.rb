@@ -106,10 +106,10 @@ describe TestDerivedSearchPaths do
       expect(derive( paths: ['src'], includes: [mock( 'src/path/to/mock_sensor.h' )] )).to eq( ['.'] )
     end
 
-    # A mock writes its header's #include through the folder the test named it by, which a search
-    # path listing the header's own directory doesn't join
-    it "adds the directory a mock's folder is measured from where a search path lists the header's own directory" do
-      expect(derive( paths: ['src/path/to'], includes: [mock( 'path/to/mock_sensor.h' )] )).to eq( ['src'] )
+    # The mock includes its header by the text the listed directory reaches it by. A directory
+    # added for its folder could hold a header named like a system one, such as string.h.
+    it "adds nothing for a mock through a folder where a search path lists the header's own directory" do
+      expect(derive( paths: ['src/path/to'], includes: [mock( 'path/to/mock_sensor.h' )] )).to eq( [] )
     end
 
     it "adds nothing for a plain #include through a folder where a search path lists the header's own directory" do

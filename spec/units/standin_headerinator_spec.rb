@@ -39,6 +39,8 @@ describe StandinHeaderinator do
       MockLocator::MockPlacement.new( folder: nil, directory: dir, root: dir, reach: dir )
     end
     allow(@mock_locator).to receive(:search_directories) { |placement| [placement.directory] }
+    allow(@mock_locator).to receive(:header_include) { |_include, header, _search| File.basename( header ) }
+    allow(@mock_locator).to receive(:header_include_line) { |text| "#include \"#{text}\"" }
 
     @standins = described_class.new(
       configurator: @configurator, loginator: @loginator, reportinator: @reportinator,
@@ -63,8 +65,8 @@ describe StandinHeaderinator do
       @standins.place( @testable, [Include.new( 'MockFoo.h' )] )
     end
 
-    it "includes the header in the project's CMock :orig_header_include_fmt" do
-      allow(@configurator).to receive(:get_cmock_config).and_return( { orig_header_include_fmt: '#include <%s>' } )
+    it "includes the header by the line the real mock opens with" do
+      allow(@mock_locator).to receive(:header_include_line).with( 'foo.h' ).and_return( '#include <foo.h>' )
 
       expect(@file_wrapper).to receive(:write).with( anything, "#{StandinHeaderinator::MARKER}\n#include <foo.h>\n" )
 
@@ -127,12 +129,14 @@ describe StandinHeaderinator do
         .to eq( ['build/test/mocks/a_test/_up_/x', 'build/test/mocks/a_test/_up_/_up_'] )
     end
 
-    # The real mock opens with the header as CMock names it, by the folder CMock is given
-    it "includes the header by the folder its mock is named by" do
+    # The real mock opens with the header by the text the test's search paths reach it by,
+    # which a search path listing the header's own directory gives without the folder
+    it "includes the header by the text its mock includes it by" do
       named = MockLocator::MockPlacement.new( folder: 'drivers', directory: 'build/test/mocks/a_test/drivers', root: 'build/test/mocks/a_test', reach: 'build/test/mocks/a_test' )
       allow(@mock_locator).to receive(:placement).and_return( named )
+      allow(@mock_locator).to receive(:header_include).with( Include.new( 'drivers/MockFoo.h' ), 'src/drivers/foo.h', :search ).and_return( 'foo.h' )
 
-      expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', "#{StandinHeaderinator::MARKER}\n#include \"drivers/foo.h\"\n" )
+      expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', "#{StandinHeaderinator::MARKER}\n#include \"foo.h\"\n" )
 
       @standins.place( @testable, [Include.new( 'drivers/MockFoo.h' )] )
     end

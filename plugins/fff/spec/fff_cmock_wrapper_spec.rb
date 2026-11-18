@@ -57,6 +57,17 @@ describe FffCMockWrapper do
     expect( File.readlines( File.join( mock_path, 'drivers', 'mock_bar.h' ), chomp: true ) ).to include( '#include "drivers/bar.h"' )
   end
 
+  # Ceedling gives the text a search path listing the header's own directory reaches it by
+  it 'includes the original header by the text Ceedling gives in place of its folder' do
+    mock_path = File.join( @root, 'mocks' )
+    config    = { :mock_prefix => 'mock_', :mock_path => mock_path, :includes => [], :verbosity => 0, :orig_header_include => 'bar.h' }
+    FffCMockWrapper.new( config ).setup_mocks( @header, 'drivers' )
+
+    lines = File.readlines( File.join( mock_path, 'drivers', 'mock_bar.h' ), chomp: true )
+    expect( lines ).to include( '#include "bar.h"' )
+    expect( lines ).not_to include( '#include "drivers/bar.h"' )
+  end
+
   it 'adds no includes when no setting names any' do
     files = fake
 

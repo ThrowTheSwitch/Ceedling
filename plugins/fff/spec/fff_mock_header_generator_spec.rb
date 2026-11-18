@@ -27,11 +27,11 @@ describe "FffMockGenerator.create_mock_header" do
     end
   end
 
-  context "when given the folder its #include names," do
+  context "when given the text it includes the original header by," do
     let(:mock_header) {
-      FffMockGenerator.create_mock_header("config", "mock_config", {}, folder: "drivers/uart")
+      FffMockGenerator.create_mock_header("config", "mock_config", {}, header_include: "drivers/uart/config.h")
     }
-    it "then the original header is included by that folder" do
+    it "then the original header is included by that text" do
       expect(mock_header).to include(%{#include "drivers/uart/config.h"\n})
     end
   end

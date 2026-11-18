@@ -1725,6 +1725,58 @@ describe TestBuildExecutor do
       @executor.stage_generate_mocks( @state )
     end
 
+    # CMock includes a mock's real header by the folder it is given and the header's filename.
+    # Stage 5 records another text where the test's search paths reach the header only by it.
+    context "with a respelled #include of the mock's real header" do
+      before(:each) do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@dependinator).to receive(:mark_fresh)
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :exclude )
+        @state.mocks_list.first.details.include_path   = 'drivers/MockFoo.h'
+        @state.mocks_list.first.details.header_include = 'foo.h'
+      end
+
+      it "has CMock include the header by that text, and passes the text on for an FFF fake" do
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( overrides: { orig_header_include: 'foo.h', orig_header_include_fmt: '#include "foo.h"' } ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "puts the text in the project's CMock :orig_header_include_fmt" do
+        allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock', orig_header_include_fmt: '#include <%s>' } )
+
+        expect(@generator).to receive(:generate_mock)
+          .with( hash_including( overrides: hash_including( orig_header_include_fmt: '#include <foo.h>' ) ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # CMock's own text reaches the copy of the header CMock writes beside the mock. A fake
+      # writes no copy.
+      it "keeps CMock's own #include under :treat_inlines :include, passing the text on for an FFF fake" do
+        allow(@configurator).to receive(:cmock_treat_inlines).and_return( :include )
+
+        expect(@generator).to receive(:generate_mock).with( hash_including( overrides: { orig_header_include: 'foo.h' } ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # The text follows the test's search paths, which CMock's configuration doesn't hold
+      it "records the text as meta, so a change regenerates the mock" do
+        allow(@generator).to receive(:generate_mock)
+
+        expect(@dependinator).to receive(:register).with(
+          'build/test/mocks/drivers/MockFoo.c',
+          files:   anything,
+          meta:    { cmock: { mock_prefix: 'Mock' }, header_include: 'foo.h' },
+          outputs: anything
+        )
+
+        @executor.stage_generate_mocks( @state )
+      end
+    end
+
     # CMock and the runner both name a mock by the folder its #include names. CMock writes
     # below its own root at that folder, so the folder must also end the mock's directory.
     context "naming a mock by its #include's folder" do
