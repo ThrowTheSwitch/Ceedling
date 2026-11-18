@@ -131,15 +131,15 @@ class HeaderSearch
     return nameable?( path ) ? named_in( File.dirname( path ), File.basename( path ) ) : nil
   end
 
-  # The #include text through which these search paths find `header` first: `preferring` when
-  # that does, then its filename, otherwise its path below the earliest search path that does.
-  # Nil for none.
+  # The #include text through which these search paths find `header` first, as the compiler
+  # joins it with each: `preferring` when that does, then its filename, otherwise its path below
+  # the earliest search path that does. Nil for none.
   def spelling(header, preferring: nil)
     target = location( header )
     texts  = [preferring, File.basename( header )] + @paths.filter_map { |path| ProjectPaths.subdir_below( path, header ) }
 
     return texts.compact.uniq.find do |text|
-      found = header_candidates( text ).first
+      found = joined( normalized( text ) ).first
       !found.nil? and location( found ) == target
     end
   end

@@ -467,10 +467,13 @@ class Include
   #
   # A `resolved` #include holds the path the compiler found its header by. One as written names
   # the header beside its includer, in directory `from`, ahead of any a search path finds, as the
-  # compiler's quote rule does. One whose header isn't found or reached comes back as it is.
+  # compiler's quote rule does. Where no search path reaches that one, it is spelled by the header
+  # the search paths find, which the compiler finds from where a generated file lives. One whose
+  # header isn't found or reached comes back as it is.
   def spelled_by(search, from: nil, resolved: false)
-    header   = header_in( search, from, resolved )
-    spelling = header && search.spelling( header, preferring: include )
+    header     = header_in( search, from, resolved )
+    spelling   = header && search.spelling( header, preferring: include )
+    spelling ||= searched_spelling( search ) unless resolved or header.nil?
     return spelling ? self.class.new( header, include_path: spelling, directory_relative: @directory_relative ) : self
   end
 
@@ -541,6 +544,12 @@ class Include
   def header_in(search, from, resolved)
     found = resolved ? search.at( @filepath ) : header_beside( search, from )
     return found || search.header_candidates( @filepath ).first
+  end
+
+  # The spelling of the header the search paths find for this #include's path, or nil
+  def searched_spelling(search)
+    found = search.header_candidates( @filepath ).first
+    return found && search.spelling( found, preferring: include )
   end
 
   # The header an #include as written names beside its includer, or at its anchored path
