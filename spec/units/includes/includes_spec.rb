@@ -1329,7 +1329,8 @@ describe "Includes reconciliation" do
       # search even under -nostdinc, so an ordinary bare entry's own text can't be
       # trusted as "the literal, as-written spelling" the way a system include's can.
       # A bare entry carrying `include_path` (see the tests below) is a different,
-      # known-literal case -- this one stays untagged.
+      # known-literal case -- this one stays untagged. A file generated from the
+      # reconciled list spells the header for itself (Include#spelled_by).
       bare = [Include.new("drivers/gpio.h")]
       user = [UserInclude.new("drivers/gpio.h")]
       system = []

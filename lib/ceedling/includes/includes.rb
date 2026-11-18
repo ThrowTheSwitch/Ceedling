@@ -224,17 +224,13 @@ class Includes
   # collapsing to `<stat.h>`.
   #
   # A matched user include renders filename-only whenever its basename is unique
-  # among this reconciliation's own results -- deliberately not the literal,
-  # as-written subdirectory spelling, even when one was available. Ceedling adds
-  # every real source/test/include directory as its OWN individual search path
-  # (nothing project-root-relative), so a header's basename alone already finds the
-  # right file precisely when nothing else in this same file's own includes shares
-  # it; preserving more path than that would achieve nothing (see the class comment
-  # on `best_bare_match` for the analogous reasoning already applied to a resolved
-  # `gcc -M` bare entry) and can actively break the build the moment it reaches
-  # further than a single configured search directory ever will (there is no
-  # project-root search path for a fuller, project-relative spelling to resolve
-  # against once rendered into a generated file living somewhere else entirely).
+  # among this reconciliation's own results, not with the path its candidate resolved
+  # to. That path is project-relative, as `src/Types.h` is, and no search path reaches
+  # a project-relative spelling from a generated file living somewhere else entirely.
+  # The reconciled list records which headers a file includes. Each file Ceedling
+  # generates from it spells them for itself, as the test's search paths reach each
+  # header (see Include#spelled_by), so a header reached only through a folder below
+  # a search path is written with that folder.
   #
   # When two or more matched user includes DO share a basename -- the genuinely
   # destructive case, since a plain basename-only render for either one would then
