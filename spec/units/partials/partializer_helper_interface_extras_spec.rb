@@ -49,9 +49,10 @@ describe PartializerHelper do
     )
   end
 
-  def var(text, decorators: [], origin: :header, promoted_from: nil, name: nil)
+  def var(text, decorators: [], origin: :header, promoted_from: nil, name: nil, expanded_text: nil)
     CExtractorTypes::CVariableDeclaration.new(
-      name: name || text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators, origin: origin, promoted_from: promoted_from
+      name: name || text[/(\w+)\s*(?:=|;|\[)/, 1], text: text, decorators: decorators, origin: origin, promoted_from: promoted_from,
+      expanded_text: expanded_text
     )
   end
 
@@ -172,6 +173,14 @@ describe PartializerHelper do
       expect( plan( c_module( tentative, defined ) ).items ).to eq( [tentative, defined] )
     end
 
+    # A tentative definition is C beside the definition that initializes it
+    it 'keeps a tentative definition beside the initialized one' do
+      tentative = var( 'int port_x;', decorators: ['static'] )
+      defined   = var( 'int port_x = 5;', decorators: ['static'] )
+
+      expect( plan( c_module( tentative, defined ), fallback: true ).items ).to eq( [tentative, defined] )
+    end
+
     it 'keeps one copy of a static variable found twice alike' do
       first  = var( 'int gain = 1;', decorators: ['static', 'const'] )
       second = var( 'int gain = 1;', decorators: ['static', 'const'] )
@@ -270,6 +279,32 @@ describe PartializerHelper do
       expect( plan( port_module( promoted, helper, caller ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
     end
 
+    # A macro from another header, token pasting and stringizing show only after expansion
+    it "reads an initializer's names as the expansion spells them" do
+      pasted  = var( 'port_fn_t port_pasted[] = { E(a) };', decorators: ['static', 'const'], expanded_text: 'port_fn_t port_pasted[] = { port_a };' )
+      strings = var( 'const char *port_names[] = { NAME(port_a) };', decorators: ['static'], expanded_text: 'const char *port_names[] = { "port_a" };' )
+
+      extras = plan( port_module( pasted, strings ), interface: mocked( 'port_read' ) )
+
+      expect( extras.items.map( &:name ) ).to eq( ['port_a', 'port_names'] )
+    end
+
+    it 'reads a name a macro hides through another macro' do
+      handlers = var( 'port_fn_t port_handlers[] = { PORT_FIRST };', decorators: ['static', 'const'] )
+
+      extras = plan( port_module( macro( '#define PORT_FIRST PORT_A' ), macro( '#define PORT_A port_a' ), handlers ), interface: mocked( 'port_read' ) )
+
+      expect( extras.items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    # A wrong guess at a local could hide an item left behind, which no file could then compile
+    it 'reads a name a helper body uses even where it reads like a declaration' do
+      table = var( 'port_fn_t port_table[] = { port_a };', decorators: ['static', 'const'] )
+      first = defn( 'static inline int port_first(int i) { return port_mix(i * port_table[0](), i); }' )
+
+      expect( plan( port_module( table, first ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
     it 'reads a name a macro hides' do
       handlers = var( 'port_fn_t port_handlers[] = { PORT_HANDLER };', decorators: ['static', 'const'] )
 
@@ -321,6 +356,10 @@ describe PartializerHelper do
       expect( extras.items ).to eq( [count, init] )
       expect( extras.withheld ).to eq( [twice, table] )
     end
+  end
+
+  it 'reads names in code, not in strings or comments' do
+    expect( @helper.names_in( 'x = "port_a"; /* port_b */ port_c();' ) ).to eq( Set['x', 'port_c'] )
   end
 
   it 'is empty for a header holding only what the mock selects' do

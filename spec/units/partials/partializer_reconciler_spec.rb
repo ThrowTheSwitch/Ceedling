@@ -308,6 +308,16 @@ describe PartializerReconciler do
       expect( written ).to have_attributes( original: "orig counter", line_num: 7, name: "counter", origin: :source )
     end
 
+    # A mock's extras read what an initializer names after every macro, from any header, expands
+    it "records the expanded text of every variable it pairs, written text kept" do
+      written = var( name: "handlers", type: "port_fn_t", text: "port_fn_t handlers[] = { PORT_HANDLER };", decorators: ["static"] )
+      twin    = var( name: "handlers", type: "port_fn_t", text: "port_fn_t handlers[] = { port_a };", decorators: ["static"] )
+
+      reconcile_vars( [written], [twin] )
+
+      expect( written ).to have_attributes( text: "port_fn_t handlers[] = { PORT_HANDLER };", expanded_text: "port_fn_t handlers[] = { port_a };" )
+    end
+
     it "takes an extern a macro spells" do
       written = var( name: "shared", type: "EXTERN int", text: "EXTERN int shared;" )
       twin    = var( name: "shared", type: "int", text: "int shared;", decorators: ["extern"] )

@@ -1145,6 +1145,27 @@ describe Partializer do
       explain( { 'engine' => @engine, 'port' => @config } )
     end
 
+    # A use through a macro shows only in the expansion
+    it "reads another Partial's expansion where it has one" do
+      @engine.source.expansion_filepath = 'pp/engine.expanded.c'
+      allow(@file_wrapper).to receive(:read).with('pp/engine.c').and_return( 'int engine_get(void) { return PORT_TWICE(1); }' )
+      allow(@file_wrapper).to receive(:read).with('pp/engine.expanded.c').and_return( 'int engine_get(void) { return port_twice(1); }' )
+
+      expect(@loginator).to receive(:log) do |notice, *|
+        expect( notice ).to include( 'which leaves helper `port_twice()` out.' )
+      end
+
+      explain( { 'engine' => @engine, 'port' => @config } )
+    end
+
+    it "never counts the module itself among the Partials including its header" do
+      @config.source.assembled_filepath = 'pp/port.c'
+      allow(@file_wrapper).to receive(:read).with('pp/port.c').and_return( 'int port_scaled(void) { return port_twice(port_k); }' )
+      expect(@loginator).not_to receive(:log)
+
+      explain( { 'port' => @config } )
+    end
+
     it "says nothing when no other Partial includes the module's header" do
       @engine.source.includes = [UserInclude.new( 'engine.h' )]
       expect(@loginator).not_to receive(:log)
