@@ -332,11 +332,13 @@ class Includes
     return reconciled
   end
 
-  # A mock's #include names it for CMock and the runner, so a mock keeps the text the file
-  # wrote, anchored as `bare_filepath` is. Its candidate is the mock's place below its mirror
-  # root, which can carry folders the #include never wrote. A bare entry carrying more path
-  # than its candidate is the line-marker path of a computed #include, which wrote no text,
-  # so the candidate stays. Any other #include keeps its candidate, the header's real path.
+  # A mock's #include names it for CMock and the runner, so a mock keeps its bare entry's
+  # text, anchored as `bare_filepath` is. GCC's entry names it first, with the #include as
+  # written less a leading `./`, or a macro's expansion. Its candidate is the mock's place
+  # below its mirror root, which can carry folders the #include never wrote. A bare entry
+  # carrying more path than its candidate is the line-marker path of a computed #include,
+  # which wrote no text, so the candidate stays. Any other #include keeps its candidate, the
+  # header's real path.
   def self.as_written(candidate, bare_include, bare_filepath)
     return candidate unless candidate.is_a?(MockInclude)
     return candidate if ProjectPaths.segments(bare_filepath).length > ProjectPaths.segments(candidate.filepath).length
