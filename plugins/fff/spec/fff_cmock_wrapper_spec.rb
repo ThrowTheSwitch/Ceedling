@@ -49,6 +49,14 @@ describe FffCMockWrapper do
     return lines.grep( /\A#include / ) - standard
   end
 
+  # A search path may reach the header only through the folder the fake's own #include names
+  it 'includes the original header by the folder its #include names, as CMock does' do
+    mock_path = File.join( @root, 'mocks' )
+    FffCMockWrapper.new( { :mock_prefix => 'mock_', :mock_path => mock_path, :includes => [], :verbosity => 0 } ).setup_mocks( @header, 'drivers' )
+
+    expect( File.readlines( File.join( mock_path, 'drivers', 'mock_bar.h' ), chomp: true ) ).to include( '#include "drivers/bar.h"' )
+  end
+
   it 'adds no includes when no setting names any' do
     files = fake
 
