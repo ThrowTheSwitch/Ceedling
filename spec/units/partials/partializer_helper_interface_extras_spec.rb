@@ -308,7 +308,7 @@ describe PartializerHelper do
     it 'reads names from both the written and the expanded text' do
       table = var( 'port_fn_t port_table[] = { port_a };', decorators: ['static', 'const'], expanded_text: 'port_fn_t port_table[] = { port_read };' )
 
-      expect( plan( port_module( table ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+      expect( plan( port_module( table ), interface: mocked( 'port_read' ), fallback: true ).items.map( &:name ) ).to eq( ['port_a'] )
     end
 
     it "reads a helper's names from its expanded body" do

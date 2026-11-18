@@ -108,7 +108,26 @@ class PartializerReconciler
   # a macro and the variables reconciled.
   def _reconcile_variables(c_module, expanded_module)
     ended = Set.new.compare_by_identity
+    _record_unpaired( c_module, expanded_module )
     return _variable_pairs( c_module, expanded_module ).flat_map { |var, twin| _reconcile_pair( c_module, var, twin, ended ) }.compact
+  end
+
+  # Fallback keeps both sides of a conditional, so a name can be written more often than the
+  # expansion holds it, and none of its copies pairs. Each records every twin's text, so what an
+  # initializer names stays visible.
+  def _record_unpaired(c_module, expanded_module)
+    expanded_by_name = expanded_module.variable_declarations.group_by( &:name )
+
+    c_module.variable_declarations.group_by( &:name ).each do |var_name, same_name|
+      twins = expanded_by_name.fetch( var_name, [] )
+      next unless _unpaired?( var_name, same_name, twins )
+
+      same_name.each { |var| var.expanded_text = twins.map( &:text ).join( "\n" ) }
+    end
+  end
+
+  def _unpaired?(var_name, same_name, twins)
+    return !(var_name.nil? or twins.empty? or twins.size == same_name.size)
   end
 
   # Each written variable with its twin, for the names both copies hold equally often

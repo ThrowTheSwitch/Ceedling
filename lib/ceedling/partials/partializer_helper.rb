@@ -542,15 +542,13 @@ class PartializerHelper
   ExtrasScan = Struct.new( :selected, :helpers, :statics, :declared, :rewritten, :conflicting, keyword_init: true ) unless const_defined?(:ExtrasScan, false)
 
   def _extras_scan(c_module, selected, fallback)
-    helpers     = _interface_helpers( c_module, selected, fallback )
-    statics     = _interface_statics( c_module, fallback )
-    conflicting = _conflicting_prototypes( c_module, fallback )
-    _drop_unlinkable( c_module, selected, helpers, statics, conflicting )
-
-    return ExtrasScan.new(
-      selected: selected, helpers: helpers, statics: statics, declared: Set.new,
-      rewritten: _function_like_macros( c_module ), conflicting: conflicting
+    scan = ExtrasScan.new(
+      selected: selected, helpers: _interface_helpers( c_module, selected, fallback ), statics: _interface_statics( c_module, fallback ),
+      declared: Set.new, rewritten: _function_like_macros( c_module ), conflicting: _conflicting_prototypes( c_module, fallback )
     )
+    _drop_unlinkable( c_module, scan, fallback )
+
+    return scan
   end
 
   # The names `text` uses as code, for a notice weighing what another Partial uses
@@ -596,12 +594,26 @@ class PartializerHelper
     return Set.new.compare_by_identity.merge( kept )
   end
 
-  # A name's tentative definitions, with the first initialized one, or nothing when they differ
+  # A name's tentative definitions, with the first initialized one. Nothing when any two declare
+  # the name differently, initializers aside, or the initialized ones differ.
   def _fallback_statics(vars)
-    initialized, tentative = vars.partition { |var| var.text.to_s.include?( '=' ) }
-    return [] if _conflicting?( initialized.map( &:text ) )
+    initialized = vars.select { |var| _initialized?( var ) }
+    return [] if _redeclared?( vars, initialized )
 
-    return vars.select { |var| tentative.include?( var ) or var.equal?( initialized.first ) }
+    return vars.reject { |var| _initialized?( var ) and !var.equal?( initialized.first ) }
+  end
+
+  def _initialized?(var)
+    return var.text.to_s.include?( '=' )
+  end
+
+  def _redeclared?(vars, initialized)
+    return (_conflicting?( vars.map { |var| _declared_as( var ) } ) or _conflicting?( initialized.map( &:text ) ))
+  end
+
+  # A variable's declaration without its initializer, as in "static const int x"
+  def _declared_as(var)
+    return "#{var.decorators.sort.join( ' ' )} #{var.text.to_s.sub( /\s*(?:=.*)?;\s*\z/m, '' )}"
   end
 
   # A static variable the header itself declares, not one promoted from a function
@@ -616,13 +628,17 @@ class PartializerHelper
   # prototypes conflict stays behind, and so does whatever names an item left behind, since its
   # text wouldn't compile. A worklist carries each item left behind to the items naming it, so
   # each item's names are read once.
-  def _drop_unlinkable(c_module, selected, helpers, statics, conflicting)
-    candidates = helpers.values + statics.to_a + _promoted_statics( c_module, helpers )
-    names      = _candidate_names( c_module, candidates )
-    undefined  = _function_names( c_module ) - selected - helpers.keys
-    queue      = candidates.select { |item| _unlinkable_alone?( item, names[item], undefined, conflicting ) }
+  def _drop_unlinkable(c_module, scan, fallback)
+    candidates = scan.helpers.values + scan.statics.to_a + _promoted_statics( c_module, scan.helpers )
+    names      = _candidate_names( c_module, candidates, fallback )
 
-    _walk_drops( queue, _referrers( names ), helpers, statics )
+    _walk_drops( _drops_alone( c_module, scan, candidates, names ), _referrers( names ), scan.helpers, scan.statics )
+  end
+
+  # The candidates that stay behind on their own names, before any other does
+  def _drops_alone(c_module, scan, candidates, names)
+    undefined = _function_names( c_module ) - scan.selected - scan.helpers.keys
+    return candidates.select { |item| _unlinkable_alone?( item, names[item], undefined, scan.conflicting ) }
   end
 
   # Leaves each queued item behind, then queues whatever names it. A promoted static left behind
@@ -653,16 +669,28 @@ class PartializerHelper
     return (emitted and names.intersect?( undefined ))
   end
 
-  # Each candidate's names as code, by identity, from its expansion where reconciliation found one,
-  # and through the module's own macros otherwise. Every name a body uses counts, its locals'
+  # Each candidate's names as code, by identity, through the module's own macros. They come from
+  # its expansion where reconciliation found one, since the compiler reads that. Fallback may
+  # pair a variable with the other side of a conditional, or not at all, so there the written
+  # text counts too, and a doubtful item stays behind. Every name a body uses counts, its locals'
   # too, since a wrong guess at a local could hide an item left behind.
-  def _candidate_names(c_module, candidates)
+  def _candidate_names(c_module, candidates, fallback)
     macros = _macro_names( c_module )
 
     return candidates.each_with_object( {}.compare_by_identity ) do |item, names|
-      text = item.is_a?( CExtractorTypes::CFunctionDefinition ) ? _scan_text( item ) : (item.expanded_text || item.text)
-      names[item] = _through_macros( _statement_references( text ), macros )
+      names[item] = _through_macros( _statement_references( _candidate_texts( item, fallback ).compact.join( "\n" ) ), macros )
     end
+  end
+
+  def _candidate_texts(item, fallback)
+    texts = _written_and_expanded( item )
+    return fallback ? texts : [texts.last || texts.first]
+  end
+
+  def _written_and_expanded(item)
+    return [item.code_block, _scan_text( item )] if item.is_a?( CExtractorTypes::CFunctionDefinition )
+
+    return [item.text, item.expanded_text]
   end
 
   # Each macro's name, with the names its replacement uses
