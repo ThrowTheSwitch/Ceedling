@@ -536,12 +536,17 @@ class Include
 
   private
 
-  # The header this #include names in `search` (see spelled_by)
+  # The header this #include names in `search` (see spelled_by). A resolved path with no header
+  # at it, in another letter case or never resolved at all, is searched for as written.
   def header_in(search, from, resolved)
-    return search.at( @filepath ) if resolved
+    found = resolved ? search.at( @filepath ) : header_beside( search, from )
+    return found || search.header_candidates( @filepath ).first
+  end
 
-    beside = @directory_relative ? @filepath : (from && File.join( from, @filepath ))
-    return (beside && search.at( beside )) || search.header_candidates( @filepath ).first
+  # The header an #include as written names beside its includer, or at its anchored path
+  def header_beside(search, from)
+    path = @directory_relative ? @filepath : (from && File.join( from, @filepath ))
+    return path && search.at( path )
   end
 
   def clean(line)
