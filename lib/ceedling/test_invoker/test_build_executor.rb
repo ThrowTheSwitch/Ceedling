@@ -124,7 +124,8 @@ class TestBuildExecutor
         include_paths:            testable.search_paths,
         vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines,
-        extras:                   extras
+        extras:                   extras,
+        include_search:           @mock_locator.header_search( testable )
       }
 
       @preprocessinator.preprocess_mockable_header_file( **arg_hash )

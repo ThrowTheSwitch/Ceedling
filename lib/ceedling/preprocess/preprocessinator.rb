@@ -139,6 +139,13 @@ class Preprocessinator
     end
   end
 
+  # CMock copies a mockable header beside the mock under :treat_inlines :include, so each of its
+  # #includes is written as the test's search paths reach its header. Without a search they
+  # stay as reconciled.
+  def spelled(includes, search)
+    return search ? includes.map { |include| include.spelled_by( search ) } : includes
+  end
+
   def preprocess_mockable_header_file(
       test:,
       filepath:,
@@ -148,7 +155,8 @@ class Preprocessinator
       include_paths:,
       vendor_paths:,
       defines:,
-      extras: false
+      extras: false,
+      include_search: nil
   )
     msg = @reportinator.generate_module_progress(
       operation: 'Preprocessing header file for follow-on mock handling',
@@ -186,7 +194,7 @@ class Preprocessinator
     # already determined, via its own DependencyTracker target (antecedent +
     # flags/defines/search_paths/extras meta), that this header's
     # preprocessing is stale, so the extraction below always runs for real.
-    includes = preprocess_file_includes_common( **arg_hash )
+    includes = spelled( preprocess_file_includes_common( **arg_hash ), include_search )
 
     header = "Discovered #includes for mockable header from #{filepath}:"
     @loginator.log_list( includes, header, Verbosity::OBNOXIOUS )
