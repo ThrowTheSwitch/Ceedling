@@ -19,6 +19,9 @@ require 'spec_system_helper'
 
 HEADER_SEARCH_PREAMBLE = "#include \"unity.h\"\nvoid setUp(void) {}\nvoid tearDown(void) {}\n"
 
+# A header below a search path that doesn't list its directory
+HEADER_SEARCH_DRIVERS_FOO = "#ifndef FOO_H\n#define FOO_H\ntypedef int foo_t;\nint foo_read(void);\n#endif\n"
+
 ceedling_system_tests do
   include_context "a fresh ceedling gem project", "header_search"
 
@@ -326,6 +329,65 @@ ceedling_system_tests do
         output = @c.ceedling_build_exec( "test:all" )
         expect(@c.last_exit_status).to_not eq(0)
         expect(output).to include( 'Found no file `sys/socket.h` in search paths.' )
+      end
+    end
+  end
+
+  # A generated file carries a header's #includes. Each names the header as the test's search
+  # paths reach it, so a header below a non-recursive search path is found from there too.
+  describe "a generated file's #includes" do
+    [:none, :mocks, :all].each do |preprocessor|
+      it "reach a header below the search path from a Partial under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'src/sensor.h', "#ifndef SENSOR_H\n#define SENSOR_H\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void);\n#endif\n" )
+          write( 'src/sensor.c', "#include \"sensor.h\"\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void) { return 3; }\n" )
+          write( 'test/test_sensor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                       "#include TEST_PARTIAL_ALL_MODULE(sensor)\nvoid test_get(void) { TEST_ASSERT_EQUAL_INT(3, sensor_get()); }\n" )
+
+          configure( ['src'], preprocessor, { :project => { :use_test_preprocessor => preprocessor, :use_partials => true } } )
+          build_passes
+        end
+      end
+
+      it "reach a header below the search path from a mocked Partial under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'src/sensor.h', "#ifndef SENSOR_H\n#define SENSOR_H\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void);\n#endif\n" )
+          write( 'test/test_sensor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                       "#include MOCK_PARTIAL_PUBLIC_MODULE(sensor)\n" \
+                                       "void test_get(void) { sensor_get_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, sensor_get()); }\n" )
+
+          configure( ['src'], preprocessor, { :project => { :use_test_preprocessor => preprocessor, :use_partials => true } } )
+          build_passes
+        end
+      end
+    end
+
+    [:mocks, :all].each do |preprocessor|
+      it "reach a header below the search path from CMock's copy under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'src/sensor.h', "#ifndef SENSOR_H\n#define SENSOR_H\n#include \"drivers/foo.h\"\nfoo_t sensor_get(void);\n#endif\n" )
+          write( 'test/test_sensor.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_sensor.h\"\n" \
+                                       "void test_get(void) { sensor_get_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, sensor_get()); }\n" )
+
+          configure( ['src'], preprocessor, { :cmock => { :treat_inlines => :include } } )
+          build_passes
+        end
+      end
+    end
+
+    [:none, :all].each do |preprocessor|
+      it "reach a header below the search path from an FFF fake under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', HEADER_SEARCH_DRIVERS_FOO )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+                                  "void test_reads(void) { foo_read_fake.return_val = 5; TEST_ASSERT_EQUAL_INT(5, foo_read()); }\n" )
+
+          configure( ['src'], preprocessor, { :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
       end
     end
   end

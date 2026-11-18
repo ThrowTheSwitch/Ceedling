@@ -200,24 +200,43 @@ ceedling_system_tests do
         end
       end
 
-      # Under fallback preprocessing a bare #include names any header ending in that filename,
-      # so these hold only for accurate preprocessing
-      it "keeps an application header sharing the basename of a mocked Partial" do
-        in_project do
-          include_paths( ['src/**', 'include/**'] )
-          @c.merge_project_yml_for_test( { :project => { :use_partials => true } } )
-          app_config_beside( 'MOCK_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)',
-                             'uart_config_baud_ExpectAndReturn(2); TEST_ASSERT_EQUAL_INT(2, uart_config_baud());' )
+      # A bare #include under fallback names the header the test's search paths reach first
+      [false, true].each do |fallback|
+        mode = fallback ? ' under fallback preprocessing' : ''
 
-          build_passing
+        it "keeps an application header sharing the basename of a mocked Partial#{mode}" do
+          in_project do
+            include_paths( ['src/**', 'include/**'] )
+            @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => fallback } } )
+            app_config_beside( 'MOCK_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)',
+                               'uart_config_baud_ExpectAndReturn(2); TEST_ASSERT_EQUAL_INT(2, uart_config_baud());' )
+
+            build_passing
+          end
+        end
+
+        it "keeps an application header sharing the basename of a tested Partial#{mode}" do
+          in_project do
+            include_paths( ['src/**', 'include/**'] )
+            @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => fallback } } )
+            app_config_beside( 'TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)', 'TEST_ASSERT_EQUAL_INT(9600, uart_config_baud());' )
+
+            build_passing
+          end
         end
       end
 
-      it "keeps an application header sharing the basename of a tested Partial" do
+      # Fallback anchors a `..` #include to its file's own directory, which may name no file at
+      # all when the compiler finds the header through a search path
+      it "takes a `..` #include fallback can't anchor for a module's own header" do
         in_project do
-          include_paths( ['src/**', 'include/**'] )
-          @c.merge_project_yml_for_test( { :project => { :use_partials => true } } )
-          app_config_beside( 'TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)', 'TEST_ASSERT_EQUAL_INT(9600, uart_config_baud());' )
+          include_paths( ['include/**'] )
+          @c.merge_project_yml_for_test( { :project => { :use_partials => true }, :test_build => { :preprocess_force_fallback => true } } )
+          write( 'include/hw/port.h', "#ifndef PORT_H\n#define PORT_H\ntypedef struct port_cfg { int pin; } port_cfg_t;\nint port_open(void);\n#endif\n" )
+          write( 'include/hw/sub/placeholder.h', "#ifndef PLACEHOLDER_H\n#define PLACEHOLDER_H\n#endif\n" )
+          write( 'src/hw/port.c', "#include \"../port.h\"\nint port_open(void) { port_cfg_t c = { 7 }; return c.pin; }\n" )
+          write( 'test/test_port.c', PARTIALS_DISAMBIG_PREAMBLE + "#include TEST_PARTIAL_PUBLIC_MODULE_AT(hw, port)\n" \
+                                     "void setUp(void) {}\nvoid tearDown(void) {}\nvoid test_open(void) { TEST_ASSERT_EQUAL_INT(7, port_open()); }\n" )
 
           build_passing
         end

@@ -1951,6 +1951,34 @@ describe Partializer do
       end
     end
 
+    # Fallback anchors a `..` #include to its file's own directory. One that names no file there
+    # was found elsewhere through a search path, so its path says nothing and its filename decides.
+    it "takes an anchored #include naming no file for a directory-named module's own header" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('hw/port').and_return('hw/ceedling_partial_port_impl.h')
+      allow(@file_wrapper).to receive(:exist?).with('src/port.h').and_return( false )
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'hw/port', includes: [UserInclude.new( 'src/port.h', directory_relative: true )],
+        partials: { 'hw/port' => make_partial_config(tests_type: :public, header: 'include/hw/port.h') }
+      )
+
+      expect( result.map( &:filepath ) ).to eq( ['hw/ceedling_partial_port_impl.h'] )
+    end
+
+    it "matches an anchored #include naming a file by its path" do
+      allow(@file_path_utils).to receive(:form_partial_implementation_header_filename)
+        .with('hw/port').and_return('hw/ceedling_partial_port_impl.h')
+      allow(@file_wrapper).to receive(:exist?).with('src/port.h').and_return( true )
+
+      result = @partializer.remap_implementation_source_includes(
+        name: 'hw/port', includes: [UserInclude.new( 'src/port.h', directory_relative: true )],
+        partials: { 'hw/port' => make_partial_config(tests_type: :public, header: 'include/hw/port.h') }
+      )
+
+      expect( result.map( &:filepath ) ).to eq( ['src/port.h', 'hw/ceedling_partial_port_impl.h'] )
+    end
+
     # A module named without a directory is named by its basename, however an #include spells
     # the path to its header
     context "with this module's own header spelled another way" do
