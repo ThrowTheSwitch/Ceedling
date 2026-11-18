@@ -131,6 +131,23 @@ ceedling_system_tests do
       end
     end
 
+    # The mock stays in its header's mirrored directory either way, so only its names change
+    [:none, :all].each do |preprocessor|
+      it "regenerates a mock whose #include drops its folder under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'rtos/include/task.h', "int task_run(int x);\n" )
+          body = "void test_run(void) { task_run_ExpectAndReturn(1, 2); TEST_ASSERT_EQUAL_INT(2, task_run(1)); }\n"
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"include/mock_task.h\"\n" + body )
+          build( ['rtos/**'], preprocessor: preprocessor )
+
+          write( 'test/test_c.c', MOCK_FOLDER_PREAMBLE + "#include \"mock_task.h\"\n" + body )
+          output = @c.ceedling_build_exec( "test:all" )
+          expect(@c.last_exit_status).to eq(0), output
+          expect(output).to match(/PASSED:\s+1/)
+        end
+      end
+    end
+
     it "names a mock a macro in the test file names by that #include under :use_test_preprocessor all" do
       in_project do
         write( 'rtos/include/task.h', "int task_run(int x);\n" )

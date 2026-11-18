@@ -1769,7 +1769,7 @@ describe TestBuildExecutor do
         expect(@dependinator).to receive(:register).with(
           'build/test/mocks/drivers/MockFoo.c',
           files:   anything,
-          meta:    { cmock: { mock_prefix: 'Mock' }, header_include: 'foo.h' },
+          meta:    { cmock: { mock_prefix: 'Mock' }, folder: 'drivers', header_include: 'foo.h' },
           outputs: anything
         )
 
@@ -1849,6 +1849,27 @@ describe TestBuildExecutor do
         expect(@file_wrapper).to receive(:mkdir).with( 'build/test/mocks/_up_/_up_' )
         expect(@generator).to receive(:generate_mock)
           .with( hash_including( output_path: 'build/test/mocks/_up_/x', mock_root: 'build/test/mocks/_up_/_up_', folder: '../x' ) )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      # CMock names the mock by its folder, which an #include can change while the mock's place stays
+      it "records the folder as meta, so a change of folder regenerates the mock" do
+        include_as( 'sub/MockFoo.h' )
+        allow(@generator).to receive(:generate_mock)
+
+        expect(@dependinator).to receive(:register)
+          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, folder: 'sub' }, outputs: anything )
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "records no folder as meta for a mock named without one" do
+        include_as( 'MockFoo.h' )
+        allow(@generator).to receive(:generate_mock)
+
+        expect(@dependinator).to receive(:register)
+          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' } }, outputs: anything )
 
         @executor.stage_generate_mocks( @state )
       end
