@@ -41,11 +41,11 @@ describe PartializerHelper do
     )
   end
 
-  def defn(code_block, origin: :header)
+  def defn(code_block, origin: :header, expanded_body: nil)
     signature = code_block[/\A[^{]*/].strip
     CExtractorTypes::CFunctionDefinition.new(
       name: signature[/(\w+)\s*\(/, 1], signature: signature, code_block: code_block, body: code_block[/\{.*\}/m],
-      decorators: signature.split( /\s+/ ).take_while { |t| EXTRAS_KEYWORDS.include?( t ) }, origin: origin
+      decorators: signature.split( /\s+/ ).take_while { |t| EXTRAS_KEYWORDS.include?( t ) }, origin: origin, expanded_body: expanded_body
     )
   end
 
@@ -181,6 +181,20 @@ describe PartializerHelper do
       expect( plan( c_module( tentative, defined ), fallback: true ).items ).to eq( [tentative, defined] )
     end
 
+    it 'leaves out tentative definitions declared differently' do
+      long  = var( 'unsigned long port_acc;', decorators: ['static'] )
+      short = var( 'unsigned short port_acc;', decorators: ['static'] )
+
+      expect( plan( c_module( long, short ), fallback: true ).items ).to eq( [] )
+    end
+
+    it 'leaves out a tentative definition declared unlike the initialized one' do
+      tentative = var( 'int port_x;', decorators: ['static'] )
+      defined   = var( 'int port_x = 5;', decorators: ['static', 'const'] )
+
+      expect( plan( c_module( tentative, defined ), fallback: true ).items ).to eq( [] )
+    end
+
     it 'keeps one copy of a static variable found twice alike' do
       first  = var( 'int gain = 1;', decorators: ['static', 'const'] )
       second = var( 'int gain = 1;', decorators: ['static', 'const'] )
@@ -287,6 +301,20 @@ describe PartializerHelper do
       extras = plan( port_module( pasted, strings ), interface: mocked( 'port_read' ) )
 
       expect( extras.items.map( &:name ) ).to eq( ['port_a', 'port_names'] )
+    end
+
+    # Fallback may pair a variable with the other side of a conditional, or not at all, so the
+    # written text counts too. A doubtful item stays behind, as without the extras.
+    it 'reads names from both the written and the expanded text' do
+      table = var( 'port_fn_t port_table[] = { port_a };', decorators: ['static', 'const'], expanded_text: 'port_fn_t port_table[] = { port_read };' )
+
+      expect( plan( port_module( table ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
+    end
+
+    it "reads a helper's names from its expanded body" do
+      helper = defn( 'static int port_h(void) { return HANDLER(); }', expanded_body: '{ return port_a(); }' )
+
+      expect( plan( port_module( helper ), interface: mocked( 'port_read' ) ).items.map( &:name ) ).to eq( ['port_a'] )
     end
 
     it 'reads a name a macro hides through another macro' do
