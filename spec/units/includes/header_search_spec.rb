@@ -133,33 +133,6 @@ describe HeaderSearch do
     end
   end
 
-  # A mock's #include after stage 4 names its place below its mirror root, which a header
-  # of the same path below an earlier search path mustn't take
-  describe "#trailing_first" do
-    let(:tree) { ['test/support/hal/foo.h', 'inc/hal/foo.h'] }
-
-    it "matches a header directly in a search path by trailing path before joining" do
-      headers = search( ['test/support', 'inc', 'inc/hal'], tree )
-
-      expect(headers.header_candidates( 'hal/foo.h' )).to eq( ['test/support/hal/foo.h', 'inc/hal/foo.h'] )
-      expect(headers.trailing_first.header_candidates( 'hal/foo.h' )).to eq( ['inc/hal/foo.h'] )
-    end
-
-    it "joins when no header's trailing path matches" do
-      headers = search( ['src'], ['src/drivers/foo.h'] )
-
-      expect(headers.trailing_first.header_candidates( 'drivers/foo.h' )).to eq( ['src/drivers/foo.h'] )
-    end
-
-    it "shares the search's listings" do
-      headers = search( ['src'], ['src/foo.h'] )
-      headers.header_candidates( 'foo.h' )
-      headers.trailing_first.header_candidates( 'foo.h' )
-
-      expect(@listed).to eq( { 'src' => 1 } )
-    end
-  end
-
   describe "#refusal" do
     it "explains a query by its own spelling, slashes and dot segments aside" do
       headers = described_class.new( ['src'], ->(_dir) { [] }, refusals: { 'sys/socket.h' => 'why' } )
@@ -167,12 +140,6 @@ describe HeaderSearch do
       expect(headers.refusal( 'sys/socket.h' )).to eq( 'why' )
       expect(headers.refusal( './sys\\socket.h' )).to eq( 'why' )
       expect(headers.refusal( 'socket.h' )).to be_nil
-    end
-
-    it "carries over to the trailing-first view" do
-      headers = described_class.new( ['src'], ->(_dir) { [] }, refusals: { 'socket.h' => 'why' } )
-
-      expect(headers.trailing_first.refusal( 'socket.h' )).to eq( 'why' )
     end
 
     it "explains nothing by default" do

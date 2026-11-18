@@ -112,6 +112,22 @@ ceedling_system_tests do
     end
   end
 
+  # The compiler joins a mock's #include with each search path in order, under test
+  # preprocessing as without it
+  [:none, :all].each do |preprocessor|
+    it "mocks the header a mock's folder joins to first under :use_test_preprocessor #{preprocessor}" do
+      in_project do
+        write( 'test/support/hal/foo.h', "int fake_read(void);\n" )
+        write( 'inc/hal/foo.h', "int foo_read(void);\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"hal/mock_foo.h\"\n" \
+                                "void test_reads(void) { fake_read_ExpectAndReturn(5); TEST_ASSERT_EQUAL_INT(5, fake_read()); }\n" )
+        configure( ['inc/**'], preprocessor, { :paths => { :include => ['inc/**'], :support => ['test/support'] } } )
+
+        build_passes
+      end
+    end
+  end
+
   it "mocks a header by a folder below a search path without naming the mock by it" do
     in_project do
       write( 'src/drivers/foo.h', "int foo_read(void);\n" )
