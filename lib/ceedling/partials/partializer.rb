@@ -63,11 +63,32 @@ class Partializer
   # define the way it defines an include guard
   PRAGMA_ONCE_EXTRAS_NOTICE = <<~NOTICE unless const_defined?(:PRAGMA_ONCE_EXTRAS_NOTICE, false)
     Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.
-    %<header>s uses `#pragma once`, which is not an include guard. Ceedling relies on include guards. Without
-    one the mock can't stand in for the header everywhere it's included, and a copy could collide with the
-    real one. Code that uses %<these>s compiles only where another #include brings in the real header.
 
-    Replace `#pragma once` in %<header>s with an include guard so the mock keeps %<them>s.
+    HOW THIS HAPPENS:
+    • %<header>s uses `#pragma once`, which is not an include guard.
+    • A mock stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+    • Without one, a kept copy could collide with the real one, so the mock leaves %<them>s out.
+    • Code that uses %<these>s compiles only where another #include brings in the real header.
+
+    OPTIONS:
+    1. Replace `#pragma once` in %<header>s with an include guard so the mock keeps %<them>s.
+
+    See the docs on Partials conventions.
+  NOTICE
+
+  # The same for a module header that guards itself with `#pragma once`
+  PRAGMA_ONCE_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:PRAGMA_ONCE_HELPERS_NOTICE, false)
+    Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
+
+    HOW THIS HAPPENS:
+    • Selected functions call %<these>s.
+    • %<header>s uses `#pragma once`, which is not an include guard.
+    • A Partial stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+    • Without one, a carried copy could collide with the real one.
+
+    OPTIONS:
+    1. Replace `#pragma once` in %<header>s with an include guard so the Partial can stand in for it.
+    2. Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other header this module includes pulls in %<header>s.
 
     See the docs on Partials conventions.
   NOTICE
@@ -734,7 +755,7 @@ class Partializer
   def _log_unguarded_helpers(test, partial, names, header)
     many   = names.size > 1
     notice = format(
-      UNGUARDED_HELPERS_NOTICE,
+      _pragma_once?( header ) ? PRAGMA_ONCE_HELPERS_NOTICE : UNGUARDED_HELPERS_NOTICE,
       partial: "#{test}::#{partial}", header: header, first: names.first,
       helpers: names.map { |n| "`#{n}()`" }.join( ', ' ),
       noun: many ? 'helpers' : 'helper', these: many ? 'these helpers' : 'this helper'
@@ -758,7 +779,7 @@ class Partializer
     )
   end
 
-  # The header is read again only when its mock leaves something behind, to say what guards it
+  # The header is read again only when something stays behind, to say what guards it
   def _pragma_once?(header)
     return @preprocessinator_reconstructor.pragma_once?( @file_wrapper.read( header ).clean_encoding )
   end

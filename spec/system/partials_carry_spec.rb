@@ -558,7 +558,7 @@ ceedling_system_tests do
 
       output = build_passing( 1 )
       expect(output).to include( 'Not carrying helper `clamp()` from src/once.h.' )
-      expect(output).to include( '• src/once.h uses `#pragma once`, which is not an include guard.' )
+      expect(output).to include( 'src/once.h uses `#pragma once`, which is not an include guard.' )
     end
   end
 end
