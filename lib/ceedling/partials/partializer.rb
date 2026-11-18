@@ -781,14 +781,15 @@ class Partializer
     return extras.items.select { |item| used.include?( item.name ) }
   end
 
-  # The names the code of every other Partial including the module's header uses, from the
-  # files stages 6 and 7 assembled for it
+  # The names the code of every other Partial including the module's header uses, from each
+  # file's full expansion, which shows a use through a macro, or else the file stages 6 and 7
+  # assembled for it
   def _names_used_by_includers(_module, partials)
-    files = _includers( _module, partials ).flat_map { |config| _module_files( config ) }.select( &:assembled_filepath )
-
-    return files.each_with_object( Set.new ) do |file, used|
-      used.merge( @helper.names_in( @file_wrapper.read( file.assembled_filepath ).clean_encoding ) )
+    paths = _includers( _module, partials ).flat_map { |config| _module_files( config ) }.filter_map do |file|
+      file.expansion_filepath || file.assembled_filepath
     end
+
+    return paths.each_with_object( Set.new ) { |path, used| used.merge( @helper.names_in( @file_wrapper.read( path ).clean_encoding ) ) }
   end
 
   # Every other Partial whose files include the module's header

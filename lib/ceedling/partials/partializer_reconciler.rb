@@ -121,10 +121,11 @@ class PartializerReconciler
     end
   end
 
-  # A variable's type takes back a macro after its closing brace, then the variable takes what
-  # a macro hid. `ended` holds the types already given their macro. Returns a log entry or nil
+  # A variable keeps its expanded text, which shows what its initializer names. Its type takes
+  # back a macro after its closing brace, then the variable takes what a macro hid. `ended` holds the types already given their macro. Returns a log entry or nil
   # for the type, then for the variable.
   def _reconcile_pair(c_module, var, twin, ended)
+    var.expanded_text = twin.text
     rejoined = Partials::TypeMacros.rejoin_leading( var, twin, ended )
     return [rejoined, _reconcile_variable( c_module, var, twin )]
   end

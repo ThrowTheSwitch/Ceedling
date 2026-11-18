@@ -584,16 +584,24 @@ class PartializerHelper
     return (_helper?( defs ) and !(fallback and _conflicting?( defs.map( &:code_block ) )))
   end
 
-  # The header's own static variables, by identity. Fallback keeps both sides of a conditional,
-  # so there a name's copies come along once when alike and not at all when they differ.
-  # Otherwise every declaration comes along, since a tentative definition may precede the one
-  # that initializes it.
+  # The header's own static variables, by identity. Every declaration comes along, since a
+  # tentative definition may precede the one that initializes it. Fallback keeps both sides of a
+  # conditional, so there a name's initialized copies come along once when alike and not at all
+  # when they differ.
   def _interface_statics(c_module, fallback)
     statics = c_module.variable_declarations.select { |var| _own_static?( var ) }
     return Set.new.compare_by_identity.merge( statics ) unless fallback
 
-    kept = statics.group_by( &:name ).reject { |_, vars| _conflicting?( vars.map( &:text ) ) }
-    return Set.new.compare_by_identity.merge( kept.values.map( &:first ) )
+    kept = statics.group_by( &:name ).flat_map { |_, vars| _fallback_statics( vars ) }
+    return Set.new.compare_by_identity.merge( kept )
+  end
+
+  # A name's tentative definitions, with the first initialized one, or nothing when they differ
+  def _fallback_statics(vars)
+    initialized, tentative = vars.partition { |var| var.text.to_s.include?( '=' ) }
+    return [] if _conflicting?( initialized.map( &:text ) )
+
+    return vars.select { |var| tentative.include?( var ) or var.equal?( initialized.first ) }
   end
 
   # A static variable the header itself declares, not one promoted from a function
@@ -645,14 +653,15 @@ class PartializerHelper
     return (emitted and names.intersect?( undefined ))
   end
 
-  # Each candidate's names as code, by identity: a body's as carrying reads it, a variable's from
-  # its initializer, each through the macros that hide names
+  # Each candidate's names as code, by identity, from its expansion where reconciliation found one,
+  # and through the module's own macros otherwise. Every name a body uses counts, its locals'
+  # too, since a wrong guess at a local could hide an item left behind.
   def _candidate_names(c_module, candidates)
     macros = _macro_names( c_module )
 
     return candidates.each_with_object( {}.compare_by_identity ) do |item, names|
-      own = item.is_a?( CExtractorTypes::CFunctionDefinition ) ? _body_references( item ) : _statement_references( item.text )
-      names[item] = _through_macros( own, macros )
+      text = item.is_a?( CExtractorTypes::CFunctionDefinition ) ? _scan_text( item ) : (item.expanded_text || item.text)
+      names[item] = _through_macros( _statement_references( text ), macros )
     end
   end
 
