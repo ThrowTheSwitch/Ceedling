@@ -237,7 +237,10 @@ describe TestRunnerGeneratinator do
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :lock => Mutex.new, :context => :test, :options => [] )
     end
 
-    def generated_includes(includes)
+    # Without test preprocessing a test's #includes are as written. With it, each holds the path
+    # the compiler found its header by.
+    def generated_includes(includes, preprocessed: false)
+      allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( preprocessed )
       allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list).and_return( includes )
       rendered = nil
       expect(@generator).to receive(:generate_test_runner) { |includes:, **| rendered = includes.map { |include| include.include_path || include.filename } }
@@ -256,7 +259,26 @@ describe TestRunnerGeneratinator do
 
     # With test preprocessing, an #include carries the path GCC found the header by
     it "includes a header named by its resolved path by the text the search paths find it through" do
-      expect(generated_includes( [UserInclude.new( 'src/drivers/foo.h' )] )).to eq( ['drivers/foo.h'] )
+      expect(generated_includes( [UserInclude.new( 'src/drivers/foo.h' )], preprocessed: true )).to eq( ['drivers/foo.h'] )
+    end
+
+    it "includes the header a resolved path names, never one a later search path joins that path to" do
+      tree = ['include/config.h', 'third_party/mylib/include/config.h']
+      allow(@mock_locator).to receive(:header_search).and_return(
+        HeaderSearch.new( ['include', 'third_party/mylib'], ->(dir) { tree.select { |header| File.dirname( header ) == dir } } )
+      )
+
+      expect(generated_includes( [UserInclude.new( 'include/config.h' )], preprocessed: true )).to eq( ['config.h'] )
+    end
+
+    # A quoted #include as written looks beside the test file before any search path
+    it "includes the header beside the test file that an #include as written names" do
+      tree = ['src/drivers/foo.h', 'test/drivers/foo.h']
+      allow(@mock_locator).to receive(:header_search).and_return(
+        HeaderSearch.new( ['src', '.'], ->(dir) { tree.select { |header| File.dirname( header ) == dir.delete_prefix( './' ) } } )
+      )
+
+      expect(generated_includes( [UserInclude.new( 'drivers/foo.h' )] )).to eq( ['test/drivers/foo.h'] )
     end
 
     it "keeps the filename of a header no search path reaches" do

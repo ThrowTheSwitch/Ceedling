@@ -271,6 +271,13 @@ describe HeaderSearch do
       expect( [spelled.filepath, spelled.to_s] ).to eq( ['include/config.h', '#include "config.h"'] )
     end
 
+    # A list that was never resolved, or a path in another letter case, names no header itself
+    it "takes the search paths' header for a resolved #include with no header at its path" do
+      spelled = UserInclude.new( 'drivers/foo.h' ).spelled_by( search( ['src'], ['src/drivers/foo.h'] ), resolved: true )
+
+      expect( [spelled.filepath, spelled.to_s] ).to eq( ['src/drivers/foo.h', '#include "drivers/foo.h"'] )
+    end
+
     it "leaves a resolved #include whose header no directory lists as it is" do
       lost = UserInclude.new( 'gone/foo.h' )
 

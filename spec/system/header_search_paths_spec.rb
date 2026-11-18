@@ -400,6 +400,17 @@ ceedling_system_tests do
       end
     end
 
+    it "include in the runner the header the compiler found, never one a later search path joins its path to" do
+      in_project do
+        write( 'include/config.h', "#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\n#define GAIN 3\n#endif\n" )
+        write( 'third_party/mylib/include/config.h', "#error The library's config.h reached the runner\n" )
+        write( 'test/test_gain.c', HEADER_SEARCH_PREAMBLE + "#include \"config.h\"\nvoid test_gain(void) { TEST_ASSERT_EQUAL_INT(3, GAIN); }\n" )
+
+        configure( ['include/**', 'third_party/**'], :all )
+        build_passes
+      end
+    end
+
     # Reconciliation spells two same-named headers apart. A directory searched ahead of the
     # project's, such as the one holding CMock's copy of one of them, must never capture the other.
     it "keep the paths that tell two same-named headers apart" do
