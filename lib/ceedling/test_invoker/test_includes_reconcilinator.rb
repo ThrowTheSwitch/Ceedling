@@ -133,16 +133,14 @@ class TestIncludesReconcilinator
 
   # The candidates' mock directories served the second pass. Once reconciled, only the
   # mocks that remain need a search path. A remaining mock whose header is missing or
-  # mis-cased is reported by stage 5, which resolves every mock strictly. A reconciled
-  # mock's #include names its place below its mirror root, so its header is matched by
-  # trailing path first.
+  # mis-cased is reported by stage 5, which resolves every mock strictly.
   def narrow_mock_search_paths(state, testable)
     return if testable.paths[:mocks].nil?
 
     mock_dirs = @mock_locator.directories(
       @context_extractor.lookup_mock_header_includes_list( testable.filepath ),
       mocks_root: testable.paths[:mocks],
-      collection: @mock_locator.header_search( testable ).trailing_first,
+      collection: @mock_locator.header_search( testable ),
       complain:   :silent
     )
     @test_search_paths.assign_mock_search_paths( testable, mock_dirs, state.lock )
