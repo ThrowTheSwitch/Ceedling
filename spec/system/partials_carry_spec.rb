@@ -549,7 +549,7 @@ ceedling_system_tests do
     end
   end
 
-  it "leaves an unguarded header's helpers behind with a notice, and still builds" do
+  it "leaves a #pragma once header's helpers behind with a notice, and still builds" do
     in_project do
       File.write( 'src/once.h', PARTIALS_CARRY_ONCE_HEADER )
       File.write( 'src/once_cfg.h', PARTIALS_CARRY_ONCE_CONFIG )
@@ -558,6 +558,7 @@ ceedling_system_tests do
 
       output = build_passing( 1 )
       expect(output).to include( 'Not carrying helper `clamp()` from src/once.h.' )
+      expect(output).to include( '• src/once.h uses `#pragma once`, which is not an include guard.' )
     end
   end
 end

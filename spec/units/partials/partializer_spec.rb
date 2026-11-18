@@ -550,6 +550,10 @@ describe Partializer do
   ###
 
   context "#plan_carry" do
+    before(:each) do
+      allow(@file_wrapper).to receive(:read).with( 'src/engine.h' ).and_return( "int engine_get(void);\n" )
+    end
+
     it "returns the helper's plan for the module and both selections" do
       c_module = CExtractorTypes::CModule.new
       impl     = [Partials.manufacture_function_definition( name: 'get', signature: 'int get(void)', code_block: '' )]
@@ -586,8 +590,9 @@ describe Partializer do
       plan
     end
 
-    def carry_with(plan)
+    def carry_with(plan, pragma_once: false)
       allow(@partializer_helper).to receive(:plan_carry).and_return( plan )
+      allow(@preprocessinator_reconstructor).to receive(:pragma_once?).and_return( pragma_once )
       @partializer.plan_carry(
         test: 'test_engine', c_module: CExtractorTypes::CModule.new, impl: [], interface: nil, header_guarded: true,
         config: carry_config( 'engine' )
@@ -710,6 +715,31 @@ describe Partializer do
         LogLabels::NOTICE
       )
       expect(@loginator).to have_received(:log).once
+    end
+
+    # Ceedling stands a Partial in for a header only by defining its include guard
+    it "explains that a #pragma once module header keeps its helpers out, as the toolchain guidance does" do
+      plan = plan_for( skipped: [['clamp', :unguarded_helper], ['counter', :unguarded_helper]] )
+
+      allow(@loginator).to receive(:log)
+
+      carry_with( plan, pragma_once: true )
+
+      expect(@loginator).to have_received(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_engine::engine ⏩️ Not carrying helpers `clamp()`, `counter()` from src/engine.h.
+
+        HOW THIS HAPPENS:
+        • Selected functions call these helpers.
+        • src/engine.h uses `#pragma once`, which is not an include guard.
+        • A Partial stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+        • Without one, a carried copy could collide with the real one.
+
+        OPTIONS:
+        1. Replace `#pragma once` in src/engine.h with an include guard so the Partial can stand in for it.
+        2. Select the helpers with `+name` (for example `+clamp`). This works only when no other header this module includes pulls in src/engine.h.
+
+        See the docs on Partials conventions.
+      NOTICE
     end
 
     it "words the unguarded-header notice for a single helper" do
@@ -1035,11 +1065,15 @@ describe Partializer do
 
       expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
         Partial test_sensor::sensor ⏩️ Its mock leaves helper `twice()` and variable `table` from src/sensor.h behind.
-        src/sensor.h uses `#pragma once`, which is not an include guard. Ceedling relies on include guards. Without
-        one the mock can't stand in for the header everywhere it's included, and a copy could collide with the
-        real one. Code that uses these compiles only where another #include brings in the real header.
 
-        Replace `#pragma once` in src/sensor.h with an include guard so the mock keeps them.
+        HOW THIS HAPPENS:
+        • src/sensor.h uses `#pragma once`, which is not an include guard.
+        • A mock stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+        • Without one, a kept copy could collide with the real one, so the mock leaves them out.
+        • Code that uses these compiles only where another #include brings in the real header.
+
+        OPTIONS:
+        1. Replace `#pragma once` in src/sensor.h with an include guard so the mock keeps them.
 
         See the docs on Partials conventions.
       NOTICE
