@@ -7,6 +7,8 @@
 
 require 'spec_helper'
 require 'ceedling/generators/generator'
+require 'ceedling/c_extractor/c_extractor_types'
+require 'ceedling/partials/carry_plan'
 require 'ceedling/constants'
 
 # Scoped to Generator#generate_object_file_c's choice of which file the compiler receives,
