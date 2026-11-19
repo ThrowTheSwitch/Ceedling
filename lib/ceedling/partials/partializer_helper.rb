@@ -1048,7 +1048,7 @@ class PartializerHelper
   # Validate that every function name in additions and subtractions exists in c_module.
   # Case-sensitive match; if a name matches case-insensitively but not exactly, raise
   # a specific case-mismatch exception. A Test Partial carries only the functions its
-  # module defines. A mock also names the functions the header declares, since a mock of
+  # module defines. A mock also names the functions the module declares, since a mock of
   # public functions alone reads only the header.
   def validate_function_names_exist(c_module, config, name)
     mod = config.module
@@ -1073,11 +1073,17 @@ class PartializerHelper
     end
   end
 
-  # The functions a Partial configuration can name, by name. A mock's include the header's
-  # declarations, which its definitions take the place of, as mock selection reads them.
+  # The functions a Partial configuration can name, by name. A mock can also name what the
+  # module only declares, as mock selection reads it (Partializer#_mock_candidates), less an
+  # inline function whose body is in another header, which no mock can replace. A definition
+  # takes the place of a same-named declaration.
   def configurable_functions(c_module, mock)
     functions = {}
-    (c_module.function_declarations || []).each { |decl| functions[decl.name] = decl if decl.name } if mock
+    if mock
+      (c_module.function_declarations || []).each do |decl|
+        functions[decl.name] = decl if decl.name and !Partials.foreign_inline?( decl )
+      end
+    end
     c_module.function_definitions.each { |func| functions[func.name] = func }
     return functions
   end
