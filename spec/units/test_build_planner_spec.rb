@@ -764,6 +764,14 @@ describe TestBuildPlanner do
       expect(filelist).to eq( ['src/Bar.c'] )
     end
 
+    it "removes a source file when the test includes the very header it mocks" do
+      filelist = ['src/Foo.c', 'src/Bar.c']
+
+      @planner.remove_mock_original_headers( filelist, ['MockFoo.h'], ['Foo.h'] )
+
+      expect(filelist).to eq( ['src/Bar.c'] )
+    end
+
     it "leaves the list untouched when none of its files correspond to a mocked header" do
       filelist = ['src/Bar.c']
 

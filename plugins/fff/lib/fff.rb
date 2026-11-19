@@ -71,12 +71,11 @@ class FffCMockWrapper
     write_header_copy( File.join( File.dirname( path ), File.basename( header_file_to_mock ) ), parsed_header )
   end
 
-  # The name for a fake's guard and control functions, as CMock forms it. With
-  # :mock_name_include_folder, the folder below the mock root comes first, so two
-  # same-named fakes stay distinct and match the runner's calls. A leading ./ is
-  # dropped, and characters a C identifier can't hold become `_`, as Unity's
-  # TypeSanitizer does. Unity's rule, not CIdentifier's, since the runner Unity
-  # generates must call the very names this forms.
+  # The name for a fake's guard and control functions, as CMock forms it. Every name has the
+  # characters a C identifier can't hold turned to `_`, as Unity's TypeSanitizer does. That is
+  # Unity's rule, not CIdentifier's, since the runner Unity generates must call the very names
+  # this forms. With :mock_name_include_folder, the folder below the mock root comes first, so
+  # two same-named fakes stay distinct and match the runner's calls. A leading ./ is dropped.
   def c_name_for(mock_name, folder)
     mock_folder = [@cm_config.subdir, folder].compact
     identity    = mock_name

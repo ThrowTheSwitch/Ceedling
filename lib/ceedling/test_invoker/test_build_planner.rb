@@ -153,7 +153,8 @@ class TestBuildPlanner
 
       remove_mock_original_headers(
         test_core,
-        mock_list.map { |mock| mock.filename }
+        mock_list.map { |mock| mock.filename },
+        @context_extractor.lookup_nonmock_header_includes_list( filepath ).map { |include| include.filename }
       )
 
       test_frameworks   = collect_test_framework_sources( !testable.mocks.empty? )
@@ -381,13 +382,23 @@ class TestBuildPlanner
     return dir == '.' ? '' : dir
   end
 
-  # Mocks are named by their headers' own extensions, so source and mock names are compared
-  # without any
-  def remove_mock_original_headers(filelist, mocklist)
-    mocked = mocklist.map { |mock| File.basename( mock, '.*' ) }
+  # A source is dropped when a mock stands in for its header. Mocks are named by their headers'
+  # own extensions, so names are compared by stem. A source stays when the test also includes
+  # an unmocked header of that stem under another name, since the mock replaces a different header.
+  def remove_mock_original_headers(filelist, mocklist, headers = [])
+    mocked = mocklist.map { |mock| File.basename( mock ) }
+    stems  = mocked.map { |mock| File.basename( mock, '.*' ) }
+    real   = unmocked_header_stems( mocked, headers )
     filelist.delete_if do |filepath|
-      mocked.include?( @configurator.cmock_mock_prefix + File.basename( filepath, '.*' ) )
+      stem = File.basename( filepath, '.*' )
+      stems.include?( @configurator.cmock_mock_prefix + stem ) and !real.include?( stem )
     end
+  end
+
+  # The stems of the headers a test includes that no mock in `mocked` stands in for
+  def unmocked_header_stems(mocked, headers)
+    return headers.reject { |header| mocked.include?( @configurator.cmock_mock_prefix + File.basename( header ) ) }
+                  .map { |header| File.basename( header, '.*' ) }
   end
 
 end

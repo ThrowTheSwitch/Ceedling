@@ -720,6 +720,18 @@ ceedling_system_tests do
       end
     end
 
+    # The source of a header the test both includes and mocks stays out of the link
+    it "links no source for a header the test includes and mocks under :use_test_preprocessor none" do
+      in_project do
+        write( 'src/drivers/foo.h', "int foo_read(void);\n" )
+        write( 'src/drivers/foo.c', "#include \"foo.h\"\nint foo_read(void) { return 5; }\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n#include \"drivers/mock_foo.h\"\n" \
+                                "void test_k(void) { foo_read_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, foo_read()); }\n" )
+        configure( ['src/**'], :none )
+        build_passes
+      end
+    end
+
     # Stage 4 places a stand-in for the mock under the extension the test's #include names
     it "places a stand-in for a mock of a header with another extension that the preprocessor reads under :use_test_preprocessor tests" do
       in_project do
