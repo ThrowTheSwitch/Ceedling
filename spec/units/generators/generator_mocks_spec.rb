@@ -128,4 +128,17 @@ describe GeneratorMocks do
     end
   end
 
+  # A plugin such as FFF replaces CMock with a class of its own under CMock's name
+  describe '#generator_name' do
+    it 'names the class that writes each mock' do
+      expect( @mocks.generator_name ).to eq( 'CMock' )
+    end
+
+    it 'names a replacement class' do
+      stub_const( 'CMock', Class.new { def self.name() 'FffCMockWrapper' end } )
+
+      expect( @mocks.generator_name ).to eq( 'FffCMockWrapper' )
+    end
+  end
+
 end

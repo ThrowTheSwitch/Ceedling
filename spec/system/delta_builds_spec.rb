@@ -313,6 +313,20 @@ ceedling_system_tests do
       end
     end
 
+    # Verbosity changes only what CMock prints, so no mock is stale for it
+    it "regenerates no mock when only the verbosity changes" do
+      @c.with_context do
+        Dir.chdir "temp_sensor" do
+          @c.ceedling_build_exec("test:all")
+
+          rebuild = @c.ceedling_build_exec("test:all", "--verbosity=normal")
+
+          expect(@c.last_exit_status).to eq(0), rebuild
+          expect(rebuild).not_to match(/Generating mock for/)
+        end
+      end
+    end
+
     it "recompiles every object when the :tools ↳ :test_compiler configuration changes, with no source edits" do
       @c.with_context do
         Dir.chdir "temp_sensor" do

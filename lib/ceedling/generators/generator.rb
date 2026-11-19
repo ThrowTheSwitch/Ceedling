@@ -73,6 +73,11 @@ class Generator
     return @generator_partials.generate_implementation( name: partial, **generation )
   end
 
+  # The class that writes each mock, which a mock's delta build record holds
+  def mock_generator_name
+    return @generator_mocks.generator_name
+  end
+
   def generate_mock(context:, mock:, test:, input_filepath:, output_path:, mock_root:, folder: nil, overrides: {})
     arg_hash = {
       :header_file => input_filepath,

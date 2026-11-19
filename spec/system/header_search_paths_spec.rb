@@ -588,4 +588,47 @@ ceedling_system_tests do
       build_passes
     end
   end
+
+  # CMock's copy of a header outlives a switch to :exclude unless it is removed
+  it "sees an edit to a mocked header after :treat_inlines changes from :include to :exclude" do
+    in_project do
+      header = ->(k) { "#ifndef FOO_H\n#define FOO_H\n#define FOO_K #{k}\nstatic inline int foo_peek(void) { return FOO_K; }\nint foo_read(void);\n#endif\n" }
+      test   = ->(k) { HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\nvoid test_k(void) { TEST_ASSERT_EQUAL_INT(#{k}, FOO_K); }\n" }
+
+      write( 'src/drivers/foo.h', header.( 1 ) )
+      write( 'test/test_c.c', test.( 1 ) )
+      configure( ['src/**'], :mocks, { :cmock => { :treat_inlines => :include } } )
+      build_passes
+
+      configure( ['src/**'], :mocks, { :cmock => { :treat_inlines => :exclude } } )
+      build_passes
+      expect(Dir.glob( 'build/test/mocks/**/foo.h' )).to be_empty
+
+      write( 'src/drivers/foo.h', header.( 2 ) )
+      write( 'test/test_c.c', test.( 2 ) )
+      build_passes
+    end
+  end
+
+  # FFF replaces CMock, writing a different file from the same configuration
+  it "regenerates a mock when the FFF plugin is turned on or off" do
+    in_project do
+      cmock_test = HEADER_SEARCH_PREAMBLE + "#include \"mock_led.h\"\nvoid test_level(void) { led_level_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, led_level()); }\n"
+      fff_test   = HEADER_SEARCH_PREAMBLE + "#include \"mock_led.h\"\nvoid test_level(void) { led_level_fake.return_val = 3; TEST_ASSERT_EQUAL_INT(3, led_level()); }\n"
+
+      write( 'src/led.h', "int led_level(void);\n" )
+      write( 'test/test_c.c', cmock_test )
+      configure( ['src'], :none )
+      build_passes
+      without_fff = File.read( 'project.yml' )
+
+      write( 'test/test_c.c', fff_test )
+      @c.merge_project_yml_for_test( { :plugins => { :enabled => ['fff'] } } )
+      build_passes
+
+      write( 'test/test_c.c', cmock_test )
+      File.write( 'project.yml', without_fff )
+      build_passes
+    end
+  end
 end
