@@ -441,6 +441,23 @@ ceedling_system_tests do
       File.write( 'test/test_engine.c', PARTIALS_CARRY_PREAMBLE + test + "void setUp(void) {}\nvoid tearDown(void) {}\n" )
     end
 
+    # A mock of public functions alone reads only the header, which declares what it subtracts.
+    # The test defines its own, through the prototype the extras keep.
+    it "subtracts a declared function from a public mock" do
+      in_project do
+        port_project(
+          port_h: "#ifndef PORT_H\n#define PORT_H\nint port_read(void);\nint port_write(int v);\n#endif\n",
+          port_c: "#include \"port.h\"\nint port_read(void) { return 0; }\nint port_write(int v) { return v; }\n",
+          engine_c: "#include \"engine.h\"\n#include \"port.h\"\nint engine_get(void) { return port_write( port_read() ) + 1; }\n",
+          test: "#include TEST_PARTIAL_PUBLIC_MODULE(engine)\n#include MOCK_PARTIAL_PUBLIC_MODULE(port)\nMOCK_PARTIAL_CONFIG(port, -port_write)\n" \
+                "int port_write(int v) { return 2 * v; }\n" \
+                "void test_get(void) { port_read_ExpectAndReturn(20); TEST_ASSERT_EQUAL_INT(41, engine_get()); }\n"
+        )
+
+        build_passing( 1 )
+      end
+    end
+
     it "steps aside where another header brought in the real one first" do
       in_project do
         port_project(

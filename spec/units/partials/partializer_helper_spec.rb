@@ -738,8 +738,8 @@ describe PartializerHelper do
     OpenStruct.new(name: name, decorators: decorators)
   end
 
-  def make_c_module(funcs)
-    OpenStruct.new(function_definitions: funcs)
+  def make_c_module(funcs, declarations: [])
+    OpenStruct.new(function_definitions: funcs, function_declarations: declarations)
   end
 
   def make_pf(type: nil, additions: [], subtractions: [])
@@ -881,6 +881,40 @@ describe PartializerHelper do
       expect { @helper.validate_function_names_exist(c_module, config, name) }
         .to raise_error(CeedlingException, /test_mod.*case/)
     end
+
+    # A mock of public functions alone reads only the header, which declares functions its
+    # source defines (#1427)
+    it "does not raise when a mocks name is only declared" do
+      name     = "test_mod"
+      c_module = make_c_module([make_func('helper')], declarations: [make_func('port_read'), make_func('port_write')])
+      config   = make_config('mod',
+        tests: make_pf,
+        mocks: make_pf(additions: ['port_read'], subtractions: ['port_write'])
+      )
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.not_to raise_error
+    end
+
+    it "raises when a mocks name differs only by case from a declared one" do
+      name     = "test_mod"
+      c_module = make_c_module([], declarations: [make_func('port_write')])
+      config   = make_config('mod', tests: make_pf, mocks: make_pf(subtractions: ['Port_Write']))
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.to raise_error(CeedlingException, /test_mod.*case/)
+    end
+
+    # A Test Partial carries only the functions its module defines
+    it "raises when a tests name is only declared" do
+      name     = "test_mod"
+      c_module = make_c_module([], declarations: [make_func('port_write')])
+      config   = make_config('mod', tests: make_pf(subtractions: ['port_write']), mocks: make_pf)
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.to raise_error(CeedlingException, /test_mod.*port_write/)
+    end
+
+    it "ignores a declaration with no name" do
+      name     = "test_mod"
+      c_module = make_c_module([], declarations: [make_func(nil), make_func('port_write')])
+      config   = make_config('mod', tests: make_pf, mocks: make_pf(subtractions: ['port_write']))
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.not_to raise_error
+    end
   end
 
   ###
@@ -959,6 +993,15 @@ describe PartializerHelper do
         .with(func.decorators, Partials::PUBLIC).and_return(true)
       expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }
         .not_to raise_error
+    end
+
+    it "checks a PUBLIC mocks subtraction of a function the header only declares" do
+      name     = "test_mod"
+      decl     = make_func('port_write')
+      c_module = make_c_module([], declarations: [decl])
+      config   = make_config('mod', tests: make_pf, mocks: make_pf(type: Partials::PUBLIC, subtractions: ['port_write']))
+      allow(@partializer_utils).to receive(:matches_visibility?).with(decl.decorators, Partials::PUBLIC).and_return(true)
+      expect { @helper.validate_additions_subtractions_visibility(c_module, config, name) }.not_to raise_error
     end
 
     it "raises when PUBLIC subtractions include a private function" do
