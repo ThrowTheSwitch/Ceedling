@@ -98,6 +98,35 @@ describe TestSearchPaths do
     end
   end
 
+  # Partials are generated before mocks are preprocessed, so they are current then. The mock
+  # directories hold copies a later stage brings up to date.
+  describe "#mock_preprocess_paths" do
+    it "gives the Partial directories ahead of TEST_INCLUDE_PATH() and the configured paths, without the mock directories" do
+      allow(@include_pathinator).to receive(:lookup_test_directive_include_paths).with( 'test/TestFoo.c' ).and_return( ['directive'] )
+      allow(@include_pathinator).to receive(:collect_test_include_paths).and_return( ['test_include'] )
+      allow(@test_context_extractor).to receive(:lookup_partials_config).and_return( { 'drivers/uart' => {} } )
+      %i[support include libraries vendor test_toolchain_include].each do |kind|
+        allow(@configurator).to receive(:"collection_paths_#{kind}").and_return( [kind.to_s] )
+      end
+
+      expect(@search_paths.mock_preprocess_paths( testable( { mocks: 'mocks', partials: 'partials' }, ['mocks/drivers'], ['derived'] ) )).to eq( %w[
+        partials partials/drivers directive test_include support include libraries vendor test_toolchain_include derived
+      ] )
+    end
+
+    it "gives the header paths when the test has no Partials" do
+      allow(@configurator).to receive(:collection_paths_include).and_return( ['src'] )
+
+      expect(@search_paths.mock_preprocess_paths( testable( { mocks: 'mocks' }, ['mocks/drivers'], ['derived'] ) )).to eq( ['src', 'derived'] )
+    end
+
+    it "lists each path once" do
+      allow(@configurator).to receive(:collection_paths_include).and_return( ['src', 'partials'] )
+
+      expect(@search_paths.mock_preprocess_paths( testable( { partials: 'partials' } ) )).to eq( ['partials', 'src'] )
+    end
+  end
+
   describe "#assign_mock_search_paths" do
     it "sets a test's mock search paths and composes its search paths around them" do
       testable = TestInvokerTypes::Testable.new(

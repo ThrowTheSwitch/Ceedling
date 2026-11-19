@@ -1506,7 +1506,7 @@ describe TestBuildExecutor do
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
       allow(@executor.instance_variable_get( :@mock_locator )).to receive(:header_search).and_return( double( 'HeaderSearch' ) )
-      allow(@test_search_paths).to receive(:header_paths).and_return( [] )
+      allow(@test_search_paths).to receive(:mock_preprocess_paths).and_return( [] )
 
       # The full expansion's line markers name the headers the mocked header entered
       allow(@configurator).to receive(:project_build_root).and_return( 'build' )
@@ -1549,10 +1549,10 @@ describe TestBuildExecutor do
       end
     end
 
-    context "through the test's header paths" do
+    context "through the test's mock preprocess paths" do
       before(:each) do
         @testable.search_paths = ['build/test/mocks/a_test', 'src']
-        allow(@test_search_paths).to receive(:header_paths).with( @testable ).and_return( ['src'] )
+        allow(@test_search_paths).to receive(:mock_preprocess_paths).with( @testable ).and_return( ['src'] )
         allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
         allow(@dependinator).to receive(:stale?).and_return( true )
         allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/directives_only/Foo.h' )
@@ -1560,20 +1560,20 @@ describe TestBuildExecutor do
       end
 
       # The mock root holds CMock's copies of headers, which no real header is read through
-      it "preprocesses the mockable header through its test's header paths, never its full search paths" do
+      it "preprocesses the mockable header through its test's mock preprocess paths, never its full search paths" do
         @executor.stage_preprocess_mocks( @state )
 
         expect(@preprocessinator).to have_received(:generate_directives_only_output).with( hash_including( include_paths: ['src'] ) )
         expect(@preprocessinator).to have_received(:preprocess_mockable_header_file).with( hash_including( include_paths: ['src'] ) )
       end
 
-      it "registers its test's header paths as the target's search paths" do
+      it "registers its test's mock preprocess paths as the target's search paths" do
         expect(@dependinator).to receive(:register).with( 'build/preprocess/MockFoo.h', files: ['src/Foo.h'], meta: hash_including( search_paths: ['src'] ) )
 
         @executor.stage_preprocess_mocks( @state )
       end
 
-      it "composes a test's header paths once for all its mocks" do
+      it "composes a test's mock preprocess paths once for all its mocks" do
         bar = @state.mocks_list.first.dup
         bar.details = TestInvokerTypes::MockDetails.new( :source => 'src/Bar.h', :path => 'sub' )
         @state.mocks_list << bar
@@ -1581,7 +1581,7 @@ describe TestBuildExecutor do
 
         @executor.stage_preprocess_mocks( @state )
 
-        expect(@test_search_paths).to have_received(:header_paths).once
+        expect(@test_search_paths).to have_received(:mock_preprocess_paths).once
         expect(@preprocessinator).to have_received(:preprocess_mockable_header_file).with( hash_including( include_paths: ['src'] ) ).twice
       end
     end

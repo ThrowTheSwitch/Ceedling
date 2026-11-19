@@ -947,6 +947,23 @@ ceedling_system_tests do
       end
     end
 
+    # A build records the headers its mock preprocessing entered, so the build after it finds each mock current
+    [:mocks, :all].each do |preprocessor|
+      it "preprocesses no mock in the first rebuild after a fresh build under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', foo.( 1 ) )
+          write( 'src/drivers/bar.h', bar.( '' ) )
+          write( 'test/test_c.c', test.( ['mock_bar.h'], 'bar_one', 1 ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include } } )
+          build_passes
+
+          output = build_passes
+          expect(output).to_not include( 'Preprocessing header file for follow-on mock handling' )
+          expect(output).to include( 'Skipping mock preprocessing for 1 mock (nothing changed)' )
+        end
+      end
+    end
+
     # CMock writes its copy of a mocked header beside the mock. A mock generated after stage 9
     # puts its copy in step with the header.
     [:mocks, :all].each do |preprocessor|
@@ -963,6 +980,27 @@ ceedling_system_tests do
           write( 'test/test_c.c', test.( ['mock_foo.h', 'mock_bar.h'], 'bar_two', 2 ) )
           build_passes
           rebuild_skips_mocks( 2 )
+        end
+      end
+    end
+  end
+
+  # Partials are generated before mocks are preprocessed, so a mocked header can include one
+  # as the compiler finds it.
+  describe "a Partial header a mocked header includes" do
+    [:mocks, :all].product( [:include, :exclude] ).each do |preprocessor, treat_inlines|
+      it "is found by mock preprocessing under :use_test_preprocessor #{preprocessor} and :treat_inlines #{treat_inlines}" do
+        in_project do
+          write( 'src/drivers/foo.h', "int foo_read(void);\n" )
+          write( 'src/drivers/foo.c', "#include \"foo.h\"\nint foo_read(void) { return 1; }\n" )
+          write( 'src/drivers/bar.h', "#ifndef BAR_H\n#define BAR_H\n#include \"ceedling_partial_foo_impl.h\"\nint bar_one(void);\n#endif\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                  "#include TEST_PARTIAL_PUBLIC_MODULE(foo)\n#include \"drivers/mock_bar.h\"\n" \
+                                  "void test_a(void) { bar_one_ExpectAndReturn(1); TEST_ASSERT_EQUAL_INT(1, bar_one()); TEST_ASSERT_EQUAL_INT(1, foo_read()); }\n" )
+
+          configure( ['src/**'], preprocessor, { :project => { :use_test_preprocessor => preprocessor, :use_partials => true },
+                                                 :cmock => { :treat_inlines => treat_inlines } } )
+          build_passes
         end
       end
     end
