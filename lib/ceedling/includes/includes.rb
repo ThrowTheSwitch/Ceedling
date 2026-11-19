@@ -524,13 +524,14 @@ class Include
   #
   # A `resolved` #include holds the path the compiler found its header by. One as written names
   # the header beside its includer, in directory `from`, ahead of any a search path finds, as the
-  # compiler's quote rule does. Where no search path reaches that one, it is spelled by the header
-  # the search paths find, which the compiler finds from where a generated file lives. A resolved
-  # header no search path reaches by any spelling is written by its absolute path, which reaches
-  # it from wherever the generated file lives. One whose header isn't found comes back as it is.
+  # compiler's quote rule does. A header found either way that no search path reaches by any
+  # spelling is written by its absolute path, which reaches it from wherever the generated file
+  # lives. The compiler finds a search path's header from there, so an #include as written with no
+  # header beside its includer is spelled by the one the search paths find. One whose header isn't
+  # found comes back as it is.
   def spelled_by(search, from: nil, resolved: false)
-    header   = header_in( search, from, resolved )
-    spelling = header && spelling_of( search, header, resolved )
+    header, named = header_in( search, from, resolved )
+    spelling      = header && spelling_of( search, header, resolved || named )
     return spelling ? self.class.new( header, include_path: spelling, directory_relative: @directory_relative ) : self
   end
 
@@ -596,23 +597,18 @@ class Include
 
   private
 
-  # The header this #include names in `search` (see spelled_by). A resolved path with no header
-  # at it, in another letter case or never resolved at all, is searched for as written.
+  # The header this #include names in `search` (see spelled_by), and whether it is the one the
+  # #include names where written, rather than one the search paths find. A resolved path with no
+  # header at it, in another letter case or never resolved at all, is searched for as written.
   def header_in(search, from, resolved)
-    found = resolved ? search.at( @filepath ) : header_beside( search, from )
-    return found || search.header_candidates( @filepath ).first
+    written = resolved ? search.at( @filepath ) : header_beside( search, from )
+    return written ? [written, true] : [search.header_candidates( @filepath ).first, false]
   end
 
-  # A spelling of `header` for this #include. Where no search path reaches it, a resolved one
-  # takes the header's absolute path and one as written the header the search paths find, if any.
-  def spelling_of(search, header, resolved)
-    return search.spelling( header, preferring: include ) || (resolved ? ProjectPaths.absolute( header ) : searched_spelling( search ))
-  end
-
-  # The spelling of the header the search paths find for this #include's path, or nil
-  def searched_spelling(search)
-    found = search.header_candidates( @filepath ).first
-    return found && search.spelling( found, preferring: include )
+  # A spelling of `header` for this #include. Where no search path reaches it, one the #include
+  # names where written takes the header's absolute path, and any other stays as it is.
+  def spelling_of(search, header, absolute)
+    return search.spelling( header, preferring: include ) || (absolute ? ProjectPaths.absolute( header ) : nil)
   end
 
   # The header an #include as written names beside its includer, or at its anchored path
