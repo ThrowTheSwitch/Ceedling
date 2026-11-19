@@ -79,15 +79,16 @@ class TestBuildExecutor
   #
   # A Partial mock is left out. CMock reads its generated interface header itself.
   #
-  # Each header is read through its test's header paths, as the compiler finds real headers.
-  # The mock root holds CMock's copies of headers, which stage 10 brings up to date only after
-  # this stage. The headers a mocked header's full expansion entered are its dependencies.
+  # Each header is read through its test's Partial directories and header paths, as the compiler
+  # finds real headers. The mock root holds CMock's copies of headers, which stage 10 brings up
+  # to date only after this stage. The headers a mocked header's full expansion entered are its
+  # dependencies.
   def stage_preprocess_mocks(state)
-    directives_only = @configurator.test_build_preprocess_directives_only_available
-    extras          = (@configurator.cmock_treat_inlines == :include)
-    mocks           = state.mocks_list.reject { |mock| mock.details.partial }
-    header_paths    = test_header_paths( mocks )
-    skipped         = 0
+    directives_only  = @configurator.test_build_preprocess_directives_only_available
+    extras           = (@configurator.cmock_treat_inlines == :include)
+    mocks            = state.mocks_list.reject { |mock| mock.details.partial }
+    preprocess_paths = test_mock_preprocess_paths( mocks )
+    skipped          = 0
 
     # Each remaining mock's target is registered and its staleness settled first. That
     # staleness gates both parallel batches below, and settling it runs no subprocess.
@@ -103,7 +104,7 @@ class TestBuildExecutor
         meta:  {
           flags:                     testable.preprocess_flags,
           defines:                   testable.preprocess_defines,
-          search_paths:              header_paths[testable.name],
+          search_paths:              preprocess_paths[testable.name],
           extras:                    extras,
           tools:                     [
             @configurator.tools_test_bare_includes_preprocessor,
@@ -145,7 +146,7 @@ class TestBuildExecutor
         filepath:      filepath,
         test:          name,
         flags:         testable.preprocess_flags,
-        include_paths: header_paths[name],
+        include_paths: preprocess_paths[name],
         vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
@@ -168,7 +169,7 @@ class TestBuildExecutor
         directives_only_filepath: directives_only_filepath,
         fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
-        include_paths:            header_paths[testable.name],
+        include_paths:            preprocess_paths[testable.name],
         vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines,
         extras:                   extras,
@@ -605,10 +606,10 @@ class TestBuildExecutor
     return ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
   end
 
-  # Each test's header paths by its name, composed once for all its mocks
-  def test_header_paths(mocks)
+  # Each test's mock preprocess paths by its name, composed once for all its mocks
+  def test_mock_preprocess_paths(mocks)
     paths = {}
-    mocks.each { |mock| paths[mock.testable.name] ||= @test_search_paths.header_paths( mock.testable ) }
+    mocks.each { |mock| paths[mock.testable.name] ||= @test_search_paths.mock_preprocess_paths( mock.testable ) }
     return paths
   end
 

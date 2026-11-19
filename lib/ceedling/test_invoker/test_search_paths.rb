@@ -26,6 +26,14 @@ class TestSearchPaths
     return (configured_paths( testable.filepath ) + testable.derived_search_paths).uniq
   end
 
+  # The paths mock preprocessing reads a mocked header through: the header paths with the test's
+  # Partial directories ahead of them, as `compose` orders them. Partials are generated before mocks
+  # are preprocessed, so they are current then. The mock directories hold CMock's copies of headers,
+  # which mock generation brings up to date only afterward, so they are left out.
+  def mock_preprocess_paths(testable)
+    return (partial_paths( testable.filepath, testable.paths ) + header_paths( testable )).uniq
+  end
+
   # Sets a test's mock search paths and composes its search paths around them. `lock`
   # guards the write, since other threads read the Testable.
   def assign_mock_search_paths(testable, mock_search_paths, lock)
@@ -43,8 +51,14 @@ class TestSearchPaths
     _paths = []
     _paths << paths[:mocks] if paths[:mocks]
     _paths += mock_search_paths
-    _paths << paths[:partials] if paths[:partials]
-    return _paths + partial_search_paths( filepath, paths )
+    return _paths + partial_paths( filepath, paths )
+  end
+
+  # The Partials root, then each Partialized module's own directory below it
+  def partial_paths(filepath, paths)
+    return [] unless paths[:partials]
+
+    return [paths[:partials]] + partial_search_paths( filepath, paths )
   end
 
   # TEST_INCLUDE_PATH() entries, then the project's configured paths
