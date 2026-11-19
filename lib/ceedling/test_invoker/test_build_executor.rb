@@ -37,6 +37,22 @@ class TestBuildExecutor
     :mock_locator
   )
 
+  # Before stage 9: removes from each test's mock root the copies of headers no current mock
+  # names. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's header
+  # beside it. The mock root stays on the test's search path, with or without mocks, so a copy
+  # that outlives its mock shadows the header. A copy is the only header in a mock root named
+  # without the mock prefix. Without a prefix, a copy and a mock look alike, and nothing is
+  # pruned. A test this run doesn't build keeps its mock root, even below another test's.
+  def stage_prune_header_copies(state)
+    prefix = @configurator.cmock_mock_prefix
+    return if prefix.empty?
+
+    keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
+    every = every_mock_root()
+
+    run_mock_roots( state ).each { |root| prune_mock_root( root, prefix, keep, every ) }
+  end
+
   # Stage 9: Preprocess header files to be mocked.
   #
   # A Partial mock is left out. CMock reads its generated interface header itself.
@@ -134,22 +150,6 @@ class TestBuildExecutor
 
       @dependinator.mark_fresh( mock.preprocessed_target )
     end
-  end
-
-  # Before stage 10: removes from each test's mock root the copies of headers no current mock
-  # names. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's header
-  # beside it. The mock root stays on the test's search path, with or without mocks, so a copy
-  # that outlives its mock shadows the header. A copy is the only header in a mock root named
-  # without the mock prefix. Without a prefix, a copy and a mock look alike, and nothing is
-  # pruned. A test this run doesn't build keeps its mock root, even below another test's.
-  def stage_prune_header_copies(state)
-    prefix = @configurator.cmock_mock_prefix
-    return if prefix.empty?
-
-    keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
-    every = every_mock_root()
-
-    run_mock_roots( state ).each { |root| prune_mock_root( root, prefix, keep, every ) }
   end
 
   # Stage 10: Generate mocks for all tests.

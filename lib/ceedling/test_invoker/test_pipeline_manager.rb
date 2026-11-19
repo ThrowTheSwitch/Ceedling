@@ -215,19 +215,20 @@ class TestPipelineManager
             body: ->(s) { @test_build_planner.stage_flatten_mocks_list(s) }
       ),
 
+      # Transform 3: Prune header copies no current mock names, before mock preprocessing
+      # searches the mock root. Runs when this run has no mocks too, since a test's mock root
+      # stays on its search path.
+      stage(transform: true,
+            condition: use_mocks,
+            body: ->(s) { @test_build_executor.stage_prune_header_copies(s) }
+      ),
+
       # Stage 9 — a Partial mock needs no preprocessing, so Partial mocks alone leave it empty.
       stage("Preprocessing for Mocks",
             condition:       use_mocks_preproc,
             empty_condition: ->(s) { s.mocks_list.all? { |mock| mock.details.partial } },
             empty_notice:    "no mocks need preprocessing",
             body: ->(s) { @test_build_executor.stage_preprocess_mocks(s) }
-      ),
-
-      # Transform 3: Prune header copies no current mock names. Runs when this run has no
-      # mocks too, since a test's mock root stays on its search path.
-      stage(transform: true,
-            condition: use_mocks,
-            body: ->(s) { @test_build_executor.stage_prune_header_copies(s) }
       ),
 
       # Stage 10 — the :mocking stop point runs through here, then halts.
