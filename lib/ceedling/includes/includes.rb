@@ -529,10 +529,8 @@ class Include
   # header no search path reaches by any spelling is written by its absolute path, which reaches
   # it from wherever the generated file lives. One whose header isn't found comes back as it is.
   def spelled_by(search, from: nil, resolved: false)
-    header     = header_in( search, from, resolved )
-    spelling   = header && search.spelling( header, preferring: include )
-    spelling ||= searched_spelling( search ) unless resolved or header.nil?
-    spelling ||= ProjectPaths.absolute( header ) if resolved and header
+    header   = header_in( search, from, resolved )
+    spelling = header && spelling_of( search, header, resolved )
     return spelling ? self.class.new( header, include_path: spelling, directory_relative: @directory_relative ) : self
   end
 
@@ -603,6 +601,12 @@ class Include
   def header_in(search, from, resolved)
     found = resolved ? search.at( @filepath ) : header_beside( search, from )
     return found || search.header_candidates( @filepath ).first
+  end
+
+  # A spelling of `header` for this #include. Where no search path reaches it, a resolved one
+  # takes the header's absolute path and one as written the header the search paths find, if any.
+  def spelling_of(search, header, resolved)
+    return search.spelling( header, preferring: include ) || (resolved ? ProjectPaths.absolute( header ) : searched_spelling( search ))
   end
 
   # The spelling of the header the search paths find for this #include's path, or nil
