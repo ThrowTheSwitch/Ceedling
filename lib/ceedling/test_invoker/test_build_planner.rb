@@ -381,9 +381,12 @@ class TestBuildPlanner
     return dir == '.' ? '' : dir
   end
 
+  # Mocks are named by their headers' own extensions, so source and mock names are compared
+  # without any
   def remove_mock_original_headers(filelist, mocklist)
+    mocked = mocklist.map { |mock| File.basename( mock, '.*' ) }
     filelist.delete_if do |filepath|
-      mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
+      mocked.include?( @configurator.cmock_mock_prefix + File.basename( filepath, '.*' ) )
     end
   end
 

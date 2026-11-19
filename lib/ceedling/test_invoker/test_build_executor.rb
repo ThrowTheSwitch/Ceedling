@@ -202,7 +202,7 @@ class TestBuildExecutor
       # `details.name` (a String), not `mock.name` (the Symbol key T2 carried
       # the same value in for hash lookups) -- needed here as a real filename.
       target      = File.join( output_path, details.name + EXTENSION_CORE_SOURCE )
-      mock_header = File.join( output_path, details.name + EXTENSION_CORE_HEADER )
+      mock_header = File.join( output_path, details.name + mock_header_extension( details ) )
 
       # CMock writes `mock_header` in the same call as `target`, so the mock vouches for
       # it as an output. Stage 4 places a stand-in at this exact path when no file is
@@ -624,8 +624,15 @@ class TestBuildExecutor
   def mock_files(mocks)
     return mocks.each_with_object( Set.new ) do |mock, files|
       directory = mock_directory( mock )
-      [EXTENSION_CORE_SOURCE, EXTENSION_CORE_HEADER].each { |ext| files << File.join( directory, mock.details.name + ext ) }
+      [EXTENSION_CORE_SOURCE, mock_header_extension( mock.details )].each { |ext| files << File.join( directory, mock.details.name + ext ) }
     end
+  end
+
+  # The extension of a mock's header, the one its #include names, as CMock names the mock by
+  # its header's own extension
+  def mock_header_extension(details)
+    ext = File.extname( details.include_path.to_s )
+    return ext.empty? ? EXTENSION_CORE_HEADER : ext
   end
 
   # Where each non-Partial mock's copy of its header goes under :treat_inlines :include
