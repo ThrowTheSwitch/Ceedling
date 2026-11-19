@@ -1047,17 +1047,19 @@ class PartializerHelper
 
   # Validate that every function name in additions and subtractions exists in c_module.
   # Case-sensitive match; if a name matches case-insensitively but not exactly, raise
-  # a specific case-mismatch exception.
+  # a specific case-mismatch exception. A Test Partial carries only the functions its
+  # module defines. A mock also names the functions the module declares, since a mock of
+  # public functions alone reads only the header.
   def validate_function_names_exist(c_module, config, name)
-    known_exact = Set.new( c_module.function_definitions.map(&:name) )
-    known_lower = Set.new( c_module.function_definitions.map { |f| f.name.downcase } )
-    mod         = config.module
+    mod = config.module
 
     {TEST: config.tests, MOCK: config.mocks}.each do |label, pf|
-      (pf.additions + pf.subtractions).each do |func_name|
-        next if known_exact.include?(func_name)
+      known = configurable_functions( c_module, label == :MOCK ).keys
 
-        if known_lower.include?(func_name.downcase)
+      (pf.additions + pf.subtractions).each do |func_name|
+        next if known.include?(func_name)
+
+        if known.any? { |known_name| known_name.casecmp?( func_name ) }
           raise CeedlingException.new(
             "#{name}: #{label} Partial configuration for module '#{mod}' references function '#{func_name}' " \
             "which differs only by case from a real function name"
@@ -1069,6 +1071,21 @@ class PartializerHelper
         end
       end
     end
+  end
+
+  # The functions a Partial configuration can name, by name. A mock can also name what the
+  # module only declares, as mock selection reads it (Partializer#_mock_candidates), less an
+  # inline function whose body is in another header, which no mock can replace. A definition
+  # takes the place of a same-named declaration.
+  def configurable_functions(c_module, mock)
+    functions = {}
+    if mock
+      (c_module.function_declarations || []).each do |decl|
+        functions[decl.name] = decl if decl.name and !Partials.foreign_inline?( decl )
+      end
+    end
+    c_module.function_definitions.each { |func| functions[func.name] = func }
+    return functions
   end
 
   # Validate that no function name appears in both additions and subtractions of the
@@ -1094,11 +1111,12 @@ class PartializerHelper
   # Additions are not validated (same-visibility additions are redundant but harmless).
   # ACCUMULATE is skipped (no subtractions allowed, already enforced by extract_configs).
   def validate_additions_subtractions_visibility(c_module, config, name)
-    func_map = c_module.function_definitions.each_with_object({}) { |f, h| h[f.name] = f }
-    mod      = config.module
+    mod = config.module
 
     {tests: config.tests, mocks: config.mocks}.each do |label, pf|
       next unless pf.type == PUBLIC || pf.type == PRIVATE
+
+      func_map = configurable_functions( c_module, label == :mocks )
 
       subtraction_required_visibility = pf.type
 
