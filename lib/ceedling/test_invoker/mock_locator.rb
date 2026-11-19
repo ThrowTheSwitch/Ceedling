@@ -47,8 +47,8 @@ class MockLocator
   # The #includes with one mock per real header. A test can name one header's mock two ways,
   # as `mock_task.h` and `drivers/mock_task.h` do for src/drivers/task.h under src/**. CMock
   # and the runner would make two mocks of it, which can't both link. The #include with the
-  # most path stays, the first among equals, since a pathless one reaches that mock too. A
-  # spelling that reaches no generated mock compiles through its stage 4 stand-in.
+  # most path stays, the first among equals, since a pathless one reaches that mock too.
+  # Test preprocessing rebuilds the test file with the kept spelling alone.
   # A climbing #include is looked up anchored to `from` and kept as written. Every other
   # #include, a Partial mock, and a mock whose header isn't found pass through. Two mocks of
   # one header share a filename, so only a repeated filename is looked up.
