@@ -914,6 +914,24 @@ describe PartializerHelper do
       c_module = make_c_module([], declarations: [make_func(nil), make_func('port_write')])
       config   = make_config('mod', tests: make_pf, mocks: make_pf(subtractions: ['port_write']))
       expect { @helper.validate_function_names_exist(c_module, config, name) }.not_to raise_error
+
+      config   = make_config('mod', tests: make_pf, mocks: make_pf(subtractions: ['port_nope']))
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.to raise_error(CeedlingException, /port_nope.*does not exist/)
+    end
+
+    # Its body is in another header, which a mock can never replace, so mock selection leaves it out
+    it "raises when a mocks name is an inline function the module only declares" do
+      name     = "test_mod"
+      c_module = make_c_module([], declarations: [make_func('port_inl', decorators: ['inline'])])
+      config   = make_config('mod', tests: make_pf, mocks: make_pf(additions: ['port_inl']))
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.to raise_error(CeedlingException, /port_inl.*does not exist/)
+    end
+
+    it "raises when a mocks name is a declaration whose inline body is elsewhere" do
+      name     = "test_mod"
+      c_module = make_c_module([], declarations: [OpenStruct.new(name: 'port_inl', decorators: [], inline_elsewhere: true)])
+      config   = make_config('mod', tests: make_pf, mocks: make_pf(additions: ['port_inl']))
+      expect { @helper.validate_function_names_exist(c_module, config, name) }.to raise_error(CeedlingException, /port_inl.*does not exist/)
     end
   end
 
