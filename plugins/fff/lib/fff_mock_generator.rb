@@ -44,11 +44,13 @@ class FffMockGenerator
       output.string
     end
 
+    # `mock_header` is the fake's header by the name the source includes it, which carries the
+    # original header's extension.
     def create_mock_source (mock_name, parsed_header, pre_includes=nil,
-      post_includes=nil, c_name: mock_name)
+      post_includes=nil, c_name: mock_name, mock_header: "#{mock_name}.h")
       output = StringIO.new
       write_extra_includes(pre_includes, output)
-      write_source_includes(mock_name, output)
+      write_source_includes(mock_header, output)
       write_extra_includes(post_includes, output)
       output.puts
       write_function_definitions(parsed_header, output)
@@ -96,10 +98,10 @@ class FffMockGenerator
 
   # Source file generation functions.
 
-    def write_source_includes (mock_name, output)
+    def write_source_includes (mock_header, output)
       output.puts "#include <string.h>"
       output.puts %{#include "fff.h"}
-      output.puts %{#include "#{mock_name}.h"}
+      output.puts %{#include "#{mock_header}"}
     end
 
     def write_function_definitions(parsed_header, output)

@@ -687,6 +687,95 @@ ceedling_system_tests do
       end
     end
 
+    # An FFF fake names its files as CMock names a mock's, with the header's own extension
+    [:none, :all].each do |preprocessor|
+      it "sees an edit to a header with another extension beside an FFF fake under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', header.( 1 ) )
+          write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+          write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp', 'drivers/mock_bar.h'] ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :extension => { :header => ['.h', '.hpp'] }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+          expect(build_passes).to_not include( 'Generating mock for' )
+
+          write( 'src/drivers/foox.hpp', header.( 2 ) )
+          write( 'test/test_c.c', test.( 2, ['drivers/foox.hpp', 'drivers/mock_bar.h'] ) )
+          build_passes
+        end
+      end
+    end
+
+    # A mock of foox.hpp stands in for that header only. The source of foox.h still links.
+    [:none, :tests].each do |preprocessor|
+      it "links the source of a header the test includes beside a mock of a header with another extension under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', "#ifndef FOOX_H\n#define FOOX_H\n#define FOOX_K 1\nint foox_read(void);\n#endif\n" )
+          write( 'src/drivers/foox.h', "#ifndef FOOX_C_H\n#define FOOX_C_H\nint foox_c_api(void);\n#endif\n" )
+          write( 'src/drivers/foox.c', "#include \"foox.h\"\nint foox_c_api(void) { return 5; }\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foox.h\"\n#include \"drivers/mock_foox.hpp\"\n" \
+                                  "void test_k(void) { TEST_ASSERT_EQUAL_INT(1, FOOX_K); TEST_ASSERT_EQUAL_INT(5, foox_c_api()); }\n" )
+          configure( ['src/**'], preprocessor, { :extension => { :header => ['.h', '.hpp'] } } )
+          build_passes
+        end
+      end
+    end
+
+    # A mock of foox.h stands in for the header foox.c implements, though the test includes foox.hpp
+    [:none, :tests].each do |preprocessor|
+      it "links no source for a mocked header beside a real header with another extension under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', "#ifndef FOOX_HPP\n#define FOOX_HPP\n#define FOOX_K 1\n#endif\n" )
+          write( 'src/drivers/foox.h', "#ifndef FOOX_H\n#define FOOX_H\nint foox_c_api(void);\n#endif\n" )
+          write( 'src/drivers/foox.c', "#include \"foox.h\"\nint foox_c_api(void) { return 5; }\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foox.hpp\"\n#include \"drivers/mock_foox.h\"\n" \
+                                  "void test_k(void) { foox_c_api_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(1, FOOX_K); TEST_ASSERT_EQUAL_INT(3, foox_c_api()); }\n" )
+          configure( ['src/**'], preprocessor, { :extension => { :header => ['.h', '.hpp'] } } )
+          build_passes
+        end
+      end
+    end
+
+    # A mock of a header with another extension leaves the same-named source in place, however
+    # the test reaches the .h header that source implements
+    it "links a named source beside a mock of a header with another extension whose stem another header shares" do
+      in_project do
+        write( 'src/drivers/foox.hpp', "#ifndef FOOX_HPP\n#define FOOX_HPP\n#define FOOX_K 1\nint foox_read(void);\n#endif\n" )
+        write( 'src/drivers/foox.h', "#ifndef FOOX_H\n#define FOOX_H\nint foox_c_api(void);\n#endif\n" )
+        write( 'src/drivers/foox.c', "#include \"foox.h\"\nint foox_c_api(void) { return 5; }\n" )
+        write( 'src/drivers/bar.h', "#ifndef BAR_H\n#define BAR_H\n#include \"foox.h\"\n#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/bar.h\"\n#include \"drivers/mock_foox.hpp\"\n" \
+                                "TEST_SOURCE_FILE(\"src/drivers/foox.c\")\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(1, FOOX_K); TEST_ASSERT_EQUAL_INT(5, foox_c_api()); }\n" )
+        configure( ['src/**'], :none, { :extension => { :header => ['.h', '.hpp'] } } )
+        build_passes
+      end
+    end
+
+    # The source of a header the test both includes and mocks stays out of the link
+    it "links no source for a header the test includes and mocks under :use_test_preprocessor none" do
+      in_project do
+        write( 'src/drivers/foo.h', "int foo_read(void);\n" )
+        write( 'src/drivers/foo.c', "#include \"foo.h\"\nint foo_read(void) { return 5; }\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n#include \"drivers/mock_foo.h\"\n" \
+                                "void test_k(void) { foo_read_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, foo_read()); }\n" )
+        configure( ['src/**'], :none )
+        build_passes
+      end
+    end
+
+    # Stage 4 places a stand-in for the mock under the extension the test's #include names
+    it "places a stand-in for a mock of a header with another extension that the preprocessor reads under :use_test_preprocessor tests" do
+      in_project do
+        write( 'src/drivers/foox.hpp', header.( 1 ) )
+        write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp'] ) )
+        configure( ['src/**'], :tests, { :extension => { :header => ['.h', '.hpp'] } } )
+        expect(build_passes).to_not include( 'Failed to generate directive-only' )
+
+        write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp'] ) + "// edited\n" )
+        expect(build_passes).to_not include( 'Failed to generate directive-only' )
+      end
+    end
+
     # Stage 4 sees the test's #includes before any mock is planned. A rebuild generates nothing.
     it "generates no mock again on a rebuild after the test stops mocking a header under :use_test_preprocessor all" do
       in_project do

@@ -87,7 +87,7 @@ class StandinHeaderinator
   # real header by (MockLocator#header_include).
   def write_placed_mock(test, placement, include, header_include)
     @file_wrapper.mkdir( placement.reach ) unless ProjectPaths.contains?( placement.reach, placement.directory )
-    write_mock( test, File.join( placement.directory, include.filename.ext( EXTENSION_CORE_HEADER ) ), include, header_include )
+    write_mock( test, File.join( placement.directory, include.filename ), include, header_include )
   end
 
   # A Partial's generated #include names whatever directory its module was named by, and

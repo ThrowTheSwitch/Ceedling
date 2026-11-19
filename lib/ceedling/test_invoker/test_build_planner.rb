@@ -381,6 +381,9 @@ class TestBuildPlanner
     return dir == '.' ? '' : dir
   end
 
+  # A source leaves the link when a mock of its .h header stands in for it. A mock of a header
+  # with another extension, such as foox.hpp, leaves foox.c in place, since a .h header of the
+  # same stem may be the one that source implements.
   def remove_mock_original_headers(filelist, mocklist)
     filelist.delete_if do |filepath|
       mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
