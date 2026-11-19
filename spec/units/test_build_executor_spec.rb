@@ -1766,6 +1766,24 @@ describe TestBuildExecutor do
       end
     end
 
+    # A real header named like another mock, as `MockBar.h` is beside a mock of `Bar.h`
+    it "never removes another mock's file as a copy" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+      details = ->(name, input) { TestInvokerTypes::MockDetails.new( source: 'src/x.h', path: 'sub', input: input, name: name ) }
+      @state.mocks_list.replace( [
+        TestInvokerTypes::MockWork.new( details: details.( 'MockBar', 'build/preprocess/Bar.h' ), testable: @testable, name: :MockBar ),
+        TestInvokerTypes::MockWork.new( details: details.( 'MockMockBar', 'build/preprocess/MockBar.h' ), testable: @testable, name: :MockMockBar )
+      ] )
+
+      expect(@file_wrapper).to receive(:rm_f).with( 'build/test/mocks/sub/Bar.h' )
+      expect(@file_wrapper).to_not receive(:rm_f).with( 'build/test/mocks/sub/MockBar.h' )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
     it "never removes the mock's own header as a copy, as an empty mock prefix would name it" do
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@generator).to receive(:generate_mock)
