@@ -137,8 +137,7 @@ describe TestBuildExecutor do
         :mock_locator            => MockLocator.new(
           configurator: @configurator, include_pathinator: double( 'include_pathinator' ), test_search_paths: double( 'test_search_paths' ),
           file_finder: @file_finder, file_path_utils: @file_path_utils
-        ),
-        :test_context_extractor  => @test_context_extractor
+        )
       }
     )
 

@@ -34,37 +34,37 @@ class TestBuildExecutor
     :test_substitutions,
     :build_step_doctor,
     :library_resolver,
-    :mock_locator,
-    :test_context_extractor
+    :mock_locator
   )
 
-  # Before stage 4: removes from each test's mock root the copies whose mock no #include in the
-  # test's text names. Stage 4 preprocesses the test through its mock root, so a copy that
-  # outlives its mock shadows the header there. A mock's place isn't known until stage 5, and
-  # the preprocessor may name a mock the text doesn't, so a copy beside any mock named as an
-  # #include names one stays. Stage 10 generates again a mock whose copy this removed.
-  def stage_prune_unincluded_header_copies(state)
+  # The ending a header copy takes while set aside, which no header search finds
+  HELD_COPY_SUFFIX = '.held'
+
+  # Before stage 4: sets aside each copy of a header in a test's mock root, under a name no
+  # search finds. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's
+  # header beside it. Stage 4 preprocesses the test through its mock root before any mock is
+  # planned, so a copy would stand in for its header there. A copy is a header with its mock
+  # beside it, since no build removes a mock. A test this run doesn't build keeps its mock root,
+  # even below another test's.
+  def stage_hold_header_copies(state)
     every = every_mock_root()
 
-    state.testables.each_value do |testable|
-      next if testable.paths[:mocks].nil?
-
-      named = @test_context_extractor.lookup_mock_header_includes_list( testable.filepath ).to_set( &:filename )
-      prune_mock_root( testable.paths[:mocks], every ) { |_copy, mock| named.include?( File.basename( mock ) ) }
+    run_mock_roots( state ).each do |root|
+      each_copy( root, every ) { |copy| @file_wrapper.mv( copy, copy + HELD_COPY_SUFFIX ) }
     end
   end
 
-  # Before stage 9: removes from each test's mock root the copies of headers no current mock
-  # names. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's header
-  # beside it. The mock root stays on the test's search path, with or without mocks, so a copy
-  # that outlives its mock shadows the header. A copy is a header with its mock beside it, since
-  # no build removes a mock. A test this run doesn't build keeps its mock root, even below
-  # another test's.
+  # Before stage 9: puts back the copies set aside before stage 4 that a current mock writes,
+  # and removes every other copy. The mock root stays on the test's search path, with or
+  # without mocks, so a copy that outlives its mock shadows the header.
   def stage_prune_header_copies(state)
     keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
     every = every_mock_root()
 
-    run_mock_roots( state ).each { |root| prune_mock_root( root, every ) { |copy, _mock| keep.include?( copy ) } }
+    run_mock_roots( state ).each do |root|
+      restore_held_copies( root, keep, every )
+      each_copy( root, every ) { |copy| @file_wrapper.rm_f( copy ) unless keep.include?( copy ) }
+    end
   end
 
   # Stage 9: Preprocess header files to be mocked.
@@ -597,8 +597,8 @@ class TestBuildExecutor
     return (produced.include?( copy ) or copy == details.input) ? nil : copy
   end
 
-  # Whether a mock under :treat_inlines :include is missing its copy, as a prune before stage 4
-  # may leave it
+  # Whether a mock under :treat_inlines :include is missing its copy. The mock would then include
+  # the header itself, inline function bodies and all.
   def missing_header_copy?(details, output_path, produced)
     return false if details.partial or @configurator.cmock_treat_inlines != :include
 
@@ -633,18 +633,28 @@ class TestBuildExecutor
     return @mock_locator.placement( mocks_root: mock.testable.paths[:mocks], subdir: details.path, include_path: details.include_path ).directory
   end
 
-  # Removes each copy below `root` the block, given the copy and its mock, doesn't keep, except
-  # below another of the mock roots in `every`
-  def prune_mock_root(root, every)
+  # Yields each copy below `root`, a header with its mock beside it, except below another of the
+  # mock roots in `every`
+  def each_copy(root, every)
     nested  = every.select { |other| below?( other, root ) }
     headers = root_headers( root )
     listed  = headers.to_set
     headers.each do |path|
-      mock = mock_beside( path )
-      next if !listed.include?( mock ) or yield( path, mock )
-      next if nested.any? { |other| below?( path, other ) }
+      next if !listed.include?( mock_beside( path ) ) or nested.any? { |other| below?( path, other ) }
 
-      @file_wrapper.rm_f( path )
+      yield( path )
+    end
+  end
+
+  # Puts each copy set aside below `root` back where `keep` names it, and removes the rest,
+  # except below another of the mock roots in `every`
+  def restore_held_copies(root, keep, every)
+    nested = every.select { |other| below?( other, root ) }
+    @file_wrapper.directory_listing( FilePathUtils.glob( root, '**', "*#{HELD_COPY_SUFFIX}" ) ).each do |held|
+      next if nested.any? { |other| below?( held, other ) }
+
+      copy = held.delete_suffix( HELD_COPY_SUFFIX )
+      keep.include?( copy ) ? @file_wrapper.mv( held, copy ) : @file_wrapper.rm_f( held )
     end
   end
 

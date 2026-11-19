@@ -601,7 +601,6 @@ test_build_executor:
     - build_step_doctor
     - library_resolver
     - mock_locator
-    - test_context_extractor
 
 partial_files_preprocessinator:
   compose:
