@@ -34,8 +34,25 @@ class TestBuildExecutor
     :test_substitutions,
     :build_step_doctor,
     :library_resolver,
-    :mock_locator
+    :mock_locator,
+    :test_context_extractor
   )
+
+  # Before stage 4: removes from each test's mock root the copies whose mock no #include in the
+  # test's text names. Stage 4 preprocesses the test through its mock root, so a copy that
+  # outlives its mock shadows the header there. A mock's place isn't known until stage 5, and
+  # the preprocessor may name a mock the text doesn't, so a copy beside any mock named as an
+  # #include names one stays. Stage 10 generates again a mock whose copy this removed.
+  def stage_prune_unincluded_header_copies(state)
+    every = every_mock_root()
+
+    state.testables.each_value do |testable|
+      next if testable.paths[:mocks].nil?
+
+      named = @test_context_extractor.lookup_mock_header_includes_list( testable.filepath ).to_set( &:filename )
+      prune_mock_root( testable.paths[:mocks], every ) { |_copy, mock| named.include?( File.basename( mock ) ) }
+    end
+  end
 
   # Before stage 9: removes from each test's mock root the copies of headers no current mock
   # names. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's header
@@ -47,7 +64,7 @@ class TestBuildExecutor
     keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
     every = every_mock_root()
 
-    run_mock_roots( state ).each { |root| prune_mock_root( root, keep, every ) }
+    run_mock_roots( state ).each { |root| prune_mock_root( root, every ) { |copy, _mock| keep.include?( copy ) } }
   end
 
   # Stage 9: Preprocess header files to be mocked.
@@ -195,7 +212,7 @@ class TestBuildExecutor
       meta[:header_include] = details.header_include if details.header_include
       @dependinator.register( target, files: [details.input], meta: meta, outputs: [mock_header] )
 
-      unless @dependinator.stale?( target )
+      unless @dependinator.stale?( target ) or missing_header_copy?( details, output_path, produced )
         msg = @reportinator.generate_module_progress(
           operation:   'Skipping mock generation for',
           module_name: testable.name,
@@ -572,16 +589,28 @@ class TestBuildExecutor
     return ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
   end
 
-  # CMock under :treat_inlines :include writes a copy of the header it reads beside the mock,
-  # named as that header. A generation without it, or a fake, writes none, and an earlier
-  # copy would stay for the mock's #include to reach. CMock writes a current one in the same
-  # call that needs it. A path some mock writes is never a copy, as when a real header is
-  # named like another mock (`produced`).
-  def discard_header_copy(details, output_path, produced)
+  # Where CMock under :treat_inlines :include, or an FFF fake, writes a copy of the header it
+  # reads: beside the mock, named as that header. Nil where a mock's own file is at that path
+  # (`produced`), as when a real header is named like another mock, or the input itself is.
+  def header_copy(details, output_path, produced)
     copy = File.join( output_path, File.basename( details.input ) )
-    return if produced.include?( copy ) or copy == details.input
+    return (produced.include?( copy ) or copy == details.input) ? nil : copy
+  end
 
-    @file_wrapper.rm_f( copy ) if @file_wrapper.exist?( copy )
+  # Whether a mock under :treat_inlines :include is missing its copy, as a prune before stage 4
+  # may leave it
+  def missing_header_copy?(details, output_path, produced)
+    return false if details.partial or @configurator.cmock_treat_inlines != :include
+
+    copy = header_copy( details, output_path, produced )
+    return (!copy.nil? and !@file_wrapper.exist?( copy ))
+  end
+
+  # A generation without :include writes no copy, and an earlier one would stay for the mock's
+  # #include to reach. One under :include writes a current copy in the same call that needs it.
+  def discard_header_copy(details, output_path, produced)
+    copy = header_copy( details, output_path, produced )
+    @file_wrapper.rm_f( copy ) if copy and @file_wrapper.exist?( copy )
   end
 
   # Every mock's source and header, where stage 10 writes them
@@ -604,14 +633,15 @@ class TestBuildExecutor
     return @mock_locator.placement( mocks_root: mock.testable.paths[:mocks], subdir: details.path, include_path: details.include_path ).directory
   end
 
-  # Removes each copy below `root` that `keep` doesn't name, except below another of the mock
-  # roots in `every`
-  def prune_mock_root(root, keep, every)
+  # Removes each copy below `root` the block, given the copy and its mock, doesn't keep, except
+  # below another of the mock roots in `every`
+  def prune_mock_root(root, every)
     nested  = every.select { |other| below?( other, root ) }
     headers = root_headers( root )
     listed  = headers.to_set
     headers.each do |path|
-      next if keep.include?( path ) or !listed.include?( mock_beside( path ) )
+      mock = mock_beside( path )
+      next if !listed.include?( mock ) or yield( path, mock )
       next if nested.any? { |other| below?( path, other ) }
 
       @file_wrapper.rm_f( path )
