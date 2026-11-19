@@ -223,8 +223,9 @@ class TestPipelineManager
       ),
 
       # Transform 4: Put back the header copies a current mock writes and prune the rest, before
-      # mock preprocessing searches the mock root. Runs when this run has no mocks too, since a
-      # test's mock root stays on its search path.
+      # stage 10 regenerates mocks beside them. The test's own compile searches the mock root, so
+      # a stale copy would shadow its header. Runs when this run has no mocks too, since a test's
+      # mock root stays on its search path.
       stage(transform: true,
             condition: use_mocks,
             body: ->(s) { @test_build_executor.stage_prune_header_copies(s) }

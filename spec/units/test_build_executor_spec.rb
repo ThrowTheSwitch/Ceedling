@@ -38,6 +38,7 @@ describe TestBuildExecutor do
     @quote_include_isolator                                       = double( "QuoteIncludeIsolator" )
     @build_step_doctor                                               = double( "BuildStepDoctor" )
     @library_resolver                                                = double( "LibraryResolver" )
+    @test_search_paths                                               = double( "TestSearchPaths" )
 
     @tools_test_compiler                     = { name: 'fake compiler' }
     @tools_test_assembler                    = { name: 'fake assembler' }
@@ -134,6 +135,7 @@ describe TestBuildExecutor do
         :test_substitutions      => TestSubstitutions.new( configurator: @configurator ),
         :build_step_doctor       => @build_step_doctor,
         :library_resolver        => @library_resolver,
+        :test_search_paths       => @test_search_paths,
         :mock_locator            => MockLocator.new(
           configurator: @configurator, include_pathinator: double( 'include_pathinator' ), test_search_paths: double( 'test_search_paths' ),
           file_finder: @file_finder, file_path_utils: @file_path_utils
@@ -1504,6 +1506,84 @@ describe TestBuildExecutor do
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [mock], :context => :test, :options => [] )
       allow(@executor.instance_variable_get( :@mock_locator )).to receive(:header_search).and_return( double( 'HeaderSearch' ) )
+      allow(@test_search_paths).to receive(:mock_preprocess_paths).and_return( [] )
+
+      # The full expansion's line markers name the headers the mocked header entered
+      allow(@configurator).to receive(:project_build_root).and_return( 'build' )
+      allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).with( 'src/Foo.h', 'a_test' ).and_return( 'build/preprocess/full/Foo.h' )
+      allow(@preprocessinator).to receive(:preprocessed_dependencies).and_return( [] )
+    end
+
+    context "with the headers its full expansion entered" do
+      before(:each) do
+        allow(@preprocessinator).to receive(:preprocessed_dependencies).with( preprocessed_filepath: 'build/preprocess/full/Foo.h' )
+          .and_return( ['src/Foo.h', 'src/drivers/bar.h', 'build/vendor/ceedling/ceedling.h'] )
+      end
+
+      # An edit to a header the mocked header includes makes the target stale
+      it "registers the previous run's entered project headers before settling staleness" do
+        allow(@file_wrapper).to receive(:exist?).with( 'build/preprocess/full/Foo.h' ).and_return( true )
+
+        expect(@dependinator).to receive(:register).with( 'build/preprocess/MockFoo.h', files: ['src/Foo.h', 'src/drivers/bar.h'] ).ordered
+        expect(@dependinator).to receive(:stale?).with( 'build/preprocess/MockFoo.h' ).ordered.and_return( false )
+
+        @executor.stage_preprocess_mocks( @state )
+      end
+
+      it "registers no entered header before settling staleness when no previous expansion exists" do
+        allow(@dependinator).to receive(:stale?).and_return( false )
+
+        expect(@preprocessinator).to_not receive(:preprocessed_dependencies)
+
+        @executor.stage_preprocess_mocks( @state )
+      end
+
+      it "registers this run's entered project headers before marking the target fresh" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+
+        expect(@preprocessinator).to receive(:preprocess_mockable_header_file).ordered
+        expect(@dependinator).to receive(:register).with( 'build/preprocess/MockFoo.h', files: ['src/Foo.h', 'src/drivers/bar.h'] ).ordered
+        expect(@dependinator).to receive(:mark_fresh).with( 'build/preprocess/MockFoo.h' ).ordered
+
+        @executor.stage_preprocess_mocks( @state )
+      end
+    end
+
+    context "through the test's mock preprocess paths" do
+      before(:each) do
+        @testable.search_paths = ['build/test/mocks/a_test', 'src']
+        allow(@test_search_paths).to receive(:mock_preprocess_paths).with( @testable ).and_return( ['src'] )
+        allow(@configurator).to receive(:test_build_preprocess_directives_only_available).and_return( true )
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@preprocessinator).to receive(:generate_directives_only_output).and_return( 'build/preprocess/directives_only/Foo.h' )
+        allow(@preprocessinator).to receive(:preprocess_mockable_header_file)
+      end
+
+      # The mock root holds CMock's copies of headers, which no real header is read through
+      it "preprocesses the mockable header through its test's mock preprocess paths, never its full search paths" do
+        @executor.stage_preprocess_mocks( @state )
+
+        expect(@preprocessinator).to have_received(:generate_directives_only_output).with( hash_including( include_paths: ['src'] ) )
+        expect(@preprocessinator).to have_received(:preprocess_mockable_header_file).with( hash_including( include_paths: ['src'] ) )
+      end
+
+      it "registers its test's mock preprocess paths as the target's search paths" do
+        expect(@dependinator).to receive(:register).with( 'build/preprocess/MockFoo.h', files: ['src/Foo.h'], meta: hash_including( search_paths: ['src'] ) )
+
+        @executor.stage_preprocess_mocks( @state )
+      end
+
+      it "composes a test's mock preprocess paths once for all its mocks" do
+        bar = @state.mocks_list.first.dup
+        bar.details = TestInvokerTypes::MockDetails.new( :source => 'src/Bar.h', :path => 'sub' )
+        @state.mocks_list << bar
+        allow(@file_path_utils).to receive(:form_preprocessed_file_full_expansion_filepath).with( 'src/Bar.h', 'a_test' ).and_return( 'build/preprocess/full/Bar.h' )
+
+        @executor.stage_preprocess_mocks( @state )
+
+        expect(@test_search_paths).to have_received(:mock_preprocess_paths).once
+        expect(@preprocessinator).to have_received(:preprocess_mockable_header_file).with( hash_including( include_paths: ['src'] ) ).twice
+      end
     end
 
     it "preprocesses and marks fresh the mockable header when the dependency tracker reports it stale" do

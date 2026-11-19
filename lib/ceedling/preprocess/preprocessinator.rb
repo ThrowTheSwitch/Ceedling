@@ -195,8 +195,9 @@ class Preprocessinator
     # Extract includes & log progress and details. stage_preprocess_mocks
     # (test_build_executor.rb) only ever calls this method once it has
     # already determined, via its own DependencyTracker target (antecedent +
-    # flags/defines/search_paths/extras meta), that this header's
-    # preprocessing is stale, so the extraction below always runs for real.
+    # the headers its full expansion entered + flags/defines/search_paths/extras
+    # meta), that this header's preprocessing is stale, so the extraction below
+    # always runs for real.
     includes = spelled( preprocess_file_includes_common( **arg_hash ), include_search, filepath, fallback )
 
     header = "Discovered #includes for mockable header from #{filepath}:"
