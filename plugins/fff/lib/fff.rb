@@ -60,7 +60,6 @@ class FffCMockWrapper
 
   def generate_mock(header_file_to_mock, folder=nil)
     module_name = File.basename(header_file_to_mock, '.*')
-    module_ext  = File.extname(header_file_to_mock)
     puts( "Creating fake functions for #{module_name}..." ) unless @verbosity < 2
     mock_name = @cm_config.mock_prefix + module_name + @cm_config.mock_suffix
 
@@ -68,7 +67,7 @@ class FffCMockWrapper
     parsed_header = @cm_parser.parse(module_name, File.read(header_file_to_mock))
 
     path = "#{mock_path_for( folder )}/#{mock_name}"
-    write_fake( path, module_name, module_ext, mock_name, parsed_header, folder )
+    write_fake( path, header_file_to_mock, mock_name, parsed_header, folder )
     write_header_copy( File.join( File.dirname( path ), File.basename( header_file_to_mock ) ), parsed_header )
   end
 
@@ -101,8 +100,10 @@ class FffCMockWrapper
   # takes the original header's extension, as CMock's mock does. `folder` is the one its
   # #include names, which names the fake's C identifiers and through which the fake includes
   # the original header.
-  def write_fake(path, module_name, module_ext, mock_name, parsed_header, folder)
-    c_name = c_name_for( mock_name, folder )
+  def write_fake(path, header_file, mock_name, parsed_header, folder)
+    module_name = File.basename( header_file, '.*' )
+    module_ext  = File.extname( header_file )
+    c_name      = c_name_for( mock_name, folder )
     FileUtils.mkdir_p( File.dirname( path ) )
 
     puts( "Creating fake functions: #{path}#{module_ext} and #{path}.c" ) unless @verbosity < 3
