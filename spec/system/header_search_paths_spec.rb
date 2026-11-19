@@ -720,6 +720,37 @@ ceedling_system_tests do
       end
     end
 
+    # A mock of foox.h stands in for the header foox.c implements, though the test includes foox.hpp
+    [:none, :tests].each do |preprocessor|
+      it "links no source for a mocked header beside a real header with another extension under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', "#ifndef FOOX_HPP\n#define FOOX_HPP\n#define FOOX_K 1\n#endif\n" )
+          write( 'src/drivers/foox.h', "#ifndef FOOX_H\n#define FOOX_H\nint foox_c_api(void);\n#endif\n" )
+          write( 'src/drivers/foox.c', "#include \"foox.h\"\nint foox_c_api(void) { return 5; }\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foox.hpp\"\n#include \"drivers/mock_foox.h\"\n" \
+                                  "void test_k(void) { foox_c_api_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(1, FOOX_K); TEST_ASSERT_EQUAL_INT(3, foox_c_api()); }\n" )
+          configure( ['src/**'], preprocessor, { :extension => { :header => ['.h', '.hpp'] } } )
+          build_passes
+        end
+      end
+    end
+
+    # A header with another extension owns the same-named source only where no other header
+    # shares its stem, however the test reaches that other header
+    it "links a named source beside a mock of a header with another extension whose stem another header shares" do
+      in_project do
+        write( 'src/drivers/foox.hpp', "#ifndef FOOX_HPP\n#define FOOX_HPP\n#define FOOX_K 1\nint foox_read(void);\n#endif\n" )
+        write( 'src/drivers/foox.h', "#ifndef FOOX_H\n#define FOOX_H\nint foox_c_api(void);\n#endif\n" )
+        write( 'src/drivers/foox.c', "#include \"foox.h\"\nint foox_c_api(void) { return 5; }\n" )
+        write( 'src/drivers/bar.h', "#ifndef BAR_H\n#define BAR_H\n#include \"foox.h\"\n#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/bar.h\"\n#include \"drivers/mock_foox.hpp\"\n" \
+                                "TEST_SOURCE_FILE(\"src/drivers/foox.c\")\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(1, FOOX_K); TEST_ASSERT_EQUAL_INT(5, foox_c_api()); }\n" )
+        configure( ['src/**'], :none, { :extension => { :header => ['.h', '.hpp'] } } )
+        build_passes
+      end
+    end
+
     # The source of a header the test both includes and mocks stays out of the link
     it "links no source for a header the test includes and mocks under :use_test_preprocessor none" do
       in_project do
