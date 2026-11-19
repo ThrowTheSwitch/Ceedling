@@ -106,8 +106,9 @@ class TestRunnerGeneratinator
 
   # The test's #includes as its runner writes them. A user #include is spelled as the text
   # through which the test's search paths find its header first, its filename whenever that
-  # does, so the runner includes the header the test does (see Include#spelled_by). One whose
-  # header isn't found keeps its filename. Both stages' staleness checks and the runner itself
+  # does, so the runner includes the header the test does (see Include#spelled_by). A preprocessed
+  # one no search path reaches is spelled by its header's absolute path. One whose header isn't
+  # found keeps its filename. Both stages' staleness checks and the runner itself
   # ask, and each test's list is settled by then, so it is spelled once.
   def runner_includes(testable)
     return testable.runner.includes ||= spelled_includes( testable )
