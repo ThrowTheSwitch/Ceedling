@@ -458,6 +458,8 @@ describe TestBuildPlanner do
     before(:each) do
       allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
+      allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list)
+        .with( 'test/TestFoo.c' ).and_return( [] )
       allow(@test_context_extractor).to receive(:lookup_build_directive_sources_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
@@ -573,6 +575,29 @@ describe TestBuildPlanner do
 
         expect(@testable.core).to include( 'build/test/mocks/a_test/MockFoo.c' )
         expect(@testable.core).to_not include( 'src/Foo.c' )
+      end
+    end
+
+    # A mock of foox.hpp stands in for that header only, so foox.c still builds for foox.h
+    context "with a mocked header whose stem a real, unmocked header of the test shares" do
+      before(:each) do
+        mock = MockInclude.new( 'Mockfoox.hpp' )
+        allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
+          .with( 'test/TestFoo.c' ).and_return( [mock] )
+        allow(@test_context_extractor).to receive(:lookup_nonmock_header_includes_list)
+          .with( 'test/TestFoo.c' ).and_return( [UserInclude.new( 'drivers/foox.h' )] )
+        allow(@configurator).to receive(:project_use_mocks).and_return( true )
+        allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
+          .with( 'test/TestFoo.c' ).and_return( [UserInclude.new( 'drivers/foox.h' ), mock] )
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'drivers/foox.h', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/foox.c' )
+        @testable.mocks = { Mockfoox: TestInvokerTypes::MockDetails.new( name: 'Mockfoox' ) }
+      end
+
+      it "compiles the real header's source beside the mock" do
+        @planner.stage_determine_artifacts( @state )
+
+        expect(@testable.core).to include( 'src/foox.c', 'build/test/mocks/a_test/Mockfoox.c' )
       end
     end
 
@@ -721,6 +746,22 @@ describe TestBuildPlanner do
       @planner.remove_mock_original_headers( filelist, ['MockSensor.44.hpp'] )
 
       expect(filelist).to eq( ['src/Sensor.c'] )
+    end
+
+    it "keeps a source file whose stem names a header the test includes unmocked" do
+      filelist = ['src/foox.c', 'src/Bar.c']
+
+      @planner.remove_mock_original_headers( filelist, ['Mockfoox.hpp'], ['foox.h'] )
+
+      expect(filelist).to eq( ['src/foox.c', 'src/Bar.c'] )
+    end
+
+    it "removes a source file when the test includes no unmocked header of its stem" do
+      filelist = ['src/foox.c', 'src/Bar.c']
+
+      @planner.remove_mock_original_headers( filelist, ['Mockfoox.hpp'], ['Bar.h'] )
+
+      expect(filelist).to eq( ['src/Bar.c'] )
     end
 
     it "leaves the list untouched when none of its files correspond to a mocked header" do

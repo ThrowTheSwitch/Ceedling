@@ -705,6 +705,21 @@ ceedling_system_tests do
       end
     end
 
+    # A mock of foox.hpp stands in for that header only. The source of foox.h still links.
+    [:none, :tests].each do |preprocessor|
+      it "links the source of a header the test includes beside a mock of a header with another extension under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', "#ifndef FOOX_H\n#define FOOX_H\n#define FOOX_K 1\nint foox_read(void);\n#endif\n" )
+          write( 'src/drivers/foox.h', "#ifndef FOOX_C_H\n#define FOOX_C_H\nint foox_c_api(void);\n#endif\n" )
+          write( 'src/drivers/foox.c', "#include \"foox.h\"\nint foox_c_api(void) { return 5; }\n" )
+          write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foox.h\"\n#include \"drivers/mock_foox.hpp\"\n" \
+                                  "void test_k(void) { TEST_ASSERT_EQUAL_INT(1, FOOX_K); TEST_ASSERT_EQUAL_INT(5, foox_c_api()); }\n" )
+          configure( ['src/**'], preprocessor, { :extension => { :header => ['.h', '.hpp'] } } )
+          build_passes
+        end
+      end
+    end
+
     # Stage 4 places a stand-in for the mock under the extension the test's #include names
     it "places a stand-in for a mock of a header with another extension that the preprocessor reads under :use_test_preprocessor tests" do
       in_project do
