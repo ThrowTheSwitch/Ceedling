@@ -258,6 +258,36 @@ describe HeaderSearch do
       expect( lost.spelled_by( search( ['src'], ['src/foo.h'] ), resolved: true ) ).to equal( lost )
     end
 
+    # A header beside its includer, under no search path, is reached by none of its spellings
+    it "writes a resolved #include no spelling reaches by its header's absolute path" do
+      headers = search( ['src/hw', 'src'], ['src/hw/config.h', 'lib/config.h'] )
+      spelled = UserInclude.new( 'lib/config.h' ).spelled_by( headers, resolved: true )
+      absolute = "#{ProjectPaths.working_dir}/lib/config.h"
+
+      expect( [spelled.filepath, spelled.include_path, spelled.to_s] ).to eq( ['lib/config.h', absolute, "#include \"#{absolute}\""] )
+    end
+
+    it "keeps an #include's anchoring when it writes the header's absolute path" do
+      headers = search( ['src/hw'], ['src/hw/config.h', 'lib/config.h'] )
+      spelled = UserInclude.new( 'lib/config.h', directory_relative: true ).spelled_by( headers, resolved: true )
+
+      expect( [spelled.directory_relative?, spelled.include_path] ).to eq( [true, "#{ProjectPaths.working_dir}/lib/config.h"] )
+    end
+
+    it "writes a resolved #include a spelling reaches by that spelling, never by an absolute path" do
+      headers = search( ['src/hw', 'lib'], ['src/hw/config.h', 'lib/util.h'] )
+      spelled = UserInclude.new( 'lib/util.h' ).spelled_by( headers, resolved: true )
+
+      expect( [spelled.filepath, spelled.to_s] ).to eq( ['lib/util.h', '#include "util.h"'] )
+    end
+
+    it "leaves an #include as written whose header is beside its includer and reached by no spelling as it is" do
+      headers = search( ['src/hw'], ['src/hw/other.h', 'lib/config.h'] )
+      include = UserInclude.new( 'config.h' )
+
+      expect( include.spelled_by( headers, from: 'lib' ) ).to equal( include )
+    end
+
     # Reconciliation spells two same-named headers apart, which a shorter text could undo
     it "keeps the text an #include has where that text reaches its header" do
       headers = search( ['src', 'src/app', 'src/hw'], ['src/app/config.h', 'src/hw/config.h'] )

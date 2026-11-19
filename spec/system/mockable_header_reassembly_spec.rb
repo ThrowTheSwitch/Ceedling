@@ -129,4 +129,28 @@ ceedling_system_tests do
       end
     end
   end
+
+  # A header written two ways, beside a same-named header another header includes. Each
+  # #include pairs with the header the preprocessor entered for it, never the other one.
+  [:mocks, :all].each do |preprocessor|
+    it "pairs a pathless #include with its own header beside one an included header reaches, under :use_test_preprocessor #{preprocessor}" do
+      in_project do
+        FileUtils.mkdir_p( ['src/hw', 'lib'] )
+        File.write( 'src/hw/config.h', "#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\ntypedef int hw_t;\n#endif\n" )
+        File.write( 'lib/config.h', "#ifndef LIB_CONFIG_H\n#define LIB_CONFIG_H\n#define LIB_K 1\n#endif\n" )
+        File.write( 'lib/util.h', "#ifndef UTIL_H\n#define UTIL_H\n#include \"config.h\"\nint util_k(void);\n#endif\n" )
+        File.write( 'lib/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n#include \"config.h\"\n#include \"hw/config.h\"\n#include \"util.h\"\n" \
+                                   "static inline int motor_peek(void) { return 0; }\nhw_t motor_run(int a);\n#endif\n" )
+        File.write( 'test/test_motor.c', "#include \"unity.h\"\n#include \"mock_motor.h\"\nvoid setUp(void) {}\nvoid tearDown(void) {}\n" \
+                                         "void test_run(void) { motor_run_ExpectAndReturn(1, 9); TEST_ASSERT_EQUAL_INT(9, motor_run(1)); }\n" )
+        @c.remove_project_yml_option_for_test( :paths, :include )
+        @c.merge_project_yml_for_test( { :project => { :use_test_preprocessor => preprocessor }, :paths => { :include => ['src/hw/', 'src/', 'lib/', 'test/stubs'] },
+                                         :cmock => { :treat_inlines => :include } } )
+
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+3/)
+      end
+    end
+  end
 end
