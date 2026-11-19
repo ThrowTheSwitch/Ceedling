@@ -750,6 +750,22 @@ ceedling_system_tests do
       end
     end
 
+    # A mocked header decides which other mocks the test needs, as stage 4 reads it
+    it "sees an edit to a mocked header that decides the test's other mocks under :use_test_preprocessor all" do
+      in_project do
+        cfg  = ->(on) { "#ifndef CFG_H\n#define CFG_H\n#{on ? '' : '//'}#define TWO_ON\nint cfg_read(void);\n#endif\n" }
+        write( 'src/cfg.h', cfg.( false ) )
+        write( 'src/two.h', "int two_read(void);\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_cfg.h\"\n#ifdef TWO_ON\n#include \"mock_two.h\"\n#endif\n" \
+                                "void test_t(void) {\n#ifdef TWO_ON\n  two_read_ExpectAndReturn(4); TEST_ASSERT_EQUAL_INT(4, two_read());\n#endif\n}\n" )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/cfg.h', cfg.( true ) )
+        build_passes
+      end
+    end
+
     # A header named with the mock prefix is reached through another header, since the test's
     # own #include of it would name a mock
     it "sees an edit to a header whose name starts with the mock prefix" do
