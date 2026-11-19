@@ -245,6 +245,10 @@ text reaches no header, as `drivers/foo.h` doesn’t with only `src/drivers/`
 listed, the fake includes the header by the text a search path reaches it by,
 here `foo.h`.
 
+A fake is named as a mock is, by its header’s own extension. A fake of
+`drivers/foox.hpp` is written as `drivers/mock_foox.hpp` and
+`drivers/mock_foox.c`, and a test includes it as `drivers/mock_foox.hpp`.
+
 With `:cmock` ↳ `:treat_inlines: :include`, a fake fakes a header’s inline
 functions too. As CMock does for a mock, the fake writes a copy of the header
 without its inline function bodies beside itself, and its `#include` reaches
