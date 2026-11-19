@@ -706,6 +706,23 @@ describe TestBuildPlanner do
       expect(filelist).to eq( ['src/Bar.c'] )
     end
 
+    # CMock names a mock with its header's own extension
+    it "removes a source file whose corresponding header is mocked with another extension" do
+      filelist = ['src/foox.c', 'src/Bar.c']
+
+      @planner.remove_mock_original_headers( filelist, ['Mockfoox.hpp'] )
+
+      expect(filelist).to eq( ['src/Bar.c'] )
+    end
+
+    it "removes a source file named with dots whose header is mocked with another extension" do
+      filelist = ['src/Sensor.44.c', 'src/Sensor.c']
+
+      @planner.remove_mock_original_headers( filelist, ['MockSensor.44.hpp'] )
+
+      expect(filelist).to eq( ['src/Sensor.c'] )
+    end
+
     it "leaves the list untouched when none of its files correspond to a mocked header" do
       filelist = ['src/Bar.c']
 

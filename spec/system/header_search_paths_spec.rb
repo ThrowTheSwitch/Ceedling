@@ -687,6 +687,37 @@ ceedling_system_tests do
       end
     end
 
+    # An FFF fake names its files as CMock names a mock's, with the header's own extension
+    [:none, :all].each do |preprocessor|
+      it "sees an edit to a header with another extension beside an FFF fake under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', header.( 1 ) )
+          write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+          write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp', 'drivers/mock_bar.h'] ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :extension => { :header => ['.h', '.hpp'] }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+          expect(build_passes).to_not include( 'Generating mock for' )
+
+          write( 'src/drivers/foox.hpp', header.( 2 ) )
+          write( 'test/test_c.c', test.( 2, ['drivers/foox.hpp', 'drivers/mock_bar.h'] ) )
+          build_passes
+        end
+      end
+    end
+
+    # Stage 4 places a stand-in for the mock under the extension the test's #include names
+    it "places a stand-in for a mock of a header with another extension that the preprocessor reads under :use_test_preprocessor tests" do
+      in_project do
+        write( 'src/drivers/foox.hpp', header.( 1 ) )
+        write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp'] ) )
+        configure( ['src/**'], :tests, { :extension => { :header => ['.h', '.hpp'] } } )
+        expect(build_passes).to_not include( 'Failed to generate directive-only' )
+
+        write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp'] ) + "// edited\n" )
+        expect(build_passes).to_not include( 'Failed to generate directive-only' )
+      end
+    end
+
     # Stage 4 sees the test's #includes before any mock is planned. A rebuild generates nothing.
     it "generates no mock again on a rebuild after the test stops mocking a header under :use_test_preprocessor all" do
       in_project do

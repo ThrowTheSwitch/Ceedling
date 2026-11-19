@@ -1723,6 +1723,40 @@ describe TestBuildExecutor do
       @executor.stage_generate_mocks( @state )
     end
 
+    # CMock names a mock's header with the header's own extension, which the test's #include repeats
+    it "tracks a mock's generated header with the extension its #include names" do
+      @state.mocks_list.first.details.include_path = 'sub/MockFoo.hpp'
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/mocks/sub/MockFoo.c',
+        files:   anything,
+        meta:    anything,
+        outputs: ['build/test/mocks/sub/MockFoo.hpp']
+      )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "keeps the dots of a mock's name in its generated header's path" do
+      @state.mocks_list.first.details.name         = 'MockSensor.44'
+      @state.mocks_list.first.details.include_path = 'sub/MockSensor.44.hpp'
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+
+      expect(@dependinator).to receive(:register).with(
+        'build/test/mocks/sub/MockSensor.44.c',
+        files:   anything,
+        meta:    anything,
+        outputs: ['build/test/mocks/sub/MockSensor.44.hpp']
+      )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
     it "registers CMock's actual configuration as meta, not project_config_hash's flattened (and therefore always-empty) :cmock entry" do
       # project_config_hash is flattened -- CMock's settings live there as individual
       # top-level keys like :cmock_mock_prefix, never as a :cmock section -- so a
@@ -1815,6 +1849,23 @@ describe TestBuildExecutor do
 
       expect(@file_wrapper).to receive(:rm_f).with( 'build/test/mocks/sub/Bar.h' )
       expect(@file_wrapper).to_not receive(:rm_f).with( 'build/test/mocks/sub/MockBar.h' )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    it "never removes another mock's header with another extension as a copy" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+      details = ->(name, input) { TestInvokerTypes::MockDetails.new( source: 'src/x.hpp', path: 'sub', input: input, name: name, include_path: "sub/#{name}.hpp" ) }
+      @state.mocks_list.replace( [
+        TestInvokerTypes::MockWork.new( details: details.( 'MockBar', 'build/preprocess/Bar.hpp' ), testable: @testable, name: :MockBar ),
+        TestInvokerTypes::MockWork.new( details: details.( 'MockMockBar', 'build/preprocess/MockBar.hpp' ), testable: @testable, name: :MockMockBar )
+      ] )
+
+      expect(@file_wrapper).to receive(:rm_f).with( 'build/test/mocks/sub/Bar.hpp' )
+      expect(@file_wrapper).to_not receive(:rm_f).with( 'build/test/mocks/sub/MockBar.hpp' )
 
       @executor.stage_generate_mocks( @state )
     end
@@ -2146,6 +2197,22 @@ describe TestBuildExecutor do
       allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.hpp" ).and_return( ["#{@root}/drivers/Mockfoox.hpp", "#{@root}/drivers/foox.hpp"] )
 
       expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foox.hpp" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    # A Partial mock has no header copy, so only its own header keeps it
+    it "keeps a mock's header with another extension, though a mock of its own name sits beside it" do
+      allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( ['.h', '.hpp'] ) )
+      partial = ->(name) { TestInvokerTypes::MockWork.new(
+        :details => TestInvokerTypes::MockDetails.new( :source => "build/test/partials/a_test/#{name}.hpp", :path => 'drivers', :input => "build/test/partials/a_test/#{name}.hpp", :name => name, :partial => true, :include_path => "drivers/#{name}.hpp" ),
+        :testable => @testable, :name => name.to_sym
+      ) }
+      @state.mocks_list.replace( [partial.( 'Mockbar' ), partial.( 'MockMockbar' )] )
+      listing()
+      allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.hpp" ).and_return( ["#{@root}/drivers/Mockbar.hpp", "#{@root}/drivers/MockMockbar.hpp"] )
+
+      expect(@file_wrapper).to_not receive(:rm_f)
 
       @executor.stage_prune_header_copies( @state )
     end

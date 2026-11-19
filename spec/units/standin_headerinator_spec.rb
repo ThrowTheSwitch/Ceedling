@@ -65,6 +65,20 @@ describe StandinHeaderinator do
       @standins.place( @testable, [Include.new( 'MockFoo.h' )] )
     end
 
+    # CMock names a mock's header with the header's own extension, which the test's #include repeats
+    it "writes a stand-in with the extension its mock's #include names" do
+      expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.hpp', anything )
+      expect(@file_wrapper).to_not receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', anything )
+
+      @standins.place( @testable, [Include.new( 'MockFoo.hpp' )] )
+    end
+
+    it "keeps the dots of a mock's name in its stand-in's path" do
+      expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockSensor.44.hpp', anything )
+
+      @standins.place( @testable, [Include.new( 'MockSensor.44.hpp' )] )
+    end
+
     it "includes the header by the line the real mock opens with" do
       allow(@mock_locator).to receive(:header_include_line).with( 'foo.h' ).and_return( '#include <foo.h>' )
 

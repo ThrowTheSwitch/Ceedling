@@ -25,6 +25,26 @@ describe "FffMockGenerator.create_mock_source" do
     end
   end
 
+  # A fake's header takes the original header's extension, which the source includes it by
+  context "when given a mock header name," do
+    it "then it includes that name in place of the mock's name with .h" do
+      mock_source = FffMockGenerator.create_mock_source("mock_foox", {}, mock_header: "mock_foox.hpp")
+
+      expect(mock_source).to include(%{#include "mock_foox.hpp"\n})
+      expect(mock_source).not_to include(%{#include "mock_foox.h"\n})
+    end
+    it "then the control functions still take the mock's name" do
+      mock_source = FffMockGenerator.create_mock_source("mock_foox", {}, mock_header: "mock_foox.hpp")
+
+      expect(mock_source).to include("void mock_foox_Init(void)\n")
+    end
+    it "then, when given none, it includes the mock's name with .h" do
+      mock_source = FffMockGenerator.create_mock_source("mock_foox", {})
+
+      expect(mock_source).to include(%{#include "mock_foox.h"\n})
+    end
+  end
+
   context "when there is nothing to mock," do
     let(:mock_source) {
       parsed_header = {}

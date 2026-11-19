@@ -96,6 +96,90 @@ describe FffCMockWrapper do
     end
   end
 
+  # CMock names a mock by the header's own extension, as `mock_foox.hpp` and `mock_foox.c`
+  context 'with a header whose extension is not .h' do
+    before(:each) do
+      @header    = File.join( @root, 'src', 'drivers', 'foox.hpp' )
+      @mock_path = File.join( @root, 'mocks' )
+      FileUtils.mkdir_p( File.dirname( @header ) )
+      File.write( @header, "static inline int foox_peek(void) { return 7; }\nint foox_read(void);\n" )
+    end
+
+    def fake_hpp(options = {})
+      config = { :mock_prefix => 'mock_', :mock_path => @mock_path, :includes => [], :verbosity => 0 }
+      FffCMockWrapper.new( config.merge( options ) ).setup_mocks( @header, 'drivers' )
+    end
+
+    def written(name)
+      return File.readlines( File.join( @mock_path, 'drivers', name ), chomp: true )
+    end
+
+    it 'writes the fake as the mock\'s name with the header\'s extension and .c' do
+      fake_hpp
+
+      expect( File.exist?( File.join( @mock_path, 'drivers', 'mock_foox.hpp' ) ) ).to be true
+      expect( File.exist?( File.join( @mock_path, 'drivers', 'mock_foox.c' ) ) ).to be true
+      expect( File.exist?( File.join( @mock_path, 'drivers', 'mock_foox.hpp.h' ) ) ).to be false
+      expect( File.exist?( File.join( @mock_path, 'drivers', 'mock_foox.hpp.c' ) ) ).to be false
+    end
+
+    it 'includes the fake\'s header from the source by its own name' do
+      fake_hpp
+
+      expect( written( 'mock_foox.c' ) ).to include( '#include "mock_foox.hpp"' )
+    end
+
+    it 'includes the original header by the folder its #include names and its own name' do
+      fake_hpp
+
+      expect( written( 'mock_foox.hpp' ) ).to include( '#include "drivers/foox.hpp"' )
+    end
+
+    it 'includes the original header by the text Ceedling gives in place of its folder' do
+      fake_hpp( :orig_header_include => 'foox.hpp' )
+
+      expect( written( 'mock_foox.hpp' ) ).to include( '#include "foox.hpp"' )
+    end
+
+    it 'names the guard and control functions by the mock\'s name' do
+      fake_hpp
+
+      expect( written( 'mock_foox.hpp' ) ).to include( '#ifndef mock_foox_H', 'void mock_foox_Init(void);' )
+      expect( written( 'mock_foox.c' ) ).to include( 'void mock_foox_Init(void)' )
+    end
+
+    it 'names the guard and control functions by the folder under :mock_name_include_folder' do
+      fake_hpp( :mock_name_include_folder => true )
+
+      expect( written( 'mock_foox.hpp' ) ).to include( '#ifndef drivers_mock_foox_H', 'void drivers_mock_foox_Init(void);' )
+      expect( written( 'mock_foox.c' ) ).to include( 'void drivers_mock_foox_Init(void)' )
+    end
+
+    it 'writes the header\'s copy as drivers/foox.hpp under :treat_inlines :include' do
+      fake_hpp( :treat_inlines => :include )
+
+      copy = File.read( File.join( @mock_path, 'drivers', 'foox.hpp' ) )
+      expect( copy ).to include( 'int foox_peek(void);' )
+      expect( copy ).not_to include( 'return 7' )
+    end
+
+    it 'names the files written at verbose' do
+      path = File.join( @mock_path, 'drivers', 'mock_foox' )
+
+      expect { fake_hpp( :verbosity => 3 ) }.to output(
+        "Creating fake functions for foox...\n" \
+        "Creating fake functions: #{path}.hpp and #{path}.c\n"
+      ).to_stdout
+    end
+  end
+
+  # A name with dots is sanitized to a C identifier, with or without a folder
+  it 'forms a C name for a dotted module name with no folder' do
+    wrapper = FffCMockWrapper.new( { :mock_prefix => 'mock_', :mock_path => @root, :includes => [], :verbosity => 0 } )
+
+    expect( wrapper.c_name_for( 'mock_Sensor.44', nil ) ).to eq( 'mock_Sensor_44' )
+  end
+
   it 'adds no includes when no setting names any' do
     files = fake
 
