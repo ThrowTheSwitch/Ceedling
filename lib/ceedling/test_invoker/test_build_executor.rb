@@ -648,11 +648,11 @@ class TestBuildExecutor
     end
   end
 
-  # The header of the mock CMock writes beside a copy of the header at `path`. A header named
-  # as its own mock, with no prefix or suffix, has none.
+  # The header of the mock CMock writes beside a copy of the header at `path`, with the header's
+  # own extension. A header named as its own mock, with no prefix or suffix, has none.
   def mock_beside(path)
-    stem = File.basename( path, '.*' )
-    mock = File.join( File.dirname( path ), @configurator.cmock_mock_prefix + stem + @configurator.cmock_mock_suffix + EXTENSION_CORE_HEADER )
+    ext  = File.extname( path )
+    mock = File.join( File.dirname( path ), @configurator.cmock_mock_prefix + File.basename( path, ext ) + @configurator.cmock_mock_suffix + ext )
     return mock == path ? nil : mock
   end
 
