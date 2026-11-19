@@ -51,7 +51,7 @@ describe TestPipelineManager do
     allow(@partials_manager).to receive(:stage_generate_partials)
     allow(@test_build_executor).to receive(:stage_preprocess_mocks)
     allow(@test_build_executor).to receive(:stage_prune_header_copies)
-    allow(@test_build_executor).to receive(:stage_prune_unincluded_header_copies)
+    allow(@test_build_executor).to receive(:stage_hold_header_copies)
     allow(@test_build_executor).to receive(:stage_generate_mocks)
     allow(@test_file_preprocessinator).to receive(:preprocess)
     allow(@test_runner_generatinator).to receive(:collect_details)
@@ -290,7 +290,7 @@ describe TestPipelineManager do
       end
 
       it "runs every stage and transform, start to finish" do
-        expect(@test_build_executor).to receive(:stage_prune_unincluded_header_copies)
+        expect(@test_build_executor).to receive(:stage_hold_header_copies)
         expect(@test_build_setup).to receive(:stage_prepare_build_paths)
         expect(@test_build_setup).to receive(:stage_collect_test_context)
         expect(@test_build_setup).to receive(:stage_ingest_configurations)
@@ -335,7 +335,7 @@ describe TestPipelineManager do
       it "skips test-file preprocessing and its two dependent stages, independent of any stop-point option" do
         allow(@configurator).to receive(:project_use_test_preprocessor_tests).and_return( false )
 
-        expect(@test_build_executor).to_not receive(:stage_prune_unincluded_header_copies)
+        expect(@test_build_executor).to_not receive(:stage_hold_header_copies)
         expect(@test_includes_extractinator).to_not receive(:stage_collect_preprocessor_context)
         expect(@test_file_preprocessinator).to_not receive(:preprocess)
         expect(@test_runner_generatinator).to_not receive(:collect_details)
@@ -367,7 +367,7 @@ describe TestPipelineManager do
         expect(@test_build_planner).to_not receive(:stage_flatten_mocks_list)
         expect(@test_build_executor).to_not receive(:stage_preprocess_mocks)
         expect(@test_build_executor).to_not receive(:stage_prune_header_copies)
-        expect(@test_build_executor).to_not receive(:stage_prune_unincluded_header_copies)
+        expect(@test_build_executor).to_not receive(:stage_hold_header_copies)
         expect(@test_build_executor).to_not receive(:stage_generate_mocks)
         expect(@test_runner_generatinator).to receive(:generate)
         expect(@loginator).to_not receive(:log)

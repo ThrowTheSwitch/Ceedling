@@ -702,6 +702,54 @@ ceedling_system_tests do
       end
     end
 
+    # Only the preprocessor names a mock whose #include a macro computes
+    it "generates no mock again on a rebuild for a mock only the preprocessor names under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/drivers/widget.h', "#ifndef WIDGET_H\n#define WIDGET_H\nint widget_read(void);\n#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#define WIDGET_MOCK \"drivers/mock_widget.h\"\n#include WIDGET_MOCK\n" \
+                                "void test_w(void) { widget_read_ExpectAndReturn(7); TEST_ASSERT_EQUAL_INT(7, widget_read()); }\n" )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        expect(build_passes).to_not include( 'Generating mock for' )
+      end
+    end
+
+    # A same-named mock in another folder names no copy but its own
+    it "sees an edit to a header the test stops mocking beside a same-named mock under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/a/drivers/foo.h', "#ifndef AFOO_H\n#define AFOO_H\nint fa_read(void);\n#endif\n" )
+        write( 'src/b/drivers/foo.h', header.( 1 ) )
+        write( 'test/test_c.c', test.( 1, ['a/drivers/mock_foo.h', 'b/drivers/mock_foo.h'] ) )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/b/drivers/foo.h', header.( 2 ) )
+        write( 'test/test_c.c', test.( 2, ['a/drivers/mock_foo.h', 'b/drivers/foo.h'] ) )
+        build_passes
+      end
+    end
+
+    # The text names a mock the preprocessor no longer reaches
+    it "sees an edit to a header a test's conditional #include stops mocking under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/cfg.h', "#ifndef CFG_H\n#define CFG_H\n#define USE_MOCK 1\n#endif\n" )
+        write( 'src/drivers/foo.h', header.( 1 ) )
+        write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+        conditional = ->(k) { HEADER_SEARCH_PREAMBLE + "#include \"cfg.h\"\n#include \"drivers/mock_bar.h\"\n#if USE_MOCK\n" \
+                                "#include \"drivers/mock_foo.h\"\n#else\n#include \"drivers/foo.h\"\n#endif\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(#{k}, FOO_K); }\n" }
+        write( 'test/test_c.c', conditional.( 1 ) )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/cfg.h', "#ifndef CFG_H\n#define CFG_H\n#define USE_MOCK 0\n#endif\n" )
+        write( 'src/drivers/foo.h', header.( 2 ) )
+        write( 'test/test_c.c', conditional.( 2 ) )
+        build_passes
+      end
+    end
+
     # A header named with the mock prefix is reached through another header, since the test's
     # own #include of it would name a mock
     it "sees an edit to a header whose name starts with the mock prefix" do

@@ -2036,6 +2036,8 @@ describe TestBuildExecutor do
         subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
       end
       allow(@file_wrapper).to receive(:rm_f)
+      allow(@file_wrapper).to receive(:mv)
+      allow(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/a_test/**/*.held' ).and_return( [] )
 
       @root     = 'build/test/mocks/a_test'
       @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :paths => { :mocks => @root } )
@@ -2051,6 +2053,28 @@ describe TestBuildExecutor do
 
     def listing(*paths)
       allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.h" ).and_return( paths.map { |path| File.join( @root, path ) } )
+    end
+
+    def held(*paths)
+      allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.held" ).and_return( paths.map { |path| File.join( @root, path ) } )
+    end
+
+    it "puts back a copy set aside before stage 4 that a current mock writes" do
+      listing()
+      held( 'drivers/bar.h.held' )
+
+      expect(@file_wrapper).to receive(:mv).with( "#{@root}/drivers/bar.h.held", "#{@root}/drivers/bar.h" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    it "removes a copy set aside before stage 4 that no current mock writes" do
+      listing()
+      held( 'drivers/foo.h.held' )
+
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h.held" )
+
+      @executor.stage_prune_header_copies( @state )
     end
 
     it "removes a copy of a header no current mock names" do
@@ -2134,7 +2158,7 @@ describe TestBuildExecutor do
   end
 
   # Stage 4 preprocesses a test through its mock root, before any mock is planned
-  context "#stage_prune_unincluded_header_copies" do
+  context "#stage_hold_header_copies" do
     before(:each) do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'mock_' )
       allow(@configurator).to receive(:cmock_mock_suffix).and_return( '' )
@@ -2142,34 +2166,33 @@ describe TestBuildExecutor do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c'] )
       allow(@configurator).to receive(:cmock_mock_path).and_return( 'build/test/mocks' )
       allow(@file_path_utils).to receive(:form_test_name) { |test| test.delete_prefix( 'test/' ).delete_suffix( '.c' ) }
-      allow(@file_wrapper).to receive(:rm_f)
+      allow(@file_wrapper).to receive(:mv)
 
       @root     = 'build/test/mocks/a_test'
-      @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :filepath => 'test/a_test.c', :paths => { :mocks => @root } )
+      @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :paths => { :mocks => @root } )
       @state    = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [], :lock => Mutex.new, :context => :test, :options => [] )
-      allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list).with( 'test/a_test.c' ).and_return( [MockInclude.new( 'drivers/mock_bar.h' )] )
     end
 
     def listing(*paths)
       allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.h" ).and_return( paths.map { |path| File.join( @root, path ) } )
     end
 
-    it "removes a copy whose mock no #include in the test names" do
-      listing( 'drivers/mock_bar.h', 'drivers/bar.h', 'drivers/mock_foo.h', 'drivers/foo.h' )
+    it "sets aside each copy beside its mock under a name no search finds" do
+      listing( 'drivers/mock_bar.h', 'drivers/bar.h', 'drivers/notes.h' )
 
-      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h" )
-      expect(@file_wrapper).to_not receive(:rm_f).with( "#{@root}/drivers/bar.h" )
+      expect(@file_wrapper).to receive(:mv).with( "#{@root}/drivers/bar.h", "#{@root}/drivers/bar.h.held" )
+      expect(@file_wrapper).to_not receive(:mv).with( "#{@root}/drivers/notes.h", anything )
 
-      @executor.stage_prune_unincluded_header_copies( @state )
+      @executor.stage_hold_header_copies( @state )
     end
 
-    # Where a mock lands isn't known until it is planned
-    it "keeps a copy beside any mock named as an #include names one" do
-      listing( 'other/mock_bar.h', 'other/bar.h' )
+    it "leaves alone another test's mock root nested below this one" do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c', 'test/a_test/test_x.c'] )
+      listing( 'test_x/drivers/mock_bar.h', 'test_x/drivers/bar.h' )
 
-      expect(@file_wrapper).to_not receive(:rm_f)
+      expect(@file_wrapper).to_not receive(:mv)
 
-      @executor.stage_prune_unincluded_header_copies( @state )
+      @executor.stage_hold_header_copies( @state )
     end
   end
 
