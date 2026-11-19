@@ -735,8 +735,8 @@ ceedling_system_tests do
       end
     end
 
-    # A header with another extension owns the same-named source only where no other header
-    # shares its stem, however the test reaches that other header
+    # A mock of a header with another extension leaves the same-named source in place, however
+    # the test reaches the .h header that source implements
     it "links a named source beside a mock of a header with another extension whose stem another header shares" do
       in_project do
         write( 'src/drivers/foox.hpp', "#ifndef FOOX_HPP\n#define FOOX_HPP\n#define FOOX_K 1\nint foox_read(void);\n#endif\n" )

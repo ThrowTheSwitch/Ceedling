@@ -466,7 +466,6 @@ describe TestBuildPlanner do
         .with( 'test/TestFoo.c' ).and_return( [] )
       allow(@configurator).to receive(:project_use_mocks).and_return( false )
       allow(@configurator).to receive(:project_use_exceptions).and_return( false )
-      allow(@configurator).to receive(:collection_all_headers).and_return( [] )
       allow(@configurator).to receive(:collection_all_support).and_return( [] )
       allow(@configurator).to receive(:cmock_unity_helper_path).and_return( [] )
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
@@ -580,7 +579,6 @@ describe TestBuildPlanner do
     # A mock of foox.hpp stands in for that header only, so foox.c still builds for foox.h
     context "with a mocked header whose stem a real, unmocked header of the test shares" do
       before(:each) do
-        allow(@configurator).to receive(:collection_all_headers).and_return( ['src/drivers/foox.h', 'src/drivers/foox.hpp'] )
         mock = MockInclude.new( 'Mockfoox.hpp' )
         allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
           .with( 'test/TestFoo.c' ).and_return( [mock] )
@@ -602,7 +600,6 @@ describe TestBuildPlanner do
     # A mock of foox.h stands in for the header foox.c implements, whatever else the test includes
     context "with a mocked .h header whose stem a real header with another extension shares" do
       before(:each) do
-        allow(@configurator).to receive(:collection_all_headers).and_return( ['src/drivers/foox.h', 'src/drivers/foox.hpp'] )
         mock = MockInclude.new( 'Mockfoox.h' )
         allow(@test_context_extractor).to receive(:lookup_mock_header_includes_list)
           .with( 'test/TestFoo.c' ).and_return( [mock] )
@@ -738,13 +735,11 @@ describe TestBuildPlanner do
     end
   end
 
-  # A mock stands in for its header, so that header's source leaves the link. CMock names a mock
-  # with its header's own extension. A .h header's source is the same-named .c file. A header
-  # with another extension owns that source only where no other header shares its stem.
+  # A mock of a .h header stands in for its same-named source. A mock of a header with another
+  # extension leaves that source in place.
   describe "#remove_mock_original_headers" do
     before(:each) do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
-      allow(@configurator).to receive(:collection_all_headers).and_return( ['src/Foo.h', 'src/Bar.h', 'src/foox.hpp', 'src/Sensor.44.hpp'] )
     end
 
     it "removes a source file whose corresponding header is mocked" do
@@ -755,38 +750,20 @@ describe TestBuildPlanner do
       expect(filelist).to eq( ['src/Bar.c'] )
     end
 
-    it "removes a source file whose corresponding header is mocked with another extension" do
-      filelist = ['src/foox.c', 'src/Bar.c']
-
-      @planner.remove_mock_original_headers( filelist, ['Mockfoox.hpp'] )
-
-      expect(filelist).to eq( ['src/Bar.c'] )
-    end
-
-    it "removes a source file named with dots whose header is mocked with another extension" do
+    it "removes a source file named with dots whose header is mocked" do
       filelist = ['src/Sensor.44.c', 'src/Sensor.c']
 
-      @planner.remove_mock_original_headers( filelist, ['MockSensor.44.hpp'] )
+      @planner.remove_mock_original_headers( filelist, ['MockSensor.44.h'] )
 
       expect(filelist).to eq( ['src/Sensor.c'] )
     end
 
-    it "keeps a source file whose stem another header shares when the mock's header has another extension" do
-      allow(@configurator).to receive(:collection_all_headers).and_return( ['src/drivers/foox.hpp', 'src/drivers/foox.h'] )
-      filelist = ['src/drivers/foox.c', 'src/Bar.c']
+    it "keeps a source file whose stem a mock of a header with another extension shares" do
+      filelist = ['src/foox.c', 'src/Bar.c']
 
       @planner.remove_mock_original_headers( filelist, ['Mockfoox.hpp'] )
 
-      expect(filelist).to eq( ['src/drivers/foox.c', 'src/Bar.c'] )
-    end
-
-    it "removes a source file whose .h header is mocked even when another header shares its stem" do
-      allow(@configurator).to receive(:collection_all_headers).and_return( ['src/drivers/foox.hpp', 'src/drivers/foox.h'] )
-      filelist = ['src/drivers/foox.c', 'src/Bar.c']
-
-      @planner.remove_mock_original_headers( filelist, ['Mockfoox.h'] )
-
-      expect(filelist).to eq( ['src/Bar.c'] )
+      expect(filelist).to eq( ['src/foox.c', 'src/Bar.c'] )
     end
 
     it "leaves the list untouched when none of its files correspond to a mocked header" do

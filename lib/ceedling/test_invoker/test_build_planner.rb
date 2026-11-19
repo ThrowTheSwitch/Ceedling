@@ -381,36 +381,12 @@ class TestBuildPlanner
     return dir == '.' ? '' : dir
   end
 
-  # A source leaves the link when a mock stands in for the header it implements. CMock names a
-  # mock with its header's own extension. A .h header's source is the same-named .c file. A
-  # header with another extension owns that source only where no other header in the project
-  # shares its stem, since the source then implements that other header.
+  # A source leaves the link when a mock of its .h header stands in for it. A mock of a header
+  # with another extension, such as foox.hpp, leaves foox.c in place, since a .h header of the
+  # same stem may be the one that source implements.
   def remove_mock_original_headers(filelist, mocklist)
-    stems = owned_source_stems( mocklist )
-    filelist.delete_if { |filepath| stems.include?( File.basename( filepath, '.*' ) ) }
-  end
-
-  # The stems of the sources the mocks in `mocklist` stand in for
-  def owned_source_stems(mocklist)
-    prefix  = @configurator.cmock_mock_prefix
-    headers = mocklist.map { |mock| File.basename( mock ) }.select { |mock| mock.start_with?( prefix ) }.map { |mock| mock.delete_prefix( prefix ) }
-    return headers.select { |header| source_owner?( header ) }.map { |header| File.basename( header, '.*' ) }
-  end
-
-  # Whether the header named `header` owns the same-named source: a .h header always does, and
-  # one with another extension does where it is the only header of its stem
-  def source_owner?(header)
-    ext = File.extname( header )
-    return true if ext == EXTENSION_CORE_HEADER
-
-    return header_extensions_by_stem.fetch( File.basename( header, '.*' ), [ext] ).all? { |other| other == ext }
-  end
-
-  # Each project header's extensions by stem. Every test's thread computes the same table, so
-  # a race to fill it is harmless.
-  def header_extensions_by_stem
-    return @header_extensions_by_stem ||= @configurator.collection_all_headers.each_with_object( Hash.new { |table, stem| table[stem] = [] } ) do |path, table|
-      table[File.basename( path, '.*' )] << File.extname( path )
+    filelist.delete_if do |filepath|
+      mocklist.include?( @configurator.cmock_mock_prefix + File.basename( filepath ).ext( EXTENSION_CORE_HEADER ) )
     end
   end
 
