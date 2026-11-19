@@ -23,7 +23,7 @@ The eight stage classes never call each other. `TestPipelineManager` alone seque
 
 Three collaborators hold logic more than one stage needs, so the stages cannot drift apart:
 
-- **`TestSearchPaths`** composes a test's search paths in the order the compiler searches them, gives the paths its real headers are found through, and sets a test's mock search paths (stages 2, 3, and 4).
+- **`TestSearchPaths`** composes a test's search paths in the order the compiler searches them, gives the paths its real headers are found through and the paths mock preprocessing reads a mocked header through, and sets a test's mock search paths (stages 2, 3, 4, and 9).
 - **`MockLocator`** finds a test's real headers and places its mocks: a mock's directory below the test's mock root, the folder and root CMock writes it by, and the directory its `#include` as written reaches it from (stages 2, 4, 5, 10, 12, and 13).
 - **`StandinHeaderinator`** places stand-in headers for mocks and Partials (stage 4).
 
