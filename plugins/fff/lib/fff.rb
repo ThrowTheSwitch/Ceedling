@@ -66,7 +66,9 @@ class FffCMockWrapper
     # Parse the header file so we know what to mock.
     parsed_header = @cm_parser.parse(module_name, File.read(header_file_to_mock))
 
-    write_fake( "#{mock_path_for( folder )}/#{mock_name}", module_name, mock_name, parsed_header, folder )
+    path = "#{mock_path_for( folder )}/#{mock_name}"
+    write_fake( path, module_name, mock_name, parsed_header, folder )
+    write_header_copy( File.join( File.dirname( path ), File.basename( header_file_to_mock ) ), parsed_header )
   end
 
   # The name for a fake's guard and control functions, as CMock forms it. With
@@ -105,6 +107,15 @@ class FffCMockWrapper
 
     File.write( "#{path}.c", FffMockGenerator.create_mock_source( mock_name, parsed_header,
       @includes_c_pre_header, @includes_c_post_header, c_name: c_name ) )
+  end
+
+  # Under :treat_inlines :include, the header's text without its inline bodies, written beside
+  # the fake as CMock writes it beside a mock. The fake's #include reaches this copy, so the
+  # header's inline definitions never meet the fake's.
+  def write_header_copy(path, parsed_header)
+    return unless @cm_config.treat_inlines == :include
+
+    File.write( path, parsed_header[:normalized_source] )
   end
 
   # The text a fake includes the original header by: the folder its #include names and the
