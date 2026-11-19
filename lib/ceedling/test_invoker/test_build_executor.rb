@@ -37,25 +37,31 @@ class TestBuildExecutor
     :mock_locator
   )
 
-  # The ending a header copy takes while set aside, which no header search finds
+  # The endings a header copy and its mock take while set aside, which no header search finds
   HELD_COPY_SUFFIX = '.held'
+  HELD_MOCK_SUFFIX = '.held_mock'
 
-  # Before stage 4: sets aside each copy of a header in a test's mock root, under a name no
-  # search finds. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's
-  # header beside it. Stage 4 preprocesses the test through its mock root before any mock is
-  # planned, so a copy would stand in for its header there. A copy is a header with its mock
-  # beside it, since no build removes a mock. A test this run doesn't build keeps its mock root,
-  # even below another test's.
+  # Before stage 4: sets aside each copy of a header in a test's mock root, and the mock beside
+  # it, under names no search finds. Under :treat_inlines :include, CMock and an FFF fake write a
+  # copy of a mock's header beside it. Stage 4 preprocesses the test through its mock root before
+  # any mock is planned, so a copy would stand in for its header there. CMock's mock includes the
+  # header by a text that may reach only the copy, so stage 4 places a stand-in in the mock's
+  # place, as on a first build. A copy is a header with its mock beside it, since no build
+  # removes a mock. A test this run doesn't build keeps its mock root, even below another test's.
   def stage_hold_header_copies(state)
     every = every_mock_root()
 
     run_mock_roots( state ).each do |root|
-      each_copy( root, every ) { |copy| @file_wrapper.mv( copy, copy + HELD_COPY_SUFFIX ) }
+      each_copy( root, every ) do |copy|
+        mock = mock_beside( copy )
+        @file_wrapper.mv( copy, copy + HELD_COPY_SUFFIX )
+        @file_wrapper.mv( mock, mock + HELD_MOCK_SUFFIX )
+      end
     end
   end
 
-  # Before stage 9: puts back the copies set aside before stage 4 that a current mock writes,
-  # and removes every other copy. The mock root stays on the test's search path, with or
+  # Before stage 9: puts back every mock set aside before stage 4, over the stand-in stage 4
+  # placed, and the copies a current mock writes, and removes every other copy. The mock root stays on the test's search path, with or
   # without mocks, so a copy that outlives its mock shadows the header.
   def stage_prune_header_copies(state)
     keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
@@ -646,15 +652,21 @@ class TestBuildExecutor
     end
   end
 
-  # Puts each copy set aside below `root` back where `keep` names it, and removes the rest,
-  # except below another of the mock roots in `every`
+  # Puts each mock set aside below `root` back, and each copy where `keep` names it, removing
+  # the other copies, except below another of the mock roots in `every`
   def restore_held_copies(root, keep, every)
-    nested = every.select { |other| below?( other, root ) }
-    @file_wrapper.directory_listing( FilePathUtils.glob( root, '**', "*#{HELD_COPY_SUFFIX}" ) ).each do |held|
-      next if nested.any? { |other| below?( held, other ) }
-
-      copy = held.delete_suffix( HELD_COPY_SUFFIX )
+    each_held( root, HELD_MOCK_SUFFIX, every ) { |held, mock| @file_wrapper.mv( held, mock ) }
+    each_held( root, HELD_COPY_SUFFIX, every ) do |held, copy|
       keep.include?( copy ) ? @file_wrapper.mv( held, copy ) : @file_wrapper.rm_f( held )
+    end
+  end
+
+  # Yields each file set aside below `root` with `suffix`, and its own path, except below another
+  # of the mock roots in `every`
+  def each_held(root, suffix, every)
+    nested = every.select { |other| below?( other, root ) }
+    @file_wrapper.directory_listing( FilePathUtils.glob( root, '**', "*#{suffix}" ) ).each do |path|
+      yield( path, path.delete_suffix( suffix ) ) unless nested.any? { |other| below?( path, other ) }
     end
   end
 
@@ -695,7 +707,7 @@ class TestBuildExecutor
   # CMock's own text. `:orig_header_include` is Ceedling's, which CMock ignores and an FFF
   # fake reads. CMock keeps its own text under an :orig_header_include_fmt that takes no
   # respelling. It keeps it under :treat_inlines :include too, where its text reaches the copy
-  # of the header it writes beside the mock. A fake writes no format and no copy.
+  # of the header it writes beside the mock. A fake writes no format.
   def header_include_overrides(header_include)
     return {} if header_include.nil?
 
