@@ -11,14 +11,14 @@ require 'ceedling/includes/includes'
 
 describe HeaderSearch do
   # A directory tree's headers, listed as IncludePathinator lists a directory
-  def search(paths, tree)
+  def search(paths, tree, **options)
     @listed = Hash.new( 0 )
     lister  = lambda do |dir|
       @listed[dir] += 1
       tree.select { |header| File.dirname( header ) == dir }.sort
     end
 
-    return described_class.new( paths, lister )
+    return described_class.new( paths, lister, **options )
   end
 
   describe "#header_candidates" do
@@ -287,6 +287,29 @@ describe HeaderSearch do
       absolute = "#{ProjectPaths.working_dir}/lib/config.h"
 
       expect( [spelled.filepath, spelled.include_path] ).to eq( ['lib/config.h', absolute] )
+    end
+
+    # A generated directory is on the compiler's search paths, though a test's header search
+    # leaves it out, so the compiler reaches a header there by the text it already has
+    it "keeps the text of a resolved #include whose header lies in the build root and no search path reaches" do
+      headers = search( ['src'], ['src/foo.h', 'build/test/partials/test_foo/ceedling_partial_foo_impl.h'], build_root: 'build' )
+      include = UserInclude.new( 'build/test/partials/test_foo/ceedling_partial_foo_impl.h' )
+
+      expect( include.spelled_by( headers, resolved: true ) ).to equal( include )
+    end
+
+    it "writes a resolved #include whose header lies outside the build root and no search path reaches by its absolute path" do
+      headers = search( ['src'], ['src/foo.h', 'builds/foo/config.h'], build_root: 'build' )
+      spelled = UserInclude.new( 'builds/foo/config.h' ).spelled_by( headers, resolved: true )
+
+      expect( spelled.include_path ).to eq( "#{ProjectPaths.working_dir}/builds/foo/config.h" )
+    end
+
+    it "spells a header in the build root by a spelling that reaches it" do
+      headers = search( ['build/test/mocks', 'src'], ['build/test/mocks/mock_foo.h'], build_root: 'build' )
+      spelled = UserInclude.new( 'build/test/mocks/mock_foo.h' ).spelled_by( headers, resolved: true )
+
+      expect( spelled.to_s ).to eq( '#include "mock_foo.h"' )
     end
 
     # Reconciliation spells two same-named headers apart, which a shorter text could undo

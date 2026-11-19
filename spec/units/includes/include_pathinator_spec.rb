@@ -94,6 +94,12 @@ describe IncludePathinator do
       expect(@pathinator.header_search(['inc']).flat).to eq( ['inc/foo.h', 'inc/new.h'] )
     end
 
+    it 'gives a search the build root, so it knows which headers Ceedling generates' do
+      search = @pathinator.header_search( ['src'] )
+
+      expect( [search.generated?( 'build/test/partials/foo.h' ), search.generated?( 'src/foo.h' )] ).to eq( [true, false] )
+    end
+
     it 'lists the directory a search path joins with an #include once, outside the build root' do
       expect(@file_wrapper).to receive(:directory_listing).with(['src/drivers/*.h']).once.and_return( ['src/drivers/foo.h'] )
 
