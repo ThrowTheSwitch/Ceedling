@@ -438,18 +438,24 @@ ceedling_system_tests do
       end
     end
 
-    # A quoted #include looks beside the test file first. One there that no search path reaches
-    # leaves the runner the header the search paths find.
-    it "include in the runner the search paths' header where none reaches the one beside the test" do
+    # A quoted #include looks beside the test file first, and the test's own compile finds that
+    # header. A header there that no search path reaches is another header than the search paths'
+    # of the same name, so the runner includes it by its absolute path.
+    it "include in the runner the header beside the test, never one of its name a search path finds" do
       in_project do
-        write( 'test/drivers/foo.h', "#ifndef TFOO_H\n#define TFOO_H\n#define FOO_ARG 7\n#endif\n" )
-        write( 'src/drivers/foo.h', "#ifndef SFOO_H\n#define SFOO_H\n#define FOO_ARG 7\n#endif\n" )
-        write( 'test/test_b.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\nvoid test_b(void) { TEST_ASSERT_EQUAL_INT(7, FOO_ARG); }\n" )
+        write( 'test/drivers/foo.h', "#ifndef TFOO_H\n#define TFOO_H\n#define WHICH 1\n#endif\n" )
+        write( 'src/drivers/foo.h', "#ifndef SFOO_H\n#define SFOO_H\n#define WHICH 2\n#endif\n" )
+        write( 'src/other.h', "int other_read(void);\n" )
+        write( 'test/test_b.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n#include \"mock_other.h\"\n" \
+                                "void test_b(void) { TEST_ASSERT_EQUAL_INT(1, WHICH); }\n" )
 
         configure( ['src/'], :none )
         @c.remove_project_yml_option_for_test( :paths, :test )
         @c.merge_project_yml_for_test( { :paths => { :test => ['test/'] } } )
         build_passes
+
+        runner = File.readlines( Dir.glob( 'build/test/runners/**/test_b_runner.c' ).first ).select { |line| line.include?( 'foo.h' ) }
+        expect(runner).to eq( ["#include \"#{File.expand_path( 'test/drivers/foo.h' )}\"\n"] )
       end
     end
 
