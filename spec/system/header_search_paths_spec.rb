@@ -669,6 +669,24 @@ ceedling_system_tests do
       end
     end
 
+    # CMock names a mock and its copy with the header's own extension
+    [:none, :all].each do |preprocessor|
+      it "sees an edit to a header with another extension under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', header.( 1 ) )
+          write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+          write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp', 'drivers/mock_bar.h'] ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :extension => { :header => ['.h', '.hpp'] } } )
+          build_passes
+          expect(build_passes).to_not include( 'Generating mock for' )
+
+          write( 'src/drivers/foox.hpp', header.( 2 ) )
+          write( 'test/test_c.c', test.( 2, ['drivers/foox.hpp', 'drivers/mock_bar.h'] ) )
+          build_passes
+        end
+      end
+    end
+
     # Stage 4 sees the test's #includes before any mock is planned. A rebuild generates nothing.
     it "generates no mock again on a rebuild after the test stops mocking a header under :use_test_preprocessor all" do
       in_project do

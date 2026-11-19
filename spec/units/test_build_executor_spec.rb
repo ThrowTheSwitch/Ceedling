@@ -2100,6 +2100,17 @@ describe TestBuildExecutor do
       @executor.stage_prune_header_copies( @state )
     end
 
+    # CMock names a mock with its header's own extension
+    it "prunes a copy beside a mock named with the header's extension" do
+      allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( ['.h', '.hpp'] ) )
+      listing()
+      allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.hpp" ).and_return( ["#{@root}/drivers/Mockfoox.hpp", "#{@root}/drivers/foox.hpp"] )
+
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foox.hpp" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
     # A header can't be its own mock
     it "prunes nothing named without a prefix or a suffix" do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( '' )
