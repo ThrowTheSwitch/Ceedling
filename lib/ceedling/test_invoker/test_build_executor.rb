@@ -114,9 +114,7 @@ class TestBuildExecutor
         }
       )
 
-      # The headers the previous run's expansion entered, so an edit to one makes the target stale
-      expansion = full_expansion( mock )
-      register_preprocessed_dependencies( target, expansion ) if @file_wrapper.exist?( expansion )
+      register_previous_expansion( target, mock )
 
       mock.preprocessed_target = target
       mock.stale               = @dependinator.stale?( target )
@@ -617,6 +615,12 @@ class TestBuildExecutor
   # Where stage 9 writes a mocked header's full expansion. Its line markers name each file it entered.
   def full_expansion(mock)
     return @file_path_utils.form_preprocessed_file_full_expansion_filepath( mock.details.source, mock.testable.name )
+  end
+
+  # Registers the headers the previous run's expansion entered, so an edit to one makes the target stale
+  def register_previous_expansion(target, mock)
+    expansion = full_expansion( mock )
+    register_preprocessed_dependencies( target, expansion ) if @file_wrapper.exist?( expansion )
   end
 
   # Where CMock under :treat_inlines :include, or an FFF fake, writes a copy of the header it
