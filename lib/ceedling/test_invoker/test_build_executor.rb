@@ -8,6 +8,7 @@
 require 'set'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/test_invoker/test_invoker_types'
 require 'ceedling/test_invoker/test_pipeline_helpers'
 
@@ -133,6 +134,22 @@ class TestBuildExecutor
 
       @dependinator.mark_fresh( mock.preprocessed_target )
     end
+  end
+
+  # Before stage 10: removes from each test's mock root the copies of headers no current mock
+  # names. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's header
+  # beside it. The mock root stays on the test's search path, with or without mocks, so a copy
+  # that outlives its mock shadows the header. A copy is the only header in a mock root named
+  # without the mock prefix. Without a prefix, a copy and a mock look alike, and nothing is
+  # pruned. A test this run doesn't build keeps its mock root, even below another test's.
+  def stage_prune_header_copies(state)
+    prefix = @configurator.cmock_mock_prefix
+    return if prefix.empty?
+
+    keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
+    every = every_mock_root()
+
+    run_mock_roots( state ).each { |root| prune_mock_root( root, prefix, keep, every ) }
   end
 
   # Stage 10: Generate mocks for all tests.
@@ -573,10 +590,58 @@ class TestBuildExecutor
   # Every mock's source and header, where stage 10 writes them
   def mock_files(mocks)
     return mocks.each_with_object( Set.new ) do |mock, files|
-      details   = mock.details
-      directory = @mock_locator.placement( mocks_root: mock.testable.paths[:mocks], subdir: details.path, include_path: details.include_path ).directory
-      [EXTENSION_CORE_SOURCE, EXTENSION_CORE_HEADER].each { |ext| files << File.join( directory, details.name + ext ) }
+      directory = mock_directory( mock )
+      [EXTENSION_CORE_SOURCE, EXTENSION_CORE_HEADER].each { |ext| files << File.join( directory, mock.details.name + ext ) }
     end
+  end
+
+  # Where each non-Partial mock's copy of its header goes under :treat_inlines :include
+  def header_copies(mocks)
+    return mocks.each_with_object( Set.new ) do |mock, copies|
+      copies << File.join( mock_directory( mock ), File.basename( mock.details.input ) ) unless mock.details.partial
+    end
+  end
+
+  def mock_directory(mock)
+    details = mock.details
+    return @mock_locator.placement( mocks_root: mock.testable.paths[:mocks], subdir: details.path, include_path: details.include_path ).directory
+  end
+
+  # Removes each header below `root` named without the mock prefix that `keep` doesn't name,
+  # except below another of the mock roots in `every`
+  def prune_mock_root(root, prefix, keep, every)
+    nested = every.select { |other| below?( other, root ) }
+    root_headers( root ).each do |path|
+      next if File.basename( path ).start_with?( prefix ) or keep.include?( path )
+      next if nested.any? { |other| below?( path, other ) }
+
+      @file_wrapper.rm_f( path )
+    end
+  end
+
+  # The mock root of each test this run builds
+  def run_mock_roots(state)
+    return state.testables.each_value.filter_map { |testable| testable.paths[:mocks] }.uniq
+  end
+
+  # The mock root of every test in the project, whether or not this run builds it. Composed
+  # without FilePathUtils#form_test_mocks_path, whose length check warns of a path only a
+  # test this run builds should warn of.
+  def every_mock_root
+    return @configurator.collection_all_tests.map do |test|
+      File.join( @configurator.cmock_mock_path, @file_path_utils.form_test_name( test.to_s ) )
+    end
+  end
+
+  # Every header below a mock root
+  def root_headers(root)
+    return @configurator.extension_header.flat_map do |ext|
+      @file_wrapper.directory_listing( FilePathUtils.glob( root, '**', "*#{ext}" ) )
+    end
+  end
+
+  def below?(path, directory)
+    return path.start_with?( File.join( directory, '' ) )
   end
 
   # The settings that have a mock include its real header by `header_include` in place of

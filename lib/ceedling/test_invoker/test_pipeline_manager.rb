@@ -223,6 +223,13 @@ class TestPipelineManager
             body: ->(s) { @test_build_executor.stage_preprocess_mocks(s) }
       ),
 
+      # Transform 3: Prune header copies no current mock names. Runs when this run has no
+      # mocks too, since a test's mock root stays on its search path.
+      stage(transform: true,
+            condition: use_mocks,
+            body: ->(s) { @test_build_executor.stage_prune_header_copies(s) }
+      ),
+
       # Stage 10 — the :mocking stop point runs through here, then halts.
       stage("Mocking",
             condition:       use_mocks,
@@ -257,7 +264,7 @@ class TestPipelineManager
             body: ->(s) { @test_build_planner.stage_determine_artifacts(s) }
       ),
 
-      # Transform 3: Prepare objects for parallel processing — skipped under
+      # Transform 4: Prepare objects for parallel processing — skipped under
       # :mocking or :test_runner.
       stage(transform: true,
             condition: ->(s) { not_mocking.call(s) && not_test_runner.call(s) },
