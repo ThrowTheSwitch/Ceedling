@@ -61,8 +61,9 @@ class TestBuildExecutor
   end
 
   # Before stage 9: puts back every mock set aside before stage 4, over the stand-in stage 4
-  # placed, and the copies a current mock writes, and removes every other copy. The mock root stays on the test's search path, with or
-  # without mocks, so a copy that outlives its mock shadows the header.
+  # placed, and the copies a current mock writes, and removes every other copy. The mock root
+  # stays on the test's search path, with or without mocks, so a copy that outlives its mock
+  # shadows the header.
   def stage_prune_header_copies(state)
     keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
     every = every_mock_root()
