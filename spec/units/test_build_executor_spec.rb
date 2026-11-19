@@ -1985,6 +1985,86 @@ describe TestBuildExecutor do
     end
   end
 
+  # Under :treat_inlines :include, a copy of each mocked header sits beside its mock, on the
+  # test's search path. One no current mock names would shadow its header.
+  context "#stage_prune_header_copies" do
+    before(:each) do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
+      allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( '.h' ) )
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c'] )
+      allow(@file_path_utils).to receive(:form_test_name) { |test| test.delete_prefix( 'test/' ).delete_suffix( '.c' ) }
+      allow(@configurator).to receive(:cmock_mock_path).and_return( 'build/test/mocks' )
+      allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
+        subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
+      end
+      allow(@file_wrapper).to receive(:rm_f)
+
+      @root     = 'build/test/mocks/a_test'
+      @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :paths => { :mocks => @root } )
+      bar = TestInvokerTypes::MockWork.new(
+        :details  => TestInvokerTypes::MockDetails.new(
+          :source => 'src/drivers/bar.h', :path => 'drivers', :input => 'src/drivers/bar.h', :name => 'MockBar'
+        ),
+        :testable => @testable,
+        :name     => :'drivers/MockBar'
+      )
+      @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [bar], :lock => Mutex.new, :context => :test, :options => [] )
+    end
+
+    def listing(*paths)
+      allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.h" ).and_return( paths.map { |path| File.join( @root, path ) } )
+    end
+
+    it "removes a copy of a header no current mock names" do
+      listing( 'drivers/MockBar.h', 'drivers/bar.h', 'drivers/foo.h' )
+
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    # A stand-in, a Partial mock, and a mock no longer generated all carry the mock prefix
+    it "keeps a current mock's copy and every file named with the mock prefix" do
+      listing( 'drivers/MockBar.h', 'drivers/bar.h', 'drivers/MockFoo.h', 'MockPartial_baz.h' )
+
+      expect(@file_wrapper).to_not receive(:rm_f)
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    # The mock root stays on the test's search path when the test has no mocks left
+    it "prunes the mock root of a test with no mocks" do
+      @state.mocks_list = []
+      listing( 'drivers/bar.h' )
+
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/bar.h" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    # Nothing tells a copy from a mock named without a prefix
+    it "prunes nothing with an empty mock prefix" do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( '' )
+
+      expect(@file_wrapper).to_not receive(:directory_listing)
+      expect(@file_wrapper).to_not receive(:rm_f)
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    # A test this run doesn't build keeps its copies, even below another test's mock root
+    it "leaves alone another test's mock root nested below this one" do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c', 'test/a_test/test_x.c'] )
+      listing( 'drivers/foo.h', 'test_x/drivers/foo.h' )
+
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h" )
+      expect(@file_wrapper).to_not receive(:rm_f).with( "#{@root}/test_x/drivers/foo.h" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+  end
+
   context "#tailor_search_paths" do
     PROJECT_BUILD_VENDOR_CMOCK_PATH      = 'build/vendor/cmock'      unless defined?(PROJECT_BUILD_VENDOR_CMOCK_PATH)
     PROJECT_BUILD_VENDOR_CEXCEPTION_PATH = 'build/vendor/cexception' unless defined?(PROJECT_BUILD_VENDOR_CEXCEPTION_PATH)

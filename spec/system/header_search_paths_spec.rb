@@ -642,6 +642,33 @@ ceedling_system_tests do
     end
   end
 
+  # A test's mock root stays on its search path. A copy of a header the test no longer mocks
+  # would shadow the header from there.
+  describe "a header a test stops mocking under :treat_inlines :include" do
+    header = ->(k) { "#ifndef FOO_H\n#define FOO_H\n#define FOO_K #{k}\nint foo_read(void);\n#endif\n" }
+    test   = ->(k, includes) { HEADER_SEARCH_PREAMBLE + includes.map { |name| "#include \"#{name}\"\n" }.join +
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(#{k}, FOO_K); }\n" }
+
+    [[:none, [], ['drivers/mock_bar.h']], [:mocks, [], ['drivers/mock_bar.h']],
+     [:none, [], []], [:none, ['fff'], ['drivers/mock_bar.h']]].each do |preprocessor, plugins, kept|
+      remaining = kept.empty? ? 'no mock' : (plugins.empty? ? 'another mock' : 'another FFF fake')
+
+      it "sees an edit to the header beside #{remaining} under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', header.( 1 ) )
+          write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+          write( 'test/test_c.c', test.( 1, ['drivers/mock_foo.h', 'drivers/mock_bar.h'] ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :plugins => { :enabled => plugins } } )
+          build_passes
+
+          write( 'src/drivers/foo.h', header.( 2 ) )
+          write( 'test/test_c.c', test.( 2, ['drivers/foo.h'] + kept ) )
+          build_passes
+        end
+      end
+    end
+  end
+
   # FFF replaces CMock, writing a different file from the same configuration
   it "regenerates a mock when the FFF plugin is turned on or off" do
     in_project do
