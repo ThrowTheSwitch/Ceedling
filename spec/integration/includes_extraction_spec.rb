@@ -308,6 +308,23 @@ describe 'Includes extraction (integration)' do
     )
   end
 
+  # A pathless #include and one naming a folder reach two headers of one name, in either
+  # order (#1426). Fallback keeps each as written.
+  [false, true].each do |fallback|
+    [%w[config.h app/config.h], %w[app/config.h config.h]].each do |order|
+      it "keeps a pathless #include beside a same-named one with a folder, #{order.join(' then ')}#{fallback ? ', in fallback' : ''}" do
+        tree = {
+          'lib/motor.h'      => %(#ifndef MOTOR_H\n#define MOTOR_H\n) + order.map { |text| %(#include "#{text}"\n) }.join + %(int motor_run(void);\n#endif\n),
+          'src/hw/config.h'  => %(#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\ntypedef int hw_t;\n#endif\n),
+          'lib/app/config.h' => %(#ifndef APP_CONFIG_H\n#define APP_CONFIG_H\ntypedef int app_t;\n#endif\n)
+        }
+
+        expected = (fallback or !@accurate) ? ['#include "config.h"', '#include "app/config.h"'] : ['#include "hw/config.h"', '#include "app/config.h"']
+        expect(extracted(tree, 'lib/motor.h', fallback: fallback, search_subdirs: ['src/hw', 'lib'])).to contain_exactly( *expected )
+      end
+    end
+  end
+
   it 'grows the disambiguating suffix past one directory level when two colliding paths still share it' do
     tree = {
       'app.c' => %(#include "sensors/adc/config.h"\n#include "drivers/adc/config.h"\nint a(void){return S_CFG + D_CFG;}\n),

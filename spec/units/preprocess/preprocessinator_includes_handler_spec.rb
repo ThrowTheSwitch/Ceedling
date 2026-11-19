@@ -168,6 +168,15 @@ RSpec.describe PreprocessinatorIncludesHandler do
       expect(result.map(&:filename)).to contain_exactly('other.h')
     end
 
+    # Each entry is an #include as written, and a pathless one can name another header
+    it 'keeps a pathless #include beside a same-named one with a folder' do
+      allow(@tool_executor).to receive(:exec).and_return(
+        output: "test_other.o: #{isolated_filepath} mock_task.h other/mock_task.h\n\nmock_task.h:\n\nother/mock_task.h:\n"
+      )
+
+      expect(call_it().map(&:filepath)).to eq(['mock_task.h', 'other/mock_task.h'])
+    end
+
   end
 
 
@@ -418,6 +427,12 @@ RSpec.describe PreprocessinatorIncludesHandler do
       stub_file_open(filepath, "#include \"#{filepath}\"\n#include \"foo.h\"\n")
       result = subject.extract_bare_includes_from_text(filepath: filepath)
       expect(result.map(&:filename)).to contain_exactly('foo.h')
+    end
+
+    it 'keeps a pathless #include beside a same-named one with a folder' do
+      stub_file_open(filepath, "#include \"config.h\"\n#include \"app/config.h\"\n")
+      result = subject.extract_bare_includes_from_text(filepath: filepath)
+      expect(result.map(&:filepath)).to eq(['config.h', 'app/config.h'])
     end
 
   end

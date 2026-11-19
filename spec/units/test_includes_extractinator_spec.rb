@@ -120,7 +120,8 @@ describe TestIncludesExtractinator do
 
     @extractinator = described_class.new(
       test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
-        **common, file_path_utils: @file_path_utils, dependinator: @dependinator, test_search_paths: search_paths, standin_headerinator: standins
+        **common, file_path_utils: @file_path_utils, dependinator: @dependinator, test_search_paths: search_paths, standin_headerinator: standins,
+        mock_locator: @mock_locator
       ),
       test_includes_preprocessinator: TestIncludesPreprocessinator.new(
         **common, file_path_utils: @file_path_utils, file_wrapper: @file_wrapper, dependinator: @dependinator
@@ -421,6 +422,51 @@ describe TestIncludesExtractinator do
         expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/MockFoo.h', anything )
 
         @extractinator.stage_collect_preprocessor_context( @state )
+      end
+
+      # GCC lists an #include as written. The text scan anchors a climbing one to the test
+      # file's directory, and stages 5 and 10 find and place its mock by that text.
+      it "places a climbing mock's stand-in by its #include anchored to the test file's directory, keeping the list as written" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('../x/MockFoo.h') ] )
+
+        expect(@file_finder).to receive(:resolve_mock).with( 'x/MockFoo.h', collection: anything, complain: anything ).and_return( ['inc/x/foo.h', 'x'] )
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/x/MockFoo.h', anything )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+
+        expect(@testable.preprocess[:includes].map(&:filepath)).to eq( ['../x/MockFoo.h'] )
+      end
+
+      # One header's mock named two ways would become two mocks that can't both link. The
+      # #include with the most path stays, as stage 2 keeps it, and the cache keeps GCC's list.
+      it "keeps one mock per real header on the bare list and its candidates" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('MockFoo.h'), Include.new('drivers/MockFoo.h') ] )
+        allow(@file_finder).to receive(:resolve_mock).and_return( ['src/drivers/foo.h', 'drivers'] )
+
+        expect(@preprocessinator).to receive(:store_includes_list)
+          .with( hash_including( includes: satisfy { |list| list.map(&:filepath) == ['MockFoo.h', 'drivers/MockFoo.h'] } ) )
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', anything ).at_least( :once )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+
+        expect(@testable.preprocess[:includes].map(&:filepath)).to eq( ['drivers/MockFoo.h'] )
+        expect(@testable.preprocess[:candidates].map(&:filepath)).to eq( ['drivers/MockFoo.h'] )
+      end
+
+      # The test file still names the mock both ways, and pass 2 must reach a file for each
+      it "places a stand-in for every spelling of one header's mock, keeping one on the lists" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        allow(@preprocessinator).to receive(:preprocess_bare_includes).and_return( [ Include.new('drivers/MockFoo.h'), Include.new('src/drivers/MockFoo.h') ] )
+        allow(@file_finder).to receive(:resolve_mock).and_return( ['src/drivers/foo.h', 'drivers'] )
+
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/drivers/MockFoo.h', anything )
+        expect(@file_wrapper).to receive(:write).with( 'build/test/mocks/a_test/src/drivers/MockFoo.h', anything )
+
+        @extractinator.stage_collect_preprocessor_context( @state )
+
+        expect(@testable.preprocess[:includes].map(&:filepath)).to eq( ['src/drivers/MockFoo.h'] )
       end
     end
   end

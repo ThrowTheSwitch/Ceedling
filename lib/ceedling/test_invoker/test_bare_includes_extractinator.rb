@@ -26,7 +26,8 @@ class TestBareIncludesExtractinator
     :file_path_utils,
     :dependinator,
     :test_search_paths,
-    :standin_headerinator
+    :standin_headerinator,
+    :mock_locator
   )
 
   # The list is needed right away for stand-ins and again by reconciliation, so a cache
@@ -41,6 +42,7 @@ class TestBareIncludesExtractinator
 
       add_candidates( testable )
       place_standins( state, testable )
+      one_mock_per_header( testable )
     end
 
     log_skip_summary( task: "#include extraction", count: skipped, noun: "test files" )
@@ -90,6 +92,18 @@ class TestBareIncludesExtractinator
     return @preprocessinator.load_includes_list( test: testable.name, filepath: testable.filepath )
   end
 
+  # A test that names one header's mock two ways keeps one of them, as stage 2 does, so
+  # reconciliation keeps one mock. Every spelling already has its stand-in, since the test
+  # file still includes each. The cache keeps GCC's list.
+  def one_mock_per_header(testable)
+    search = @mock_locator.header_search( testable )
+    from   = File.dirname( testable.filepath )
+
+    [:includes, :candidates].each do |list|
+      testable.preprocess[list] = @mock_locator.one_per_header( testable.preprocess[list], collection: search, from: from )
+    end
+  end
+
   def add_candidates(testable)
     testable.preprocess[:candidates] = @preprocessinator.supplement_with_text_includes(
       filepath: testable.filepath, bare: testable.preprocess[:includes]
@@ -105,13 +119,22 @@ class TestBareIncludesExtractinator
   # doesn't exist or matches one only in letter case, so a mock only the text scan found
   # gets no stand-in without an exact header, and nothing is said. A mock on GCC's list
   # must have its header.
+  #
+  # Both lists hold each #include as written. A stand-in is placed by the #include anchored
+  # to the test file's directory, as the text scan anchors it and later stages place the real
+  # mock. The lists themselves stay as written for reconciliation.
   def place_standins(state, testable)
     bare    = testable.preprocess[:includes]
     literal = testable.preprocess[:candidates].reject { |include| bare.any? { |each| each.filepath == include.filepath } }
 
-    mock_dirs  = @standin_headerinator.place( testable, bare )
-    mock_dirs += @standin_headerinator.place( testable, literal, complain: :silent )
+    mock_dirs  = @standin_headerinator.place( testable, anchored( testable, bare ) )
+    mock_dirs += @standin_headerinator.place( testable, anchored( testable, literal ), complain: :silent )
     @test_search_paths.assign_mock_search_paths( testable, mock_dirs.uniq, state.lock )
+  end
+
+  def anchored(testable, includes)
+    anchor = File.dirname( testable.filepath )
+    return includes.map { |include| include.anchored( anchor ) }
   end
 
 end

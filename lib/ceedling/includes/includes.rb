@@ -142,8 +142,6 @@ class Includes
     # same entry and collapsed down to one.
     includes.uniq!( &:filepath )
 
-    self.drop_shadowed!( includes )
-
     # Apply custom rejection with access to full list if block provided
     if block_given?
       includes.reject! { |include| yield(include, includes) }
@@ -156,7 +154,9 @@ class Includes
   end
 
   # Drops any include that carries no path of its own while another entry resolves to a
-  # real file of the same basename.
+  # real file of the same basename. Only a list that mixes unresolved text with resolved
+  # headers needs it, as a Partial's does under fallback. In a bare or scanned list every
+  # entry is an #include as written, and a pathless one can name a different header.
   #
   # An unresolved include holds only the text as written, so its filepath has no
   # directory. Beside a resolved sibling of the same basename it can only reach a file by
@@ -178,7 +178,6 @@ class Includes
 
     return includes
   end
-  private_class_method :drop_shadowed!
 
   # Class method to reconcile bare, user, and system includes returning a list of
   # reconciled user and system includes.
@@ -201,14 +200,13 @@ class Includes
   # entry's literal #include text can carry more path than its candidate (a fallback text
   # scan sees only what's literally written) or less (a candidate directives-only
   # preprocessing resolved to a fuller real location than an unqualified bare #include
-  # ever names). A bare entry matching more than one user/mock candidate (typically a
-  # pathless bare entry corresponding to two same-named project files in different
-  # directories) resolves to the first candidate in `user`'s own order -- itself already
-  # real preprocessor-derived resolution order, so this mirrors the same first-by-known-
-  # priority policy applied everywhere else a query is matched against a collection of real
-  # files. `on_ambiguous`, when given, is called with the bare filepath, the chosen
-  # candidate, and every candidate passed over, so a caller with somewhere to log that
-  # (reconcile itself carries no logger) can surface it.
+  # ever names). Each bare entry pairs with one candidate, the entry with the fewest
+  # candidates first (`pair_candidates`), so a pathless entry never takes the header a
+  # same-named entry with a folder names. An entry takes the candidate its whole path names
+  # if there is one, else the first unclaimed one in `user`'s own order, which is already
+  # real preprocessor-derived resolution order. `on_ambiguous`, when given, is called with
+  # the bare filepath, the chosen candidate, and every candidate no entry took, so a caller
+  # with somewhere to log that (reconcile itself carries no logger) can surface it.
   #
   # System includes are still matched by filename alone: a system header commonly reaches
   # the same basename through more than one real file (a compiler-provided header
@@ -282,14 +280,12 @@ class Includes
       SystemInclude.new(include.filepath, include_path: original.filepath)
     end.uniq( &:to_s )
 
-    user_filepaths = user.map(&:filepath)
+    # One file a preprocessor names two ways, as `drivers/./foo.h`, is one candidate
+    user_filepaths = user.map(&:filepath).uniq { |filepath| ProjectPaths.segments(filepath) }
     user_by_filepath = {}
     user.each { |include| user_by_filepath[include.filepath] ||= include }
 
-    user_includes = []
-    seen = Set.new
-
-    bare.each do |bare_include|
+    entries = bare.map do |bare_include|
       # A directory-relative #include's own literal text is anchored to the one file
       # a bare scan could have found it in -- the test file itself, never a header,
       # since bare extraction never recurses into one. Resolving here, once, means
@@ -303,15 +299,22 @@ class Includes
       # candidate directives-only preprocessing resolved to a fuller real location) --
       # either side may be the more specific one, so whichever is shorter sets how many
       # of the longer one's trailing segments must match.
+      # The candidate the entry's whole path names comes first
       matched = user_filepaths.select { |filepath| paths_correspond?(bare_filepath, filepath) }
+      matched = matched.partition { |filepath| ProjectPaths.segments(filepath) == ProjectPaths.segments(bare_filepath) }.flatten
 
-      next if matched.empty?
+      [bare_include, bare_filepath, matched]
+    end
 
-      filepath = matched.first
-      next if seen.include?(filepath)
-      seen << filepath
+    chosen = pair_candidates(entries)
 
-      on_ambiguous&.call(bare_include.filepath, filepath, matched[1..]) if matched.length > 1
+    user_includes = []
+    entries.each_with_index do |(bare_include, bare_filepath, matched), index|
+      filepath = chosen[index]
+      next if filepath.nil?
+
+      passed_over = matched - chosen.values
+      on_ambiguous&.call(bare_include.filepath, filepath, passed_over) unless passed_over.empty?
 
       user_includes << as_written(user_by_filepath[filepath], bare_include, bare_filepath)
     end
@@ -331,6 +334,43 @@ class Includes
     self.sort!(reconciled)
     return reconciled
   end
+
+  # Pairs bare entries with candidates, as { entry index => candidate filepath }. The most
+  # constrained entry claims first, so a pathless #include never takes the header an
+  # #include naming its folder needs. Ties go in bare order, which puts GCC's text ahead of
+  # the text scan's. A computed #include's line-marker path, longer than its candidates,
+  # claims after every written text. A repeat of an earlier entry's path claims nothing, as
+  # GCC's `drivers/foo.h` and the text scan's `./drivers/foo.h` name one #include.
+  def self.pair_candidates(entries)
+    chosen = {}
+    claimants(entries).sort_by { |index| claim_order( entries[index], index ) }.each do |index|
+      filepath = entries[index][2].find { |candidate| !chosen.value?(candidate) }
+      chosen[index] = filepath if filepath
+    end
+
+    return chosen
+  end
+  private_class_method :pair_candidates
+
+  # The entries with a candidate, less any repeat of an earlier entry's path
+  def self.claimants(entries)
+    firsts = {}
+    entries.each_with_index { |(_, bare_filepath, _), index| firsts[ProjectPaths.segments(bare_filepath)] ||= index }
+
+    return entries.each_index.select do |index|
+      _, bare_filepath, matched = entries[index]
+      !matched.empty? and firsts[ProjectPaths.segments(bare_filepath)] == index
+    end
+  end
+  private_class_method :claimants
+
+  def self.claim_order(entry, index)
+    _, bare_filepath, matched = entry
+    length   = ProjectPaths.segments(bare_filepath).length
+    computed = matched.all? { |candidate| length > ProjectPaths.segments(candidate).length }
+    return [computed ? 1 : 0, matched.length, index]
+  end
+  private_class_method :claim_order
 
   # A mock's #include names it for CMock and the runner, so a mock keeps its bare entry's
   # text, anchored as `bare_filepath` is. GCC's entry names it first, with the #include as

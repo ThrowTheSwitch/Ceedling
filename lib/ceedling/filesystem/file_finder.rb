@@ -137,12 +137,15 @@ class FileFinder
 
       _source_file = source_file + EXTENSION_CORE_SOURCE
       _source_file = File.join( subdir, _source_file ) unless subdir.empty?
+      collection   = own_generated_files( @configurator.cmock_mock_path, test_context )
 
-      found_file =
-        @file_finder_helper.find_file_in_collection(
-          _source_file,
-          own_generated_files( @configurator.cmock_mock_path, test_context ),
-          complain)
+      # The mock at exactly this place below the root comes first, since a same-named mock
+      # deeper down, such as one an earlier build left, ends with the same folder and name.
+      # A flat object path names no subdirectory, so the name alone still finds a mock
+      # anywhere below the root.
+      exact      = ProjectPaths.segments( File.join( mocks_root, _source_file ) )
+      found_file = collection.find { |file| ProjectPaths.segments( file ) == exact }
+      found_file ||= @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
 
     # Generated partials -- same per-test scoping rationale as mocks, above
     elsif (!release) and

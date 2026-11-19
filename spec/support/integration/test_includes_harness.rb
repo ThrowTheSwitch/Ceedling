@@ -264,7 +264,8 @@ module IntegrationSpecHelpers
       common = { configurator: @cfg, loginator: NULL, reportinator: NULL, batchinator: SequentialBatchinator.new, preprocessinator: preprocessinator }
       return TestIncludesExtractinator.new(
         test_bare_includes_extractinator: TestBareIncludesExtractinator.new(
-          **common, file_path_utils: @fpu, dependinator: StaleDependinator.new, test_search_paths: @search_paths, standin_headerinator: standins
+          **common, file_path_utils: @fpu, dependinator: StaleDependinator.new, test_search_paths: @search_paths, standin_headerinator: standins,
+          mock_locator: @locator
         ),
         test_includes_preprocessinator: TestIncludesPreprocessinator.new(
           **common, file_path_utils: @fpu, file_wrapper: @file_wrapper, dependinator: StaleDependinator.new

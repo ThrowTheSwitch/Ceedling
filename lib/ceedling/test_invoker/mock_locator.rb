@@ -44,6 +44,22 @@ class MockLocator
     return @file_finder.resolve_mock( include.filepath, collection: collection, complain: complain )
   end
 
+  # The #includes with one mock per real header. A test can name one header's mock two ways,
+  # as `mock_task.h` and `drivers/mock_task.h` do for src/drivers/task.h under src/**. CMock
+  # and the runner would make two mocks of it, which can't both link. The #include with the
+  # most path stays, the first among equals, since a pathless one reaches that mock too.
+  # Test preprocessing rebuilds the test file with the kept spelling alone.
+  # A climbing #include is looked up anchored to `from` and kept as written. Every other
+  # #include, a Partial mock, and a mock whose header isn't found pass through. Two mocks of
+  # one header share a filename, so only a repeated filename is looked up.
+  def one_per_header(includes, collection:, from: nil)
+    lookups = includes.map { |include| from ? include.anchored( from ) : include }
+    headers = repeated_mock_headers( lookups, collection )
+    kept    = header_keepers( lookups, headers )
+
+    return includes.select.with_index { |_, index| headers[index].nil? or kept[headers[index]] == index }
+  end
+
   # Each mock's mirrored directory below `mocks_root`, once each. A Partial mock has no
   # real header and lives in the root itself, and a mock whose missing header the caller
   # tolerates has no directory.
@@ -126,6 +142,34 @@ class MockLocator
   end
 
   private
+
+  # Each lookup's real header where its filename repeats, or nil
+  def repeated_mock_headers(lookups, collection)
+    repeated = lookups.map( &:filename ).tally
+    return lookups.map { |lookup| repeated[lookup.filename] > 1 ? real_header( lookup, collection ) : nil }
+  end
+
+  # The index kept for each header: the most path, the first among equals
+  def header_keepers(lookups, headers)
+    length = ->(index) { ProjectPaths.segments( lookups[index].filepath ).length }
+    kept   = {}
+    headers.each_with_index do |header, index|
+      next if header.nil? or (kept[header] and length.( index ) <= length.( kept[header] ))
+
+      kept[header] = index
+    end
+
+    return kept
+  end
+
+  # A mock's real header, by its absolute path, or nil for anything but a found mock's
+  def real_header(include, collection)
+    return nil if include.is_a?( SystemInclude ) or !include.filename.start_with?( @configurator.cmock_mock_prefix )
+    return nil if mock_partial?( include )
+
+    source, _ = locate( include, collection: collection, complain: :silent )
+    return source && ProjectPaths.absolute( source )
+  end
 
   def header_include_format
     return @configurator.get_cmock_config[:orig_header_include_fmt] || '#include "%s"'

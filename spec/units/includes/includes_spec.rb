@@ -531,7 +531,8 @@ describe "Includes sorting" do
 end
 
 describe "Includes sanitization" do
-  describe "sanitize!()" do
+  # A list that mixes an unresolved text with resolved headers, as a Partial's does
+  describe "drop_shadowed!()" do
     # An unresolved include carries only the text as written, so its filepath has no
     # directory of its own. Beside a resolved entry for the same basename it can only
     # ever reach a file by search-path accident, and which file that is depends on
@@ -546,7 +547,7 @@ describe "Includes sanitization" do
         UserInclude.new('include/drivers/spi/config.h', include_path: 'spi/config.h')
       ]
 
-      result = Includes.sanitize!(includes)
+      result = Includes.drop_shadowed!(includes)
 
       expect( result.map(&:filepath) )
         .to eq(['include/drivers/uart/config.h', 'include/drivers/spi/config.h'])
@@ -558,7 +559,7 @@ describe "Includes sanitization" do
         UserInclude.new('include/drivers/uart/config.h', include_path: 'uart/config.h')
       ]
 
-      result = Includes.sanitize!(includes)
+      result = Includes.drop_shadowed!(includes)
 
       expect( result.map(&:filepath) )
         .to eq(['include/config.h', 'include/drivers/uart/config.h'])
@@ -570,9 +571,31 @@ describe "Includes sanitization" do
         UserInclude.new('include/drivers/uart/other.h', include_path: 'uart/other.h')
       ]
 
-      result = Includes.sanitize!(includes)
+      result = Includes.drop_shadowed!(includes)
 
       expect( result.map(&:filepath) ).to include('config.h')
+    end
+  end
+
+  describe "sanitize!()" do
+    # Every entry of a bare or scanned list is an #include as written, and a pathless one
+    # can name a different header than a same-named one with a folder
+    it "keeps a pathless #include beside a same-named one with a folder" do
+      includes = [Include.new('config.h'), Include.new('app/config.h')]
+
+      expect( Includes.sanitize!(includes).map(&:filepath) ).to eq(['config.h', 'app/config.h'])
+    end
+
+    it "keeps a pathless mock beside a same-named mock with a folder" do
+      includes = [MockInclude.new('mock_task.h'), MockInclude.new('other/mock_task.h')]
+
+      expect( Includes.sanitize!(includes).map(&:filepath) ).to eq(['mock_task.h', 'other/mock_task.h'])
+    end
+
+    it "keeps a user #include beside a same-named system #include" do
+      includes = [SystemInclude.new('sys/types.h'), UserInclude.new('types.h')]
+
+      expect( Includes.sanitize!(includes).map(&:filepath) ).to eq(['sys/types.h', 'types.h'])
     end
 
     it "removes duplicate includes" do
@@ -1271,6 +1294,89 @@ describe "Includes reconciliation" do
       Includes.reconcile(bare: bare, user: user, system: system) { |*args| calls << args }
 
       expect(calls).to be_empty
+    end
+
+    # A pathless #include matches every same-named header. The #include naming a folder
+    # takes its own header first, in whatever order the preprocessor entered them (#1426).
+    [['src/hw/config.h', 'lib/app/config.h'], ['lib/app/config.h', 'src/hw/config.h']].each do |order|
+      it "pairs a pathless #include with the same-named header a folder's #include leaves, with candidates #{order.join(', ')}" do
+        bare = [Include.new("config.h"), Include.new("app/config.h")]
+        user = order.map { |filepath| UserInclude.new(filepath) }
+
+        result = Includes.reconcile(bare: bare, user: user, system: [])
+
+        expect(result.map(&:filepath)).to eq(['src/hw/config.h', 'lib/app/config.h'])
+      end
+    end
+
+    [['include/mock_task.h', 'other/mock_task.h'], ['other/mock_task.h', 'include/mock_task.h']].each do |order|
+      it "keeps a pathless mock beside a same-named mock its folder names, with candidates #{order.join(', ')}" do
+        bare = [Include.new("mock_task.h"), Include.new("other/mock_task.h")]
+        user = order.map { |filepath| MockInclude.new(filepath) }
+
+        result = Includes.reconcile(bare: bare, user: user, system: [])
+
+        expect(result.map(&:filepath)).to eq(['mock_task.h', 'other/mock_task.h'])
+      end
+    end
+
+    # GCC lists `./drivers/foo.h` as `drivers/foo.h`, and the text scan adds it as written
+    it "pairs a repeat of an earlier #include's path with nothing, even beside another same-named header" do
+      bare = [Include.new("config.h"), Include.new("./config.h")]
+      user = [UserInclude.new("test/config.h"), UserInclude.new("src/config.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: [])
+
+      expect(result.map(&:filepath)).to eq(['test/config.h'])
+    end
+
+    # A mock named by its #include's own place keeps that text, not a shorter candidate's
+    it "pairs an #include with the candidate its whole path names before one it only ends" do
+      bare = [Include.new("drivers/mock_task.h"), Include.new("src/drivers/mock_task.h")]
+      user = [MockInclude.new("drivers/mock_task.h"), MockInclude.new("src/drivers/mock_task.h")]
+
+      result = Includes.reconcile(bare: bare, user: user, system: [])
+
+      expect(result.map(&:filepath)).to eq(['drivers/mock_task.h', 'src/drivers/mock_task.h'])
+    end
+
+    it "pairs one #include alone with the candidate its whole path names" do
+      bare = [Include.new("src/drivers/mock_task.h")]
+      user = [MockInclude.new("drivers/mock_task.h"), MockInclude.new("src/drivers/mock_task.h")]
+
+      expect(Includes.reconcile(bare: bare, user: user, system: []).map(&:filepath)).to eq(['src/drivers/mock_task.h'])
+    end
+
+    # A preprocessor can name one file two ways, as `drivers/./mock_task.h`
+    it "counts candidates naming one path once" do
+      bare = [Include.new("drivers/mock_task.h")]
+      user = [MockInclude.new("build/m/drivers/mock_task.h"), MockInclude.new("build/m/drivers/./mock_task.h")]
+
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: []) { |*args| calls << args }
+
+      expect(calls).to be_empty
+    end
+
+    # A header another #include took was not passed over
+    it "does not call on_ambiguous for a same-named header another #include took" do
+      bare = [Include.new("config.h"), Include.new("app/config.h")]
+      user = [UserInclude.new("src/hw/config.h"), UserInclude.new("lib/app/config.h")]
+
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: []) { |*args| calls << args }
+
+      expect(calls).to be_empty
+    end
+
+    it "names only the candidates no #include took as passed over" do
+      bare = [Include.new("config.h"), Include.new("app/config.h")]
+      user = [UserInclude.new("src/hw/config.h"), UserInclude.new("lib/app/config.h"), UserInclude.new("vendor/config.h")]
+
+      calls = []
+      Includes.reconcile(bare: bare, user: user, system: []) { |*args| calls << args }
+
+      expect(calls).to eq([["config.h", "src/hw/config.h", ["vendor/config.h"]]])
     end
 
     it "preserves a system include directive's original directory components instead of collapsing to its bare filename" do

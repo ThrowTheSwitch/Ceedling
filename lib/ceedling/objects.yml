@@ -478,6 +478,7 @@ test_bare_includes_extractinator:
     - dependinator
     - test_search_paths
     - standin_headerinator
+    - mock_locator
 
 test_includes_preprocessinator:
   compose:

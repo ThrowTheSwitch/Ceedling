@@ -192,6 +192,7 @@ class TestBuildSetup
         testable.search_path_refusals = refusals
       end
 
+      one_mock_per_header( testable )
       testable.mock_search_paths = collect_mock_search_paths( testable )
     end
 
@@ -243,6 +244,20 @@ class TestBuildSetup
     @include_pathinator.validate_test_build_directive_paths()
     headers = @include_pathinator.validate_header_files_collection()
     @include_pathinator.augment_environment_header_files( headers )
+  end
+
+  # A test that names one header's mock two ways keeps one of them, which the planner, the
+  # runner and the rebuilt test file all read (MockLocator#one_per_header). The lookup
+  # needs the test's derived search paths, so it follows them.
+  def one_mock_per_header(testable)
+    return unless testable.paths[:mocks]
+
+    filepath = testable.filepath
+    headers  = @context_extractor.lookup_all_header_includes_list( filepath )
+    distinct = @mock_locator.one_per_header( headers, collection: @mock_locator.header_search( testable ) )
+    return if distinct.length == headers.length
+
+    @context_extractor.ingest_includes( filepath, distinct + @context_extractor.lookup_source_includes_list( filepath ) )
   end
 
   # Every mocked header's own mirrored directory below this test's mock root -- a mock is
