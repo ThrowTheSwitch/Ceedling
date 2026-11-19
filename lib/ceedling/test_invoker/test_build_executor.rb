@@ -5,6 +5,7 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'set'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/test_invoker/test_invoker_types'
@@ -144,6 +145,7 @@ class TestBuildExecutor
     # that writes the mock is recorded too, since a plugin such as FFF can take CMock's place.
     cmock_meta = @configurator.get_cmock_config.except( :verbosity )
     generator  = @generator.mock_generator_name
+    produced   = mock_files( state.mocks_list )
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
@@ -208,7 +210,7 @@ class TestBuildExecutor
         overrides:      overrides
       }
 
-      discard_header_copy( details, output_path, mock_header ) unless details.partial
+      discard_header_copy( details, output_path, produced ) unless details.partial
       @generator.generate_mock( **arg_hash )
 
       @dependinator.mark_fresh( target )
@@ -559,12 +561,22 @@ class TestBuildExecutor
   # CMock under :treat_inlines :include writes a copy of the header it reads beside the mock,
   # named as that header. A generation without it, or a fake, writes none, and an earlier
   # copy would stay for the mock's #include to reach. CMock writes a current one in the same
-  # call that needs it.
-  def discard_header_copy(details, output_path, mock_header)
+  # call that needs it. A path some mock writes is never a copy, as when a real header is
+  # named like another mock (`produced`).
+  def discard_header_copy(details, output_path, produced)
     copy = File.join( output_path, File.basename( details.input ) )
-    return if copy == mock_header or copy == details.input
+    return if produced.include?( copy ) or copy == details.input
 
     @file_wrapper.rm_f( copy ) if @file_wrapper.exist?( copy )
+  end
+
+  # Every mock's source and header, where stage 10 writes them
+  def mock_files(mocks)
+    return mocks.each_with_object( Set.new ) do |mock, files|
+      details   = mock.details
+      directory = @mock_locator.placement( mocks_root: mock.testable.paths[:mocks], subdir: details.path, include_path: details.include_path ).directory
+      [EXTENSION_CORE_SOURCE, EXTENSION_CORE_HEADER].each { |ext| files << File.join( directory, details.name + ext ) }
+    end
   end
 
   # The settings that have a mock include its real header by `header_include` in place of
