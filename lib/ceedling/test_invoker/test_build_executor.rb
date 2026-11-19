@@ -40,17 +40,14 @@ class TestBuildExecutor
   # Before stage 9: removes from each test's mock root the copies of headers no current mock
   # names. Under :treat_inlines :include, CMock and an FFF fake write a copy of a mock's header
   # beside it. The mock root stays on the test's search path, with or without mocks, so a copy
-  # that outlives its mock shadows the header. A copy is the only header in a mock root named
-  # without the mock prefix. Without a prefix, a copy and a mock look alike, and nothing is
-  # pruned. A test this run doesn't build keeps its mock root, even below another test's.
+  # that outlives its mock shadows the header. A copy is a header with its mock beside it, since
+  # no build removes a mock. A test this run doesn't build keeps its mock root, even below
+  # another test's.
   def stage_prune_header_copies(state)
-    prefix = @configurator.cmock_mock_prefix
-    return if prefix.empty?
-
     keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
     every = every_mock_root()
 
-    run_mock_roots( state ).each { |root| prune_mock_root( root, prefix, keep, every ) }
+    run_mock_roots( state ).each { |root| prune_mock_root( root, keep, every ) }
   end
 
   # Stage 9: Preprocess header files to be mocked.
@@ -607,16 +604,26 @@ class TestBuildExecutor
     return @mock_locator.placement( mocks_root: mock.testable.paths[:mocks], subdir: details.path, include_path: details.include_path ).directory
   end
 
-  # Removes each header below `root` named without the mock prefix that `keep` doesn't name,
-  # except below another of the mock roots in `every`
-  def prune_mock_root(root, prefix, keep, every)
-    nested = every.select { |other| below?( other, root ) }
-    root_headers( root ).each do |path|
-      next if File.basename( path ).start_with?( prefix ) or keep.include?( path )
+  # Removes each copy below `root` that `keep` doesn't name, except below another of the mock
+  # roots in `every`
+  def prune_mock_root(root, keep, every)
+    nested  = every.select { |other| below?( other, root ) }
+    headers = root_headers( root )
+    listed  = headers.to_set
+    headers.each do |path|
+      next if keep.include?( path ) or !listed.include?( mock_beside( path ) )
       next if nested.any? { |other| below?( path, other ) }
 
       @file_wrapper.rm_f( path )
     end
+  end
+
+  # The header of the mock CMock writes beside a copy of the header at `path`. A header named
+  # as its own mock, with no prefix or suffix, has none.
+  def mock_beside(path)
+    stem = File.basename( path, '.*' )
+    mock = File.join( File.dirname( path ), @configurator.cmock_mock_prefix + stem + @configurator.cmock_mock_suffix + EXTENSION_CORE_HEADER )
+    return mock == path ? nil : mock
   end
 
   # The mock root of each test this run builds
