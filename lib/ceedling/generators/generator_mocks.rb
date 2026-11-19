@@ -15,6 +15,11 @@ class GeneratorMocks
     return CMock.new(config)
   end
 
+  # The class that writes each mock. A plugin such as FFF puts its own in CMock's place.
+  def generator_name
+    return CMock.name
+  end
+
   def build_configuration( output_path, overrides: {} )
     config = @configurator.get_cmock_config
     config[:mock_path] = output_path

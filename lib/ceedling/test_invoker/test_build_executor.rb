@@ -139,8 +139,11 @@ class TestBuildExecutor
     # get_cmock_config, not project_config_hash[:cmock]: project_config_hash is
     # flattened -- CMock's own settings live there as individual top-level keys
     # like :cmock_mock_prefix, not as a :cmock section -- so this is the only
-    # place that still holds CMock's configuration as a single value to compare.
-    cmock_meta = @configurator.get_cmock_config
+    # place that still holds CMock's configuration as a single value to compare. Verbosity
+    # changes only what CMock prints, and Generator sets it anew for each mock. The class
+    # that writes the mock is recorded too, since a plugin such as FFF can take CMock's place.
+    cmock_meta = @configurator.get_cmock_config.except( :verbosity )
+    generator  = @generator.mock_generator_name
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.mocks_list) do |mock|
@@ -172,7 +175,7 @@ class TestBuildExecutor
       # can't tell it from one named by a folder the record never held. A respelling of the
       # real header's #include (MockLocator#header_respelling) follows the test's search
       # paths, which CMock's configuration doesn't hold. Both are recorded too.
-      meta = { cmock: cmock_meta, folder: placement.folder }
+      meta = { cmock: cmock_meta, generator: generator, folder: placement.folder }
       meta[:header_include] = details.header_include if details.header_include
       @dependinator.register( target, files: [details.input], meta: meta, outputs: [mock_header] )
 
@@ -205,6 +208,7 @@ class TestBuildExecutor
         overrides:      overrides
       }
 
+      discard_header_copy( details, output_path, mock_header ) unless details.partial
       @generator.generate_mock( **arg_hash )
 
       @dependinator.mark_fresh( target )
@@ -550,6 +554,17 @@ class TestBuildExecutor
   # The :libraries entries a test links, whatever form each takes
   def test_library_entries()
     return ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+  end
+
+  # CMock under :treat_inlines :include writes a copy of the header it reads beside the mock,
+  # named as that header. A generation without it, or a fake, writes none, and an earlier
+  # copy would stay for the mock's #include to reach. CMock writes a current one in the same
+  # call that needs it.
+  def discard_header_copy(details, output_path, mock_header)
+    copy = File.join( output_path, File.basename( details.input ) )
+    return if copy == mock_header or copy == details.input
+
+    @file_wrapper.rm_f( copy ) if @file_wrapper.exist?( copy )
   end
 
   # The settings that have a mock include its real header by `header_include` in place of
