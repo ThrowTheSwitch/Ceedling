@@ -526,7 +526,8 @@ class Include
   # the header beside its includer, in directory `from`, ahead of any a search path finds, as the
   # compiler's quote rule does. A header found either way that no search path reaches by any
   # spelling is written by its absolute path, which reaches it from wherever the generated file
-  # lives. The compiler finds a search path's header from there, so an #include as written with no
+  # lives. A header in the build root keeps its text, which the compiler's own search paths reach.
+  # The compiler finds a search path's header from there, so an #include as written with no
   # header beside its includer is spelled by the one the search paths find. One whose header isn't
   # found comes back as it is.
   def spelled_by(search, from: nil, resolved: false)
@@ -606,9 +607,10 @@ class Include
   end
 
   # A spelling of `header` for this #include. Where no search path reaches it, one the #include
-  # names where written takes the header's absolute path, and any other stays as it is.
+  # names where written takes the header's absolute path, and any other stays as it is. So does
+  # one in the build root, which the compiler's own search paths reach.
   def spelling_of(search, header, absolute)
-    return search.spelling( header, preferring: include ) || (absolute ? ProjectPaths.absolute( header ) : nil)
+    return search.spelling( header, preferring: include ) || (absolute && !search.generated?( header ) ? ProjectPaths.absolute( header ) : nil)
   end
 
   # The header an #include as written names beside its includer, or at its anchored path

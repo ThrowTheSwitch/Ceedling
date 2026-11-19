@@ -79,7 +79,7 @@ class IncludePathinator
   # which is one project-wide list blind to any one test's TEST_INCLUDE_PATH() priority.
   # `refusals` explain a failed lookup (see HeaderSearch#refusal).
   def header_search(search_paths, refusals: {})
-    return HeaderSearch.new( search_paths, method( :header_listing ), refusals: refusals )
+    return HeaderSearch.new( search_paths, method( :header_listing ), refusals: refusals, build_root: @configurator.project_build_root )
   end
 
   # Starts a test build with every search path listed afresh
