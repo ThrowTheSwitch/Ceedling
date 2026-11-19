@@ -68,6 +68,34 @@ describe FffCMockWrapper do
     expect( lines ).not_to include( '#include "drivers/bar.h"' )
   end
 
+  # CMock writes the header's inline-free text beside a mock under :treat_inlines :include, and
+  # the mock's #include reaches that copy in place of the header's inline definitions
+  context 'with a header holding an inline function' do
+    before(:each) do
+      File.write( @header, "static inline int bar_peek(void) { return 7; }\nvoid bar_turn_on(void);\n" )
+      @mock_path = File.join( @root, 'mocks' )
+    end
+
+    def fake_in(folder, options)
+      config = { :mock_prefix => 'mock_', :mock_path => @mock_path, :includes => [], :verbosity => 0 }
+      FffCMockWrapper.new( config.merge( options ) ).setup_mocks( @header, folder )
+    end
+
+    it 'writes the header without its inline bodies beside the fake under :treat_inlines :include' do
+      fake_in( 'drivers', :treat_inlines => :include )
+
+      copy = File.read( File.join( @mock_path, 'drivers', 'bar.h' ) )
+      expect( copy ).to include( 'int bar_peek(void);' )
+      expect( copy ).not_to include( 'return 7' )
+    end
+
+    it 'writes no copy of the header under :treat_inlines :exclude' do
+      fake_in( 'drivers', :treat_inlines => :exclude )
+
+      expect( File.exist?( File.join( @mock_path, 'drivers', 'bar.h' ) ) ).to be false
+    end
+  end
+
   it 'adds no includes when no setting names any' do
     files = fake
 

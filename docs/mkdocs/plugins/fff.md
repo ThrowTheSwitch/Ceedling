@@ -245,6 +245,11 @@ text reaches no header, as `drivers/foo.h` doesn’t with only `src/drivers/`
 listed, the fake includes the header by the text a search path reaches it by,
 here `foo.h`.
 
+With `:cmock` ↳ `:treat_inlines: :include`, a fake fakes a header’s inline
+functions too. As CMock does for a mock, the fake writes a copy of the header
+without its inline function bodies beside itself, and its `#include` reaches
+that copy, so the header’s definitions never collide with the fake’s.
+
 ### Fakes of same-named headers
 
 With `:cmock` ↳ `:mock_name_include_folder` enabled, Ceedling’s default, a fake

@@ -610,6 +610,221 @@ ceedling_system_tests do
     end
   end
 
+  # A fake of a header's inline function would collide with the header's own definition. Under
+  # :treat_inlines :include a fake includes the header's inline-free copy beside it, as a mock does.
+  describe "an FFF fake under :treat_inlines :include" do
+    header = "#ifndef FOO_H\n#define FOO_H\nstatic inline int foo_peek(void) { return 7; }\nint foo_read(void);\n#endif\n"
+    test   = HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+             "void test_reads(void) { foo_read_fake.return_val = 3; foo_peek_fake.return_val = 9; " \
+             "TEST_ASSERT_EQUAL_INT(3, foo_read()); TEST_ASSERT_EQUAL_INT(9, foo_peek()); }\n"
+
+    [:none, :mocks].each do |preprocessor|
+      it "fakes a header's inline function under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', header )
+          write( 'test/test_c.c', test )
+
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
+      end
+
+      # A search path listing only the header's own directory reaches it by its filename alone
+      it "fakes the inline function of a header its search path reaches by its filename under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', header )
+          write( 'test/test_c.c', test )
+
+          configure( ['src/drivers/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
+      end
+    end
+  end
+
+  # A test's mock root stays on its search path. A copy of a header the test no longer mocks
+  # would shadow the header from there.
+  describe "a header a test stops mocking under :treat_inlines :include" do
+    header = ->(k) { "#ifndef FOO_H\n#define FOO_H\n#define FOO_K #{k}\nint foo_read(void);\n#endif\n" }
+    test   = ->(k, includes) { HEADER_SEARCH_PREAMBLE + includes.map { |name| "#include \"#{name}\"\n" }.join +
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(#{k}, FOO_K); }\n" }
+
+    [[:none, [], ['drivers/mock_bar.h']], [:mocks, [], ['drivers/mock_bar.h']], [:tests, [], ['drivers/mock_bar.h']],
+     [:all, [], ['drivers/mock_bar.h']], [:none, [], []], [:all, [], []],
+     [:none, ['fff'], ['drivers/mock_bar.h']], [:all, ['fff'], ['drivers/mock_bar.h']]].each do |preprocessor, plugins, kept|
+      remaining = kept.empty? ? 'no mock' : (plugins.empty? ? 'another mock' : 'another FFF fake')
+
+      it "sees an edit to the header beside #{remaining} under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', header.( 1 ) )
+          write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+          write( 'test/test_c.c', test.( 1, ['drivers/mock_foo.h', 'drivers/mock_bar.h'] ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :plugins => { :enabled => plugins } } )
+          build_passes
+
+          write( 'src/drivers/foo.h', header.( 2 ) )
+          write( 'test/test_c.c', test.( 2, ['drivers/foo.h'] + kept ) )
+          build_passes
+        end
+      end
+    end
+
+    # CMock names a mock and its copy with the header's own extension
+    [:none, :all].each do |preprocessor|
+      it "sees an edit to a header with another extension under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foox.hpp', header.( 1 ) )
+          write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+          write( 'test/test_c.c', test.( 1, ['drivers/mock_foox.hpp', 'drivers/mock_bar.h'] ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :extension => { :header => ['.h', '.hpp'] } } )
+          build_passes
+          expect(build_passes).to_not include( 'Generating mock for' )
+
+          write( 'src/drivers/foox.hpp', header.( 2 ) )
+          write( 'test/test_c.c', test.( 2, ['drivers/foox.hpp', 'drivers/mock_bar.h'] ) )
+          build_passes
+        end
+      end
+    end
+
+    # Stage 4 sees the test's #includes before any mock is planned. A rebuild generates nothing.
+    it "generates no mock again on a rebuild after the test stops mocking a header under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/drivers/foo.h', header.( 1 ) )
+        write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+        write( 'test/test_c.c', test.( 1, ['drivers/mock_foo.h', 'drivers/mock_bar.h'] ) )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'test/test_c.c', test.( 1, ['drivers/foo.h', 'drivers/mock_bar.h'] ) )
+        build_passes
+        expect(build_passes).to_not include( 'Generating mock for' )
+      end
+    end
+
+    # Only the preprocessor names a mock whose #include a macro computes
+    it "generates no mock again on a rebuild for a mock only the preprocessor names under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/drivers/widget.h', "#ifndef WIDGET_H\n#define WIDGET_H\nint widget_read(void);\n#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#define WIDGET_MOCK \"drivers/mock_widget.h\"\n#include WIDGET_MOCK\n" \
+                                "void test_w(void) { widget_read_ExpectAndReturn(7); TEST_ASSERT_EQUAL_INT(7, widget_read()); }\n" )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        expect(build_passes).to_not include( 'Generating mock for' )
+      end
+    end
+
+    # A same-named mock in another folder names no copy but its own
+    it "sees an edit to a header the test stops mocking beside a same-named mock under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/a/drivers/foo.h', "#ifndef AFOO_H\n#define AFOO_H\nint fa_read(void);\n#endif\n" )
+        write( 'src/b/drivers/foo.h', header.( 1 ) )
+        write( 'test/test_c.c', test.( 1, ['a/drivers/mock_foo.h', 'b/drivers/mock_foo.h'] ) )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/b/drivers/foo.h', header.( 2 ) )
+        write( 'test/test_c.c', test.( 2, ['a/drivers/mock_foo.h', 'b/drivers/foo.h'] ) )
+        build_passes
+      end
+    end
+
+    # The text names a mock the preprocessor no longer reaches
+    it "sees an edit to a header a test's conditional #include stops mocking under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/cfg.h', "#ifndef CFG_H\n#define CFG_H\n#define USE_MOCK 1\n#endif\n" )
+        write( 'src/drivers/foo.h', header.( 1 ) )
+        write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+        conditional = ->(k) { HEADER_SEARCH_PREAMBLE + "#include \"cfg.h\"\n#include \"drivers/mock_bar.h\"\n#if USE_MOCK\n" \
+                                "#include \"drivers/mock_foo.h\"\n#else\n#include \"drivers/foo.h\"\n#endif\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(#{k}, FOO_K); }\n" }
+        write( 'test/test_c.c', conditional.( 1 ) )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/cfg.h', "#ifndef CFG_H\n#define CFG_H\n#define USE_MOCK 0\n#endif\n" )
+        write( 'src/drivers/foo.h', header.( 2 ) )
+        write( 'test/test_c.c', conditional.( 2 ) )
+        build_passes
+      end
+    end
+
+    # CMock's own #include text reaches only its copy where a search path lists only the header's
+    # own directory. Stage 4 reads a stand-in for the mock while its copy is set aside.
+    [:tests, :all].each do |preprocessor|
+      it "collects a rebuilt test's #includes through a mock whose header only its copy reaches by CMock's text under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', "#ifndef FOO_H\n#define FOO_H\n#define FOO_K 1\nstatic inline int foo_peek(void) { return 7; }\nint foo_read(void);\n#endif\n" )
+          test_file = HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n#if FOO_K == 2\nTEST_SOURCE_FILE(\"nothere.c\")\n#endif\n" \
+                      "void test_r(void) { foo_read_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, foo_read()); }\n"
+          write( 'test/test_c.c', test_file )
+          configure( ['src/drivers/**'], preprocessor, { :cmock => { :treat_inlines => :include } } )
+          build_passes
+
+          write( 'test/test_c.c', test_file + "// edited\n" )
+          expect(build_passes).to_not include( 'Failed to generate directive-only' )
+        end
+      end
+    end
+
+    # A mocked header decides which other mocks the test needs, as stage 4 reads it
+    it "sees an edit to a mocked header that decides the test's other mocks under :use_test_preprocessor all" do
+      in_project do
+        cfg  = ->(on) { "#ifndef CFG_H\n#define CFG_H\n#{on ? '' : '//'}#define TWO_ON\nint cfg_read(void);\n#endif\n" }
+        write( 'src/cfg.h', cfg.( false ) )
+        write( 'src/two.h', "int two_read(void);\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"mock_cfg.h\"\n#ifdef TWO_ON\n#include \"mock_two.h\"\n#endif\n" \
+                                "void test_t(void) {\n#ifdef TWO_ON\n  two_read_ExpectAndReturn(4); TEST_ASSERT_EQUAL_INT(4, two_read());\n#endif\n}\n" )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/cfg.h', cfg.( true ) )
+        build_passes
+      end
+    end
+
+    # A header named with the mock prefix is reached through another header, since the test's
+    # own #include of it would name a mock
+    it "sees an edit to a header whose name starts with the mock prefix" do
+      in_project do
+        motor = ->(k) { "#ifndef MOTOR_H\n#define MOTOR_H\n#define MOTOR_K #{k}\nint motor_read(void);\n#endif\n" }
+
+        write( 'src/drivers/motor.h', motor.( 1 ) )
+        write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+        write( 'src/app/wrap.h', "#include \"drivers/motor.h\"\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mmotor.h\"\n#include \"drivers/mbar.h\"\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(1, MOTOR_K); }\n" )
+        configure( ['src/**'], :none, { :cmock => { :mock_prefix => 'm', :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/drivers/motor.h', motor.( 2 ) )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"app/wrap.h\"\n#include \"drivers/mbar.h\"\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(2, MOTOR_K); }\n" )
+        build_passes
+      end
+    end
+
+    # Mock preprocessing reaches the header through the mock root too
+    it "preprocesses a remaining mock's header with the edited header it includes under :use_test_preprocessor mocks" do
+      in_project do
+        bar  = "#ifndef BAR_H\n#define BAR_H\n#include \"drivers/foo.h\"\n#if FOO_K == 1\nint bar_one(void);\n#else\nint bar_two(void);\n#endif\n"
+        call = ->(fn, k) { "void test_k(void) { #{fn}_ExpectAndReturn(#{k}); TEST_ASSERT_EQUAL_INT(#{k}, #{fn}()); }\n" }
+
+        write( 'src/drivers/foo.h', header.( 1 ) )
+        write( 'src/drivers/bar.h', bar + "#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n#include \"drivers/mock_bar.h\"\n" + call.( 'bar_one', 1 ) )
+        configure( ['src/**'], :mocks, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/drivers/foo.h', header.( 2 ) )
+        write( 'src/drivers/bar.h', bar + "int bar_more(void);\n#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n#include \"drivers/mock_bar.h\"\n" + call.( 'bar_two', 2 ) )
+        build_passes
+      end
+    end
+  end
+
   # FFF replaces CMock, writing a different file from the same configuration
   it "regenerates a mock when the FFF plugin is turned on or off" do
     in_project do

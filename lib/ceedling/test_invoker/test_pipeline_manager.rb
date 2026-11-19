@@ -167,6 +167,13 @@ class TestPipelineManager
             body: ->(s) { @test_build_setup.stage_ingest_configurations(s) }
       ),
 
+      # Transform 1: Set header copies aside while stage 4 preprocesses each test through its
+      # mock root. Transform 4 puts back those a current mock writes.
+      stage(transform: true,
+            condition: ->(s) { use_preprocessing.call(s) && use_mocks.call(s) },
+            body: ->(s) { @test_build_executor.stage_hold_header_copies(s) }
+      ),
+
       # Stage 4
       stage("Collecting More Test Context",
             condition: use_preprocessing,
@@ -179,7 +186,7 @@ class TestPipelineManager
             body: ->(s) { @test_build_planner.stage_determine_files(s) }
       ),
 
-      # Transform 1: Prepare partials parallel processing
+      # Transform 2: Prepare partials parallel processing
       stage(transform: true,
             condition: use_partials,
             body: ->(s) { @test_build_planner.stage_flatten_partials_lists(s) }
@@ -209,10 +216,18 @@ class TestPipelineManager
             body: ->(s) { @partials_manager.stage_generate_partials(s) }
       ),
 
-      # Transform 2: Prepare mocks for parallel processing
+      # Transform 3: Prepare mocks for parallel processing
       stage(transform: true,
             condition: use_mocks,
             body: ->(s) { @test_build_planner.stage_flatten_mocks_list(s) }
+      ),
+
+      # Transform 4: Put back the header copies a current mock writes and prune the rest, before
+      # mock preprocessing searches the mock root. Runs when this run has no mocks too, since a
+      # test's mock root stays on its search path.
+      stage(transform: true,
+            condition: use_mocks,
+            body: ->(s) { @test_build_executor.stage_prune_header_copies(s) }
       ),
 
       # Stage 9 — a Partial mock needs no preprocessing, so Partial mocks alone leave it empty.
@@ -257,7 +272,7 @@ class TestPipelineManager
             body: ->(s) { @test_build_planner.stage_determine_artifacts(s) }
       ),
 
-      # Transform 3: Prepare objects for parallel processing — skipped under
+      # Transform 5: Prepare objects for parallel processing — skipped under
       # :mocking or :test_runner.
       stage(transform: true,
             condition: ->(s) { not_mocking.call(s) && not_test_runner.call(s) },
