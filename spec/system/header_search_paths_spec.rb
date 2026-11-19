@@ -750,6 +750,24 @@ ceedling_system_tests do
       end
     end
 
+    # CMock's own #include text reaches only its copy where a search path lists only the header's
+    # own directory. Stage 4 reads a stand-in for the mock while its copy is set aside.
+    [:tests, :all].each do |preprocessor|
+      it "collects a rebuilt test's #includes through a mock whose header only its copy reaches by CMock's text under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', "#ifndef FOO_H\n#define FOO_H\n#define FOO_K 1\nstatic inline int foo_peek(void) { return 7; }\nint foo_read(void);\n#endif\n" )
+          test_file = HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n#if FOO_K == 2\nTEST_SOURCE_FILE(\"nothere.c\")\n#endif\n" \
+                      "void test_r(void) { foo_read_ExpectAndReturn(3); TEST_ASSERT_EQUAL_INT(3, foo_read()); }\n"
+          write( 'test/test_c.c', test_file )
+          configure( ['src/drivers/**'], preprocessor, { :cmock => { :treat_inlines => :include } } )
+          build_passes
+
+          write( 'test/test_c.c', test_file + "// edited\n" )
+          expect(build_passes).to_not include( 'Failed to generate directive-only' )
+        end
+      end
+    end
+
     # A mocked header decides which other mocks the test needs, as stage 4 reads it
     it "sees an edit to a mocked header that decides the test's other mocks under :use_test_preprocessor all" do
       in_project do

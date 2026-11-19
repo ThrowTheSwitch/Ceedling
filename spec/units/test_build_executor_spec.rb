@@ -2037,6 +2037,7 @@ describe TestBuildExecutor do
       allow(@file_wrapper).to receive(:rm_f)
       allow(@file_wrapper).to receive(:mv)
       allow(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/a_test/**/*.held' ).and_return( [] )
+      allow(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/a_test/**/*.held_mock' ).and_return( [] )
 
       @root     = 'build/test/mocks/a_test'
       @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :paths => { :mocks => @root } )
@@ -2056,6 +2057,21 @@ describe TestBuildExecutor do
 
     def held(*paths)
       allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.held" ).and_return( paths.map { |path| File.join( @root, path ) } )
+    end
+
+    def held_mocks(*paths)
+      allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.held_mock" ).and_return( paths.map { |path| File.join( @root, path ) } )
+    end
+
+    # No build removes a mock, so a copy is always beside its mock
+    it "puts back every mock set aside before stage 4, current or not" do
+      listing()
+      held_mocks( 'drivers/Mockbar.h.held_mock', 'drivers/Mockfoo.h.held_mock' )
+
+      expect(@file_wrapper).to receive(:mv).with( "#{@root}/drivers/Mockbar.h.held_mock", "#{@root}/drivers/Mockbar.h" )
+      expect(@file_wrapper).to receive(:mv).with( "#{@root}/drivers/Mockfoo.h.held_mock", "#{@root}/drivers/Mockfoo.h" )
+
+      @executor.stage_prune_header_copies( @state )
     end
 
     it "puts back a copy set aside before stage 4 that a current mock writes" do
@@ -2176,10 +2192,13 @@ describe TestBuildExecutor do
       allow(@file_wrapper).to receive(:directory_listing).with( "#{@root}/**/*.h" ).and_return( paths.map { |path| File.join( @root, path ) } )
     end
 
-    it "sets aside each copy beside its mock under a name no search finds" do
+    # Stage 4 places a stand-in where the mock was, which includes the real header by a text
+    # that reaches it
+    it "sets aside each copy and the mock beside it under names no search finds" do
       listing( 'drivers/mock_bar.h', 'drivers/bar.h', 'drivers/notes.h' )
 
       expect(@file_wrapper).to receive(:mv).with( "#{@root}/drivers/bar.h", "#{@root}/drivers/bar.h.held" )
+      expect(@file_wrapper).to receive(:mv).with( "#{@root}/drivers/mock_bar.h", "#{@root}/drivers/mock_bar.h.held_mock" )
       expect(@file_wrapper).to_not receive(:mv).with( "#{@root}/drivers/notes.h", anything )
 
       @executor.stage_hold_header_copies( @state )
