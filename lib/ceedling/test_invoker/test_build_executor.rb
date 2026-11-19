@@ -34,7 +34,8 @@ class TestBuildExecutor
     :test_substitutions,
     :build_step_doctor,
     :library_resolver,
-    :mock_locator
+    :mock_locator,
+    :test_search_paths
   )
 
   # The endings a header copy and its mock take while set aside, which no header search finds
@@ -77,10 +78,15 @@ class TestBuildExecutor
   # Stage 9: Preprocess header files to be mocked.
   #
   # A Partial mock is left out. CMock reads its generated interface header itself.
+  #
+  # Each header is read through its test's header paths, as the compiler finds real headers.
+  # The mock root holds CMock's copies of headers, which stage 10 brings up to date only after
+  # this stage. The headers a mocked header's full expansion entered are its dependencies.
   def stage_preprocess_mocks(state)
     directives_only = @configurator.test_build_preprocess_directives_only_available
     extras          = (@configurator.cmock_treat_inlines == :include)
     mocks           = state.mocks_list.reject { |mock| mock.details.partial }
+    header_paths    = test_header_paths( mocks )
     skipped         = 0
 
     # Each remaining mock's target is registered and its staleness settled first. That
@@ -97,7 +103,7 @@ class TestBuildExecutor
         meta:  {
           flags:                     testable.preprocess_flags,
           defines:                   testable.preprocess_defines,
-          search_paths:              testable.search_paths,
+          search_paths:              header_paths[testable.name],
           extras:                    extras,
           tools:                     [
             @configurator.tools_test_bare_includes_preprocessor,
@@ -107,6 +113,10 @@ class TestBuildExecutor
           preprocess_force_fallback: @configurator.test_build_preprocess_force_fallback
         }
       )
+
+      # The headers the previous run's expansion entered, so an edit to one makes the target stale
+      expansion = full_expansion( mock )
+      register_preprocessed_dependencies( target, expansion ) if @file_wrapper.exist?( expansion )
 
       mock.preprocessed_target = target
       mock.stale               = @dependinator.stale?( target )
@@ -137,7 +147,7 @@ class TestBuildExecutor
         filepath:      filepath,
         test:          name,
         flags:         testable.preprocess_flags,
-        include_paths: testable.search_paths,
+        include_paths: header_paths[name],
         vendor_paths:  vendor_search_paths(),
         defines:       testable.preprocess_defines
       }
@@ -160,7 +170,7 @@ class TestBuildExecutor
         directives_only_filepath: directives_only_filepath,
         fallback:                 directives_only_fallback?( directives_only, directives_only_filepath ),
         flags:                    testable.preprocess_flags,
-        include_paths:            testable.search_paths,
+        include_paths:            header_paths[testable.name],
         vendor_paths:             vendor_search_paths(),
         defines:                  testable.preprocess_defines,
         extras:                   extras,
@@ -169,6 +179,7 @@ class TestBuildExecutor
 
       @preprocessinator.preprocess_mockable_header_file( **arg_hash )
 
+      register_preprocessed_dependencies( mock.preprocessed_target, full_expansion( mock ) )
       @dependinator.mark_fresh( mock.preprocessed_target )
     end
   end
@@ -594,6 +605,18 @@ class TestBuildExecutor
   # The :libraries entries a test links, whatever form each takes
   def test_library_entries()
     return ((@configurator.project_config_hash[:libraries_test] || []) + ((defined? LIBRARIES_SYSTEM) ? LIBRARIES_SYSTEM : [])).flatten
+  end
+
+  # Each test's header paths by its name, composed once for all its mocks
+  def test_header_paths(mocks)
+    paths = {}
+    mocks.each { |mock| paths[mock.testable.name] ||= @test_search_paths.header_paths( mock.testable ) }
+    return paths
+  end
+
+  # Where stage 9 writes a mocked header's full expansion. Its line markers name each file it entered.
+  def full_expansion(mock)
+    return @file_path_utils.form_preprocessed_file_full_expansion_filepath( mock.details.source, mock.testable.name )
   end
 
   # Where CMock under :treat_inlines :include, or an FFF fake, writes a copy of the header it
