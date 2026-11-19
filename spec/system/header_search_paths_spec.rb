@@ -667,6 +667,25 @@ ceedling_system_tests do
         end
       end
     end
+
+    # Mock preprocessing reaches the header through the mock root too
+    it "preprocesses a remaining mock's header with the edited header it includes under :use_test_preprocessor mocks" do
+      in_project do
+        bar  = "#ifndef BAR_H\n#define BAR_H\n#include \"drivers/foo.h\"\n#if FOO_K == 1\nint bar_one(void);\n#else\nint bar_two(void);\n#endif\n"
+        call = ->(fn, k) { "void test_k(void) { #{fn}_ExpectAndReturn(#{k}); TEST_ASSERT_EQUAL_INT(#{k}, #{fn}()); }\n" }
+
+        write( 'src/drivers/foo.h', header.( 1 ) )
+        write( 'src/drivers/bar.h', bar + "#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n#include \"drivers/mock_bar.h\"\n" + call.( 'bar_one', 1 ) )
+        configure( ['src/**'], :mocks, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/drivers/foo.h', header.( 2 ) )
+        write( 'src/drivers/bar.h', bar + "int bar_more(void);\n#endif\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n#include \"drivers/mock_bar.h\"\n" + call.( 'bar_two', 2 ) )
+        build_passes
+      end
+    end
   end
 
   # FFF replaces CMock, writing a different file from the same configuration
