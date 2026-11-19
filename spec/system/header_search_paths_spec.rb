@@ -610,6 +610,38 @@ ceedling_system_tests do
     end
   end
 
+  # A fake of a header's inline function would collide with the header's own definition. Under
+  # :treat_inlines :include a fake includes the header's inline-free copy beside it, as a mock does.
+  describe "an FFF fake under :treat_inlines :include" do
+    header = "#ifndef FOO_H\n#define FOO_H\nstatic inline int foo_peek(void) { return 7; }\nint foo_read(void);\n#endif\n"
+    test   = HEADER_SEARCH_PREAMBLE + "#include \"drivers/mock_foo.h\"\n" \
+             "void test_reads(void) { foo_read_fake.return_val = 3; foo_peek_fake.return_val = 9; " \
+             "TEST_ASSERT_EQUAL_INT(3, foo_read()); TEST_ASSERT_EQUAL_INT(9, foo_peek()); }\n"
+
+    [:none, :mocks].each do |preprocessor|
+      it "fakes a header's inline function under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', header )
+          write( 'test/test_c.c', test )
+
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
+      end
+
+      # A search path listing only the header's own directory reaches it by its filename alone
+      it "fakes the inline function of a header its search path reaches by its filename under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', header )
+          write( 'test/test_c.c', test )
+
+          configure( ['src/drivers/**'], preprocessor, { :cmock => { :treat_inlines => :include }, :plugins => { :enabled => ['fff'] } } )
+          build_passes
+        end
+      end
+    end
+  end
+
   # FFF replaces CMock, writing a different file from the same configuration
   it "regenerates a mock when the FFF plugin is turned on or off" do
     in_project do
