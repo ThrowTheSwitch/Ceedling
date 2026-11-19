@@ -668,6 +668,27 @@ ceedling_system_tests do
       end
     end
 
+    # A header named with the mock prefix is reached through another header, since the test's
+    # own #include of it would name a mock
+    it "sees an edit to a header whose name starts with the mock prefix" do
+      in_project do
+        motor = ->(k) { "#ifndef MOTOR_H\n#define MOTOR_H\n#define MOTOR_K #{k}\nint motor_read(void);\n#endif\n" }
+
+        write( 'src/drivers/motor.h', motor.( 1 ) )
+        write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+        write( 'src/app/wrap.h', "#include \"drivers/motor.h\"\n" )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/mmotor.h\"\n#include \"drivers/mbar.h\"\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(1, MOTOR_K); }\n" )
+        configure( ['src/**'], :none, { :cmock => { :mock_prefix => 'm', :treat_inlines => :include } } )
+        build_passes
+
+        write( 'src/drivers/motor.h', motor.( 2 ) )
+        write( 'test/test_c.c', HEADER_SEARCH_PREAMBLE + "#include \"app/wrap.h\"\n#include \"drivers/mbar.h\"\n" \
+                                "void test_k(void) { TEST_ASSERT_EQUAL_INT(2, MOTOR_K); }\n" )
+        build_passes
+      end
+    end
+
     # Mock preprocessing reaches the header through the mock root too
     it "preprocesses a remaining mock's header with the edited header it includes under :use_test_preprocessor mocks" do
       in_project do

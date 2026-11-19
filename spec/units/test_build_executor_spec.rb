@@ -1990,6 +1990,7 @@ describe TestBuildExecutor do
   context "#stage_prune_header_copies" do
     before(:each) do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'Mock' )
+      allow(@configurator).to receive(:cmock_mock_suffix).and_return( '' )
       allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
       allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( '.h' ) )
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c'] )
@@ -2004,10 +2005,10 @@ describe TestBuildExecutor do
       @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :paths => { :mocks => @root } )
       bar = TestInvokerTypes::MockWork.new(
         :details  => TestInvokerTypes::MockDetails.new(
-          :source => 'src/drivers/bar.h', :path => 'drivers', :input => 'src/drivers/bar.h', :name => 'MockBar'
+          :source => 'src/drivers/bar.h', :path => 'drivers', :input => 'src/drivers/bar.h', :name => 'Mockbar'
         ),
         :testable => @testable,
-        :name     => :'drivers/MockBar'
+        :name     => :'drivers/Mockbar'
       )
       @state = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [bar], :lock => Mutex.new, :context => :test, :options => [] )
     end
@@ -2017,16 +2018,16 @@ describe TestBuildExecutor do
     end
 
     it "removes a copy of a header no current mock names" do
-      listing( 'drivers/MockBar.h', 'drivers/bar.h', 'drivers/foo.h' )
+      listing( 'drivers/Mockbar.h', 'drivers/bar.h', 'drivers/Mockfoo.h', 'drivers/foo.h' )
 
       expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h" )
 
       @executor.stage_prune_header_copies( @state )
     end
 
-    # A stand-in, a Partial mock, and a mock no longer generated all carry the mock prefix
-    it "keeps a current mock's copy and every file named with the mock prefix" do
-      listing( 'drivers/MockBar.h', 'drivers/bar.h', 'drivers/MockFoo.h', 'MockPartial_baz.h' )
+    # A stand-in, a Partial mock, and a mock no longer generated have no mock of their own beside them
+    it "keeps a current mock's copy and every header with no mock beside it" do
+      listing( 'drivers/Mockbar.h', 'drivers/bar.h', 'drivers/Mockfoo.h', 'Mockpartial_baz.h', 'drivers/notes.h' )
 
       expect(@file_wrapper).to_not receive(:rm_f)
 
@@ -2036,18 +2037,38 @@ describe TestBuildExecutor do
     # The mock root stays on the test's search path when the test has no mocks left
     it "prunes the mock root of a test with no mocks" do
       @state.mocks_list = []
-      listing( 'drivers/bar.h' )
+      listing( 'drivers/Mockbar.h', 'drivers/bar.h' )
 
       expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/bar.h" )
 
       @executor.stage_prune_header_copies( @state )
     end
 
-    # Nothing tells a copy from a mock named without a prefix
-    it "prunes nothing with an empty mock prefix" do
-      allow(@configurator).to receive(:cmock_mock_prefix).and_return( '' )
+    it "prunes the copy of a header whose name starts with the mock prefix" do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'm' )
+      listing( 'drivers/mmotor.h', 'drivers/motor.h' )
 
-      expect(@file_wrapper).to_not receive(:directory_listing)
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/motor.h" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    it "prunes a copy beside a mock named by a suffix alone" do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( '' )
+      allow(@configurator).to receive(:cmock_mock_suffix).and_return( '_mock' )
+      listing( 'drivers/foo.h', 'drivers/foo_mock.h' )
+
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h" )
+      expect(@file_wrapper).to_not receive(:rm_f).with( "#{@root}/drivers/foo_mock.h" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    # A header can't be its own mock
+    it "prunes nothing named without a prefix or a suffix" do
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return( '' )
+      listing( 'drivers/foo.h' )
+
       expect(@file_wrapper).to_not receive(:rm_f)
 
       @executor.stage_prune_header_copies( @state )
@@ -2056,7 +2077,7 @@ describe TestBuildExecutor do
     # A test this run doesn't build keeps its copies, even below another test's mock root
     it "leaves alone another test's mock root nested below this one" do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c', 'test/a_test/test_x.c'] )
-      listing( 'drivers/foo.h', 'test_x/drivers/foo.h' )
+      listing( 'drivers/Mockfoo.h', 'drivers/foo.h', 'test_x/drivers/Mockfoo.h', 'test_x/drivers/foo.h' )
 
       expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h" )
       expect(@file_wrapper).to_not receive(:rm_f).with( "#{@root}/test_x/drivers/foo.h" )
