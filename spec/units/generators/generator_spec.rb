@@ -47,6 +47,14 @@ describe Generator do
     )
   end
 
+  describe '#mock_generator_name' do
+    it 'names the class that writes each mock' do
+      allow(@generator_mocks).to receive(:generator_name).and_return( 'CMock' )
+
+      expect( @generator.mock_generator_name ).to eq( 'CMock' )
+    end
+  end
+
   describe '#generate_object_file_c' do
     it 'hands the compiler the source itself by default' do
       compile()

@@ -1620,7 +1620,10 @@ describe TestBuildExecutor do
       allow(@configurator).to receive(:project_config_hash).and_return( {} )
       allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock' } )
       allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
+      allow(@generator).to receive(:mock_generator_name).and_return( 'CMock' )
       allow(@file_wrapper).to receive(:mkdir)
+      allow(@file_wrapper).to receive(:exist?).and_return( false )
+      allow(@file_wrapper).to receive(:rm_f)
       # Where a mock's files sit is composed in one shared place, so the stage that
       # compiles a mock and the stage that generates it cannot disagree.
       allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
@@ -1706,6 +1709,74 @@ describe TestBuildExecutor do
       @executor.stage_generate_mocks( @state )
     end
 
+    # CMock's verbosity changes only what it prints, and Ceedling sets it anew for each mock
+    it "leaves CMock's verbosity out of the mock's record" do
+      allow(@configurator).to receive(:get_cmock_config).and_return( { mock_prefix: 'Mock', verbosity: 4 } )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@dependinator).to receive(:register).with( anything, files: anything, meta: hash_including( cmock: { mock_prefix: 'Mock' } ), outputs: anything )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    # A plugin such as FFF can replace CMock, writing a different file from the same configuration
+    it "records which generator writes the mock" do
+      allow(@generator).to receive(:mock_generator_name).and_return( 'FffCMockWrapper' )
+      allow(@dependinator).to receive(:stale?).and_return( false )
+
+      expect(@dependinator).to receive(:register).with( anything, files: anything, meta: hash_including( generator: 'FffCMockWrapper' ), outputs: anything )
+
+      @executor.stage_generate_mocks( @state )
+    end
+
+    # Under :treat_inlines :include CMock writes a copy of the header beside the mock, which a
+    # later generation without it would leave for the mock's #include to reach
+    context "with a copy of the mocked header beside the mock" do
+      before(:each) do
+        allow(@generator).to receive(:generate_mock)
+        allow(@dependinator).to receive(:mark_fresh)
+        @state.mocks_list.first.details.input = 'build/preprocess/Foo.h'
+        allow(@file_wrapper).to receive(:exist?).with( 'build/test/mocks/sub/Foo.h' ).and_return( true )
+      end
+
+      it "removes the copy before generating the mock again" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+
+        expect(@file_wrapper).to receive(:rm_f).with( 'build/test/mocks/sub/Foo.h' ).ordered
+        expect(@generator).to receive(:generate_mock).ordered
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "leaves the copy of a mock that is fresh" do
+        allow(@dependinator).to receive(:stale?).and_return( false )
+
+        expect(@file_wrapper).to_not receive(:rm_f)
+
+        @executor.stage_generate_mocks( @state )
+      end
+
+      it "leaves a Partial mock's files alone, since CMock writes it no copy" do
+        allow(@dependinator).to receive(:stale?).and_return( true )
+        @state.mocks_list.first.details.partial = true
+
+        expect(@file_wrapper).to_not receive(:rm_f)
+
+        @executor.stage_generate_mocks( @state )
+      end
+    end
+
+    it "never removes the mock's own header as a copy, as an empty mock prefix would name it" do
+      allow(@dependinator).to receive(:stale?).and_return( true )
+      allow(@generator).to receive(:generate_mock)
+      allow(@dependinator).to receive(:mark_fresh)
+      allow(@file_wrapper).to receive(:exist?).and_return( true )
+
+      expect(@file_wrapper).to_not receive(:rm_f)
+
+      @executor.stage_generate_mocks( @state )
+    end
+
     it "generates an ordinary mock with no configuration override" do
       allow(@dependinator).to receive(:stale?).and_return( true )
       allow(@dependinator).to receive(:mark_fresh)
@@ -1778,7 +1849,7 @@ describe TestBuildExecutor do
         expect(@dependinator).to receive(:register).with(
           'build/test/mocks/drivers/MockFoo.c',
           files:   anything,
-          meta:    { cmock: { mock_prefix: 'Mock' }, folder: 'drivers', header_include: 'foo.h' },
+          meta:    { cmock: { mock_prefix: 'Mock' }, generator: 'CMock', folder: 'drivers', header_include: 'foo.h' },
           outputs: anything
         )
 
@@ -1868,7 +1939,7 @@ describe TestBuildExecutor do
         allow(@generator).to receive(:generate_mock)
 
         expect(@dependinator).to receive(:register)
-          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, folder: 'sub' }, outputs: anything )
+          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, generator: 'CMock', folder: 'sub' }, outputs: anything )
 
         @executor.stage_generate_mocks( @state )
       end
@@ -1879,7 +1950,7 @@ describe TestBuildExecutor do
         allow(@generator).to receive(:generate_mock)
 
         expect(@dependinator).to receive(:register)
-          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, folder: nil }, outputs: anything )
+          .with( 'build/test/mocks/sub/MockFoo.c', files: anything, meta: { cmock: { mock_prefix: 'Mock' }, generator: 'CMock', folder: nil }, outputs: anything )
 
         @executor.stage_generate_mocks( @state )
       end
