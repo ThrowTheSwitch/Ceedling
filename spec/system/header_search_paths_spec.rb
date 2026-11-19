@@ -914,6 +914,60 @@ ceedling_system_tests do
     end
   end
 
+  # Mock preprocessing reads a mocked header's own #includes as the compiler does, through the
+  # project's headers. An edit to one of those headers alone changes what the mock declares.
+  describe "a header a mocked header includes" do
+    foo  = ->(k) { "#ifndef FOO_H\n#define FOO_H\n#define FOO_K #{k}\nint foo_read(void);\n#endif\n" }
+    bar  = ->(extra) { "#ifndef BAR_H\n#define BAR_H\n#include \"drivers/foo.h\"\n#if FOO_K == 1\nint bar_one(void);\n#else\nint bar_two(void);\n#endif\n" \
+                       "#{extra}#endif\n" }
+    test = ->(mocks, fn, k) { HEADER_SEARCH_PREAMBLE + mocks.map { |name| "#include \"drivers/#{name}\"\n" }.join +
+                              "void test_k(void) { #{fn}_ExpectAndReturn(#{k}); TEST_ASSERT_EQUAL_INT(#{k}, #{fn}()); }\n" }
+
+    # A rebuild with nothing changed preprocesses and generates no mock
+    def rebuild_skips_mocks(count)
+      output = build_passes
+      expect(output).to_not include( 'Generating mock for' )
+      expect(output).to include( "Skipping mock preprocessing for #{count} #{count == 1 ? 'mock' : 'mocks'} (nothing changed)" )
+    end
+
+    [:mocks, :all].product( [:include, :exclude] ).each do |preprocessor, treat_inlines|
+      it "regenerates a mock after an edit to that header alone under :use_test_preprocessor #{preprocessor} and :treat_inlines #{treat_inlines}" do
+        in_project do
+          write( 'src/drivers/foo.h', foo.( 1 ) )
+          write( 'src/drivers/bar.h', bar.( '' ) )
+          write( 'test/test_c.c', test.( ['mock_bar.h'], 'bar_one', 1 ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => treat_inlines } } )
+          build_passes
+
+          write( 'src/drivers/foo.h', foo.( 2 ) )
+          write( 'test/test_c.c', test.( ['mock_bar.h'], 'bar_two', 2 ) )
+          build_passes
+          rebuild_skips_mocks( 1 )
+        end
+      end
+    end
+
+    # CMock writes its copy of a mocked header beside the mock. A mock generated after stage 9
+    # puts its copy in step with the header.
+    [:mocks, :all].each do |preprocessor|
+      it "regenerates a mock from that header, never another mock's copy of it, under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/drivers/foo.h', foo.( 1 ) )
+          write( 'src/drivers/bar.h', bar.( '' ) )
+          write( 'test/test_c.c', test.( ['mock_foo.h', 'mock_bar.h'], 'bar_one', 1 ) )
+          configure( ['src/**'], preprocessor, { :cmock => { :treat_inlines => :include } } )
+          build_passes
+
+          write( 'src/drivers/foo.h', foo.( 2 ) )
+          write( 'src/drivers/bar.h', bar.( "int bar_extra(void);\n" ) )
+          write( 'test/test_c.c', test.( ['mock_foo.h', 'mock_bar.h'], 'bar_two', 2 ) )
+          build_passes
+          rebuild_skips_mocks( 2 )
+        end
+      end
+    end
+  end
+
   # FFF replaces CMock, writing a different file from the same configuration
   it "regenerates a mock when the FFF plugin is turned on or off" do
     in_project do
