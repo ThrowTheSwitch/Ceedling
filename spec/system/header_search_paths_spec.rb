@@ -649,8 +649,9 @@ ceedling_system_tests do
     test   = ->(k, includes) { HEADER_SEARCH_PREAMBLE + includes.map { |name| "#include \"#{name}\"\n" }.join +
                                 "void test_k(void) { TEST_ASSERT_EQUAL_INT(#{k}, FOO_K); }\n" }
 
-    [[:none, [], ['drivers/mock_bar.h']], [:mocks, [], ['drivers/mock_bar.h']],
-     [:none, [], []], [:none, ['fff'], ['drivers/mock_bar.h']]].each do |preprocessor, plugins, kept|
+    [[:none, [], ['drivers/mock_bar.h']], [:mocks, [], ['drivers/mock_bar.h']], [:tests, [], ['drivers/mock_bar.h']],
+     [:all, [], ['drivers/mock_bar.h']], [:none, [], []], [:all, [], []],
+     [:none, ['fff'], ['drivers/mock_bar.h']], [:all, ['fff'], ['drivers/mock_bar.h']]].each do |preprocessor, plugins, kept|
       remaining = kept.empty? ? 'no mock' : (plugins.empty? ? 'another mock' : 'another FFF fake')
 
       it "sees an edit to the header beside #{remaining} under :use_test_preprocessor #{preprocessor}" do
@@ -665,6 +666,21 @@ ceedling_system_tests do
           write( 'test/test_c.c', test.( 2, ['drivers/foo.h'] + kept ) )
           build_passes
         end
+      end
+    end
+
+    # Stage 4 sees the test's #includes before any mock is planned. A rebuild generates nothing.
+    it "generates no mock again on a rebuild after the test stops mocking a header under :use_test_preprocessor all" do
+      in_project do
+        write( 'src/drivers/foo.h', header.( 1 ) )
+        write( 'src/drivers/bar.h', "int bar_read(void);\n" )
+        write( 'test/test_c.c', test.( 1, ['drivers/mock_foo.h', 'drivers/mock_bar.h'] ) )
+        configure( ['src/**'], :all, { :cmock => { :treat_inlines => :include } } )
+        build_passes
+
+        write( 'test/test_c.c', test.( 1, ['drivers/foo.h', 'drivers/mock_bar.h'] ) )
+        build_passes
+        expect(build_passes).to_not include( 'Generating mock for' )
       end
     end
 
