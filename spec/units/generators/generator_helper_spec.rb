@@ -166,7 +166,7 @@ describe GeneratorHelper do
 
       expect(notice( :gdb )).to start_with(
         "Test executable `test_a.out` seems to have crashed, likely terminating early due to a bad code reference. " \
-        "It produced some output but contains no final test result counts.\n\nPOSSIBLE CAUSES:\n"
+        "It produced some output but no final test result counts.\n\nPOSSIBLE CAUSES:\n"
       )
     end
 

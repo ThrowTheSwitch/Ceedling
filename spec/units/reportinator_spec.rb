@@ -305,6 +305,12 @@ describe Reportinator do
       expect( text ).to eq( "Lead.\n\nClosing.\n" )
     end
 
+    it 'keeps one blank line between blocks when a lead or closing ends in several newlines' do
+      text = described_class.generate_guidance( lead: "Lead.\n\n", options: ['x'], closing: "Closing.\n\n" )
+
+      expect( text ).to eq( "Lead.\n\nx\n\nClosing.\n" )
+    end
+
     it 'never wraps or indents a long item' do
       item = 'word ' * 40
       text = described_class.generate_guidance( options: [item.strip, 'Short.'] )

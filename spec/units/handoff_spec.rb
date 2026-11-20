@@ -11,6 +11,7 @@ require 'fileutils'
 require 'rbconfig'
 require 'ceedling/handoff'
 require 'ceedling/constants'
+require 'ceedling/reportinator'
 require 'app_cfg'
 
 describe Handoff do
@@ -72,6 +73,15 @@ describe Handoff do
         expect(described_class.received_message( {launcher: launcher.root, target: own.root}, own: own )).to eq(
           "Ceedling 1.2.2 at #{own.root}/ is now running, launched from Ceedling 1.2.3 at #{launcher.root}/."
         )
+      end
+    end
+  end
+
+  # Handoff can't load Reportinator, so it keeps its own copy of the guidance layout
+  describe '.guidance' do
+    it 'lays out a lead and options as Reportinator.generate_guidance does' do
+      [['Only option.'], ['First.', 'Second.', 'Third.']].each do |options|
+        expect( described_class.send( :guidance, 'Lead.', options ) ).to eq( Reportinator.generate_guidance( lead: 'Lead.', options: options ) )
       end
     end
   end
