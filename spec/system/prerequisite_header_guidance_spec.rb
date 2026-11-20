@@ -90,7 +90,7 @@ ceedling_system_tests do
       expect(@c.last_exit_status).not_to eq(0), output
       expect(output).to include( "an #error directive in 'rtos/include/task.h'" )
       expect(output).to include( "so the header's preprocessing sees 'FreeRTOS.h' first." )
-      expect(output).to match( /Add 'FreeRTOS\.h' to :cmock\s+:includes_h_pre_orig_header, so the generated mock includes it before the header\./ )
+      expect(output).to match( /Add 'FreeRTOS\.h' to :cmock\s*\S*\s*:includes_h_pre_orig_header, so the generated mock includes it before the header\./ )
     end
   end
 
@@ -102,7 +102,7 @@ ceedling_system_tests do
 
       expect(@c.last_exit_status).not_to eq(0), output
       expect(output).to include( "while compiling the generated mock 'mock_task.c'" )
-      expect(output).to match( /Add 'FreeRTOS\.h' to :cmock\s+:includes_h_pre_orig_header, so the generated mock includes it before the header\./ )
+      expect(output).to match( /Add 'FreeRTOS\.h' to :cmock\s*\S*\s*:includes_h_pre_orig_header, so the generated mock includes it before the header\./ )
     end
   end
 
