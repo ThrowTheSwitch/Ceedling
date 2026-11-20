@@ -81,7 +81,7 @@ class PrerequisiteHeaderSpecialist
       lead:    "The preprocessor output appears to report an #error directive in '#{guarded}', which may guard it against being included before #{header}.",
       causes:  [REFUSAL_CAUSE, MOCK_PREPROCESSING_CAUSE, "Neither that preprocessing nor the compilation of the generated mock sees the test file's #include directives, so including #{header} in the test doesn't help."],
       notes:   ['The build needs both options below.'],
-      options: [flag_option( prerequisite, header ), mock_option( header )]
+      options: [flag_option( prerequisite ), mock_option( prerequisite )]
     )
   end
 
@@ -93,17 +93,20 @@ class PrerequisiteHeaderSpecialist
                "The directive may guard the header against being included before #{header}.",
       causes:  [REFUSAL_CAUSE, "A generated mock includes its header directly, without the test file's #include directives."],
       notes:   ["Macros the prerequisite defines and the header's declarations use may also need listing in :cmock ↳ :strippables."],
-      options: [mock_option( header )]
+      options: [mock_option( prerequisite )]
     )
   end
 
-  def flag_option(prerequisite, header)
-    flag = prerequisite ? "`-include #{prerequisite}`" : '`-include` with a prerequisite header'
+  # With no prerequisite named, an option says what to fill in
+  def flag_option(prerequisite)
+    return "Add `-include` and the prerequisite header's name to :flags ↳ :test ↳ :preprocess, so the header's preprocessing sees the prerequisite first." unless prerequisite
 
-    return "Add #{flag} to :flags ↳ :test ↳ :preprocess, so the header's preprocessing sees #{header} first."
+    return "Add `-include #{prerequisite}` to :flags ↳ :test ↳ :preprocess, so the header's preprocessing sees '#{prerequisite}' first."
   end
 
-  def mock_option(header)
+  def mock_option(prerequisite)
+    header = prerequisite ? "'#{prerequisite}'" : "the prerequisite header's name"
+
     return "Add #{header} to :cmock ↳ :includes_h_pre_orig_header, so the generated mock includes it before the header."
   end
 
