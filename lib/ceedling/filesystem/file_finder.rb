@@ -8,6 +8,7 @@
 require 'rubygems'
 require 'rake' # for adding ext() method to string
 require 'ceedling/exceptions'
+require 'ceedling/reportinator'
 require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/path_mirror'
 require 'ceedling/filesystem/file_path_utils'
@@ -287,17 +288,18 @@ class FileFinder
       @file_path_utils.module_from_partial_filename( candidate.delete_prefix( root + '/' ) )
     end.compact.uniq.sort
 
-    message = "Ambiguous Partial module reference '#{_module}' found.\n" \
-              "  Include more trailing path to distinguish among:\n" \
-              "    #{modules.join(",\n    ")}"
-
     # The hint only helps when a candidate actually has a directory to name.
     hint = modules.find { |candidate| File.dirname( candidate ) != '.' }
 
-    unless hint.nil?
-      message += "\n  Name one with a directory, " \
-                 "e.g. TEST_PARTIAL_ALL_MODULE_AT(#{File.dirname( hint )}, #{File.basename( hint )})"
-    end
+    message = Reportinator.generate_guidance(
+      lead:     "Ambiguous Partial module reference '#{_module}' found.",
+      notes:    modules,
+      options:  [
+        'Include more trailing path to distinguish among them.',
+        ("Name one with a directory, e.g. TEST_PARTIAL_ALL_MODULE_AT(#{File.dirname( hint )}, #{File.basename( hint )})." unless hint.nil?)
+      ],
+      headings: { notes: 'CANDIDATES' }
+    )
 
     raise CeedlingException.new( message )
   end

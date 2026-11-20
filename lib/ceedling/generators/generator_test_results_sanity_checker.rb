@@ -9,9 +9,18 @@ require 'rubygems'
 require 'rake' # for ext() method
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/reportinator'
 
 
 class GeneratorTestResultsSanityChecker
+
+  # What an interrupted test execution can come from
+  SANITY_CHECK_CAUSES = [
+    'Your test + source dereferenced a null pointer.',
+    'Your test + source indexed past the end of a buffer.',
+    'Your test + source committed a memory access violation.',
+    'Your test fixture produced an exit code of 0 despite execution ending prematurely.'
+  ].freeze
 
   constructor :configurator, :loginator
   
@@ -56,13 +65,12 @@ class GeneratorTestResultsSanityChecker
   
   def sanity_check_warning(file, message)
     unless defined?(CEEDLING_IGNORE_SANITY_CHECK)
-      notice = "Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable.primary)}' finds that #{message}\n" +
-               "  Possible causes:\n" +
-               "    1. Your test + source dereferenced a null pointer.\n" +
-               "    2. Your test + source indexed past the end of a buffer.\n" +
-               "    3. Your test + source committed a memory access violation.\n" +
-               "    4. Your test fixture produced an exit code of 0 despite execution ending prematurely.\n" +
-               "  Sanity check failures of test results are usually a symptom of interrupted test execution.\n\n"      
+      notice = Reportinator.generate_guidance(
+        lead:     "Internal sanity check for test fixture '#{file.ext(@configurator.extension_executable.primary)}' finds that #{message}",
+        causes:   SANITY_CHECK_CAUSES,
+        notes:    ['Sanity check failures of test results are usually a symptom of interrupted test execution.'],
+        headings: { causes: 'POSSIBLE CAUSES' }
+      )
       raise CeedlingException.new( notice )
     end
   end

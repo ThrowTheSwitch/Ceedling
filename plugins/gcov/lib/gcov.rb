@@ -8,6 +8,7 @@
 require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/reportinator'
 require 'gcov_constants'
 require 'gcov_types'
 require 'gcov_reportinator'
@@ -219,14 +220,19 @@ class Gcov < Plugin
           # Log actionable guidance then re-raise immediately (omitted when `guidance` is false) --
           # left un-marked-fresh, so the next run retries this same source.
           if guidance
-            notice = "Compiling untested '#{filename}' with coverage failed.\n" \
-                     "NOTE: Compilation of an untested source for coverage (:gcov ↳ :untested_sources ➡️ :compile) " \
-                     "may require defines, flags, or platform symbols & headers not present in the test suite build.\n" \
-                     "OPTIONS:\n" \
-                     "  1) Provide needed compilation essentials using Ceedling features and/or code stand-ins.\n" \
-                     "  2) Switch :gcov ↳ :untested_sources to :list to log untested files without compiling them.\n" \
-                     "  3) Switch :gcov ↳ :untested_sources to :ignore to disable this feature entirely.\n" \
-                     "See Gcov plugin docs for more explanation and recommendations.\n\n"
+            notice = Reportinator.generate_guidance(
+              lead:    "Compiling untested '#{filename}' with coverage failed.",
+              notes:   [
+                "Compilation of an untested source for coverage (:gcov ↳ :untested_sources ➡️ :compile) " \
+                "may require defines, flags, or platform symbols & headers not present in the test suite build."
+              ],
+              options: [
+                'Provide needed compilation essentials using Ceedling features and/or code stand-ins.',
+                'Switch :gcov ↳ :untested_sources to :list to log untested files without compiling them.',
+                'Switch :gcov ↳ :untested_sources to :ignore to disable this feature entirely.'
+              ],
+              closing: 'See the Gcov plugin docs for more explanation and recommendations.'
+            )
             @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
           end
           raise ex

@@ -9,6 +9,7 @@ require 'csv'
 require 'ceedling/plugins/plugin'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/reportinator'
 require 'bullseye_constants'
 
 # Integrates Bullseye code coverage into Ceedling test builds. Coverage instrumentation
@@ -286,13 +287,19 @@ class Bullseye < Plugin
           dependinator.mark_fresh( object )
         rescue ShellException => ex
           if guidance
-            notice = "Compiling untested '#{filename}' with coverage failed.\n" \
-                     "NOTE: Compilation of an untested source for coverage (:bullseye ↳ :untested_sources ➡️ :compile) " \
-                     "may require defines, flags, or platform symbols & headers not present in the test suite build.\n" \
-                     "OPTIONS:\n" \
-                     "  1) Provide needed compilation essentials using Ceedling features and/or code stand-ins.\n" \
-                     "  2) Switch :bullseye ↳ :untested_sources to :list to log untested files without compiling them.\n" \
-                     "  3) Switch :bullseye ↳ :untested_sources to :ignore to disable this feature entirely.\n\n"
+            notice = Reportinator.generate_guidance(
+              lead:    "Compiling untested '#{filename}' with coverage failed.",
+              notes:   [
+                "Compilation of an untested source for coverage (:bullseye ↳ :untested_sources ➡️ :compile) " \
+                "may require defines, flags, or platform symbols & headers not present in the test suite build."
+              ],
+              options: [
+                'Provide needed compilation essentials using Ceedling features and/or code stand-ins.',
+                'Switch :bullseye ↳ :untested_sources to :list to log untested files without compiling them.',
+                'Switch :bullseye ↳ :untested_sources to :ignore to disable this feature entirely.'
+              ],
+              closing: 'See the Bullseye plugin docs for more explanation and recommendations.'
+            )
             @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
           end
           raise ex

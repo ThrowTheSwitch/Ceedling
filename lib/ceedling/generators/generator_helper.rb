@@ -7,9 +7,18 @@
 
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/reportinator'
 
 
 class GeneratorHelper
+
+  # What a test executable's crash can come from
+  CRASH_CAUSES = [
+    'Bad memory access',
+    'Stack overflow',
+    'Heap error',
+    'Bad branch in source or test code'
+  ].freeze
 
   constructor :loginator
 
@@ -29,12 +38,12 @@ class GeneratorHelper
   end
 
   def log_test_results_crash(executable, shell_result, backtrace, gdb_unavailable: false)
-    runner = File.basename(executable)
-
-    notice  = "Test executable `#{runner}` seems to have crashed -- likely terminating early due to a bad code reference.\n"
-    notice += crash_output_notice( shell_result[:output] )
-    notice += "> Causes can include: bad memory access, stack overflow, heap error, or bad branch in source or test code.\n"
-    notice += backtrace_advice( backtrace, gdb_unavailable )
+    notice = Reportinator.generate_guidance(
+      lead:     crash_lead( File.basename( executable ), shell_result[:output] ),
+      causes:   CRASH_CAUSES,
+      closing:  backtrace_advice( backtrace, gdb_unavailable ),
+      headings: { causes: 'POSSIBLE CAUSES' }
+    )
 
     @loginator.log( notice, Verbosity::ERRORS, LogLabels::CRASH )
   end
@@ -87,20 +96,26 @@ class GeneratorHelper
     return true
   end
 
-  # Mirrors the style of the generic tool_executor failure output
+  # The crash and what the executable's output shows of it
+  def crash_lead(runner, output)
+    lead = "Test executable `#{runner}` seems to have crashed, likely terminating early due to a bad code reference."
+    return [lead, crash_output_notice( output )].reject( &:empty? ).join( ' ' )
+  end
+
+  # What the crashed executable's output shows, as a sentence, or '' when it holds the counts
   def crash_output_notice(output)
-    return "> Produced no output (including no final test result counts).\n" if output.nil? || output.strip.empty?
-    return "> Produced some output but contains no final test result counts.\n" if (output =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?
+    return 'It produced no output, including no final test result counts.' if output.nil? || output.strip.empty?
+    return 'It produced some output but contains no final test result counts.' if (output =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?
 
     return ''
   end
 
   # No :gdb advice where :gdb can't be used
   def backtrace_advice(backtrace, gdb_unavailable)
-    return "> Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).\n" if backtrace == :none
-    return '' unless backtrace == :simple && !gdb_unavailable
+    return 'Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).' if backtrace == :none
+    return nil unless backtrace == :simple && !gdb_unavailable
 
-    return "> Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).\n"
+    return 'Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).'
   end
 
 end
