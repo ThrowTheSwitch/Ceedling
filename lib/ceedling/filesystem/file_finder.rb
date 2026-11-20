@@ -109,6 +109,11 @@ class FileFinder
     #       Some legacy files can include naming conventions like <name>.##.<ext> for versioning.
     #       If we use .ext() below we'll clobber the dotted portion of the filename
 
+    # The name and the files a mock or Partial branch below searched. A hand-written source may
+    # take a generated file's name, so a miss there falls through to the build's sources. A miss
+    # of both complains of the generated file.
+    generated = nil
+
     # Generated test runners -- searched for in the runners directory of this test's name,
     # so two same-named tests' runners are never mistaken for each other
     if (!release) and
@@ -144,7 +149,8 @@ class FileFinder
       # anywhere below the root.
       exact      = ProjectPaths.segments( File.join( mocks_root, _source_file ) )
       found_file = collection.find { |file| ProjectPaths.segments( file ) == exact }
-      found_file ||= @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
+      found_file ||= @file_finder_helper.find_file_in_collection( _source_file, collection, :ignore )
+      generated  = [_source_file, collection]
 
     # Generated partials -- same per-test scoping rationale as mocks, above
     elsif !partials_root.nil? and
@@ -164,8 +170,8 @@ class FileFinder
       # module names the test author wrote instead of reworded by exception.
       raise_ambiguous_partial!( _source_file, collection, partials_root )
 
-      found_file =
-        @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
+      found_file = @file_finder_helper.find_file_in_collection( _source_file, collection, :ignore )
+      generated  = [_source_file, collection]
 
     # Vendor framework sources (unity.c, cmock.c, cexception.c, etc.)
     # Note: Taking a small chance by mixing test and release frameworks without smart checks on test/release build
@@ -190,8 +196,9 @@ class FileFinder
     end
 
     #
-    # Above we can confidently rely on the complain parameter passed to file_finder_helper because
-    # we know the specific type of file being searched for.
+    # Above, runners and vendor sources rely on the complain parameter passed to file_finder_helper,
+    # since the kind of file sought is certain. Mocks and Partials complain only once the lookup
+    # below misses too.
     #
     # Below we ignore file misses because of lgoical complexities of searching for potentially either
     # assmebly or C files, including C files that may not exist (counterparts to header files by convention).
@@ -206,6 +213,9 @@ class FileFinder
     found_file = find_compiled_input( query_file, release: release, exact: exact )
 
     if found_file.nil?
+      # A generated file's search complains as it would alone, naming the file it sought
+      return @file_finder_helper.find_file_in_collection( *generated, complain ) unless generated.nil?
+
       # Every name actually attempted, in the order tried, so a missing-file complaint
       # names every filename ceedling went looking for.
       tried = @configurator.extension_source.map { |ext| query_file + ext }
