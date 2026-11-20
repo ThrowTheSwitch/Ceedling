@@ -311,8 +311,7 @@ class FileFinder
   # A filepath below no test's own directory, such as a source-tree-relative query from an
   # #include or TEST_SOURCE_FILE(), has no test to recover and gives ''.
   def test_context_of(filepath, context)
-    location = @test_build_layout.locate( filepath, context: context )
-    return location.nil? ? '' : location.name
+    return @test_build_layout.locate( filepath, context: context ) || ''
   end
 
   # A test's runner lives where FilePathUtils#form_test_runners_path puts it. Takes the test

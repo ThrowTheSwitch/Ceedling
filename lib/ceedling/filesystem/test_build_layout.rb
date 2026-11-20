@@ -20,10 +20,6 @@ require 'ceedling/filesystem/project_paths'
 # directories of its name. Those can't collide, so they stay outside this layout.
 class TestBuildLayout
 
-  # A path's place in the layout: the kind of its base, its test's name, and its path below
-  # that test's root
-  Location = Struct.new( :kind, :name, :subpath, keyword_init: true )
-
   # Each kind with a configured base, and the setting that enables it, if any
   CONFIGURED = {
     mocks:               [:cmock_mock_path,                               :project_use_mocks],
@@ -53,7 +49,8 @@ class TestBuildLayout
   end
 
   # A test's own directory of `kind`, or nil for an empty name or a disabled feature. The
-  # root's length is checked here, since every file of the test's own lies below it.
+  # root's length is checked here, as a directory's, since every file of the test's own lies
+  # below it.
   def root(kind, name, context: nil)
     return nil if name.to_s.empty?
 
@@ -61,7 +58,7 @@ class TestBuildLayout
     return nil if base.nil?
 
     path = File.join( base, name.to_s, BuildSubpath::OWN_SEGMENT )
-    @file_wrapper.check_path_length( path, origin: 'TestBuildLayout#root' )
+    @file_wrapper.check_path_length( path, origin: 'TestBuildLayout#root', directory: true )
     return path
   end
 
@@ -79,23 +76,23 @@ class TestBuildLayout
     return [root( :partials, name ), root( :mocks, name )].compact
   end
 
-  # Where `path` lies in the layout, or nil for a path below no test's root. The most
-  # specific base holding the path counts, should one base be configured inside another.
+  # The name of the test whose root holds `path`, or nil for a path below no test's root. The
+  # most specific base holding the path counts, should one base be configured inside another.
   def locate(path, context: nil)
-    held( path, context ).each do |kind, segments|
+    held( path, context ).each do |segments|
       index = segments.index( BuildSubpath::OWN_SEGMENT )
       next if index.nil? or index.zero?
 
-      return Location.new( kind: kind, name: segments.take( index ).join( '/' ), subpath: segments.drop( index + 1 ).join( '/' ) )
+      return segments.take( index ).join( '/' )
     end
 
     return nil
   end
 
-  # The path below a test's root of `kind` that `path` lies at, '' for the root itself, or
-  # nil for a path outside it
-  def subpath(path, kind:, name:, context: nil)
-    root = root( kind, name, context: context )
+  # The path below a test's root of `kind`, a kind with no build context, that `path` lies at,
+  # '' for the root itself, or nil for a path outside it
+  def subpath(path, kind:, name:)
+    root = root( kind, name )
     return nil if root.nil?
 
     return ProjectPaths.subdir_below( root, path )
@@ -103,16 +100,15 @@ class TestBuildLayout
 
   private
 
-  # Each kind whose base holds `path`, with the segments of the path below that base, the
-  # most specific base first
+  # The segments of `path` below each base that holds it, the most specific base first
   def held(path, context)
     found = KINDS.filter_map do |kind|
       base = base( kind, context: context )
       rest = base.nil? ? nil : ProjectPaths.subdir_below( base, path )
-      rest.nil? ? nil : [kind, rest.split( '/' )]
+      rest&.split( '/' )
     end
 
-    return found.sort_by { |_, segments| segments.length }
+    return found.sort_by( &:length )
   end
 
 end
