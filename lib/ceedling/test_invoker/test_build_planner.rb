@@ -169,9 +169,8 @@ class TestBuildPlanner
 
       # A Partial's original never links. Only a build that asks for originals, such as a
       # coverage build, compiles it, since a coverage report reads it.
-      unless state.options.include?( :partial_originals )
-        compilations.delete_if { |source| partials_source_object?( source, testable.partials.configs ) }
-      end
+      originals = compilations.select { |source| partials_source_object?( source, testable.partials.configs ) }
+      compilations -= originals unless state.options.include?( :partial_originals )
 
       # A mock and a generated Partial each sit below one of this test's own generated
       # roots rather than a configured source root, so nothing in the standard roots
@@ -194,11 +193,18 @@ class TestBuildPlanner
 
       test_objects = (test_objects.uniq - test_no_link_objects)
 
+      # Formed from the originals' sources, as every object is, for stage 16 to leave out of
+      # the link. A shortened source root keeps an object's path from mirroring its source's.
+      original_objects = @file_path_utils.form_test_build_objects_filelist(
+        testable.paths[:build], originals, extra_roots: generated_roots
+      )
+
       state.lock.synchronize do
         testable.sources         = test_sources
         testable.frameworks      = test_frameworks
         testable.core            = test_core
         testable.objects         = test_objects
+        testable.original_objects = original_objects
         testable.executable      = test_executable
         testable.results_pass    = test_pass
       end

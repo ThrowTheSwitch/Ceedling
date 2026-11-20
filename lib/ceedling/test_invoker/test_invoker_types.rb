@@ -85,6 +85,9 @@ module TestInvokerTypes
     :mocks,                                    # Hash — mock name (Symbol) → MockDetails
     :partials,                                 # TestablePartials — configs map + tests/mocks module name lists
     :sources, :frameworks, :core, :objects, :executable, :results_pass,
+    :original_objects,                         # Array — objects of this test's Partial originals, set
+                                                # by stage 14 from their sources and left out of the link
+                                                # by stage 16
     :executable_rebuilt,                       # Boolean — set by stage 16, read by stage 17 to decide
                                                 # whether to run the fixture. Carried on the struct rather
                                                 # than re-querying the dependency tracker in stage 17: by

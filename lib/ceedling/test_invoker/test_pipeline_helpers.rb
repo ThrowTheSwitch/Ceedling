@@ -91,7 +91,7 @@ module TestPipelineHelpers
     include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
   end
 
-  # Whether a path is a Partialized module's own original, a source or its object.
+  # Whether a source is a Partialized module's own original.
   #
   # A Partial's own module name doubles as its generated source file's basename, so a list
   # built from #include-derived sources can carry an original that a Partial has already
@@ -99,10 +99,10 @@ module TestPipelineHelpers
   # links. The original's object is made only for a build that asks for originals, as a
   # coverage build does, since a coverage report reads it.
   #
-  # An object's path mirrors its source's own directory below the configured roots, so
-  # a module is matched by the end of that path. Matching on basename alone would also
-  # take a same-named module from another directory, dropping a module the test
-  # never Partialized and losing its functions from the link.
+  # A module is matched by the end of the source's path. Matching on basename alone would
+  # also take a same-named module from another directory. Only a source's path is asked,
+  # never an object's, since a shortened source root keeps an object's path from mirroring
+  # its source's.
   def partials_source_object?(path, configs)
     segments = PathMirror.path_segments( path.ext( '' ) )
 
@@ -110,12 +110,6 @@ module TestPipelineHelpers
       query = PathMirror.path_segments( _module )
       segments.last( query.length ) == query
     end
-  end
-
-  # Removes every original from a list of objects, leaving the Partial's own generated
-  # source as each module's only linked object. Stage 16 trims the link this way.
-  def remove_partials_source_objects(objects, configs)
-    objects.delete_if { |filepath| partials_source_object?( filepath, configs ) }
   end
 
 end

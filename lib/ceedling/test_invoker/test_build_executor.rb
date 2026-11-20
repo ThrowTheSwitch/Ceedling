@@ -350,7 +350,10 @@ class TestBuildExecutor
     skipped = 0
 
     @batchinator.exec(workload: :compile, things: state.testables) do |_, testable|
-      remove_partials_source_objects( testable.objects, testable.partials.configs )
+      # Stage 14 formed the originals' objects from their sources. An object's own path can't
+      # tell, since a shortened source root keeps it from mirroring its source's.
+      originals = Array( testable.original_objects )
+      testable.objects.delete_if { |object| originals.include?( object ) }
 
       link_flags = testable.link_flags
       tool, link_flags = resolve_link_tool( context: state.context, tool: @configurator.tools_test_linker, flags: link_flags, executable: testable.executable )

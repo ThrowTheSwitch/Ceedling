@@ -904,28 +904,6 @@ describe TestBuildPlanner do
     end
   end
 
-  describe "#remove_partials_source_objects" do
-    it "removes the objects the predicate names, and only those, in place" do
-      objects = [
-        'build/test/out/a_test/Foo.o',
-        'build/test/out/a_test/Bar.o',
-        'build/test/out/a_test/drivers/spi/Foo2.o'
-      ]
-
-      @planner.remove_partials_source_objects( objects, { 'Foo' => double( "Config" ), 'Foo2' => double( "Config" ) } )
-
-      expect(objects).to eq( ['build/test/out/a_test/Bar.o'] )
-    end
-
-    it "leaves the list untouched when no object matches a Partial module name" do
-      objects = ['build/test/out/a_test/Bar.o']
-
-      @planner.remove_partials_source_objects( objects, { 'Foo' => double( "Config" ) } )
-
-      expect(objects).to eq( ['build/test/out/a_test/Bar.o'] )
-    end
-  end
-
   describe "#collect_test_framework_sources" do
     before(:each) do
       allow(@configurator).to receive(:project_use_exceptions).and_return( false )

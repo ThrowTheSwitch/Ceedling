@@ -258,8 +258,8 @@ class Gcov < Plugin
   # --exclude filters non-production files from reports.
   #
   # A Partial's original is compiled only so its coverage data can be read, and its
-  # object never links. Its warnings are noise, since the Partial's own compile of the
-  # same code reports any real one, so its compile adds -w.
+  # object never links. Its warnings are noise, since the Partial's own compile reports any
+  # real one in the code it carries, so its compile adds -w.
   def pre_test_compile_register(arg_hash)
     return unless arg_hash[:context] == GCOV_SYM
     return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
