@@ -45,6 +45,16 @@ ceedling_system_tests do
       test_case :bullseye_license_status_task
     end
 
+    describe "Coverage with Partials" do
+      before do
+        @c.with_context do
+          @c.ceedling_appcmd_exec("new --local #{@proj_name}")
+        end
+      end
+
+      test_case :bullseye_partials_left_out_function
+    end
+
     describe "Branch coverage detail" do
       before do
         @c.with_context do

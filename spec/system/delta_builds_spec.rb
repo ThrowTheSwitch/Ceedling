@@ -649,7 +649,9 @@ ceedling_system_tests do
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          expect(rebuild).to match(/^Compiling test\/TestSoilMoisture::SoilMoisture\.c/)
+          # The Partial's own source recompiles. The original is never compiled in a test build.
+          expect(rebuild).to match(/^Compiling test\/TestSoilMoisture::ceedling_partial_SoilMoisture_impl\.c/)
+          expect(rebuild).to_not match(/^Compiling test\/TestSoilMoisture::SoilMoisture\.c/)
           expect(rebuild).to match(/^Linking TestSoilMoisture\.out/)
           expect(rebuild).to match(/^Running TestSoilMoisture\.out/)
 
@@ -671,20 +673,15 @@ ceedling_system_tests do
         Dir.chdir "wondrous_forest" do
           @c.ceedling_build_exec("test:all")
 
-          # ForestMonitor.c #includes ForestMonitor.h directly, so this also
-          # exercises the pre-existing shared-header compile staleness path
-          # (proving it's unaffected by Partials' own separate DependencyTracker
-          # targets for the header/source preprocessing passes) alongside the
-          # header partial-preprocessing target itself. As with the equivalent
-          # temp_sensor scenario above, only Compiling is asserted here -- a
-          # bare added prototype with no call site can compile to an object
-          # identical to the prior one, in which case linking is correctly
-          # skipped on its own separate content-hash staleness check.
+          # Only the header's own Partial preprocessing runs. A bare added prototype leaves the
+          # Partial's generated code as it was, so its object is fresh, and the original
+          # ForestMonitor.c, which includes the header, is not compiled in a test build.
           probe_header!(File.join('src', 'ForestMonitor.h'))
 
           rebuild = @c.ceedling_build_exec("test:all")
 
-          expect(rebuild).to match(/^Compiling test\/TestForestMonitor::ForestMonitor\.c/)
+          expect(rebuild).to match(/^Preprocessing partial header for test\/TestForestMonitor::ForestMonitor\.h/)
+          expect(rebuild).to_not match(/^Compiling test\/TestForestMonitor::ForestMonitor\.c/)
 
           expect(rebuild).to_not match(/^Compiling.*SoilMoisture/)
           expect(rebuild).to_not match(/^Compiling.*TemperatureSensor/)

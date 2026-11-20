@@ -312,6 +312,74 @@ describe TestBuildExecutor do
       )
     end
 
+    # A plugin tells a Partial's original from every other source by this argument. The original
+    # is compiled only so coverage can read it, and its object never links.
+    context "marking a Partial's original source for the compile hook" do
+      before(:each) do
+        allow(@file_wrapper).to receive(:extname).and_return( '.c' )
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( false )
+        allow(@generator).to receive(:generate_object_file_c)
+        @state.testables[:a_test].partials.configs = { 'drivers/foo' => double( "Config" ) }
+      end
+
+      def compile(source, object)
+        @executor.send(
+          :compile_test_component,
+          :context => :gcov, :test => :a_test, :source => source, :object => object, :state => @state
+        )
+      end
+
+      it "passes partial_original: true for the original source of a Partial" do
+        received = nil
+        allow(@plugin_manager).to receive(:pre_test_compile_register) { |arg_hash| received = arg_hash }
+
+        compile( 'src/drivers/foo.c', 'build/gcov/out/a_test/drivers/foo.o' )
+
+        expect( received ).to include( partial_original: true )
+      end
+
+      it "passes partial_original: false for the Partial's own generated source" do
+        received = nil
+        allow(@plugin_manager).to receive(:pre_test_compile_register) { |arg_hash| received = arg_hash }
+
+        compile( 'build/gcov/partials/a_test/ceedling_partial_foo.c', 'build/gcov/out/a_test/ceedling_partial_foo.o' )
+
+        expect( received ).to include( partial_original: false )
+      end
+
+      it "passes partial_original: false for a same-named source in another directory" do
+        received = nil
+        allow(@plugin_manager).to receive(:pre_test_compile_register) { |arg_hash| received = arg_hash }
+
+        compile( 'src/other/foo.c', 'build/gcov/out/a_test/other/foo.o' )
+
+        expect( received ).to include( partial_original: false )
+      end
+
+      it "passes partial_original: false when the test has no Partials" do
+        @state.testables[:a_test].partials.configs = {}
+        received = nil
+        allow(@plugin_manager).to receive(:pre_test_compile_register) { |arg_hash| received = arg_hash }
+
+        compile( 'src/drivers/foo.c', 'build/gcov/out/a_test/drivers/foo.o' )
+
+        expect( received ).to include( partial_original: false )
+      end
+
+      it "answers for an assembly source by the same test" do
+        allow(@file_wrapper).to receive(:extname).and_return( '.asm' )
+        allow(@configurator).to receive(:test_build_use_assembly).and_return( true )
+        allow(@generator).to receive(:generate_object_file_asm)
+        received = []
+        allow(@plugin_manager).to receive(:pre_test_compile_register) { |arg_hash| received << arg_hash[:partial_original] }
+
+        compile( 'src/drivers/foo.asm', 'build/gcov/out/a_test/drivers/foo.o' )
+        compile( 'src/other/foo.asm', 'build/gcov/out/a_test/other/foo.o' )
+
+        expect( received ).to eq( [true, false] )
+      end
+    end
+
     it "registers the configured compiler tool as meta for a C source, and the configured assembler tool for an assembly source" do
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.c' ).and_return( '.c' )
       allow(@file_wrapper).to receive(:extname).with( 'src/foo.asm' ).and_return( '.asm' )

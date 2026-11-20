@@ -533,6 +533,52 @@ describe Gcov do
     end
   end
 
+  # A Partial's original compiles only so coverage can read it, and its object never links.
+  # Its warnings are noise, since the Partial's own compile of the same code reports any real one.
+  describe '#pre_test_compile_register for a Partial original' do
+    let(:dependinator) { double('dependinator', register: nil) }
+
+    def register(partial_original:, flags: ['-g'], context: GCOV_SYM, source: 'foo.c')
+      gcov = build_gcov({}, dependinator: dependinator, mcdc_gcc_checked: true, gcov_config: {})
+      arg_hash = { context: context, source: source, tool: :original, flags: flags, object: 'foo.o', partial_original: partial_original }
+      gcov.pre_test_compile_register(arg_hash)
+      return arg_hash
+    end
+
+    it 'appends -w to the flags of an original' do
+      expect(register(partial_original: true)[:flags]).to eq(['-g', '-w'])
+    end
+
+    it 'leaves the flags of any other source without -w' do
+      expect(register(partial_original: false)[:flags]).to eq(['-g'])
+    end
+
+    it 'leaves the flags without -w when the hook is given no partial_original' do
+      gcov = build_gcov({}, dependinator: dependinator, mcdc_gcc_checked: true, gcov_config: {})
+      arg_hash = { context: GCOV_SYM, source: 'foo.c', tool: :original, flags: ['-g'], object: 'foo.o' }
+      gcov.pre_test_compile_register(arg_hash)
+      expect(arg_hash[:flags]).to eq(['-g'])
+    end
+
+    it 'leaves the flags of a non-gcov compile without -w' do
+      expect(register(partial_original: true, context: :test)[:flags]).to eq(['-g'])
+    end
+
+    it 'keeps -fcondition-coverage beside -w' do
+      gcov = build_gcov({ gcov_mcdc: true }, dependinator: dependinator, mcdc_gcc_checked: true, gcov_config: {})
+      arg_hash = { context: GCOV_SYM, source: 'foo.c', tool: :original, flags: [], object: 'foo.o', partial_original: true }
+      gcov.pre_test_compile_register(arg_hash)
+      expect(arg_hash[:flags]).to include('-fcondition-coverage', '-w')
+    end
+
+    # The hook runs before the staleness check, so -w joins the object's tracked flags
+    it 'does not touch the caller\'s flags array' do
+      flags = ['-g']
+      register(partial_original: true, flags: flags)
+      expect(flags).to eq(['-g'])
+    end
+  end
+
   describe '#pre_test_link_register' do
     let(:dependinator) { double('dependinator', register: nil) }
 
