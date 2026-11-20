@@ -276,13 +276,13 @@ file extension. `test/unit/test_calc.c` is named `test/unit/test_calc`. Every
 test gets its own build output, even when test files share a filename.
 
 Each build directory that holds files of every test, such as `build/test/out/` or
-`build/test/mocks/`, gives each test its own directory: the test’s name followed by
-`_t_`. A test’s name is a path, so `_t_` keeps one test’s directory apart from the
-folders below another’s. `test/unit/test_calc` and `test/unit/test_calc/test_io`
-build to `build/test/out/test/unit/test_calc/_t_/` and
-`build/test/out/test/unit/test_calc/test_io/_t_/`, and a mock that `test_calc`
-includes as `test_io/mock_io.h` sits at
-`build/test/mocks/test/unit/test_calc/_t_/test_io/mock_io.h`.
+`build/test/mocks/`, gives each test a directory of its own: the test’s name followed
+by `_t_`. A test’s name is a path, and a test file can sit in a folder named after
+another test. Without the marker, that test’s directory would lie inside the other
+test’s, and the two tests’ objects and mocks could mix. The marker closes every test’s
+name, so no test’s directory can hold another’s. Ceedling renames a folder of your own
+called `_t_` in these paths, as the last paragraph below explains, so the marker always
+ends a name. `test/unit/test_calc` builds to `build/test/out/test/unit/test_calc/_t_/`.
 
 The name places a test’s output beneath each build directory:
 

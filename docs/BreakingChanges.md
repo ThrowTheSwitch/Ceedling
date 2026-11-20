@@ -18,13 +18,11 @@ Tool validation now fails a tool whose `:executable` or argument leaves a quote 
 
 ## Each test’s build output sits below its own `_t_` directory
 
-Each build directory that holds files of every test now gives each test a directory of its name followed by `_t_`. This covers a test’s objects, executable, linker map, dependencies files, mocks, Partials, and preprocessed files. Before 1.2.3, a test’s directory was its name alone, so one test’s directory could also be a folder below another test’s, and the two tests’ files mixed. `test/unit/test_calc.c` now links to `build/test/out/test/unit/test_calc/_t_/test_calc.out`, not `build/test/out/test/unit/test_calc/test_calc.out`, and its mocks sit below `build/test/mocks/test/unit/test_calc/_t_/`. Runners, results, and logs keep their places.
+A test’s build directory could lie inside another test’s, and the two tests’ files then mixed. Ceedling names each test by its path, so `test/test_calc.c` and `test/test_calc/test_io.c` built into `build/test/out/test/test_calc/` and a folder within it. Each test’s directory now ends in `_t_`, as in `build/test/out/test/test_calc/_t_/`. No test’s directory can hold another’s.
 
-Update anything that reads a test’s executable, map, objects, or mocks from `build/test/` by path, such as a debugger launch configuration or a script running an executable directly. A glob such as `build/test/out/**/*.out` still reaches every executable.
+A test’s objects, executable, linker map, mocks, Partials and preprocessed files move into this directory. Runners, results and logs stay where they were, and release builds are unchanged. Update anything that reads a test’s executable or mocks by path, such as a debugger launch configuration. A glob such as `build/test/out/**/*.out` still finds every executable.
 
-A source directory named `_t_` builds to `__t_` in a test build’s paths, so it never ends a test’s name. A release build has no per-test directories. It places such a directory as before, and its paths are unchanged.
-
-The first test build after upgrading rebuilds every test once. A release build keeps its cache and rebuilds nothing. Run `ceedling clobber` after upgrading to remove the old layout’s output. Until then, an `#include` that climbs out of a test’s mock directory with `..` can reach an old mock, and coverage reports also include the old coverage data.
+The first test build after upgrading rebuilds every test once. Run `ceedling clobber` after upgrading to remove the old layout’s files, which coverage reports and some `#include`s could otherwise still reach.
 
 ---
 
