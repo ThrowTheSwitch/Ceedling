@@ -38,7 +38,7 @@ class PreprocessinatorFileAssembler
 
     @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
-    expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths )
+    expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths, role: :mock )
 
     contents = collect_own_lines( source_filepath: filepath, preprocessed_filepath: preprocessed_filepath )
 
@@ -219,7 +219,7 @@ class PreprocessinatorFileAssembler
 
     @file_wrapper.mkdir( File.dirname( preprocessed_filepath ) )
 
-    expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths )
+    expand_fully( filepath: filepath, preprocessed_filepath: preprocessed_filepath, flags: flags, defines: defines, include_paths: include_paths, role: :test )
 
     contents = collect_own_lines( source_filepath: filepath, preprocessed_filepath: preprocessed_filepath )
 
@@ -265,11 +265,12 @@ class PreprocessinatorFileAssembler
   private
 
   # Runs GCC with full preprocessor expansion. This run has no fallback, so a failure goes
-  # to the build step doctor before it is raised.
-  def expand_fully(filepath:, preprocessed_filepath:, flags:, defines:, include_paths:)
+  # to the build step doctor before it is raised. `role` says whether the file is a header
+  # to be mocked (:mock) or a test file (:test).
+  def expand_fully(filepath:, preprocessed_filepath:, flags:, defines:, include_paths:, role:)
     tool    = @configurator.tools_test_file_full_preprocessor
     command = @tool_executor.build_command_line( tool, flags, filepath, preprocessed_filepath, defines, include_paths )
-    inputs  = { tool: tool, source: filepath, search_paths: include_paths, flags: flags, defines: defines }
+    inputs  = { tool: tool, source: filepath, search_paths: include_paths, flags: flags, defines: defines, role: role }
 
     @build_step_doctor.attend( step: :preprocess, inputs: inputs ) { @tool_executor.exec( command ) }
   end

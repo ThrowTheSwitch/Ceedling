@@ -49,12 +49,12 @@ class BuildStepDoctor
   Case = Struct.new( :step, :outcome, :output, :symptoms, :inputs, keyword_init: true )
 
   constructor :loginator, :header_collision_specialist, :missing_symbol_specialist, :duplicate_symbol_specialist, :partial_name_specialist,
-              :include_depth_specialist
+              :include_depth_specialist, :prerequisite_header_specialist
 
   def setup()
     specialists = [
       @header_collision_specialist, @missing_symbol_specialist, @duplicate_symbol_specialist, @partial_name_specialist,
-      @include_depth_specialist
+      @include_depth_specialist, @prerequisite_header_specialist
     ]
 
     @diagnoses = specialists.flat_map( &:diagnoses ).freeze

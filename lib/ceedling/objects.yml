@@ -687,6 +687,7 @@ build_step_doctor:
     - duplicate_symbol_specialist
     - partial_name_specialist
     - include_depth_specialist
+    - prerequisite_header_specialist
 
 header_collision_specialist:
   compose:
@@ -711,6 +712,10 @@ partial_name_specialist:
 include_depth_specialist:
   compose:
     - file_wrapper
+
+prerequisite_header_specialist:
+  compose:
+    - configurator
 
 quote_include_isolator:
   compose:
