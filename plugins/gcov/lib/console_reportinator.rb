@@ -185,7 +185,7 @@ class ConsoleReportinator < GcovReportinator
       (opts[:gcov_mcdc] ? ['-g'] : []),
       # Argument replacement
       filename, # .c source file compiled with coverage
-      obj_dir # <build>/gcov/out/<test name>[/source directory] for coverage data files
+      obj_dir # <build>/gcov/out/<test name>/_t_[/source directory] for coverage data files
     )
 
     # Do not raise an exception if `gcov` terminates with a non-zero exit code, just note it and move on.

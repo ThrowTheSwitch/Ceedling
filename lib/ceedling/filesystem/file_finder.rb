@@ -7,7 +7,6 @@
 
 require 'rubygems'
 require 'rake' # for adding ext() method to string
-require 'set'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/path_mirror'
@@ -17,7 +16,7 @@ require 'ceedling/filesystem/build_subpath'
 
 class FileFinder
 
-  constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper
+  constructor :configurator, :file_finder_helper, :file_path_utils, :file_wrapper, :yaml_wrapper, :test_build_layout
 
   def setup
     @test_names_lock = Mutex.new
@@ -91,14 +90,15 @@ class FileFinder
     # Extract filename without file extension
     source_file = File.basename(filepath).ext('')
 
-    # Recovered once and reused by every branch below that needs it, rather than each
-    # independently re-deriving the same test identity from the same filepath. Prefers the
-    # caller's own explicitly-known test identity over inferring it from the filepath's own
-    # structure -- inference only works when a context's own object paths are mirrored under
-    # a per-test subdirectory (the :test context is; GCOV and Bullseye's own flat, project-wide
-    # object paths are not), so a context lacking that structure would otherwise never recover
-    # a test identity at all.
-    test_context = test ? test.to_s : test_context_of(filepath)
+    # Recovered once and reused by every branch below that needs it. The caller's own test
+    # comes first. Without one, a build file's own place in the test build layout names its
+    # test exactly, and a source-tree query, from an #include or TEST_SOURCE_FILE(), names none.
+    test_context = test ? test.to_s : test_context_of(filepath, context)
+
+    # A test's generated mocks and Partials sit below its own roots, which only a known test
+    # has. Without one these branches search nothing, so a query never finds another test's.
+    mocks_root    = release ? nil : @test_build_layout.root( :mocks, test_context )
+    partials_root = release ? nil : @test_build_layout.root( :partials, test_context )
 
     # We only collect files that already exist when we start up.
     # FileLists can produce undesired results for dynamically generated files depending on when they're accessed.
@@ -124,20 +124,19 @@ class FileFinder
           @file_wrapper.directory_listing( FilePathUtils.glob(runner_scope_dir(test_context), '*') ),
           complain)
 
-    # Generated mocks -- scoped to this test's own mock subtree so another test's
+    # Generated mocks -- scoped to this test's own mock root so another test's
     # identically named mock (expected, routine repetition) is never mistaken for ambiguity
-    elsif (!release) and
+    elsif !mocks_root.nil? and
           (source_file.start_with?( @configurator.cmock_mock_prefix ))
       # A mock mirrors the directory of whatever it mocks, so two same-named headers
       # mocked in one test -- two modules mocked as Partials by directory, say -- are
       # told apart only by that subdirectory. Measured the same way a generated
       # Partial's is, below.
-      mocks_root = File.join(@configurator.cmock_mock_path, test_context)
-      subdir     = generated_file_subdir( filepath, mocks_root, test: test, context: context )
+      subdir = generated_file_subdir( filepath, mocks_root, test: test_context, context: context )
 
       _source_file = source_file + EXTENSION_CORE_SOURCE
       _source_file = File.join( subdir, _source_file ) unless subdir.empty?
-      collection   = own_generated_files( @configurator.cmock_mock_path, test_context )
+      collection   = own_generated_files( mocks_root )
 
       # The mock at exactly this place below the root comes first, since a same-named mock
       # deeper down, such as one an earlier build left, ends with the same folder and name.
@@ -148,18 +147,17 @@ class FileFinder
       found_file ||= @file_finder_helper.find_file_in_collection( _source_file, collection, complain )
 
     # Generated partials -- same per-test scoping rationale as mocks, above
-    elsif (!release) and
+    elsif !partials_root.nil? and
           (source_file.start_with?( PARTIAL_FILENAME_PREFIX ))
       # A generated Partial sits in the subdirectory mirroring its own module, so that
       # subdirectory is what distinguishes two modules sharing a basename. Derived the
       # same way a mock's is, above.
-      partials_root = File.join(@configurator.project_test_partials_path, test_context)
-      subdir        = generated_file_subdir( filepath, partials_root, test: test, context: context )
+      subdir = generated_file_subdir( filepath, partials_root, test: test_context, context: context )
 
       _source_file = source_file + EXTENSION_CORE_SOURCE
       _source_file = File.join( subdir, _source_file ) unless subdir.empty?
 
-      collection = own_generated_files( @configurator.project_test_partials_path, test_context )
+      collection = own_generated_files( partials_root )
 
       # Ambiguity is detected here rather than rescued from the matching below. One
       # matching implementation stays in force, and the message is composed from the
@@ -294,30 +292,17 @@ class FileFinder
     raise CeedlingException.new( message )
   end
 
-  # A test object's build directory is its test's name, the test's path from the project
-  # root (e.g. `test/unit/test_foo` for `test/unit/test_foo.c`). Recovering that name from
-  # a build artifact's own path lets a lookup go straight to the one test it belongs to,
-  # rather than searching the whole project by bare basename -- exactly the query shape
-  # that's ambiguous when another same-named test exists elsewhere.
+  # The name of the test whose own build directory holds `filepath` (TestBuildLayout#locate),
+  # such as `test/unit/test_foo` for an object below `build/test/out/test/unit/test_foo/_t_/`.
+  # It lets a lookup go straight to the one test a build file belongs to, rather than
+  # searching the whole project by bare basename, the query shape that's ambiguous when
+  # another same-named test exists elsewhere.
   #
-  # A filepath that isn't under the test build root at all (a source-tree-relative query
-  # from an #include or TEST_SOURCE_FILE(), rather than a build artifact's own path) has no
-  # test identity to recover -- empty string, never a directory name that could coincidentally
-  # match some unrelated file's own basename.
-  #
-  # A test's build directory also holds its objects at their sources' own paths, so the
-  # name is the longest one of a known test that the directory begins with.
-  def test_context_of(filepath)
-    subdir = ProjectPaths.subdir_below( @configurator.project_test_build_output_path, File.dirname( filepath ) )
-    return '' if subdir.nil?
-
-    parts = subdir.split( '/' )
-    parts.length.downto( 1 ) do |count|
-      name = parts.first( count ).join( '/' )
-      return name if test_files_by_name.key?( name )
-    end
-
-    return ''
+  # A filepath below no test's own directory, such as a source-tree-relative query from an
+  # #include or TEST_SOURCE_FILE(), has no test to recover and gives ''.
+  def test_context_of(filepath, context)
+    location = @test_build_layout.locate( filepath, context: context )
+    return location.nil? ? '' : location.name
   end
 
   # A test's runner lives where FilePathUtils#form_test_runners_path puts it. Takes the test
@@ -335,40 +320,10 @@ class FileFinder
     end
   end
 
-  # For each test's name, the names of the tests nested beneath it (`test/test_foo/test_bar`
-  # beneath `test/test_foo`)
-  def nested_test_names
-    names = test_files_by_name.keys
-    @test_names_lock.synchronize do
-      @nested_test_names ||= nest_names( names )
-    end
-  end
-
-  # Files each name under every other name that is one of its parent directories
-  def nest_names(names)
-    known  = names.to_set
-    nested = Hash.new { |hash, name| hash[name] = [] }
-
-    names.each do |name|
-      parts = name.split( '/' )
-      (1...parts.length).each do |count|
-        parent = parts.first( count ).join( '/' )
-        nested[parent] << name if known.include?( parent )
-      end
-    end
-
-    return nested
-  end
-
-  # A test's generated mocks or Partials, beneath its own directory below `base`. A test
-  # whose name continues this one's (`test/test_foo/test_bar` after `test/test_foo`) has its
-  # directory nested here, and the files in it are that test's own.
-  def own_generated_files(base, test_context)
-    listing = @file_wrapper.directory_listing( FilePathUtils.glob( File.join( base, test_context ), '**/*' + EXTENSION_CORE_SOURCE ) )
-    nested  = nested_test_names.fetch( test_context, [] ).map { |name| File.join( base, name ) + '/' }
-    return listing if nested.empty?
-
-    return listing.reject { |file| nested.any? { |dir| file.start_with?( dir ) } }
+  # A test's generated mocks or Partials, below its own root of that kind. No other test's
+  # root lies below it, so every file there is this test's own.
+  def own_generated_files(root)
+    return @file_wrapper.directory_listing( FilePathUtils.glob( root, '**/*' + EXTENSION_CORE_SOURCE ) )
   end
 
   # The query for the source of a release or module-under-test object, and whether it is
@@ -406,9 +361,8 @@ class FileFinder
   # The root a release or test object is placed below, or nil where none is known
   def placement_root(release, test, context)
     return @configurator.project_release_build_output_path if release
-    return nil if test.nil?
 
-    return @file_path_utils.form_test_build_path( test, context: context )
+    return @test_build_layout.root( :out, test, context: context )
   end
 
   # The file of `collection` at exactly `query` plus one of `extension`'s spellings, or nil.
@@ -439,7 +393,7 @@ class FileFinder
   # fallback preprocessing builds a generated #include from a module name instead of
   # resolving the file. Whatever directory such a name carries is the module's own.
   def generated_file_subdir(filepath, root, test:, context:)
-    out_root = test.nil? ? nil : @file_path_utils.form_test_build_path(test, context: context)
+    out_root = @test_build_layout.root( :out, test, context: context )
 
     subdir = PathMirror.relative_subdir( filepath, [root, out_root].compact )
 

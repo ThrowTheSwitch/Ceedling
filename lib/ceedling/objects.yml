@@ -48,6 +48,7 @@ file_path_utils:
   compose:
     - configurator
     - file_wrapper
+    - test_build_layout
 
 test_build_layout:
   compose:
@@ -177,6 +178,7 @@ file_finder:
     - file_path_utils
     - file_wrapper
     - yaml_wrapper
+    - test_build_layout
 
 file_finder_helper:
   compose: loginator
@@ -186,6 +188,7 @@ parsing_parcels:
 include_factory:
   compose:
     - configurator
+    - test_build_layout
 
 test_context_extractor:
   compose:

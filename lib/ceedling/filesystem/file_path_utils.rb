@@ -19,6 +19,7 @@ require 'ceedling/filesystem/project_paths'
 require 'ceedling/filesystem/build_subpath'
 require 'ceedling/filesystem/build_roots'
 require 'ceedling/filesystem/destination_collision'
+require 'ceedling/filesystem/test_build_layout'
 
 # global utility methods (for plugins, project files, etc.)
 def ceedling_form_filepath(destination_path, original_filepath, new_extension=nil)
@@ -29,7 +30,7 @@ end
 
 class FilePathUtils
 
-  constructor :configurator, :file_wrapper
+  constructor :configurator, :file_wrapper, :test_build_layout
 
   ######### Class methods ##########
 
@@ -247,14 +248,16 @@ class FilePathUtils
     return path.split( '/', -1 ).map { |segment| (root = table.root_for( segment )).nil? ? segment : BuildSubpath.encode( root ) }.join( '/' )
   end
 
+  # A test's own output directory (TestBuildLayout), or the context's output root itself for
+  # no test, where a context's own sources outside any test build
   def form_test_build_path(name, context: nil)
-    form_build_context_path(BUILD_OUT_DIR, name: name, context: context)
+    return @test_build_layout.root( :out, name, context: context ) || @test_build_layout.base( :out, context: context )
   end
 
   # Where a build places the object of `filepath`: below its test's build path, or below the
   # context's own output root for a source compiled outside any test
   def form_test_object_filepath(filepath, name: nil, context: nil)
-    root = form_build_context_path( BUILD_OUT_DIR, name: name, context: context )
+    root = form_test_build_path( name, context: context )
     return build_filepath( filepath, root: root, ext: @configurator.extension_object.primary, generated_roots: generated_roots( name ) )
   end
 
@@ -277,15 +280,16 @@ class FilePathUtils
     File.join( *parts )
   end
 
+  # As `form_test_build_path`, for dependencies files
   def form_test_dependencies_path(name, context: nil)
-    form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
+    return @test_build_layout.root( :dependencies, name, context: context ) || @test_build_layout.base( :dependencies, context: context )
   end
 
   # `filepath` is an object path. Its dependencies file sits at the object's own place below
   # the dependencies root, so it never collides with another same-named object's. Without a
   # test, that place is below the context's own output root.
   def form_test_dependencies_filepath(filepath, name: nil, context: nil)
-    root     = form_build_context_path(BUILD_DEPENDENCIES_DIR, name: name, context: context)
+    root     = form_test_dependencies_path( name, context: context )
     basename = File.basename(filepath).ext(@configurator.extension_dependencies.primary)
 
     subdir = ProjectPaths.subdir_below( form_test_build_path( name, context: context ), File.dirname( filepath ) ) || ''
@@ -293,49 +297,49 @@ class FilePathUtils
   end
 
   def form_test_mocks_path(name)
-    form_named_path(@configurator.cmock_mock_path, name)
+    return @test_build_layout.root( :mocks, name )
   end
 
   def form_test_partials_path(name)
-    form_named_path(@configurator.project_test_partials_path, name)
+    return @test_build_layout.root( :partials, name )
   end
 
   def form_test_preprocess_includes_path(name)
-    form_named_path(@configurator.project_test_preprocess_includes_path, name)
+    return @test_build_layout.root( :preprocess_includes, name )
   end
 
   def form_test_preprocess_files_path(name)
-    form_named_path(@configurator.project_test_preprocess_files_path, name)
+    return @test_build_layout.root( :preprocess_files, name )
   end
 
   def form_test_preprocess_files_full_expansion_path(name)
-    form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_FULL_EXPANSION_DIR)
+    return @test_build_layout.file( :preprocess_files, name, PREPROCESS_FULL_EXPANSION_DIR )
   end
 
   def form_test_preprocess_files_directives_only_path(name)
-    form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_DIRECTIVES_ONLY_DIR)
+    return @test_build_layout.file( :preprocess_files, name, PREPROCESS_DIRECTIVES_ONLY_DIR )
   end
 
   def form_test_preprocess_files_raw_directives_only_path(name)
-    form_named_path(@configurator.project_test_preprocess_files_path, name, subdir: PREPROCESS_RAW_DIRECTIVES_ONLY_DIR)
+    return @test_build_layout.file( :preprocess_files, name, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR )
   end
 
   def form_test_preprocess_build_directives_path(name)
-    form_named_path(@configurator.project_test_preprocess_build_directives_path, name)
+    return @test_build_layout.root( :build_directives, name )
   end
 
   # Where a test file's own #include/build-directive scan results are cached, keyed by
   # the test file's own name so each test's cache lives alongside its other
   # preprocessing artifacts.
-  def form_test_build_directives_cache_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_build_directives_path, subdir, File.basename(filepath) + EXTENSION_CORE_YAML )
+  def form_test_build_directives_cache_filepath(filepath, name)
+    return @test_build_layout.file( :build_directives, name, File.basename(filepath) + EXTENSION_CORE_YAML )
   end
 
   # Where a test file's TEST_SOURCE_FILE() results are cached once its preprocessed
   # output has been generated -- kept distinct from the raw-file cache above since the
   # two are populated at different points in the pipeline from different content.
-  def form_preprocessed_source_files_cache_filepath(filepath, subdir)
-    return File.join( @configurator.project_test_preprocess_build_directives_path, subdir, File.basename(filepath) + '_source_files' + EXTENSION_CORE_YAML )
+  def form_preprocessed_source_files_cache_filepath(filepath, name)
+    return @test_build_layout.file( :build_directives, name, File.basename(filepath) + '_source_files' + EXTENSION_CORE_YAML )
   end
 
   def form_pass_results_filepath(build_output_path, filepath)
@@ -402,70 +406,51 @@ class FilePathUtils
     return File.join( subdir, basename )
   end
 
-  # The roots holding one test's own generated files. A mock or a generated Partial sits
-  # below one of these rather than a configured source root, and two same-named modules
-  # each produce one, so without these roots both share a single preprocessed artifact.
-  #
-  # Each root carries the test's own name, so what mirrors forward is the module's own
-  # subdirectory rather than the test name a second time.
+  # The roots holding one test's own generated files (TestBuildLayout#generated_roots). A
+  # mock or a generated Partial sits below one of these rather than a configured source
+  # root, and two same-named modules each produce one, so without these roots both share a
+  # single preprocessed artifact. What mirrors forward is the module's own subdirectory.
   def generated_roots(test)
-    return [] if test.nil?
-
-    roots = []
-    roots << File.join( @configurator.project_test_partials_path, test ) if @configurator.project_use_partials
-    roots << File.join( @configurator.cmock_mock_path, test ) if @configurator.project_use_mocks
-
-    return roots
+    return @test_build_layout.generated_roots( test )
   end
 
-  # Composes a preprocessed artifact's path. Pure, like every other path builder here:
-  # callers that merely restate a path -- a rake target declaration, a staleness check --
-  # must not leave directories behind as a side effect. Whoever writes the file creates
-  # its directory, the same way a mock's or a Partial's own writer does.
-  def form_preprocessed_filepath(root, subdir, kind_dir, filepath, suffix: '')
-    return File.join( *[root, subdir, kind_dir, preprocessed_file_subpath( filepath, subdir ) + suffix].compact )
+  # Composes a preprocessed artifact's path below the test's root of `kind`. Pure, like
+  # every other path builder here: callers that merely restate a path -- a rake target
+  # declaration, a staleness check -- must not leave directories behind as a side effect.
+  # Whoever writes the file creates its directory, the same way a mock's or a Partial's own
+  # writer does.
+  def form_preprocessed_filepath(kind, test, kind_dir, filepath, suffix: '')
+    return File.join( *[@test_build_layout.root( kind, test ), kind_dir, preprocessed_file_subpath( filepath, test ) + suffix].compact )
   end
 
-  def form_preprocessed_includes_list_filepath(filepath, subdir)
-    return form_preprocessed_filepath(
-      @configurator.project_test_preprocess_includes_path, subdir, nil, filepath, suffix: EXTENSION_CORE_YAML
-    )
+  def form_preprocessed_includes_list_filepath(filepath, test)
+    return form_preprocessed_filepath( :preprocess_includes, test, nil, filepath, suffix: EXTENSION_CORE_YAML )
   end
 
-  def form_preprocessed_file_filepath(filepath, subdir)
-    return form_preprocessed_filepath( @configurator.project_test_preprocess_files_path, subdir, nil, filepath )
+  def form_preprocessed_file_filepath(filepath, test)
+    return form_preprocessed_filepath( :preprocess_files, test, nil, filepath )
   end
 
-  def form_preprocessed_file_full_expansion_filepath(filepath, subdir)
-    return form_preprocessed_filepath(
-      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FULL_EXPANSION_DIR, filepath
-    )
+  def form_preprocessed_file_full_expansion_filepath(filepath, test)
+    return form_preprocessed_filepath( :preprocess_files, test, PREPROCESS_FULL_EXPANSION_DIR, filepath )
   end
 
   # A file's own lines from its full expansion, as plain code without line markers. The
   # expansion itself stays whole beside it, since its markers name every file it entered.
-  def form_preprocessed_file_expanded_code_filepath(filepath, subdir)
-    return form_preprocessed_filepath(
-      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_EXPANDED_CODE_DIR, filepath
-    )
+  def form_preprocessed_file_expanded_code_filepath(filepath, test)
+    return form_preprocessed_filepath( :preprocess_files, test, PREPROCESS_EXPANDED_CODE_DIR, filepath )
   end
 
-  def form_preprocessed_file_raw_directives_only_filepath(filepath, subdir)
-    return form_preprocessed_filepath(
-      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, filepath
-    )
+  def form_preprocessed_file_raw_directives_only_filepath(filepath, test)
+    return form_preprocessed_filepath( :preprocess_files, test, PREPROCESS_RAW_DIRECTIVES_ONLY_DIR, filepath )
   end
 
-  def form_preprocessed_file_fallback_expansion_filepath(filepath, subdir)
-    return form_preprocessed_filepath(
-      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_FALLBACK_EXPANSION_DIR, filepath
-    )
+  def form_preprocessed_file_fallback_expansion_filepath(filepath, test)
+    return form_preprocessed_filepath( :preprocess_files, test, PREPROCESS_FALLBACK_EXPANSION_DIR, filepath )
   end
 
-  def form_preprocessed_file_compacted_directives_only_filepath(filepath, subdir)
-    return form_preprocessed_filepath(
-      @configurator.project_test_preprocess_files_path, subdir, PREPROCESS_DIRECTIVES_ONLY_DIR, filepath
-    )
+  def form_preprocessed_file_compacted_directives_only_filepath(filepath, test)
+    return form_preprocessed_filepath( :preprocess_files, test, PREPROCESS_DIRECTIVES_ONLY_DIR, filepath )
   end
 
   # `extra_roots` carries roots known only to the caller. A generated Partial source sits
@@ -485,16 +470,16 @@ class FilePathUtils
     return File.join( root, subdir )
   end
 
-  def form_mock_header_filepath(subdir, filename)
-    # @configurator.cmock_mock_path accessor only exists if mocks are enabled
+  # A header at `filename` below a test's mock root
+  def form_mock_header_filepath(name, filename)
     raise CeedlingException.new('Mocks are not enabled, but an internal feature dependent on them was accessed.') unless @configurator.project_use_mocks
-    return File.join(@configurator.cmock_mock_path, subdir, filename.ext(EXTENSION_CORE_HEADER))
+    return @test_build_layout.file( :mocks, name, filename.ext(EXTENSION_CORE_HEADER) )
   end
 
-  def form_partial_header_filepath(subdir, filename)
-    # @configurator.project_test_partials_path accessor only exists if partials are enabled
+  # A header at `filename` below a test's Partials root
+  def form_partial_header_filepath(name, filename)
     raise CeedlingException.new('Partials are not enabled, but an internal feature dependent on them was accessed.') unless @configurator.project_use_partials
-    return File.join( @configurator.project_test_partials_path, subdir, filename.ext(EXTENSION_CORE_HEADER) )
+    return @test_build_layout.file( :partials, name, filename.ext(EXTENSION_CORE_HEADER) )
   end
 
   # Every generated Partial filename below is also the text a Partial directive macro
@@ -591,13 +576,6 @@ class FilePathUtils
     parts << name if name
     path = File.join( *parts )
     @file_wrapper.check_path_length( path, origin: 'FilePathUtils#form_build_context_path' )
-    return path
-  end
-
-  # Forms base/name[/subdir]
-  def form_named_path(base, name, subdir: nil)
-    path = subdir ? File.join( base, name, subdir ) : File.join( base, name )
-    @file_wrapper.check_path_length( path, origin: 'FilePathUtils#form_named_path' )
     return path
   end
 
