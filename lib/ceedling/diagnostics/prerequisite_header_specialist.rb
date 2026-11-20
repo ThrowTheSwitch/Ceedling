@@ -23,12 +23,13 @@ class PrerequisiteHeaderSpecialist
 
   # An #error directive's message, in each family's wording. GCC writes `error: #error text`.
   # Clang writes `error: text` and echoes the `#error` line beneath, so only that echo tells
-  # it from any other error. Both keep the header's path and the message by name.
+  # it from any other error. Clang 18 opens the echo with a line-number gutter, as in `5 |`,
+  # and Apple Clang writes none. Both keep the header's path and the message by name.
   ERROR_SYMPTOMS = [
     # GCC
     /^(?<file>[^\n]+?):\d+:(?:\d+:)?[ \t]+(?:fatal )?error:[ \t]+#error\b[ \t]*(?<message>[^\n]*)/,
     # Clang
-    /^(?<file>[^\n]+?):\d+:(?:\d+:)?[ \t]+(?:fatal )?error:[ \t]+(?<message>[^\n]+)\n[^\n]*\|[ \t]*#[ \t]*error\b/
+    /^(?<file>[^\n]+?):\d+:(?:\d+:)?[ \t]+(?:fatal )?error:[ \t]+(?<message>[^\n]+)\n(?:[ \t]*\d+[ \t]*\|)?[ \t]*#[ \t]*error\b/
   ].freeze
 
   # A header named in a message

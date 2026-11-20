@@ -152,6 +152,6 @@ Any `#error` matches the symptoms, so each diagnosis also asks where the error i
 | Family | Wordings | Evidence |
 |---|---|---|
 | GCC | `file.h:5:6: error: #error "message"`, and unquoted `error: #error message` | real toolchain (GCC 13) |
-| Clang | `file.h:5:6: error: "message"`, and unquoted `error: message`, each with the `#error` line echoed beneath | real toolchain (Clang 18) |
+| Clang | `file.h:5:6: error: "message"`, and unquoted `error: message`, each with the `#error` line echoed beneath, after a `5 |` gutter (Clang 18) or none (Apple Clang 15) | real toolchain (Clang 18, Apple Clang 15) |
 
 Clang writes no `#error` in its message, so only the echoed line tells the directive from any other error. A build that turns off caret diagnostics leaves nothing to match.
