@@ -12,7 +12,7 @@ Each release has its own section, listing only what changed in that release.
 
 ---
 
-# [1.2.3] — Unreleased
+# [1.2.3] — 2026-11-20
 
 ## 💪 Fixed
 
