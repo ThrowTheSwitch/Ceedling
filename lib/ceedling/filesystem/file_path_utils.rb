@@ -416,13 +416,15 @@ class FilePathUtils
     return @test_build_layout.generated_roots( test )
   end
 
-  # Composes a preprocessed artifact's path below the test's root of `kind`. Pure, like
+  # Composes a preprocessed artifact's path below the test's root of `kind`, or below the base
+  # every test shares for no test, as `form_test_build_path` does. Pure, like
   # every other path builder here: callers that merely restate a path -- a rake target
   # declaration, a staleness check -- must not leave directories behind as a side effect.
   # Whoever writes the file creates its directory, the same way a mock's or a Partial's own
   # writer does.
   def form_preprocessed_filepath(kind, test, kind_dir, filepath, suffix: '')
-    return File.join( *[@test_build_layout.root( kind, test ), kind_dir, preprocessed_file_subpath( filepath, test ) + suffix].compact )
+    root = @test_build_layout.root( kind, test ) || @test_build_layout.base( kind )
+    return File.join( *[root, kind_dir, preprocessed_file_subpath( filepath, test ) + suffix].compact )
   end
 
   def form_preprocessed_includes_list_filepath(filepath, test)
