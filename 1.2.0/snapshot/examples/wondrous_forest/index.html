@@ -4245,6 +4245,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#what-a-partial-carries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a Partial Carries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#running-the-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4322,6 +4333,8 @@ Ceedling's Partials feature alongside traditional mock-based testing.</p>
   and <code>static</code> variables that are normally inaccessible to the linker</li>
 <li><strong>Every major Partials pattern</strong> across a range of sensor and system modules</li>
 <li><strong>Partials and mocks used together</strong> in the same test suite</li>
+<li><strong>Carrying</strong> — a Partial bringing along the helpers, prototypes, and
+  variables its selected functions rely on</li>
 </ul>
 <p>This project is test-suite only (no release build).</p>
 <hr />
@@ -4340,19 +4353,24 @@ Ceedling's Partials feature alongside traditional mock-based testing.</p>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   ├── ForestMonitor.c/.h
 <a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│   ├── SensorHal.c/.h
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   ├── UartDriver.c/.h
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   ├── sensors/soil/Calibration.c/.h   # Same module name as the one below
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   ├── sensors/light/Calibration.c/.h  # Told apart by directory
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   └── Types.h
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>└── test/              # Test files — Using Partials and traditional assertions/mocks
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>    ├── TestTemperatureSensor.c
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>    ├── TestHumiditySensor.c
-<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>    ├── TestLightSensor.c
-<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    ├── TestSoilMoisture.c
-<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    ├── TestAlertManager.c
-<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    ├── TestEventQueue.c
-<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    ├── TestForestMonitor.c
-<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    ├── TestSensorHal.c
-<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    └── TestUartDriver.c
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   ├── RainGauge.c/.h
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   ├── RainTipIsr.c/.h # Defines the tip counter RainGauge.h declares extern
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   ├── ForestUnits.h   # C99 inline functions, no source file of its own
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│   ├── sensors/soil/Calibration.c/.h   # Same module name as the one below
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│   ├── sensors/light/Calibration.c/.h  # Told apart by directory
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│   └── Types.h
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>└── test/              # Test files — Using Partials and traditional assertions/mocks
+<a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>    ├── TestTemperatureSensor.c
+<a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>    ├── TestHumiditySensor.c
+<a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>    ├── TestLightSensor.c
+<a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>    ├── TestSoilMoisture.c
+<a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>    ├── TestAlertManager.c
+<a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>    ├── TestEventQueue.c
+<a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>    ├── TestForestMonitor.c
+<a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>    ├── TestSensorHal.c
+<a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>    ├── TestUartDriver.c
+<a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>    ├── TestRainGauge.c
+<a id="__codelineno-0-32" name="__codelineno-0-32" href="#__codelineno-0-32"></a>    └── TestCalibration.c
 </code></pre></div>
 <hr />
 <h2 id="partials-patterns-used">Partials Patterns Used</h2>
@@ -4404,8 +4422,47 @@ Ceedling's Partials feature alongside traditional mock-based testing.</p>
 <td>TestCalibration.c</td>
 <td><code>TEST_PARTIAL_PRIVATE_MODULE_AT</code> — two same-named modules</td>
 </tr>
+<tr>
+<td>TestRainGauge.c</td>
+<td><code>TEST_PARTIAL_PUBLIC_MODULE</code> + a subtracted, stubbed function</td>
+</tr>
 </tbody>
 </table>
+<hr />
+<h2 id="what-a-partial-carries">What a Partial Carries</h2>
+<p>A Partial brings along what its selected functions rely on. <code>TestRainGauge.c</code>
+selects RainGauge's public functions and subtracts one of them. Those
+functions rely on code the test does not select, so the Partial carries it.
+Run the test with <code>--verbosity=debug</code> to see each carried item and why.</p>
+<table>
+<thead>
+<tr>
+<th>Carried item</th>
+<th>Why the Partial needs it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RainGauge_TipsToMicrometers()</code></td>
+<td><code>RainGauge.h</code> defines this <code>static inline</code> helper, and <code>RainGauge_Update()</code> calls it</td>
+</tr>
+<tr>
+<td><code>extern inline</code> prototype of <code>ForestUnits_MicrometersToTenthsMm()</code></td>
+<td><code>ForestUnits.h</code> defines the function C99 <code>inline</code>. The prototype makes the Partial hold its external definition</td>
+</tr>
+<tr>
+<td>Prototype of <code>RainGauge_ReportStorm()</code></td>
+<td>The test subtracts this function and defines a stub. <code>RainGauge_Update()</code> calls the stub</td>
+</tr>
+<tr>
+<td>Weak definition of <code>g_rain_tip_count</code></td>
+<td><code>RainGauge.h</code> declares the counter <code>extern</code>. Its real definition in <code>RainTipIsr.c</code>, which the test links, takes precedence</td>
+</tr>
+</tbody>
+</table>
+<p>Each carried item keeps its original spelling. A <code>#line</code> directive ahead of
+each points back to its original file and line. Coverage of the carried
+helper therefore counts toward <code>RainGauge.h</code>.</p>
 <hr />
 <h2 id="running-the-tests">Running the Tests</h2>
 <p>Run all tests:</p>

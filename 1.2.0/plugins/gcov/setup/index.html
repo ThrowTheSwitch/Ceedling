@@ -4736,7 +4736,8 @@ are not exercised by any test. It takes one of three values:</p>
   appear in the final report with 0% coverage (since no test exercises
   them). This causes all source files to appear in any generated reporting.
   If a source file fails to compile, Ceedling logs guidance at the console,
-  and the build fails.</li>
+  and the build fails. Each untested source’s object sits below <code>build/gcov/out/</code>
+  at the source’s path from your project’s root.</li>
 </ul>
 <p><div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nt">:plugins</span><span class="p">:</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">:enabled</span><span class="p">:</span>

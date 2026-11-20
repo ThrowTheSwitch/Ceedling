@@ -5819,7 +5819,7 @@ settings with other CLI arguments derived from plugin configuration. You must
 provide any settings that would have been provided by the Gcov plugin, either 
 in the config file itself or via <code>:custom_args:</code>.</p>
 </div>
-<p>A Gcovr config file replaces Ceedling's own automatically generated exclusion
+<p>A Gcovr config file replaces Ceedling’s own automatically generated exclusion
 patterns (see <a href="#results-filtering">Results filtering</a> below) entirely — it is
 the only way to override or remove one of those defaults, since the
 project-configuration <code>:report_exclude</code> option can only add further
@@ -5854,7 +5854,7 @@ Ceedling itself generates as part of a build all skew that number if left in.</p
 <code>test/</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>.*(?:^|/)test/(?:.*/)?test_[^/]+(?:\.c)$
 </code></pre></div>
-<p>A project's <code>:extension</code> ↳ <code>:source</code> can list more than one source
+<p>A project’s <code>:extension</code> ↳ <code>:source</code> can list more than one source
 extension; every configured extension is joined into this same
 alternation. Given <code>:extension</code> ↳ <code>:source</code> ⇒ <code>['.c', '.C']</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>.*(?:^|/)test/(?:.*/)?test_[^/]+(?:\.c|\.C)$
@@ -5878,7 +5878,7 @@ the alternation. Given <code>:extension</code> ↳ <code>:source</code> ⇒ <cod
     <code>:build_root</code>: generated mocks, test runners, Partials output, and the
     vendored Unity/CMock/CException framework sources Ceedling copies in to
     build against. Unlike the two patterns above, this one always matches a
-    literal <code>.c</code> extension regardless of your project's own <code>:extension</code> ↳
+    literal <code>.c</code> extension regardless of your project’s own <code>:extension</code> ↳
     <code>:source</code> setting, since every file it catches is one Ceedling itself
     writes in plain C.</p>
 <p>Given <code>:build_root</code> ⇒ <code>build/</code>:</p>
@@ -5891,7 +5891,7 @@ provide via <a href="#report_exclude"><code>:report_exclude</code></a> below —
 (and normally shouldn't) duplicate them yourself.</p>
 <div class="admonition warning">
 <p class="admonition-title">Not applied when using a Gcovr configuration file</p>
-<p>These defaults are only generated when Ceedling builds <code>gcovr</code>'s command
+<p>These defaults are only generated when Ceedling builds <code>gcovr</code>’s command
 line directly. As covered in
 <a href="#gcovr-configuration-file">Gcovr configuration file</a> above, setting
 <code>:config_file</code> bypasses this entirely — none of the three patterns above
@@ -5907,7 +5907,7 @@ own three patterns ahead of anything you configure there. Neither
 either: <code>:report_include</code> narrows which files are considered at all, but an
 exclude pattern still wins over it for any file matching both; <code>:custom_args</code>
 lets you pass additional raw <code>gcovr</code> flags, but a raw <code>--filter</code>/<code>--exclude</code>
-of your own is just as additive as <code>:report_exclude</code> — there's no <code>gcovr</code>
+of your own is just as additive as <code>:report_exclude</code> — there’s no <code>gcovr</code>
 flag that removes or replaces an exclusion already given, only ones that add
 more.</p>
 <p>The only way to actually remove or replace one of these defaults — for
@@ -5954,7 +5954,7 @@ Ceedling from overriding config file values with its CLI arguments.
 different working directory than your project root, and <code>:custom_args:</code> is
 still applied too — the one way to pass Gcovr flags of your own alongside a
 config file (see <code>:custom_args</code> below).</p>
-<p>To preserve the plugin's base filtering behavior, include exclusion patterns
+<p>To preserve the plugin’s base filtering behavior, include exclusion patterns
 matching your project layout in the config file itself — see
 <a href="#gcovr-configuration-file">Gcovr configuration file</a> above.</p>
 <p><strong>Default:</strong> unset — Ceedling does not look for or autodetect a config file
@@ -5979,7 +5979,10 @@ percentage. Can be ORed with the exit status of other <code>:fail_under_*</code>
 (<code>gcovr --fail-under-decision</code>)</p>
 <p><code>gcovr</code> treats <code>--fail-under-decision</code> as a no-op without <code>--decisions</code> also
 present — setting this option implies <code>:decisions</code> (below) automatically, so
-it's never silently non-functional.</p>
+it’s never silently non-functional.</p>
+<p>From <code>gcovr</code> 8.7, <code>--fail-under-decision</code> also checks condition coverage, which
+<code>:mcdc</code> produces. A run below the minimum for either reports each failure on its
+own line of the build failure summary.</p>
 <p><strong>Values:</strong> <code>1</code>–<code>100</code></p>
 <p><strong>Requires:</strong> <code>gcovr</code> 7.0 or higher</p>
 <hr />
@@ -6029,7 +6032,7 @@ is in addition to any other configured reports. (<code>gcovr --print-summary</co
 <p>Keep only source files that match this filter. Filters are regular
 expressions. (<code>gcovr --filter</code>)</p>
 <p>This narrows which files are considered at all, but does not override
-<a href="#results-filtering">Results filtering</a>'s automatic exclusion defaults — a
+<a href="#results-filtering">Results filtering</a>’s automatic exclusion defaults — a
 file excluded by one of those three default patterns stays excluded even if
 it also matches <code>:report_include</code>. See
 <a href="#overriding-the-defaults">Overriding the defaults</a> if you need to remove one
@@ -6060,10 +6063,13 @@ expressions. (<code>gcovr --gcov-exclude</code>)</p>
 <h3 id="exclude_directories"><code>:exclude_directories</code></h3>
 <p>Exclude directories that match this filter while searching for raw coverage
 files. Filters are regular expressions. (<code>gcovr --exclude-directories</code>)</p>
+<p>These are build directories. A long <code>:paths</code> root appears in them by its
+<a href="../../../testing-guide/conventions/#test-names-build-output">short name</a>, so a
+filter must name the short name or a directory below the root, not one above it.</p>
 <hr />
 <h3 id="gcov_executable"><code>:gcov_executable</code></h3>
 <p>Use a particular <code>gcov</code> executable. This may be appropriate and necessary in
-special circumstances — review Ceedling's options for modifying tools first.
+special circumstances — review Ceedling’s options for modifying tools first.
 (<code>gcovr --gcov-executable</code>)</p>
 <hr />
 <h3 id="exclude_unreachable_branches"><code>:exclude_unreachable_branches</code></h3>
@@ -6081,7 +6087,7 @@ the same source function, this is a real risk. This option controls how
 <code>gcovr</code> merges those repeated entries. See the
 <a href="https://gcovr.com/en/stable/guide/merging.html">gcovr merging docs</a> for all
 valid values. Ignored on <code>gcovr</code> versions below 6.0.</p>
-<p><strong>Default:</strong> <code>merge-use-line-max</code> (<code>gcovr</code>'s own default, <code>strict</code>, raises an
+<p><strong>Default:</strong> <code>merge-use-line-max</code> (<code>gcovr</code>’s own default, <code>strict</code>, raises an
 exception for many Ceedling projects)</p>
 <hr />
 <h3 id="use_gcov_files"><code>:use_gcov_files</code></h3>
@@ -6096,6 +6102,9 @@ error. (<code>gcovr --gcov-ignore-parse-errors</code>)</p>
 <h3 id="object_directory"><code>:object_directory</code></h3>
 <p>Override normal working directory detection for <code>.gcda</code>/<code>.gcno</code> files.
 (<code>gcovr --object-directory</code>)</p>
+<p>A directory below a long <code>:paths</code> root is spelled by the root's
+<a href="../../../testing-guide/conventions/#test-names-build-output">short name</a> in the
+build directory.</p>
 <hr />
 <h3 id="keep"><code>:keep</code></h3>
 <p>Keep intermediate <code>.gcov</code> files after processing. (<code>gcovr --keep</code>)</p>
@@ -6109,12 +6118,12 @@ error. (<code>gcovr --gcov-ignore-parse-errors</code>)</p>
 <h3 id="custom_args"><code>:custom_args</code></h3>
 <p>Optional list of one or more raw command line arguments to pass to <code>gcovr</code>.
 Useful as an escape hatch for any <code>gcovr</code> flag Ceedling has no named option
-for (e.g. limiting <code>gcovr</code>'s search root).</p>
+for (e.g. limiting <code>gcovr</code>’s search root).</p>
 <p>Unlike every other option above, these arguments are still applied even when
 <code>:config_file</code> is set — the one way to pass <code>gcovr</code> flags of your own
 alongside a config file.</p>
 <p>This does not, on its own, let you override
-<a href="#results-filtering">Results filtering</a>'s automatic exclusion defaults when
+<a href="#results-filtering">Results filtering</a>’s automatic exclusion defaults when
 <code>:config_file</code> is unset — a raw <code>--filter</code>/<code>--exclude</code> passed here is just as
 additive as <a href="#report_exclude"><code>:report_exclude</code></a>; see
 <a href="#overriding-the-defaults">Overriding the defaults</a> for the one option that

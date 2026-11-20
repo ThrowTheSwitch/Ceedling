@@ -4735,7 +4735,8 @@ section.</p>
 <p>Add <code>--verbosity obnoxious</code> (or <code>-v 4</code>) to your <code>test:</code> command line invocation
 for detailed logging of the C extraction and Partials generations for your test
 build. The logged lists of functions and variables can help you fine tune or
-troubleshoot your Partials configuration.</p>
+troubleshoot your Partials configuration. Extraction runs only for a Partial
+the build generates, such as on the first build after <code>ceedling clobber</code>.</p>
 </div>
 <h2 id="include-conventions"><code>#include</code> conventions</h2>
 <p>The <code>_MODULE</code> macros each expand to a <strong>string literal</strong> that names a

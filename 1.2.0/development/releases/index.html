@@ -4696,8 +4696,12 @@ release, then commit and continue development.</p>
 <li>Push <code>v1.2.0-pre.1</code> from <code>next_version</code>. CI creates a GitHub-available pre-release.</li>
 <li>Iterate with <code>-pre.2</code> and onward as needed.</li>
 <li>Bring the work onto <code>master</code> once the release is ready.</li>
+<li>Date the release’s sections in <code>docs/Changelog.md</code>, <code>docs/BreakingChanges.md</code>, and <code>docs/KnownIssues.md</code>.</li>
 <li>Push <code>v1.2.0</code> from <code>master</code>. CI creates the GitHub-available release and publishes the gem to RubyGems.org.</li>
-<li>Bump <code>lib/version.rb</code> and continue development.</li>
+<li>Bump <code>lib/version.rb</code> and continue development. Open the next release’s sections:</li>
+<li><code>docs/Changelog.md</code>: a new, empty section.</li>
+<li><code>docs/KnownIssues.md</code>: a copy of the released section. Remove each issue the next release resolves, and close the released section by naming it.</li>
+<li><code>docs/BreakingChanges.md</code>: a section only once the next release breaks something.</li>
 </ol>
 <h2 id="documentation-deployment">Documentation deployment</h2>
 <p>Documentation versions are deployed by hand, separately from the gem. These tasks

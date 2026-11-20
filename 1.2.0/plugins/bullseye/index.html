@@ -4878,13 +4878,19 @@ generate them on demand instead.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:all
 <a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>report:bullseye
 </code></pre></div>
+<p>The report task can also follow a <code>bullseye:</code> task on the same command line.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:all<span class="w"> </span>report:bullseye
+</code></pre></div>
+<p>Either way, its reports leave out the same sources as automatic reports (see
+<a href="#report-exclusions">Report exclusions</a>). With no coverage file yet, the task
+says so and writes nothing.</p>
 <p>Large projects may prefer this. Report generation can be time intensive.</p>
 <h3 id="license_manager_file"><code>:license_manager_file:</code></h3>
 <p>Points the plugin at a shared Bullseye license manager file. This applies only
 to floating and evaluation licenses. See
 <a href="licensing/#floating-and-evaluation-licenses">Licensing</a>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nt">:bullseye</span><span class="p">:</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">  </span><span class="nt">:license_manager_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/shared/bullseye.lmgr</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nt">:bullseye</span><span class="p">:</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span><span class="nt">:license_manager_file</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/shared/bullseye.lmgr</span>
 </code></pre></div>
 <p><strong>Default:</strong> unset</p>
 <h2 id="reporting">Reporting</h2>
@@ -4893,43 +4899,43 @@ to floating and evaluation licenses. See
 <p>Two summaries print after a <code>bullseye:</code> task. Per-function detail lists each
 function's invocation status and condition/decision coverage. Whole-file totals
 follow as a single banner.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>-------------------------------
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>BULLSEYE: CODE COVERAGE SUMMARY
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>-------------------------------
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>calc_never_used(int,int)       0 / 1 =   0%   0 /  6 =   0%
-<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>calc_classify(int)             1 / 1 = 100%   1 /  4 =  25%
-<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a>------------------------  -----------------  --------------
-<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a>Total                          1 / 2 =  50%   1 / 10 =  10%
-<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a>
-<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a>-------------------------------
-<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a>BULLSEYE: CODE COVERAGE SUMMARY
-<a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a>-------------------------------
-<a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a>FUNCTIONS: 50%
-<a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a>BRANCHES:  10%
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>-------------------------------
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>BULLSEYE: CODE COVERAGE SUMMARY
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>-------------------------------
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>calc_never_used(int,int)       0 / 1 =   0%   0 /  6 =   0%
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>calc_classify(int)             1 / 1 = 100%   1 /  4 =  25%
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>------------------------  -----------------  --------------
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>Total                          1 / 2 =  50%   1 / 10 =  10%
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>-------------------------------
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>BULLSEYE: CODE COVERAGE SUMMARY
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>-------------------------------
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>FUNCTIONS: 50%
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>BRANCHES:  10%
 </code></pre></div>
 <p>The totals banner covers every function and branch recorded in the coverage
 data file. It is not limited to what the current task invocation touched.</p>
 <h3 id="branch-coverage-detail">Branch coverage detail</h3>
 <p>Enabling <a href="#branch_detail"><code>:branch_detail:</code></a> adds an annotated source listing.
 Each probe is marked to the left of its source line.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>--------------------------------
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>BULLSEYE: BRANCH COVERAGE DETAIL
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>--------------------------------
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>src/calc.c:
-<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>        1 #include &quot;calc.h&quot;
-<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a>        2
-<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>X       3 int calc_classify(int n) {
-<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>--&gt;T    4   if (n &gt; 10) { return 1; }
-<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>--&gt;     5   else if (n &lt; 0) { return -1; }
-<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>        6   return 0;
-<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a>        7 }
-<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a>        8
-<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>--&gt;     9 int calc_never_used(int a, int b) {
-<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a>--&gt;    10   if (
-<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a>  --&gt;           a &amp;&amp;
-<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a>  --&gt;                b) { return 1; }
-<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a>       11   return 0;
-<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a>       12 }
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>--------------------------------
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>BULLSEYE: BRANCH COVERAGE DETAIL
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>--------------------------------
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>src/calc.c:
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>        1 #include &quot;calc.h&quot;
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>        2
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a>X       3 int calc_classify(int n) {
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a>--&gt;T    4   if (n &gt; 10) { return 1; }
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a>--&gt;     5   else if (n &lt; 0) { return -1; }
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a>        6   return 0;
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>        7 }
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a>        8
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>--&gt;     9 int calc_never_used(int a, int b) {
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a>--&gt;    10   if (
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a>  --&gt;           a &amp;&amp;
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a>  --&gt;                b) { return 1; }
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a>       11   return 0;
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a>       12 }
 </code></pre></div>
 <p>The markers carry specific meanings.</p>
 <table>
@@ -4984,7 +4990,8 @@ including per-probe results.</p>
 <p>Framework and test sources are excluded from reports automatically. Unity,
 CMock, CException, files matching your test file prefix, and generated mocks
 are all excluded. Aggregate percentages therefore reflect your production code.</p>
-<p>Exclusions apply to console totals, HTML reports, and XML reports alike.</p>
+<p>Exclusions apply to console totals, HTML reports, and XML reports alike,
+including those <code>report:bullseye</code> writes.</p>
 <p>Bullseye calls the underlying concept a region. A region is an inclusion or
 exclusion rule. Regions can match by filename, directory, function, or C++
 class and namespace. This plugin uses filename-pattern exclusions only. See
@@ -4993,12 +5000,12 @@ class and namespace. This plugin uses filename-pattern exclusions only. See
 <h3 id="coverage-browser">Coverage Browser</h3>
 <p>The <code>bullseye:browser</code> task opens Bullseye's graphical Coverage Browser
 against your project's coverage data file.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:browser
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:browser
 </code></pre></div>
 <h3 id="license-status">License status</h3>
 <p>The <code>bullseye:license</code> task reports your Bullseye license number, its expiry
 date, and license manager utilization.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:license
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>bullseye:license
 </code></pre></div>
 <p>See <a href="licensing/">Licensing</a> for how to read its output.</p>
 <h2 id="advanced-and-troubleshooting">Advanced and troubleshooting</h2>

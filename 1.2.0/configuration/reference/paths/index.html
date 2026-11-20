@@ -4841,6 +4841,11 @@ file search paths:</p>
 <p>This set of paths specifies the locations of your header files. If your header
 files are intermixed with source files, you must duplicate some or all of your
 <code>:paths</code> ↳ <code>:source</code> entries here.</p>
+<p>A search path reaches the headers in directories below it through the path an
+<code>#include</code> names, as your compiler does. With <code>src/</code> listed,
+<code>#include "drivers/uart.h"</code> and <code>#include "drivers/mock_uart.h"</code> both find
+<code>src/drivers/uart.h</code>. A glob such as <code>src/**</code> is needed only for an <code>#include</code>
+that names a header below <code>src/</code> by its filename alone.</p>
 <p>In its simplest use, your include paths list can be exhaustive. That is, you
 list all path locations where your project’s header files reside in this
 configuration list.</p>
@@ -4873,7 +4878,19 @@ files contained in those paths. A custom list is just that — a custom list of
 paths.</p>
 <h2 id="paths-configuration-options-notes"><code>:paths</code> configuration options &amp; notes</h2>
 <ol>
-<li>A path can be absolute (fully qualified) or relative.</li>
+<li>A path can be absolute (fully qualified) or relative. A relative path is relative to
+   the working directory, where you run <code>ceedling</code>, not to your project file’s
+   directory. For a project file named with <code>--project</code> from another directory, write
+   its paths relative to that other directory.</li>
+<li><code>~</code> at the start of a path names your home directory. <code>~user</code> is a directory named
+   <code>~user</code>.</li>
+<li>A path reached through a symlink names the place the symlink leads to, so two
+   entries reaching one directory collect it once. Directories found below an entry
+   keep the spelling they are found by, as an <code>#include</code> reaches them.</li>
+<li>An entry based above the build root, such as <code>./**</code> or <code>../**</code>, collects nothing
+   from it. An entry within the build root collects from it with a warning, but no entry
+   collects from the directories Ceedling and its plugins create, such as <code>test/</code>,
+   <code>release/</code>, <code>vendor/</code>, and <code>artifacts/</code> below the build root, or the mocks directory.</li>
 <li>A path can include a glob matcher (more on this below).</li>
 <li>A path can use <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</li>
 <li>Subtractive paths are possible and useful. See the documentation below.</li>
@@ -4925,6 +4942,17 @@ collection.</p>
 <p>By default, paths are additive. For pretty alignment in your YAML, you may also
 use <code>+:</code>, but strictly speaking, it’s not necessary.</p>
 <p>Subtractive paths may be simple paths or globs just like any other path entry.</p>
+<p>A subtractive entry removes the directories it names and every directory below them.
+An additive entry naming one of those directories more closely keeps it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:paths</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:source</span><span class="p">:</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src/**</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:src/legacy</span><span class="w">       </span><span class="c1"># Removes src/legacy/ and every directory below it...</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">src/legacy/keep</span><span class="w">    </span><span class="c1"># ...except src/legacy/keep/, which this entry names</span>
+</code></pre></div>
+<p>A subtractive entry that names nothing logs a warning, so a mistyped entry does 
+not pass unnoticed. Below the build root, where nothing exists before a first
+build, it passes without a word.</p>
 <div class="admonition warning">
 <p class="admonition-title">Quote the whole entry, decoration included</p>
 <p>YAML keeps quote marks that begin partway through a value as part of the
@@ -4932,11 +4960,11 @@ value. Quoting only the path leaves quote marks in the path, and
 Ceedling rejects the entry. Quote an entry whenever it holds <code>#{…}</code>
 <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>, because YAML
 otherwise reads the <code>#</code> as the start of a comment.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="c1"># Correct</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;-:#{ENV[&#39;SRC_ROOT&#39;]}/vendor/legacy&quot;</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="c1"># Incorrect -- the quote marks become part of the path</span>
-<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:&quot;#{ENV[&#39;SRC_ROOT&#39;]}/vendor/legacy&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Correct</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;-:#{ENV[&#39;SRC_ROOT&#39;]}/vendor/legacy&quot;</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Incorrect -- the quote marks become part of the path</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:&quot;#{ENV[&#39;SRC_ROOT&#39;]}/vendor/legacy&quot;</span>
 </code></pre></div>
 </div>
 <div class="admonition note">

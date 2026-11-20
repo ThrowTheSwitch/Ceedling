@@ -1507,6 +1507,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#variable-type-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable type names
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4424,6 +4435,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#variable-type-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable type names
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -4539,8 +4561,9 @@ directive macros:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;unity.h&quot;</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span><span class="c1"> // Required -- defines all Partial directive macros</span>
 </code></pre></div>
-<p><code>ceedling.h</code> defines the <code>TEST_PARTIAL_*</code>, <code>MOCK_PARTIAL_*</code>, <code>*_CONFIG</code>, and
-<code>PARTIAL_LOCAL_VAR()</code> macros. Without this include, the macros are undefined.</p>
+<p><code>ceedling.h</code> defines the <code>TEST_PARTIAL_*</code>, <code>MOCK_PARTIAL_*</code>, <code>*_CONFIG</code>,
+<code>PARTIAL_LOCAL_VAR()</code>, <code>PARTIAL_TYPE()</code> and <code>PARTIAL_LOCAL_TYPE()</code> macros.
+Without this include, the macros are undefined.</p>
 <h2 id="partials-macro-categories">Partials macro categories</h2>
 <p>See the <a href="../../../reference/partials-macros/">Partials Macros Reference</a> for the complete listing.</p>
 <h3 id="module-selection"><a href="../../../reference/partials-macros/#module-selection-macros">Module selection</a></h3>
@@ -4561,6 +4584,10 @@ and can be accessed directly in your test cases.</p>
 <p><code>PARTIAL_LOCAL_VAR(function_name, variable_name)</code></p>
 <p>Accesses a function-scoped <code>static</code> variable that Ceedling has promoted to
 module scope in a generated Partial.</p>
+<h3 id="variable-type-names"><a href="../../../reference/partials-macros/#variable-type-names">Variable type names</a></h3>
+<p><code>PARTIAL_TYPE(module, variable)</code> / <code>PARTIAL_LOCAL_TYPE(module, function, variable)</code></p>
+<p>Name the type a Partial gives a variable declared together with its type, as in
+<code>static struct { int count; } s_ctx;</code>.</p>
 <p><br/><br/></p>
 
 

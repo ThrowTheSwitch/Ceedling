@@ -51,7 +51,7 @@ DEFAULT_BULLSEYE_LINKER_TOOL = {
   }
 
 DEFAULT_BULLSEYE_FIXTURE_TOOL = {
-  :executable => '${1}'.freeze,
+  :executable => '"${1}"'.freeze, # Test executable, quoted as a path
   :name => 'default_bullseye_fixture'.freeze,
   :optional => false.freeze,
   :arguments => [].freeze

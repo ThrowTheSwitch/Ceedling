@@ -4591,6 +4591,9 @@ functions by the folder its <code>#include</code> names. A mock included as
 <code>drivers/uart/mock_config.h</code> (<code>#include "drivers/uart/mock_config.h"</code>) gets 
 functions such as <code>drivers_uart_mock_config_Init()</code>. A mock included without
 a folder keeps its plain name.</p>
+<p>The folder is the header’s directory below one of the test’s search paths. With
+<code>src/</code> as a search path, <code>drivers/uart/mock_config.h</code> mocks
+<code>src/drivers/uart/config.h</code>.</p>
 <p>This is what lets one test file mock two headers sharing a filename, such as
 <code>drivers/uart/config.h</code> and <code>drivers/spi/config.h</code>. Include each mock through
 its own folder. Ceedling copies this setting into the test runner
@@ -4628,7 +4631,8 @@ for more details.</p>
 <p><code>:unity_helper_path</code> may be a single string or a list. Each value must be a
 relative path from your Ceedling working directory to a Unity helper header file
 (these are typically organized within containing Ceedling <code>:paths</code> ↳ <code>:support</code>
-directories).</p>
+directories). A test build compiles the source file beside each helper header,
+of the same name, when one exists.</p>
 <p><strong>Default</strong>: <code>[]</code> (empty)</p>
 <h2 id="includes"><code>:includes</code></h2>
 <p>In certain advanced testing scenarios, you may need to inject additional header

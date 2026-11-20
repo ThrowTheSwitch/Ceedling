@@ -1874,6 +1874,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#hand-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hand-off
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hand-off">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hand-off-by-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hand-off by condition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#older-launchers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Older launchers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projects-vendored-by-110-through-121" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Projects vendored by 1.1.0 through 1.2.1
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ceedling-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ceedling development
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4349,6 +4421,78 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#hand-off" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hand-off
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Hand-off">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#hand-off-by-condition" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hand-off by condition
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#older-launchers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Older launchers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#projects-vendored-by-110-through-121" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Projects vendored by 1.1.0 through 1.2.1
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ceedling-development" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ceedling development
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4436,16 +4580,14 @@ in <code>lib/</code>. The code in <code>/bin</code> manages lots of startup deta
 configuration. Ultimately, it then launches the main application code from
 <code>lib/</code>.</p>
 <p>The features and conventions controlling <em>which ceedling</em> dictate which
-application code the <code>ceedling</code> command line handler launches.</p>
+installation of Ceedling runs your command. When they select an
+installation other than the one whose <code>ceedling</code> command you ran, the launcher
+hands your command off to that installation’s own launcher. See
+<a href="#hand-off">Hand-off</a>.</p>
 <div class="admonition note">
-<p class="admonition-title">Ceedling development in <code>bin/</code></p>
-<p>Working on the code in Ceedling’s <code>bin/</code> and need to run it while a gem is 
-installed? You must take the additional step of specifying the path to the 
-<code>ceedling</code> launcher in your filesystem.</p>
-<p>In Unix-like systems:
-<code>&gt; my/ceedling/changes/bin/ceedling &lt;args&gt;</code>.</p>
-<p>On Windows systems:
-<code>&gt; ruby my\ceedling\changes\bin\ceedling &lt;args&gt;</code>.</p>
+<p class="admonition-title">Ceedling development</p>
+<p><em>Which ceedling</em> lets the <code>ceedling</code> command you have installed run your local
+Ceedling repository. See <a href="#ceedling-development">Ceedling development</a>.</p>
 </div>
 <h2 id="options-and-precedence">Options and precedence</h2>
 <p>When Ceedling starts up, it evaluates a handful of conditions to determine
@@ -4464,25 +4606,243 @@ which Ceedling location to launch.</p>
    <code>ceedling</code> launcher is running. In the typical case this is the default 
    gem installation.</li>
 </ol>
+<p>A path in <code>WHICH_CEEDLING</code> or <code>:which_ceedling</code> may begin with <code>~</code> to name 
+your home directory, as in <code>:which_ceedling: ~/ceedlings/1.2.0</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Configuration entry (2) does not make sense in some scenarios</p>
-<p>When running <code>ceedling new</code>, <code>ceedling examples</code>, or <code>ceedling example</code> 
-there is no project file to read. Similarly, <code>ceedling upgrade</code> does not 
-load a project file; it merely works with the directory structure and 
-contents of a project. In these cases, the environment variable is your
-only option to set which Ceedling to launch.</p>
+<p><code>ceedling new</code>, <code>ceedling examples</code>, <code>ceedling example</code>, <code>ceedling docs</code>,
+and <code>ceedling help</code> outside a project have no project file to read. They
+use the environment variable or a <code>vendor/ceedling</code> path in your working
+directory.</p>
+<p><code>ceedling upgrade</code> re-vendors a project from the Ceedling you run, or from
+the installation the environment variable names. It never selects a
+<code>vendor/ceedling</code> path, which inside a project is the copy being replaced.</p>
+<p><code>ceedling version</code> reads your project file when one is available. See
+<a href="#hand-off">Hand-off</a>.</p>
 </div>
 <h2 id="settings">Settings</h2>
 <p>The environment variable and configuration entry for <em>Which Ceedling</em> can
 contain two values:</p>
 <ol>
-<li>The value <code>gem</code> indicates that the command line <code>ceedling</code> launcher 
-   should run the application packaged alongside it in <code>lib/</code> (these 
+<li>The value <code>gem</code>, in any case, indicates that the command line <code>ceedling</code>
+   launcher should run the application packaged alongside it in <code>lib/</code> (these
    paths are typically found in the gem installation location).</li>
 <li>A relative or absolute path in your file system. Such a path should 
    point to the top-level directory that contains Ceedling’s <code>bin/</code> and 
-   <code>lib/</code> sub-directories.</li>
+   <code>lib/</code> sub-directories. A relative path is relative to your working
+   directory, not to your project file.</li>
 </ol>
+<h2 id="hand-off">Hand-off</h2>
+<p>When <em>which ceedling</em> selects an installation other than the one whose
+<code>ceedling</code> command you ran, every command except <code>version</code> runs in the selected
+installation. Its own launcher replaces the one you ran, in a new process,
+and receives your original command line. Your command then runs wholly on the
+selected installation’s code, whatever its version.</p>
+<p>One command falls back. A <code>--local</code> copy carries no documentation bundle, so
+<code>ceedling docs</code> with such a copy selected exports the documentation of the
+<code>ceedling</code> command you ran instead, with a notice naming both installations.</p>
+<p>Both sides log a notice, naming each installation and its version where
+it can be read:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>NOTICE: Ceedling launcher 1.2.2 at /var/lib/gems/3.3.0/gems/ceedling-1.2.2/ is handing off to Ceedling 1.2.0 at /home/me/project/vendor/ceedling/, which runs in its own process.
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>NOTICE: Ceedling 1.2.3 at /home/me/project/vendor/ceedling/ is now running, launched from Ceedling 1.2.2 at /var/lib/gems/3.3.0/gems/ceedling-1.2.2/.
+</code></pre></div>
+<p>The second notice comes only from Ceedling 1.2.2 or later. Commands that
+quiet logging, such as <code>help</code> and <code>dumpconfig</code>, show neither.</p>
+<p>A hand-off adds about 0.2 seconds to a command.</p>
+<h3 id="hand-off-by-condition">Hand-off by condition</h3>
+<p>The table names one of five mechanisms per condition:</p>
+<ul>
+<li><strong>In-process:</strong> the <code>ceedling</code> command you run does the work itself.</li>
+<li><strong>Hand-off:</strong> the selected installation’s own launcher runs the command, in a new process.</li>
+<li><strong>Restart:</strong> an application loaded by an older launcher restarts in its own process.</li>
+<li><strong>Report:</strong> the <code>ceedling</code> command you run reports on both installations without running the selected one.</li>
+<li><strong>Stop:</strong> the <code>ceedling</code> command you run stops with advice.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Example</th>
+<th>Mechanism</th>
+<th>Behavior in 1.2.2+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The selection is the installation you run</td>
+<td><code>ceedling test:all</code> with the gem and <code>:which_ceedling: gem</code></td>
+<td>In-process</td>
+<td>Runs as before 1.2.2, with no notice</td>
+</tr>
+<tr>
+<td>The selection is the same installation by another path</td>
+<td><code>:which_ceedling</code> names a symlink to the gem’s directory</td>
+<td>In-process</td>
+<td>Paths are compared after resolving links, so nothing is handed off</td>
+</tr>
+<tr>
+<td>The selection is another installation</td>
+<td>The gem’s <code>ceedling test:all</code> in a <code>--local</code> project</td>
+<td>Hand-off</td>
+<td>The vendored copy runs the build whole, whatever its version. Both sides log a notice.</td>
+</tr>
+<tr>
+<td>A command without a project selects another installation</td>
+<td><code>ceedling new</code> with <code>WHICH_CEEDLING</code> set</td>
+<td>Hand-off</td>
+<td>The selected installation creates the project with its own code and files</td>
+</tr>
+<tr>
+<td>The selection is a development checkout</td>
+<td>The gem’s <code>ceedling test:all</code> with <code>:which_ceedling: /home/me/dev/ceedling</code></td>
+<td>Hand-off</td>
+<td>The checkout’s own <code>bin/</code> and <code>lib/</code> run the command, so every change takes effect</td>
+</tr>
+<tr>
+<td><code>docs</code> selects a <code>--local</code> copy</td>
+<td><code>ceedling docs out/</code> in a <code>--local</code> project</td>
+<td>In-process</td>
+<td>Exports the documentation of the <code>ceedling</code> command you run, with a notice</td>
+</tr>
+<tr>
+<td><code>version</code> with a selection</td>
+<td><code>ceedling version</code> in a <code>--local</code> project</td>
+<td>Report</td>
+<td>Lists <code>Ceedling Launcher =&gt;</code> and <code>Ceedling App =&gt;</code>, each with its own version</td>
+</tr>
+<tr>
+<td><code>upgrade</code> inside a <code>--local</code> project</td>
+<td><code>ceedling upgrade .</code></td>
+<td>Stop</td>
+<td>Refuses to upgrade the vendored copy from itself</td>
+</tr>
+<tr>
+<td>The selection is a copy vendored by 1.1.0 through 1.2.1</td>
+<td>The gem’s <code>ceedling test:all</code> in a project vendored by 1.2.0</td>
+<td>Stop</td>
+<td>Advises re-vendoring with <code>ceedling upgrade</code></td>
+</tr>
+<tr>
+<td>A launcher before 1.2.2 selects a 1.2.2+ application</td>
+<td>A 1.2.1 gem <code>ceedling test:all</code> in a project vendoring 1.2.2</td>
+<td>Restart</td>
+<td>Logs a warning, then the application runs whole. If it can’t restart, it warns and continues in the older launcher’s process.</td>
+</tr>
+<tr>
+<td>A launcher before 1.2.2 runs a command without a project</td>
+<td>A 1.2.1 gem <code>ceedling new</code> with <code>WHICH_CEEDLING</code> naming 1.2.2</td>
+<td>In-process</td>
+<td>The older launcher’s own code runs the command. Upgrade the <code>ceedling</code> command you run.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="example-scenarios">Example scenarios</h4>
+<p>These show when the conditions above come into play, and which goal each
+serves.</p>
+<p><strong>Pin a team’s project to one Ceedling version.</strong> Create the project with
+<code>ceedling new --local</code>, and commit <code>vendor/ceedling/</code>. Each teammate can then
+run the project with whatever 1.2.2+ gem they have installed. The gem hands
+each command off to the vendored copy, so everyone builds with the same
+version. <code>ceedling version</code> confirms it under <code>Ceedling App =&gt;</code>.</p>
+<p><strong>Keep an older project on its version while you upgrade the gem.</strong> A
+project vendoring 1.2.0 still builds with 1.2.0 after you install the 1.2.2
+gem, because the gem hands off to the vendored copy. If the copy was vendored
+by 1.1.0 through 1.2.1, the gem stops instead. Re-vendor it as below, or
+copy Unity’s <code>test/targets/</code> into the copy to keep its version.</p>
+<p><strong>Upgrade a vendored project.</strong> Run <code>upgrade</code> with the Ceedling you want,
+from outside the project:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>upgrade<span class="w"> </span>my_project
+</code></pre></div>
+<p>To re-vendor with an installation other than the one you run, name it in
+<code>WHICH_CEEDLING</code>. Run from inside the project, <code>upgrade</code> stops, because the
+vendored copy would be both source and destination.</p>
+<p><strong>Create a project with a version you haven’t installed as a gem.</strong> Point
+<code>WHICH_CEEDLING</code> at an unpacked copy or a checkout of that version. <code>new</code>
+hands off to it, so the project, its vendored files, and its recorded
+<code>:ceedling_version:</code> all come from that version:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">WHICH_CEEDLING</span><span class="o">=</span>~/ceedlings/1.2.0<span class="w"> </span>ceedling<span class="w"> </span>new<span class="w"> </span>--local<span class="w"> </span>my_project
+</code></pre></div>
+<p><strong>Compare versions, or find where a behavior changed.</strong> Set <code>WHICH_CEEDLING</code>
+for each run instead of editing the project file. It overrides
+<code>:which_ceedling</code> and a <code>vendor/ceedling/</code> copy, so a CI job can build one
+project with several versions:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">WHICH_CEEDLING</span><span class="o">=</span>~/ceedlings/1.2.0<span class="w"> </span>ceedling<span class="w"> </span>test:all
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w"> </span>&gt;<span class="w"> </span><span class="nv">WHICH_CEEDLING</span><span class="o">=</span>~/ceedlings/1.2.2<span class="w"> </span>ceedling<span class="w"> </span>test:all
+</code></pre></div>
+<p><strong>Run a 1.2.2 project in a CI image with an older gem.</strong> A Docker image
+shipping a 1.2.1 gem loads the vendored 1.2.2 application into its own
+process. The application restarts itself, with a warning. To avoid the
+restart, run the project’s <code>./ceedling</code> launch script, or upgrade the image.</p>
+<p><strong>Develop Ceedling itself.</strong> Point <code>:which_ceedling</code> at your local
+repository and keep running the installed gem. See
+<a href="#ceedling-development">Ceedling development</a>.</p>
+<div class="admonition note">
+<p class="admonition-title">The launcher you run still parses your command line</p>
+<p>The <code>ceedling</code> command you run reads your command line before it hands off, so it
+rejects an option that only the selected installation knows. Run the
+selected installation’s own launcher instead, such as <code>./ceedling</code> in a
+<code>--local</code> project.</p>
+</div>
+<h3 id="version"><code>version</code></h3>
+<p><code>ceedling version</code> reports on both installations rather than hand off. It
+reads your project file when one is available, or the one <code>--project</code> names,
+along with any <code>--mixin</code>s. When the project selects another installation, it
+lists <code>Ceedling Launcher =&gt;</code> and <code>Ceedling App =&gt;</code> separately, each with its
+own version.</p>
+<h3 id="older-launchers">Older launchers</h3>
+<p>A launcher before 1.2.2 loads the selected installation’s application into
+its own process instead of handing off. A 1.2.2 or later application detects
+this, logs a warning, and restarts in its own process with your original
+command line. <code>new</code>, <code>example</code>, <code>examples</code>, <code>upgrade</code>, <code>docs</code>, and <code>help</code>
+without a project never load the application, so these still run the older
+launcher’s own code. Upgrade the <code>ceedling</code> command you run to avoid this.</p>
+<h3 id="projects-vendored-by-110-through-121">Projects vendored by 1.1.0 through 1.2.1</h3>
+<p><code>ceedling new --local</code> in Ceedling 1.1.0 through 1.2.1 left Unity’s built-in
+mixins out of the vendored copy, so that copy cannot run on its own. The
+<code>ceedling</code> command you run stops with advice instead of handing off to it. Re-vendor
+the project with <code>ceedling upgrade &lt;project path&gt;</code>.</p>
+<h2 id="ceedling-development">Ceedling development</h2>
+<p><em>Which ceedling</em> lets you run your local Ceedling repository on a project
+from the <code>ceedling</code> command you already have installed. Set <code>:project</code> ↳
+<code>:which_ceedling</code> in the project file, or <code>WHICH_CEEDLING</code>, to the path of
+your repository:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span><span class="nt">:which_ceedling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/home/me/dev/ceedling</span>
+</code></pre></div>
+<p>The installed <code>ceedling</code> command hands every command off to your repository’s own
+<code>bin/ceedling</code>. Your command runs wholly on your repository’s <code>bin/</code> and
+<code>lib/</code>, so changes in either take effect. <code>ceedling version</code> lists both
+installations, your repository with its <code>.dev</code> tag.</p>
+<p>Before 1.2.2, the installed <code>ceedling</code> command loaded your repository’s application
+into its own process. Any <code>lib/</code> file it had already loaded stayed the
+installed copy, so changes to those files were silently ignored.</p>
+<p>Keep in mind:</p>
+<ol>
+<li><strong>Your repository’s <code>bin/</code> runs as well as its <code>lib/</code>.</strong> The installed
+   launcher never runs your repository’s application. To exercise a
+   particular launcher, run its <code>bin/ceedling</code> directly.</li>
+<li><strong>The installed <code>ceedling</code> command parses your command line first.</strong> It rejects a
+   command or option that exists only in your repository. Run your
+   repository’s launcher directly for those.</li>
+<li><strong>Your repository must run on its own.</strong> It needs <code>bin/ceedling</code> and its
+   checked-out Git submodules, including Unity’s <code>test/targets/</code>. Otherwise
+   the installed <code>ceedling</code> command stops with advice.</li>
+<li><strong>A debugger or profiler loses the command at the hand-off.</strong> It attaches
+   to the installed <code>ceedling</code> command, whose process the hand-off replaces. Attach
+   it to your repository’s launcher directly instead.</li>
+<li><strong>A hand-off adds about 0.2 seconds</strong> to each command.</li>
+<li><strong><code>ceedling docs</code> exports the installed <code>ceedling</code> command’s documentation</strong> when
+   your repository has no built <code>site-local/</code> bundle.</li>
+<li><strong>A path that resolves to the installation you run is not handed off.</strong>
+   The plugin test suites’ <code>:which_ceedling: ../../../..</code> names the
+   repository running them, so they run in-process.</li>
+</ol>
+<p>To run your repository’s launcher directly:</p>
+<ul>
+<li>In Unix-like systems: <code>&gt; ~/dev/ceedling/bin/ceedling &lt;args&gt;</code>.</li>
+<li>On Windows systems: <code>&gt; ruby %USERPROFILE%\dev\ceedling\bin\ceedling &lt;args&gt;</code>.</li>
+</ul>
 <p><br/><br/></p>
 
 

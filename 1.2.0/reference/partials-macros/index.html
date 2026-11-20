@@ -3723,6 +3723,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#variable-type-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable type names
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4402,6 +4413,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#variable-type-names" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable type names
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4549,6 +4571,29 @@ identifier <code>partial_&lt;function_name&gt;_&lt;variable_name&gt;</code>.</p>
 <li>Both arguments must be literal C identifiers — not strings or runtime values</li>
 <li>Can appear anywhere a variable name is legal: expressions, assertions,
   assignments</li>
+</ul>
+<hr />
+<h2 id="variable-type-names">Variable type names</h2>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>For how a Partial names the type of a variable declared together with its
+type, see
+<a href="../../testing-guide/partials/variables/#a-variable-declared-together-with-its-type">A variable declared together with its type</a>.</p>
+</div>
+<p><strong><code>PARTIAL_TYPE(module_name, variable_name)</code></strong></p>
+<p>Names the type a Partial gives a variable declared together with its type, as
+in <code>static struct { int count; } s_ctx;</code>. The macro expands to
+<code>ceedling_partial_&lt;module_name&gt;_&lt;variable_name&gt;_t</code>.</p>
+<p><strong><code>PARTIAL_LOCAL_TYPE(module_name, function_name, variable_name)</code></strong></p>
+<p>Names the type of a promoted function-scoped <code>static</code> declared together with
+its type. The macro expands to
+<code>ceedling_partial_&lt;module_name&gt;_&lt;function_name&gt;_&lt;variable_name&gt;_t</code>.</p>
+<ul>
+<li>Defined in <code>ceedling.h</code>; requires <code>#include "ceedling.h"</code> above its use</li>
+<li>Every argument must be a literal C identifier — not a string or runtime value</li>
+<li>The module name is the name alone, without a directory, with <code>_</code> for each
+  character a C identifier can't hold</li>
+<li>Can appear anywhere a type name is legal: declarations, casts, <code>sizeof</code></li>
 </ul>
 <p><br/><br/></p>
 

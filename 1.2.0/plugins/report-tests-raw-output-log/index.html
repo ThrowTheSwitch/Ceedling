@@ -4500,7 +4500,9 @@ expected Unity test results as described above. Log files are named for the
 respective test executables.</p>
 <p>Builds are differentiated by build context — <code>test</code>, <code>release</code>, or
 plugin-modified build (e.g. <code>gcov</code>). Log files are written to <code>&lt;build
-root&gt;/artifacts/&lt;context&gt;/&lt;test file&gt;.raw.log</code>.</p>
+root&gt;/artifacts/&lt;context&gt;/&lt;test name&gt;.raw.log</code>. A <a href="../../testing-guide/conventions/#test-names-build-output">test’s name</a> is its path
+from your project’s root, so <code>test/unit/test_calc.c</code> logs to
+<code>build/artifacts/test/test/unit/test_calc.raw.log</code>.</p>
 <h2 id="setup">Setup</h2>
 <p>Enable the plugin in your Ceedling project:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">:plugins</span><span class="p">:</span>

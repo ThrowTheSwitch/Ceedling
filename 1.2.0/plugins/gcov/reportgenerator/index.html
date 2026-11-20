@@ -4870,7 +4870,7 @@ nothing downstream can put it back into a report.</p>
   <code>cmock.gcno</code> by name, but only within your <code>:build_root</code> — the only place
   Ceedling ever generates these.</li>
 </ul>
-<p>Given <code>:test_file_prefix</code> ⇒ <code>test_</code>, CMock's default <code>:mock_prefix</code> ⇒
+<p>Given <code>:test_file_prefix</code> ⇒ <code>test_</code>, CMock’s default <code>:mock_prefix</code> ⇒
 <code>Mock</code>, and <code>:build_root</code> ⇒ <code>build</code>, the equivalent patterns are:</p>
 <p>Matched anywhere:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>test_[^\/\\]*
@@ -4884,7 +4884,7 @@ nothing downstream can put it back into a report.</p>
 <p>These combine with whatever you add via <a href="#gcov_exclude"><code>:gcov_exclude</code></a>
 below. Your patterns extend this list, they don't replace it.</p>
 <h3 id="report-filtering">Report filtering</h3>
-<p>Separately, once <code>.gcov</code> files exist, ReportGenerator's own <code>-filefilters:</code>
+<p>Separately, once <code>.gcov</code> files exist, ReportGenerator’s own <code>-filefilters:</code>
 argument controls which of them actually appear in the generated report(s).
 By default this excludes:</p>
 <ol>
@@ -4907,8 +4907,8 @@ By default this excludes:</p>
 </li>
 <li>
 <p><strong>Partial-generated files</strong> — only when <code>:use_partials</code> is enabled, any
-    file whose name starts with Ceedling's Partial filename prefix, wherever
-    it's found (not only under the build root).</p>
+    file whose name starts with Ceedling’s Partial filename prefix, wherever
+    it’s found (not only under the build root).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>-ceedling_partial_*
 </code></pre></div>
 </li>
@@ -4925,14 +4925,14 @@ resurrect <code>.gcov</code> data for a file <code>gcov</code> was never run aga
 place.</p>
 <p>For <a href="#report-filtering">report filtering</a>, the natural instinct is to reach
 for <a href="#custom_args"><code>:custom_args</code></a> to pass a second, conflicting
-<code>-filefilters:</code> argument, but this is not an option because of ReportGenerator's
+<code>-filefilters:</code> argument, but this is not an option because of ReportGenerator’s
 rules and the order in which the filters are provided by the plugin.</p>
-<p>In short, there's no supported way to broaden what this plugin reports
+<p>In short, there’s no supported way to broaden what this plugin reports
 beyond its defaults. If you need to override coverage reporting filtering, 
 use the <a href="../gcovr/">Gcovr option for this pluing</a> instead. Its
 <code>:config_file</code> option hands full control to a <code>gcovr</code> configuration file,
-bypassing Ceedling's generated exclusions entirely (see
-<a href="../gcovr/#results-filtering">Gcovr's Results filtering</a>).</p>
+bypassing Ceedling’s generated exclusions entirely (see
+<a href="../gcovr/#results-filtering">Gcovr’s Results filtering</a>).</p>
 <h2 id="plugin-configuration">Plugin configuration</h2>
 <h3 id="history_directory"><code>:history_directory</code></h3>
 <p>Optional directory for storing persistent coverage information. Can be used
@@ -5006,8 +5006,12 @@ suffix on a pattern is stripped automatically, so either form works.</p>
 for test files, mocks, test runners, and vendored Unity/CMock sources (see
 <a href="#coverage-generation-filtering">Coverage generation filtering</a> above for
 exactly what these cover). Your patterns can only add further exclusions;
-there's no way to override or remove one of the defaults — see
+there’s no way to override or remove one of the defaults — see
 <a href="#overriding-the-defaults">Overriding the defaults</a> above.</p>
+<p>Patterns match each notes file’s path below the build directory as it would read
+with no <a href="../../../testing-guide/conventions/#test-names-build-output">shortened root</a>,
+so a pattern naming a long root’s own directories, such as <code>Keil_v5/.*</code>, still
+excludes the files below it.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="nt">:gcov</span><span class="p">:</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">  </span><span class="nt">:report_generator</span><span class="p">:</span>
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">    </span><span class="nt">:gcov_exclude</span><span class="p">:</span>
@@ -5018,16 +5022,16 @@ there's no way to override or remove one of the defaults — see
 <hr />
 <h3 id="num_parallel_threads"><code>:num_parallel_threads</code></h3>
 <p>Optionally set the number of threads ReportGenerator uses in parallel. Drives
-both of ReportGenerator's own <code>numberOfReportsParsedInParallel</code> and
+both of ReportGenerator’s own <code>numberOfReportsParsedInParallel</code> and
 <code>numberOfReportsMergedInParallel</code> settings together.</p>
-<p><strong>Default:</strong> unset (ReportGenerator's own default applies)</p>
+<p><strong>Default:</strong> unset (ReportGenerator’s own default applies)</p>
 <hr />
 <h3 id="custom_args"><code>:custom_args</code></h3>
 <p>Optional list of one or more command line arguments to pass to Report
 Generator. Useful for configuring Risk Hotspots and other settings not
 covered by the options above. See the
 <a href="https://github.com/danielpalme/ReportGenerator/wiki/Settings">ReportGenerator settings wiki</a>.</p>
-<p>Note: This can be accomplished with Ceedling's tool configuration options
+<p>Note: This can be accomplished with Ceedling’s tool configuration options
 outside of plugin configuration but is supported here to collect
 configuration options in one place.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:gcov</span><span class="p">:</span>

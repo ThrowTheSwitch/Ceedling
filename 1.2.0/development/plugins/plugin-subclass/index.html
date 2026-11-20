@@ -5232,8 +5232,9 @@ preprocessing pipeline with toolchains other than GCC.</p>
 <p>These methods are called before and after execution of preprocessing for header
 files to be mocked (see <a href="../../../testing-guide/conventions/#test-preprocessing">Conventions &amp; Behaviors</a> for preprocessing details). If a
 project does not enable preprocessing or a build does not include tests, these
-are not called. This pair of methods is called a number of times equal to the
-number of mocks in a test build.</p>
+are not called. This pair of methods is called once for each mocked header in a
+test build. A mocked Partial's generated header is never preprocessed, so it
+draws no call.</p>
 <p>The argument <code>arg_hash</code> follows the structure below:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">arg_hash</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="c1"># Filepath of header file to be preprocessed on its way to being mocked</span>

@@ -1641,6 +1641,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#a-variable-declared-together-with-its-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A variable declared together with its type
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A variable declared together with its type">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partial_type-and-partial_local_type-macros-to-name-a-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PARTIAL_TYPE() and PARTIAL_LOCAL_TYPE() macros to name a type
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4463,6 +4491,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#a-variable-declared-together-with-its-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A variable declared together with its type
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="A variable declared together with its type">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#partial_type-and-partial_local_type-macros-to-name-a-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PARTIAL_TYPE() and PARTIAL_LOCAL_TYPE() macros to name a type
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4565,6 +4621,16 @@ generated <code>_impl.h</code> header. Including any <code>TEST_PARTIAL_*_MODULE
 that <code>extern</code> declaration into scope, causing the variable to accessible in 
 test code directly by its <strong>original name</strong> — no renaming or helper macro is 
 required.</p>
+<p>A variable your module declares <code>extern</code> but never defines lives somewhere
+else. The generated <code>_impl.h</code> header declares it <code>extern</code>. By default, the
+generated <code>_impl.c</code> file gives it a weak definition. A real definition, from a
+module your test links or from the test file itself, takes precedence over the
+weak one. When nothing else defines the variable, the weak definition stands in.
+Weak definitions need a GCC-compatible compiler, such as GCC or Clang. The
+<a href="../../../configuration/reference/partials/#extern_variables"><code>:partials</code> ↳ <code>:extern_variables</code></a>
+setting can leave the definition to your test instead, and describes the
+exceptions. A variable your module defines is written where your module
+defines it.</p>
 <h3 id="partial-file-scoped-static-variable-example">Partial file-scoped static variable example</h3>
 <p>Extending the sensor module with a file-scoped error counter:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">// sensor.c -----------------------------------------------</span>
@@ -4584,7 +4650,7 @@ required.</p>
 </code></pre></div>
 <p>Ceedling strips <code>static</code> when generating the test Partial:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// ceedling_partial_sensor_impl.c (generated) ---------------</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">// `static` stripped -- now has external linkage</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">// `static` stripped, giving it external linkage</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kt">uint32_t</span><span class="w"> </span><span class="n">g_error_count</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1">// ...</span>
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="kt">int</span><span class="w"> </span><span class="nf">Sensor_ReadCelsius</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
@@ -4649,7 +4715,7 @@ statement so that source line mappings for coverage reporting remain accurate.</
 both to module scope without renaming would produce a duplicate symbol error
 at compilation.</p>
 <p>Ceedling resolves this by prepending a prefix of <code>partial_</code> and the containing
-function's name to each promoted variable's name:</p>
+function’s name to each promoted variable’s name:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>partial_&lt;function_name&gt;_&lt;variable_name&gt;
 </code></pre></div>
 <p>Example renaming:</p>
@@ -4762,6 +4828,105 @@ compile time. It cannot be used with a runtime string or a variable holding a
 function name. Both arguments must be literal tokens that match the original
 C identifiers exactly (the function name and the variable name as they appear
 in the source file).</p>
+<h2 id="a-variable-declared-together-with-its-type">A variable declared together with its type</h2>
+<p>A Partial reads a statement that defines a type and declares a variable as two
+things. Embedded modules often keep private state this way, as in
+<code>static struct { int count; } s_ctx;</code> or <code>static enum { IDLE, RUN } s_state;</code>.
+The Partial defines the type once, in its generated types header, and declares
+and defines each variable by the type’s name. A test reaches the variable, the
+type’s members and an anonymous enum’s values as it does any other.</p>
+<p>The Partial names the type after its first variable. Each name takes the
+module’s name and the variable’s, and a function-scoped <code>static</code> adds its
+function’s name:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>ceedling_partial_&lt;module&gt;_&lt;variable&gt;_t
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>ceedling_partial_&lt;module&gt;_&lt;function&gt;_&lt;variable&gt;_t
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Declaration</th>
+<th>Module</th>
+<th>Function</th>
+<th>Type name</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>static struct { int count; } s_ctx;</code></td>
+<td><code>ticker</code></td>
+<td></td>
+<td><code>ceedling_partial_ticker_s_ctx_t</code></td>
+</tr>
+<tr>
+<td><code>struct pair { int a; } g_p1, g_p2;</code></td>
+<td><code>ticker</code></td>
+<td></td>
+<td><code>ceedling_partial_ticker_g_p1_t</code></td>
+</tr>
+<tr>
+<td><code>static struct { int n; } last;</code></td>
+<td><code>ticker</code></td>
+<td><code>ticker_get</code></td>
+<td><code>ceedling_partial_ticker_ticker_get_last_t</code></td>
+</tr>
+</tbody>
+</table>
+<p>The module’s name is its name alone, without a directory. A character a C
+identifier can't hold is written as <code>_</code>, so module <code>my-sensor</code> gives
+<code>ceedling_partial_my_sensor_…</code>. Variables declared in one statement share one
+type, named for the first of them, as <code>g_p1</code> and <code>g_p2</code> do above.</p>
+<p>A tagged type keeps its tag at file scope, so <code>struct pair</code> still names it. A
+tag a function defines takes the type’s name as its tag instead, since the tag
+could otherwise collide with another at file scope. A struct member sharing a
+promoted variable’s name is renamed with it, in the type and wherever the
+function uses it.</p>
+<h3 id="partial_type-and-partial_local_type-macros-to-name-a-type"><code>PARTIAL_TYPE()</code> and <code>PARTIAL_LOCAL_TYPE()</code> macros to name a type</h3>
+<p><code>ceedling.h</code> builds these names for you. Use them to declare another object of
+the type, such as a copy of a module’s state saved before a call.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">PARTIAL_TYPE</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="n">variable</span><span class="p">)</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1">// Expands to: ceedling_partial_&lt;module&gt;_&lt;variable&gt;_t</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="n">PARTIAL_LOCAL_TYPE</span><span class="p">(</span><span class="n">module</span><span class="p">,</span><span class="w"> </span><span class="n">function</span><span class="p">,</span><span class="w"> </span><span class="n">variable</span><span class="p">)</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1">// Expands to: ceedling_partial_&lt;module&gt;_&lt;function&gt;_&lt;variable&gt;_t</span>
+</code></pre></div>
+<p>Like <code>PARTIAL_LOCAL_VAR()</code>, each macro pastes its arguments into one identifier.
+Each argument is a literal identifier spelled as the module spells it.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1">// ticker.c -----------------------------------------------</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="k">static</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">count</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="n">s_ctx</span><span class="p">;</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="kt">int</span><span class="w"> </span><span class="nf">ticker_get</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="p">{</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="w">    </span><span class="k">static</span><span class="w"> </span><span class="k">struct</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">;</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="n">last</span><span class="p">;</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="w">    </span><span class="n">last</span><span class="p">.</span><span class="n">n</span><span class="o">++</span><span class="p">;</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">    </span><span class="n">s_ctx</span><span class="p">.</span><span class="n">count</span><span class="o">++</span><span class="p">;</span>
+<a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">last</span><span class="p">.</span><span class="n">n</span><span class="p">;</span>
+<a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="c1">// test_ticker.c ------------------------------------------</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;unity.h&quot;</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;ceedling.h&quot;</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="cp">#include TEST_PARTIAL_PUBLIC_MODULE(ticker)</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="kt">void</span><span class="w"> </span><span class="nf">test_ticker_get_counts_each_call</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="p">{</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="w">    </span><span class="n">PARTIAL_TYPE</span><span class="p">(</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="n">s_ctx</span><span class="p">)</span><span class="w"> </span><span class="n">before</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s_ctx</span><span class="p">;</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">    </span><span class="n">PARTIAL_LOCAL_TYPE</span><span class="p">(</span><span class="n">ticker</span><span class="p">,</span><span class="w"> </span><span class="n">ticker_get</span><span class="p">,</span><span class="w"> </span><span class="n">last</span><span class="p">)</span><span class="w"> </span><span class="n">step</span><span class="p">;</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="w">    </span><span class="n">ticker_get</span><span class="p">();</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="w">    </span><span class="n">step</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">PARTIAL_LOCAL_VAR</span><span class="p">(</span><span class="n">ticker_get</span><span class="p">,</span><span class="w"> </span><span class="n">last</span><span class="p">);</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="w">    </span><span class="n">TEST_ASSERT_EQUAL_INT</span><span class="p">(</span><span class="n">before</span><span class="p">.</span><span class="n">count</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">s_ctx</span><span class="p">.</span><span class="n">count</span><span class="p">);</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="w">    </span><span class="n">TEST_ASSERT_EQUAL_INT</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">step</span><span class="p">.</span><span class="n">n</span><span class="p">);</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="p">}</span>
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">When a macro names nothing</p>
+<p>A misspelled argument builds a name nothing declares, and the compiler
+will report an error with that mysterious name. With Partials enabled, 
+Ceedling recognizes a name that one of these macros or <code>PARTIAL_LOCAL_VAR()</code>
+builds from a compilation error. It explains how to correct the macro’s
+arguments and lists the names your test’s Partials provide.</p>
+</div>
 <p><br/><br/></p>
 
 

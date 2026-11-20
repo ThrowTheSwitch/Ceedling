@@ -4486,7 +4486,10 @@ run on a TeamCity build server but not in your local development environment.</p
 underlying Java language in which TeamCity is written,
 <code>package_or_namespace.ClassName.TestName</code>.</p>
 <p>This plugin maps Ceedling conventions to TeamCity test service messages as
-<code>context.TestFilepath.TestCaseName</code>.</p>
+<code>context.TestFilepath.TestCaseName</code>. Each test suite is named by its test file’s
+path from your project’s root, without its file extension (e.g.
+<code>test/TestUsartModel</code>), so same-named test files in different directories are
+distinct suites.</p>
 <ul>
 <li><code>context</code> Your build's context defaults to <code>test</code>. Certain other test build 
   plugins (e.g. GCov) provide a different context (<code>gcov</code>) for test builds, 
@@ -4497,7 +4500,7 @@ underlying Java language in which TeamCity is written,
 </ul>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="w"> </span>&gt;<span class="w"> </span>ceedling<span class="w"> </span>test:UsartModel
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>##teamcity[testSuiteStarted name=&#39;TestUsartModel&#39; flowId=&#39;15&#39;]
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>##teamcity[testSuiteStarted name=&#39;test/TestUsartModel&#39; flowId=&#39;15&#39;]
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>##teamcity[testStarted name=&#39;test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting&#39; flowId=&#39;15&#39;]
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>##teamcity[testFinished name=&#39;test.test/TestUsartModel.testGetBaudRateRegisterSettingShouldReturnAppropriateBaudRateRegisterSetting&#39; duration=&#39;81&#39; flowId=&#39;15&#39;]
 <a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>##teamcity[testStarted name=&#39;test.test/TestUsartModel.testShouldReturnErrorMessageUponInvalidTemperatureValue&#39; flowId=&#39;15&#39;]
@@ -4506,7 +4509,7 @@ underlying Java language in which TeamCity is written,
 <a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>##teamcity[testFailed name=&#39;test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately&#39; message=&#39;Function TemperatureFilter_GetTemperatureInCelcius() called more times than expected.&#39; details=&#39;File: test/TestUsartModel.c Line: 25&#39; flowId=&#39;15&#39;]
 <a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>##teamcity[testFinished name=&#39;test.test/TestUsartModel.testGetFormattedTemperatureFormatsTemperatureFromCalculatorAppropriately&#39; duration=&#39;81&#39; flowId=&#39;15&#39;]
 <a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>##teamcity[testIgnored name=&#39;test.test/TestUsartModel.testShouldReturnWakeupMessage&#39; flowId=&#39;15&#39;]
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>##teamcity[testSuiteFinished name=&#39;TestUsartModel&#39; flowId=&#39;15&#39;]
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>##teamcity[testSuiteFinished name=&#39;test/TestUsartModel&#39; flowId=&#39;15&#39;]
 </code></pre></div>
 <p><br/><br/></p>
 

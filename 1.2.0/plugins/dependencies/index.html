@@ -5106,8 +5106,9 @@ project’s own files.</p>
 <p>If the dependency is part of your repository (its fetch <code>:method</code> is <code>:none</code>), <code>:source</code>
 is where its code already lives. Paths may lie outside your project, such as
 <code>../shared/lib</code>, and headers found there work in test and release builds alike.</p>
-<p>Every artifact is relative to the <code>:artifact</code> path. With several include directories,
-choose the highest level and list the rest relative to it.</p>
+<p>Every artifact is relative to the <code>:artifact</code> path, unless it is an absolute path, which
+names the artifact itself. With several include directories, choose the highest level
+and list the rest relative to it. A path may begin with <code>~</code> to name your home directory.</p>
 <h2 id="fetching-dependencies">Fetching dependencies</h2>
 <p>The plugin fetches a dependency with one of several common methods, configured under its
 <code>:fetch</code>:</p>
@@ -5279,7 +5280,9 @@ under <code>:tools</code>:</p>
 <p>The compiler, assembler, and archiver are checked just before <code>:build_lib</code> uses them, so
 a project without <code>:build_lib</code> needs none of them.</p>
 <p><code>:build_lib</code> compiles every C file anywhere under the dependency’s <code>:source</code> path, with
-every directory holding a header there as a search path. It then archives the objects
+every directory holding a header there as a search path. Each object, and its list file,
+sits in the <code>:build</code> path at its source’s path below the <code>:source</code> path, so same-named
+sources in different directories keep apart. It then archives the objects
 into the first library under <code>:artifacts</code> ↳ <code>:static_libraries</code>, built in the <code>:build</code>
 path and copied to the <code>:artifact</code> path when the two differ. A dependency’s own
 <code>:defines</code> and <code>:flags</code> apply to its compilation, and <code>:libraries</code> and <code>:libpaths</code> to its

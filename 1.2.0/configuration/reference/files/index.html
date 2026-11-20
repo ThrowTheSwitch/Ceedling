@@ -4704,8 +4704,55 @@ builds.</p>
 <p>Modify the (optional) collection of assembly files used in release builds.</p>
 <p><strong>Default</strong>: <code>[]</code> (empty)</p>
 <h2 id="files-include"><code>:files</code> ↳ <code>:include</code></h2>
-<p>Modify the collection of all source header files used in unit test builds
-(e.g. for mocking) and release builds.</p>
+<p>Modify the collection of header files available to unit test builds, such as
+headers to mock.</p>
+<p>A header added here need not sit in a search path’s directory. When a test’s
+<code>#include</code> names such a header, Ceedling adds the directory that <code>#include</code>
+implies to that test’s search paths. That directory is the header’s path with
+the <code>#include</code>’s own path taken off its end. It follows every other search
+path, so it never takes the place of a header your configured paths reach.
+Ceedling logs each directory it adds, once a build.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="nt">:paths</span><span class="p">:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">:include</span><span class="p">:</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">inc/</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="nt">:files</span><span class="p">:</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span><span class="nt">:include</span><span class="p">:</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">+:src/path/to/sensor.h</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Test file <code>#include</code></th>
+<th>Search path added</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>#include "mock_sensor.h"</code></td>
+<td><code>src/path/to</code></td>
+</tr>
+<tr>
+<td><code>#include "path/to/mock_sensor.h"</code></td>
+<td><code>src</code></td>
+</tr>
+<tr>
+<td><code>#include "src/path/to/mock_sensor.h"</code></td>
+<td><code>.</code></td>
+</tr>
+</tbody>
+</table>
+<p>With <a href="../cmock/#mock_name_include_folder"><code>:cmock</code> ↳ <code>:mock_name_include_folder</code></a>
+disabled, a mock includes its header by filename alone, so each row adds
+<code>src/path/to</code>.</p>
+<p>A header outside the working directory, such as one in a system include
+directory, is an exception. A bare name like <code>"mock_socket.h"</code> would need the
+header’s own directory as a search path, but this could bring about problems
+including shadowing other headers. Ceedling doesn’t add this full search path.
+A build that needs the header stops with an error that suggests referencing
+the parent folder instead, as in <code>#include "sys/mock_socket.h"</code>. Ceedling
+then adds the shallower search path, one subdirectory up. With
+<code>:mock_name_include_folder</code> disabled, the error also suggests enabling it.</p>
+<p>Release builds find headers through <code>:paths</code> ↳ <code>:include</code> alone.</p>
 <p><strong>Default</strong>: <code>[]</code> (empty)</p>
 <h2 id="files-support"><code>:files</code> ↳ <code>:support</code></h2>
 <p>Modify the collection of supporting C files available to unit tests builds.</p>
@@ -4715,8 +4762,13 @@ builds.</p>
 <p><strong>Default</strong>: <code>[]</code> (empty)</p>
 <h2 id="files-options-notes"><code>:files</code> options &amp; notes</h2>
 <ol>
-<li>A path can be absolute (fully qualified) or relative.</li>
-<li>A path can include a glob matcher (more on this below).</li>
+<li>A path can be absolute (fully qualified) or relative. A relative path is relative to
+   the working directory, where you run <code>ceedling</code>.</li>
+<li><code>~</code> at the start of a path names your home directory.</li>
+<li>A path can include a glob matcher (more on this below). A glob based above the build
+   root, such as <code>+:**/*.c</code>, adds nothing from it.</li>
+<li>An entry within the build root adds from it with a warning, but no entry adds a file
+   from the directories Ceedling and its plugins create there, or from the mocks directory.</li>
 <li>A path can use <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>.</li>
 <li>Subtractive paths prepended with a <code>-:</code> decorator are possible and useful.
    See the documentation below.</li>
@@ -4750,7 +4802,8 @@ that they ignore directory paths. Only filepaths are recognized.</p>
 <h2 id="subtractive-files-entries">Subtractive <code>:files</code> entries</h2>
 <p>Tailoring a file collection includes adding to it but also subtracting from it.</p>
 <p>Put simply, with an optional preceding decorator <code>-:</code>, you can instruct Ceedling
-to remove certain file paths from a collection after it builds that collection.</p>
+to remove certain file paths from a collection after it builds that collection.
+A subtractive entry that names no file logs a warning, except below the build root.</p>
 <p>By default, paths are additive. For pretty alignment in your YAML, you may also
 use <code>+:</code>, but strictly speaking, it’s not necessary.</p>
 <p>Subtractive paths may be simple paths or globs just like any other path entry.</p>
@@ -4761,11 +4814,11 @@ value. Quoting only the path leaves quote marks in the path, and
 Ceedling rejects the entry. Quote an entry whenever it holds <code>#{…}</code>
 <a href="../../project-file/#inline-ruby-string-expansion">inline Ruby string expansion</a>, because YAML
 otherwise reads the <code>#</code> as the start of a comment.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Correct</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;-:#{ENV[&#39;SRC_ROOT&#39;]}/platform/uptime.c&quot;</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Incorrect -- the quote marks become part of the path</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:&quot;#{ENV[&#39;SRC_ROOT&#39;]}/platform/uptime.c&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Correct</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;-:#{ENV[&#39;SRC_ROOT&#39;]}/platform/uptime.c&quot;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="c1"># Incorrect -- the quote marks become part of the path</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-:&quot;#{ENV[&#39;SRC_ROOT&#39;]}/platform/uptime.c&quot;</span>
 </code></pre></div>
 </div>
 <p>See the <a href="#advanced-tailoring">example section</a>.</p>

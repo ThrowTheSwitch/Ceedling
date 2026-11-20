@@ -5201,11 +5201,11 @@
 <p>Called once just after a release build finishes or terminates (including on error).</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is a floating-point stopwatch value in seconds. This value and the corresponding <code>pre_release_build</code> value can be used to compute the total release build duration.</p>
 <h3 id="pre_mock_preprocess"><code>:pre_mock_preprocess</code></h3>
-<p>If mocks are enabled and preprocessing is in use, this is called just before each header file to be mocked is preprocessed.</p>
+<p>If mocks are enabled and preprocessing is in use, this is called just before each header file to be mocked is preprocessed. A mocked Partial’s generated header is never preprocessed, so it draws no call.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the header file to be mocked.</p>
 <p>See <a href="../../testing-guide/conventions/#test-preprocessing"><em>Conventions &amp; Behaviors</em></a> for details on how Ceedling preprocessing operates.</p>
 <h3 id="post_mock_preprocess"><code>:post_mock_preprocess</code></h3>
-<p>If mocks are enabled and preprocessing is in use, this is called just after each header file to be mocked is preprocessed.</p>
+<p>If mocks are enabled and preprocessing is in use, this is called just after each header file to be mocked is preprocessed. A mocked Partial’s generated header is never preprocessed, so it draws no call.</p>
 <p>The parameter available to a tool (<code>${1}</code>) when the hook is called is the filepath of the header file to be mocked.</p>
 <h3 id="pre_mock_generate"><code>:pre_mock_generate</code></h3>
 <p>If mocks are enabled, this is called just before each header file to be mocked is processed by mock generation.</p>

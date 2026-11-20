@@ -1379,6 +1379,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#test-names-build-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test names &amp; build output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#source-mock-files-to-compile-and-link" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4750,6 +4761,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#test-names-build-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test names &amp; build output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#source-mock-files-to-compile-and-link" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -5085,30 +5107,44 @@ Any directory structure will do. Tests can be held in subdirectories
 within source directories, or tests and source directories
 can be wholly separated at the top of your project’s directory
 tree.</p>
+<div class="admonition warning">
+<p class="admonition-title">Windows path lengths</p>
+<p>Ceedling mirrors your source paths in its build paths. In some cases build 
+paths can exceed Windows’ classic 260-character limit. Without special 
+handling, a path that long can cause build failure with mysterious “No 
+such file or directory” or other errors rather than a clear length error.
+Ceedling intervenes by reporting each build path that nears or passes the 
+limit to aid troublehsooting.</p>
+<p>If your Windows host has long paths enabled or you can enable it, see
+<a href="../../configuration/reference/project/#win_path_limit"><code>:project</code> ↳ <code>:win_path_limit</code></a>
+for more options.</p>
+</div>
 <h2 id="distinguishing-same-named-files">Distinguishing same-named files</h2>
 <h3 id="header-source-files">Header / source files</h3>
 <p>Ceedling distinguishes files by their full relative path, not just their
 filename. A project may have, for example, both <code>src/drivers/uart.c</code> and
 <code>src/sensors/uart.c</code> without one hiding or colliding with the other.</p>
-<p>Distinguishing files is mostly an issue in test builds. If two files share
-a name without enough path to distinguish them, Ceedling resolves the reference 
-to the first match among the file collection. File collections are ordered per
-your project configuration (<code>:paths</code>). The ordering of collected files is
-identical to the search path ordering provided to the compiler from the same
-<code>:paths</code> configuration plus any use of
-<a href="../build-directives/#test_include_path"><code>TEST_INCLUDE_PATH()</code></a> directives in
-a test file. When Ceedling finds more than one reference, it uses the first
-in the ordered file list but logs an informational notice naming multi-file 
-matches, so the choice is not silent.</p>
+<p>Distinguishing files is mostly an issue in test builds. Ceedling finds a
+header named by an <code>#include</code> the way your compiler does. It joins each of the
+test’s search paths, in order, with the path the <code>#include</code> names, and the
+first file that exists wins. A search path therefore reaches headers in the
+directories below it, as in <code>#include "drivers/uart.h"</code> with <code>src/</code> as a search
+path. Search paths are ordered per your project configuration (<code>:paths</code>) plus
+any use of <a href="../build-directives/#test_include_path"><code>TEST_INCLUDE_PATH()</code></a>
+directives in a test file. When more than one search path holds the header,
+Ceedling uses the first but logs an informational notice naming the others, so
+the choice is not silent.</p>
+<p>A source file a test needs resolves by its trailing path against the file
+collection, which is ordered by the same <code>:paths</code> configuration.</p>
 <p>If Ceedling uses the wrong match for lack of path information, your test build 
 fails downstream with an ordinary compilation error indirectly revealing the
 issue. Add enough path at the point of reference to select the file you actually 
 meant.</p>
 <ul>
 <li>Use paths in <code>#include</code> directives in your test files to distinguish header 
-  files of the same name (mocks are distiguished by the same filepath as the 
-  headers from which they are generated). Examples: <code>#include "foo/bar/file.h"</code>
-  and/or <code>#include "foo/bar/mock_file.h"</code>.</li>
+  files of the same name. A mock is distinguished by the same path as the
+  header it is generated from, below one of your search paths. Examples:
+  <code>#include "foo/bar/file.h"</code> and/or <code>#include "foo/bar/mock_file.h"</code>.</li>
 <li>Use the <a href="../build-directives/"><code>TEST_SOURCE_FILE()</code> build directive macro</a>
   to provide a path to distinguish source files of the same name to be 
   compiled and linked with a test executable.</li>
@@ -5161,6 +5197,14 @@ and function declarations.</p>
 <li>The <a href="../build-directives/#test_include_path"><code>TEST_INCLUDE_PATH(...)</code></a> build directive 
    macro. This is only available within test files.</li>
 </ol>
+<p>A header whose own directory no search path lists needs no search path of its
+own, as is usual for one that
+<a href="../../configuration/reference/files/#files-include"><code>:files</code> ↳ <code>:include</code></a> adds.
+When a test’s <code>#include</code> names such a header, Ceedling adds the directory that
+<code>#include</code> implies to the test’s search paths. A bare name for a header outside
+the working directory is the exception, as
+<a href="../../configuration/reference/files/#files-include"><code>:files</code> ↳ <code>:include</code></a>
+explains.</p>
 <p>In testing contexts, you have three options for assembling the core of 
 the search path list used by Ceedling for test builds:</p>
 <ol>
@@ -5188,6 +5232,8 @@ it is assembled from a variety of sources. In order:</p>
 <li>Internal paths for CMock’s C code (if respective feature enabled)</li>
 <li><code>:paths</code> ↳ <code>:test_toolchain_include</code> list from your project 
    configuration</li>
+<li>Directories the test’s <code>#include</code>s imply for headers whose own directories
+   no search path lists, such as headers <code>:files</code> ↳ <code>:include</code> adds</li>
 </ol>
 <p>The paths lists above are documented in detail in the discussion of 
 project configuration.</p>
@@ -5282,6 +5328,58 @@ of its own. Whether yours does depends on your toolchain.</p>
 <p>Before 1.2.0, Ceedling wrote no manifest. With a toolchain that embeds none,
 test files with these words in their names could not be run on Windows without
 administrator privileges.</p>
+<h3 id="test-names-build-output">Test names &amp; build output</h3>
+<p>Ceedling names each test by its path from your project’s root, without its
+file extension. <code>test/unit/test_calc.c</code> is named <code>test/unit/test_calc</code>. Every
+test gets its own build output, even when test files share a filename.</p>
+<p>A test’s name is its path, so one test’s build directory could lie inside another’s.
+<code>test/test_calc.c</code> and <code>test/test_calc/test_io.c</code> would build into
+<code>build/test/out/test/test_calc/</code> and a folder within it, and the two tests’ objects
+and mocks would mix. Each build directory that holds files of every test, such as
+<code>build/test/out/</code> or <code>build/test/mocks/</code>, therefore gives each test a directory of
+its own: the test’s name followed by <code>_t_</code>. The marker closes every test’s name, so
+no test’s directory can hold another’s. Ceedling renames a folder of your own called
+<code>_t_</code> in these paths, as the last paragraph below explains, so the marker always ends
+a name. <code>test/test_calc</code> builds to <code>build/test/out/test/test_calc/_t_/</code>.</p>
+<p>The name places a test’s output beneath each build directory:</p>
+<ul>
+<li>Executable: <code>build/test/out/test/unit/test_calc/_t_/</code></li>
+<li>Mocks: <code>build/test/mocks/test/unit/test_calc/_t_/</code></li>
+<li>Results: <code>build/test/results/test/unit/test_calc.pass</code></li>
+<li>Logs from plugins and backtraces, such as
+  <code>build/artifacts/valgrind/test/unit/test_calc.log</code> or
+  <code>build/logs/test/test/unit/test_calc/&lt;test case&gt;.gdb.log</code></li>
+</ul>
+<p>Within a test’s directory, each object sits at its source’s own path from your
+project’s root, so same-named sources never share a path. <code>src/drivers/uart.c</code>
+compiles to <code>build/test/out/test/unit/test_calc/_t_/src/drivers/uart.o</code>. Preprocessed
+files and dependency files follow the same layout, and a release build places its
+objects the same way below <code>build/release/out/</code>. Mocks sit below their test’s own
+mock directory, and runners and Unity, CMock, and CException objects sit directly in
+the test’s directory.</p>
+<p>A long <code>:paths</code> root gives way to a short name in build paths. A root far outside
+your project, such as a vendor’s include directory, or one nested deep inside it,
+is written as its own directory name and 8 hexadecimal digits, and everything below
+the root keeps its path. With <code>../../../Keil_v5/ARM/CMSIS/Include</code> among your
+<code>:paths</code>, a preprocessed copy of <code>Include/cmsis_os2.h</code> lands at
+<code>build/test/preprocess/files/&lt;test&gt;/_t_/directives_only/raw/_Include_3F2A91C0/cmsis_os2.h</code>.
+A root is shortened only when its short name is shorter than its own path, so roots
+such as <code>src/</code> and <code>test/</code> are unchanged. <code>build/build_roots.yml</code> lists each shortened
+root and its short name, and <code>--verbosity=debug</code> logs them. Test names never change.</p>
+<p>A test or source outside your project, and outside every shortened root, keeps its
+whole path. Each <code>..</code> becomes <code>_up_</code>, so <code>../shared/test/test_io.c</code> is named
+<code>_up_/shared/test/test_io</code>. A path
+with no relative form, such as one on another Windows drive, sits beneath <code>_abs_</code>,
+and a file of the running Ceedling installation outside your project, such as a
+plugin’s source, beneath <code>_ceedling_</code>. None of these reaches outside the build
+directory. A directory of your project that is itself named like one of these, or like a
+shortened root, gains a leading <code>_</code> (e.g. <code>__up_/</code>), so it never shares a name with
+a path outside your project. In a test build, a directory named <code>_t_</code> gains one too,
+so it never ends a test’s name. A release build places it as it is.</p>
+<p>Two tests share a name only if their paths differ in extension alone (e.g.
+<code>test_a.c</code> and <code>test_a.cpp</code>). A build that includes either test stops with an
+error naming both files. Two sources that would build to one file stop a build the
+same way.</p>
 <h3 id="source-mock-files-to-compile-and-link">Source &amp; mock files to compile and link</h3>
 <p>Ceedling knows what files to compile and link into each individual
 test executable by way of the <code>#include</code> list contained in each

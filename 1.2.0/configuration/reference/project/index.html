@@ -2198,6 +2198,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#win_path_limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :win_path_limit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=":win_path_limit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#windows-two-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows‘ two limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#classic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :classic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long_paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :long_paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :auto
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ruby-before-40" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruby before 4.0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-your-toolchain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking your toolchain
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4671,6 +4754,89 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#win_path_limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :win_path_limit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=":win_path_limit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#windows-two-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Windows‘ two limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#classic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :classic
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#long_paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :long_paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#auto" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :auto
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ruby-before-40" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ruby before 4.0
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checking-your-toolchain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checking your toolchain
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4785,6 +4951,13 @@ output with the project name.</p>
 </code></pre></div></p>
 <h2 id="build_root"><code>:build_root</code></h2>
 <p>Top level directory into which generated path structure and files are placed.</p>
+<p><code>ceedling clobber</code> empties the build root’s test and release trees, so Ceedling refuses a
+build root that is empty, the project directory, or a directory above it.</p>
+<p>An entry based above the build root, such as the <code>:paths</code> entry <code>../**</code> or the <code>:files</code>
+glob <code>+:**/*.c</code>, collects nothing from it. A <code>:paths</code> or <code>:files</code> entry within the build
+root, such as one naming generated code in <code>build/gen</code>, collects from it with a warning.
+No entry collects from the directories Ceedling and its plugins create there, such as
+<code>test/</code>, <code>release/</code>, <code>vendor/</code>, and <code>artifacts/</code>.</p>
 <div class="admonition note">
 <p class="admonition-title">Build configuration requirement</p>
 <p>This is one of the handful of configuration values that must be set for 
@@ -4814,7 +4987,7 @@ plugin tasks.</p>
 <strong>Default</strong>: <code>['test:all']</code></p>
 <h2 id="use_mocks"><code>:use_mocks</code></h2>
 <p>Configures the build environment to make use of CMock. Note that if you do not
-use mocks, there's no harm in leaving this setting as its default value.</p>
+use mocks, there’s no harm in leaving this setting as its default value.</p>
 <p><strong>Default</strong>: TRUE</p>
 <h2 id="use_exceptions"><code>:use_exceptions</code></h2>
 <p>Configures the build environment to make use of CException. Ceedling enables
@@ -4876,7 +5049,7 @@ compilation, and running test executables.</p>
 will drop considerably as compared to running a build with a single thread.</p>
 <p>Tuning the number of threads for peak performance is an art more than a
 science. A special value of <code>:auto</code> instructs Ceedling to query the host
-system's number of virtual cores. To this value it adds a constant of 4. This
+system’s number of virtual cores. To this value it adds a constant of 4. This
 is often a good value sufficient to "max out" available resources without
 overloading available resources.</p>
 <p><code>:compile_threads</code> is used for all release build steps and all test suite build
@@ -4897,9 +5070,11 @@ upon by test executables.</p>
 <p><strong>Default</strong>: 1</p>
 <h2 id="which_ceedling"><code>:which_ceedling</code></h2>
 <p>This is an advanced project option primarily meant for development work on
-Ceedling itself. This setting tells the code that launches the Ceedling
-application where to find the code to launch.</p>
-<p>This entry can be either a directory path or <code>gem</code>.</p>
+Ceedling itself. This setting selects the Ceedling installation that runs
+your project’s commands. The <code>ceedling</code> command you run hands each command off to
+that installation’s own launcher.</p>
+<p>This entry can be either a directory path or <code>gem</code>. A relative path is
+relative to your working directory.</p>
 <p>See the section <a href="../../which-ceedling/">Which Ceedling</a> for full details.</p>
 <p><strong>Default</strong>: <code>gem</code></p>
 <h2 id="use_backtrace"><code>:use_backtrace</code></h2>
@@ -4983,9 +5158,10 @@ with an error at startup.</p>
 extracted from the <code>gdb</code> report. Ceedling will attempt to surface in the 
 summary the offending line of code or failing <code>assert()</code> from the report.</p>
 <p>The full <code>gdb</code> report is captured to a log file, and the log filepath is 
-provided in the crash summary. The log filepath will comprise the containing 
-test executable as a subdirectory and the name of the crashing test case 
-function as the filename.</p>
+provided in the crash summary. The log filepath comprises the <a href="../../../testing-guide/conventions/#test-names-build-output">test’s name</a>,
+its path from your project’s root, as a subdirectory plus the name of the crashing 
+test case function as the filename. A build that logs a test case’s crash replaces 
+that log; a log holds only the latest crash.</p>
 <div class="admonition warning">
 <p class="admonition-title">macOS: a working <code>gdb</code> can stop attaching to processes</p>
 <p>macOS restricts which debuggers may attach to a process. A Homebrew <code>gdb</code>
@@ -5011,7 +5187,7 @@ build. To restore <code>:gdb</code> backtraces, re-codesign <code>gdb</code> fol
 <a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a>  Test: testCrash
 <a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a>  At line (40): &quot;Test case crashed &gt;&gt; [SIGSEGV] Segmentation fault
 <a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a>                `uint32_t i = *null_ptr;`
-<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                (build/logs/test/TestUsartModel/testCrash.gdb.log)&quot;
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a>                (build/logs/test/test/TestUsartModel/testCrash.gdb.log)&quot;
 <a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a>
 <a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a>-----------------------
 <a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a>❌ OVERALL TEST SUMMARY
@@ -5027,13 +5203,89 @@ build. To restore <code>:gdb</code> backtraces, re-codesign <code>gdb</code> fol
    command line arguments (passed to the test executable). If you are targeting
    a simulator with your test executable binaries, <code>:simple</code> is unlikely to
    work for you. In the simplest case, you may simply fall back to <code>:none</code>.
-   With some work and using Ceedling's various features, much more sophisticated
+   With some work and using Ceedling’s various features, much more sophisticated
    options are possible.</li>
 <li>The <code>:gdb</code> option currently only supports the native build platform. That is,
    the <code>:gdb</code> backtrace option cannot handle backtrace for cross-compiled code
    or any sort of simulator-based test fixture.</li>
 </ol>
 <p><strong>Default</strong>: <code>:simple</code></p>
+<h2 id="win_path_limit"><code>:win_path_limit</code></h2>
+<p>Tells Ceedling which Windows path length limit applies to your build, so its
+path length messages are true for your host. It applies only on Windows, and
+Ceedling ignores it on other platforms. It is still checked on every host, so
+a project file shared across hosts is validated everywhere.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="nt">:project</span><span class="p">:</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span><span class="nt">:win_path_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:auto</span>
+</code></pre></div>
+<p>Ceedling checks the length of each build path it creates. A path near the
+limit gets a warning, and one at or past the limit gets an error. Each path is
+reported once. The messages never stop a build. A Windows path that is truly 
+too long fails on its own, often as “No such file or directory” rather than a 
+length error. Ceedling’s message is then the clue to the real cause.</p>
+<p>This setting changes only what Ceedling reports. It does not enable long-path 
+safety. Long-paths on Windows requires a registry setting and application
+support.</p>
+<h3 id="windows-two-limits">Windows‘ two limits</h3>
+<ol>
+<li><strong>The classic limit, 260 characters.</strong> It applies on every Windows host
+   unless long paths are in effect. A directory path maxes out at 248
+   characters leaving room for a classic 8.3 filename within it.</li>
+<li><strong>Long paths, 32,767 characters.</strong> They are in effect for a program only
+   when both of these hold:<ol>
+<li><a href="https://learn.microsoft.com/en-us/windows/win32/fileio/maximum-file-path-limitation?tabs=registry#registry-setting-to-enable-long-paths">Long paths are enabled on the host via registry setting</a>.
+   Windows reads it when a program starts, so run Ceedling again after 
+   changing it.</li>
+<li>The program is long-path-aware, as its manifest declares. Every program
+   decides this for itself: Ruby, your compiler, your linker.</li>
+</ol>
+</li>
+</ol>
+<p>In all cases, no single Windows directory or filename may exceed 255 
+characters.</p>
+<h3 id="classic"><code>:classic</code></h3>
+<p>Reports paths against the classic limits: 260 characters for a file and 248
+for a directory. An error past the limit points you to this setting.</p>
+<h3 id="long_paths"><code>:long_paths</code></h3>
+<p>Reports paths against the long path limit. The first time a build path nears
+260 characters, Ceedling checks once whether Ceedling’s runtime can really work 
+past that limit. It writes, reads, and lists a file in a directory nested past 
+260 characters below your build root, then removes it.</p>
+<p>Outcomes:</p>
+<ul>
+<li><strong>Ruby can write and list long paths:</strong> Ceedling stays quiet about lengths up
+  to 32,767 characters.</li>
+<li><strong>Ruby can write long paths but can't list them:</strong> Ceedling keeps the long
+  limit and warns once (see <a href="#ruby-before-40">Ruby before 4.0</a>).</li>
+<li><strong>Long paths do not work:</strong> Ceedling warns once, naming the cause (below)
+  and then reports against the classic limits thereafter.</li>
+<li>The host may not have long paths enabled.</li>
+<li>The application runtime may not be long-path-aware.</li>
+<li>The build directory’s drive may not support long paths.</li>
+</ul>
+<p>To name the cause, Ceedling reads the host’s registry setting with the
+<a href="../tools/#windows_registry_query"><code>:windows_registry_query</code></a> tool.</p>
+<h3 id="auto"><code>:auto</code></h3>
+<p>Runs the same check as <code>:long_paths</code>, but lifts the limit only when Ruby can
+both write and list long paths. Otherwise Ceedling keeps the classic limits and
+says why once, in a notice.</p>
+<h3 id="ruby-before-40">Ruby before 4.0</h3>
+<p>Builds of Ruby 3.x are generally long-path-aware for files. They create, read,
+and write files past 260 characters when long paths are enabled. But, they
+cannot list a directory that deep. Globs, directory listings, and recursive
+copies and removals fail there, or silently leave entries out. Ruby 4.0 lists
+them.</p>
+<p>On Ruby 3.x, a build directory past 260 characters can make Ceedling’s own
+directory scans fail. <code>clean</code> and <code>clobber</code> can leave such a directory behind.
+Delete it by hand, for example with <code>rmdir /s /q build</code> in a Windows shell, or 
+use Ruby 4.0. With <code>:auto</code>, Ceedling keeps the classic limits on Ruby 3.x, so 
+its messages still point at every path past 260 characters.</p>
+<h3 id="checking-your-toolchain">Checking your toolchain</h3>
+<p>Your compiler, linker, and other tools have path limits of their own, and
+Ceedling doesn‘t test them. To check a tool, create a directory more than 260
+characters deep, then compile and link a trivial C file there with your
+project’s own tools.</p>
+<p><strong>Default</strong>: <code>:classic</code></p>
 <p><br/><br/></p>
 
 

@@ -5637,9 +5637,16 @@ new project (default is your working directory).</p>
 </table>
 <hr />
 <h3 id="ceedling-upgrade-path"><code>ceedling upgrade PATH</code></h3>
-<p>Upgrade vendored installation of Ceedling for an existing project 
-along with any locally installed documentation bundles. <code>PATH</code> is 
-required and should be the root of the project to upgrade.</p>
+<p>Upgrade vendored installation of Ceedling for an existing project. <code>PATH</code>
+is required and should be the root of the project to upgrade.</p>
+<p>If the project holds documentation that <code>new --docs</code> or <code>example --docs</code>
+exported, <code>upgrade</code> replaces it with the documentation of the Ceedling it
+copies. It replaces only what the export wrote, and leaves your own files in
+<code>docs/</code>. If that Ceedling has no HTML documentation bundle (a <code>--local</code> copy
+carries none), <code>upgrade</code> keeps the project’s existing bundle.</p>
+<p><code>upgrade</code> copies the Ceedling you run, or the installation the
+<code>WHICH_CEEDLING</code> environment variable names. It never copies from a
+<code>vendor/ceedling/</code> it finds in your working directory.</p>
 <table>
 <thead>
 <tr>
@@ -5662,6 +5669,10 @@ required and should be the root of the project to upgrade.</p>
 <h3 id="ceedling-docs-dest"><code>ceedling docs [DEST]</code></h3>
 <p>Exports the Ceedling documentation bundle to the filesystem. <code>DEST</code> is 
 an optional destination path (default is your working directory).</p>
+<p><code>docs</code> exports the documentation of the installation <a href="../../configuration/which-ceedling/"><em>Which Ceedling</em></a>
+selects. A <code>--local</code> copy carries no documentation bundle, so for a vendored
+copy <code>docs</code> exports the documentation of the <code>ceedling</code> command you ran, with a
+notice naming both installations.</p>
 <p><em>No parameters.</em></p>
 <hr />
 <h3 id="ceedling-version"><code>ceedling version</code></h3>
@@ -5679,7 +5690,48 @@ an optional destination path (default is your working directory).</p>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a>  CException =&gt; #.#.#
 </code></pre></div>
 <p>If the short SHA information is unavailable such as in local development, the SHA is omitted. The source for this string is generated and captured in the Gem at the time of Ceedling’s automated build in CI.</p>
-<p><em>No parameters.</em></p>
+<p><code>version</code> reads your project file when one is available. When your project selects another Ceedling installation through <a href="../../configuration/which-ceedling/"><em>Which Ceedling</em></a>, <code>version</code> reports the <code>ceedling</code> command you ran and the selected installation separately, each with its own version:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>🌱 Welcome to Ceedling!
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>  Ceedling Launcher =&gt; #.#.#-&lt;Short SHA&gt;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>  ----------------------
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  &lt;Ceedling launcher install path&gt;
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  Ceedling App =&gt; #.#.#-&lt;Short SHA&gt;
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  ----------------------
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  &lt;Ceedling application install path&gt;
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>  Build Frameworks
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>  ----------------------
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>       CMock =&gt; #.#.#
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>       Unity =&gt; #.#.#
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>  CException =&gt; #.#.#
+</code></pre></div>
+<p>The build frameworks are always those of the Ceedling application.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Alias</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--project</code></td>
+<td><code>-p</code></td>
+<td>Project filepath. A project file named this way must load. Without it, a default project file that cannot be loaded is skipped.</td>
+<td><code>project.yml</code> or <code>ceedling.yml</code> in your working directory</td>
+</tr>
+<tr>
+<td><code>--mixin</code></td>
+<td><code>-m</code></td>
+<td>Merge a mixin into the project configuration. Repeatable.</td>
+<td></td>
+</tr>
+</tbody>
+</table>
 <hr />
 <h2 id="build-plugin-tasks">Build &amp; plugin tasks</h2>
 <p>Build task are loaded from your project configuration. Unlike 

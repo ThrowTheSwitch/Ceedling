@@ -2639,7 +2639,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label=":release_linker">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows_registry_query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :windows_registry_query
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=":windows_registry_query">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -4731,7 +4742,18 @@
     </span>
   </a>
   
-    <nav class="md-nav" aria-label=":release_linker">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#windows_registry_query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :windows_registry_query
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label=":windows_registry_query">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -5096,6 +5118,20 @@ system will provide options for integrating alternative tools.</p>
 <li><code>${5}</code>: optional library path list</li>
 </ul>
 <p><strong>Default</strong>: <code>gcc</code></p>
+<h2 id="windows_registry_query"><code>:windows_registry_query</code></h2>
+<p>Reads one Windows registry value. It is not a build step. Ceedling adds this
+tool only on Windows, and only when <a href="../project/#win_path_limit"><code>:project</code> ↳ <code>:win_path_limit</code></a>
+is <code>:auto</code> or <code>:long_paths</code>. It runs only if Ceedling’s long path check fails,
+to tell whether long paths are disabled on the host or unavailable to Ruby.</p>
+<p>The tool is optional. If its executable is missing, Ceedling’s message says the
+registry could not be read, and the build goes on.</p>
+<ul>
+<li><code>${1}</code>: registry key</li>
+<li><code>${2}</code>: value name</li>
+</ul>
+<p><strong>Default</strong>: <code>reg</code> (as <code>reg query "${1}" /v ${2}</code>)</p>
+<p>A replacement must print its result as <code>reg query</code> does. Ceedling looks for a
+line such as <code>LongPathsEnabled    REG_DWORD    0x1</code> in its output.</p>
 <h3 id="tool-definition-configurable-elements">Tool definition configurable elements</h3>
 <ol>
 <li>
@@ -5116,6 +5152,24 @@ the name quoted, add escaped quotes in the YAML:</p>
 <li>
 <p><code>:arguments</code> - List (array of strings) of command line arguments and
     substitutions (required).</p>
+<div class="admonition tip">
+<p class="admonition-title">Quote the paths your tools name</p>
+<p>Ceedling runs each tool’s command line through your system’s shell, which
+reads a space, an apostrophe, and other characters in a path as part of
+the command. Wrap each path argument in escaped quotes, as Ceedling’s
+own tools do, for example <code>"-c \"${1}\""</code>. Quoting protects most
+characters. On Linux and macOS, a path holding <code>"</code>, <code>$</code>, a backtick, or
+<code>\</code> can still break a command.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Each argument closes its own quotes</p>
+<p>Ceedling checks the quoting in <code>:executable</code> and in each argument when it
+validates a tool. A quote left open fails validation. Every argument must
+close quotes it opens; a quoted value can’t span two entries in the list.
+A typographic quote (e.g. <code>”</code>) pasted from elsewhere draws a warning. A
+shell treats it as an ordinary character. On Windows, <code>'</code> is an ordinary
+character too and is not checked.</p>
+</div>
 </li>
 <li>
 <p><code>:name</code> - Simple name (i.e. "nickname") of tool beyond its executable name.

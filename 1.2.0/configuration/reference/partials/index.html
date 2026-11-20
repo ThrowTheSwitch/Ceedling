@@ -2111,6 +2111,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#suppress_redundant_decls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :suppress_redundant_decls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extern_variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :extern_variables
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4329,6 +4351,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#suppress_redundant_decls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :suppress_redundant_decls
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extern_variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        :extern_variables
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -4422,6 +4466,12 @@
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="w">  </span><span class="c1"># Ceiling of 1000 character blocks for buffer growth</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="c1"># 8000 = a max buffer growth to 8,000,000 characters</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">  </span><span class="nt">:max_extraction_length</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8000</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">  </span><span class="c1"># Write carried prototypes without GCC diagnostic pragmas</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">  </span><span class="nt">:suppress_redundant_decls</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FALSE</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="w">  </span><span class="c1"># Tests define the extern variables their modules only declare</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">  </span><span class="nt">:extern_variables</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">:test</span>
 </code></pre></div>
 <h2 id="max_extraction_length"><code>:max_extraction_length</code></h2>
 <p><strong><em>Note:</em></strong> The default should be sufficient for nearly all test builds. Modification should only be necessary on error.</p>
@@ -4438,6 +4488,38 @@ than <code>10</code> (10,000 characters).</p>
 legitimately large single construct in your codebase (e.g. a sizable
 lookup table). Ordinarily, there’s no reason to lower it.</p>
 <p><strong>Default</strong>: 5000 (5,000,000 characters)</p>
+<h2 id="suppress_redundant_decls"><code>:suppress_redundant_decls</code></h2>
+<p>A Partial's implementation source carries prototypes that your module's code
+relies on, as described in
+<a href="../../../testing-guide/partials/conventions/#what-a-partial-carries-from-your-module">What a Partial carries from your module</a>.
+A carried prototype may repeat a declaration that one of your headers already
+makes. That is valid C, but GCC reports it under <code>-Wredundant-decls</code>, and
+<code>-Werror</code> turns the report into a failed build.</p>
+<p>With this setting enabled, Ceedling wraps each run of carried prototypes in
+GCC diagnostic pragmas. The pragmas quiet <code>-Wredundant-decls</code> for those lines
+alone, and they sit behind <code>#if defined(__GNUC__)</code>, so other compilers never
+see them. Disable the setting to write carried prototypes bare.</p>
+<p><strong>Default</strong>: <code>TRUE</code></p>
+<h2 id="extern_variables"><code>:extern_variables</code></h2>
+<p>A module may declare a variable <code>extern</code> that another module defines. A test
+built from a Partial may or may not link that other module, so the Partial's
+implementation source decides what to write for the variable.</p>
+<ul>
+<li><code>:weak</code> writes a weak definition. A real definition, from a linked module or
+  from the test file, takes precedence over it. When nothing else defines the
+  variable, the weak definition stands in, so the test links either way. The
+  weak attribute sits behind <code>#if defined(__GNUC__)</code>. Other compilers get a
+  plain definition, which collides with a real one. A test built with such a
+  compiler that links the defining module needs <code>:test</code>.</li>
+<li><code>:test</code> writes no definition. The test file, or a module the test links,
+  must define the variable.</li>
+</ul>
+<p>A variable your module defines itself is written where your module defines
+it, whatever this setting says. A variable whose struct or union type your
+module never completes gets no definition under either setting, since no
+definition of an incomplete type compiles. The module that completes the type
+must define the variable.</p>
+<p><strong>Default</strong>: <code>:weak</code></p>
 <p><br/><br/></p>
 
 

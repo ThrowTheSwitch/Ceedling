@@ -4771,7 +4771,7 @@ building and then running test executables under Valgrind’s Memcheck tool.</p>
 <ul>
 <li><strong>Whole test suite</strong>: By running <code>ceedling valgrind:all</code>, all test
   executables are built and then each is run under Valgrind. A separate log
-  file is produced for each test executable in <code>build/artifacts/valgrind/</code>.</li>
+  file is produced for each test executable beneath <code>build/artifacts/valgrind/</code>.</li>
 <li><strong>Single test file</strong>: By running <code>ceedling valgrind:&lt;filename&gt;</code>, a single
   test executable is built and run under Valgrind, producing one log file.</li>
 </ul>
@@ -4903,8 +4903,9 @@ as much of the file’s path as needed to tell same-named test files apart:</p>
 beside it:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>build/artifacts/valgrind/&lt;test_name&gt;.xml
 </code></pre></div>
-<p>For example, running <code>ceedling valgrind:test_my_module.c</code> produces:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>build/artifacts/valgrind/test_my_module.log
+<p>A <a href="../../testing-guide/conventions/#test-names-build-output">test’s name</a> is its path from your project’s root. For example,
+running <code>ceedling valgrind:test/test_my_module.c</code> produces:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>build/artifacts/valgrind/test/test_my_module.log
 </code></pre></div>
 <p>These log files contain the full Valgrind Memcheck output, including any
 detected memory errors, leak summaries, and (with <code>--track-origins=yes</code>)
@@ -4925,7 +4926,7 @@ the origin of uninitialized values.</p>
 report. It replaces Ceedling’s generic crash notice:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>☠️ ERROR: Test executable `test_nosanitize_crash_sigsegv.out` terminated with Valgrind memory errors.
 <a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>&gt; Invalid read of size 4 at test_nosanitize_crash_sigsegv.c:32
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>&gt; Boom log: build/artifacts/valgrind/test_nosanitize_crash_sigsegv.log
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a>&gt; Boom log: build/artifacts/valgrind/test/test_nosanitize_crash_sigsegv.log
 <a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a>
 <a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a>VALGRIND: FAILED TEST SUMMARY
 <a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a>[test/test_nosanitize_crash_sigsegv.c]
@@ -4947,15 +4948,15 @@ report. It replaces Ceedling’s generic crash notice:</p>
 <p>With <a href="#fail_build"><code>:fail_build:</code></a> set to <code>false</code>, the same run omits the last
 line. Only the test failure fails the build.</p>
 <p>A test that completes despite memory errors logs one line as it runs:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>🪲 ERROR: Valgrind detected 2 memory errors in test_example ➡️ see build/artifacts/valgrind/test_example.log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>🪲 ERROR: Valgrind detected 2 memory errors in test/test_example ➡️ see build/artifacts/valgrind/test/test_example.log
 </code></pre></div>
 <p>A test whose report is missing logs a warning, since its memory error status
 is unknown:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>⚠️ WARNING: Valgrind wrote no report for test_example at build/artifacts/valgrind/test_example.log. Memory error status is unknown.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>⚠️ WARNING: Valgrind wrote no report for test/test_example at build/artifacts/valgrind/test/test_example.log. Memory error status is unknown.
 </code></pre></div>
 <h2 id="interpreting-results">Interpreting results</h2>
 <p>To review the log for a specific test:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>cat<span class="w"> </span>build/artifacts/valgrind/test_my_module.log
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>cat<span class="w"> </span>build/artifacts/valgrind/test/test_my_module.log
 </code></pre></div>
 <p>Common Valgrind findings include:</p>
 <table>

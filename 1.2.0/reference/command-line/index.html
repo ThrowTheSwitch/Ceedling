@@ -5144,8 +5144,9 @@ use <code>ceedling example</code>.</p>
   and/or a starter project configuration file.</p>
 <hr />
 <h3 id="ceedling-upgrade"><a href="../../getting-started/command-line/#ceedling-upgrade-path"><code>ceedling upgrade</code></a></h3>
-<p>Upgrade vendored installation of Ceedling for an existing project 
-  along with any locally installed documentation bundles.</p>
+<p>Upgrade vendored installation of Ceedling for an existing project, from
+  the version of Ceedling you run, along with any documentation <code>--docs</code> 
+  exported.</p>
 <hr />
 <h3 id="ceedling-version"><a href="../../getting-started/command-line/#ceedling-version"><code>ceedling version</code></a></h3>
 <p>Displays version information for Ceedling and its components. Version 
@@ -5163,6 +5164,12 @@ build identifier and Ceedling’s path of origin.</p>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>       Unity =&gt; #.#.#
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>  CException =&gt; #.#.#
 </code></pre></div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For a project configuration that selects another Ceedling installation
+different from the installation that launched Ceedling, <code>version</code> reports 
+the launcher and the selected application versions separately.</p>
+</div>
 <p>If the short SHA information is unavailable such as in local 
 development, the SHA is omitted. The source for this string is 
 generated and captured in the Ruby Gem at the time of Ceedling’s 

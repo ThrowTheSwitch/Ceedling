@@ -4054,6 +4054,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Code organization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-your-repository-with-which-ceedling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running your repository with Which Ceedling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4392,17 +4409,6 @@
         
       </ul>
     </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#bin-vs-lib" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        bin/ vs. lib/
-      
-    </span>
-  </a>
   
 </li>
       
@@ -4653,6 +4659,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Code organization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#running-your-repository-with-which-ceedling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running your repository with Which Ceedling
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -4994,17 +5017,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#bin-vs-lib" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        bin/ vs. lib/
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -5091,6 +5103,20 @@
    processing, validation, and plugin loading.</li>
 <li>Triggering the build/plugin task named at the command line.</li>
 </ol>
+<h3 id="running-your-repository-with-which-ceedling">Running your repository with Which Ceedling</h3>
+<p>Depending on what you’re working on you may need to run Ceedling using
+a specialized approach.</p>
+<p>To run your local repository on a project, either:</p>
+<ol>
+<li>Point <code>:project</code> ↳ <code>:which_ceedling</code> or <code>WHICH_CEEDLING</code> at your
+   repository, then run the <code>ceedling</code> command you already have installed. It hands
+   each command off to your repository’s own <code>bin/ceedling</code>, so your changes
+   in both <code>bin/</code> and <code>lib/</code> run.</li>
+<li>Run your repository’s <code>bin/ceedling</code> directly. Do this for a command or
+   option only your repository knows, or to attach a debugger.</li>
+</ol>
+<p>See <a href="../../configuration/which-ceedling/#ceedling-development">Which Ceedling: Ceedling development</a> for the
+details and caveats.</p>
 <h2 id="installation-options">Installation options</h2>
 <h3 id="local-installation">Local installation</h3>
 <p>After installing Ruby…</p>
@@ -5602,27 +5628,6 @@ configuration is in <code>mkdocs.yml</code> while the local site bundle configur
 port 8000, VS Code detects it and shows a notification. The <strong>Ports</strong> panel also
 provides an <strong>Open in Browser</strong> button.</p>
 <p><strong>Hosted site:</strong> <a href="https://docs.throwtheswitch.org/Ceedling/">https://docs.throwtheswitch.org/Ceedling/</a></p>
-<h2 id="bin-vs-lib"><code>bin/</code> vs. <code>lib/</code></h2>
-<p>Most of Ceedling’s functionality is contained in the application code residing 
-in <code>lib/</code>. Ceedling’s command line handling, startup configuration, project
-file loading, and mixin handling are contained in a “bootloader” in <code>bin/</code>.
-The code in <code>bin/</code> is the source of the <code>ceedling</code> command line tool and 
-launches the application from <code>lib/</code>.</p>
-<p>Depending on what you’re working on you may need to run Ceedling using
-a specialized approach.</p>
-<p>If you are only working in <code>lib/</code>, you can:</p>
-<ol>
-<li>Run Ceedling using the <code>ceedling</code> command line utility you already have 
-   installed. The code in <code>bin/</code> will run from your locally installed gem or 
-   from within your Docker container and launch the Ceedling application for 
-   you.</li>
-<li>Modify a project file by setting a path value for <code>:project</code> ↳ <code>:which_ceedling</code> 
-   that points to the local copy of Ceedling you cloned from the Git repository.</li>
-</ol>
-<p>If you are working in <code>bin/</code>, running <code>ceedling</code> at the command line will not
-call your modified code. Instead, you must execute the path to the executable
-<code>ceedling</code> in the <code>bin/</code> folder of the local Ceedling repository you are 
-working on.</p>
 <p><br/><br/></p>
 
 

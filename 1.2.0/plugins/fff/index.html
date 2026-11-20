@@ -4886,19 +4886,64 @@ Each example uses fakes for a "display" module, created from a display.h file wi
 <h2 id="test-setup">Test setup</h2>
 <p>All of the fake functions and any fff global state are all reset automatically between each test.</p>
 <h2 id="cmock-configuration">CMock configuration</h2>
-<p>We still use some CMock configuration options for setting things like the mock prefix and for including additional header files in the mock files.</p>
+<p>Fakes still use some CMock settings, such as the mock prefix and the extra
+header files to include.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">:cmock</span><span class="p">:</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nt">:mock_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mock_</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">:includes</span><span class="p p-Indicator">:</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">    </span><span class="w w-Error">    </span><span class="nt">:includes_h_pre_orig_header</span><span class="p">:</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">        </span><span class="nt">:includes_h_post_orig_header</span><span class="p">:</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">        </span><span class="nt">:includes_c_pre_header</span><span class="p">:</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">            </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">        </span><span class="nt">:includes_c_post_header</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">:mock_prefix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mock_</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">:includes</span><span class="p">:</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="nt">:includes_h_pre_orig_header</span><span class="p">:</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">  </span><span class="nt">:includes_h_post_orig_header</span><span class="p">:</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">  </span><span class="nt">:includes_c_pre_header</span><span class="p">:</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">  </span><span class="nt">:includes_c_post_header</span><span class="p">:</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
 </code></pre></div>
+<p>Each include setting puts its headers in a fake where CMock puts them in a mock.</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Where the <code>#include</code> goes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>:includes</code>, <code>:includes_h_pre_orig_header</code></td>
+<td>The fake’s header, before the original header</td>
+</tr>
+<tr>
+<td><code>:includes_h_post_orig_header</code></td>
+<td>The fake’s header, after the original header</td>
+</tr>
+<tr>
+<td><code>:includes_c_pre_header</code></td>
+<td>The fake’s source, before the fake’s header</td>
+</tr>
+<tr>
+<td><code>:includes_c_post_header</code></td>
+<td>The fake’s source, after the fake’s header</td>
+</tr>
+</tbody>
+</table>
+<p>A <a href="../../configuration/reference/cmock/#unity_helper_path">Unity helper</a> is
+included in a fake’s header and source, as it is in a mock’s.</p>
+<p>A fake includes its original header as a mock does, by the folder the fake’s
+own <code>#include</code> names and the header’s filename. A fake included as
+<code>drivers/mock_foo.h</code> includes <code>drivers/foo.h</code>. With <code>:cmock</code> ↳
+<code>:mock_name_include_folder</code> disabled, it includes the filename alone. Where that
+text reaches no header, as <code>drivers/foo.h</code> doesn’t with only <code>src/drivers/</code>
+listed, the fake includes the header by the text a search path reaches it by,
+here <code>foo.h</code>.</p>
+<p>A fake is named as a mock is, by its header’s own extension. A fake of
+<code>drivers/foox.hpp</code> is written as <code>drivers/mock_foox.hpp</code> and
+<code>drivers/mock_foox.c</code>, and a test includes it as <code>drivers/mock_foox.hpp</code>.</p>
+<p>With <code>:cmock</code> ↳ <code>:treat_inlines: :include</code>, a fake fakes a header’s inline
+functions too. As CMock does for a mock, the fake writes a copy of the header
+without its inline function bodies beside itself, and its <code>#include</code> reaches
+that copy, so the header’s definitions never collide with the fake’s.</p>
 <h3 id="fakes-of-same-named-headers">Fakes of same-named headers</h3>
 <p>With <code>:cmock</code> ↳ <code>:mock_name_include_folder</code> enabled, Ceedling’s default, a fake
 included through a folder is named by that folder, as a CMock mock is. A fake
