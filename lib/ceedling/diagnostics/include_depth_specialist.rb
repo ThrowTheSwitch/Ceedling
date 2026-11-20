@@ -7,6 +7,7 @@
 
 require 'ceedling/diagnostics/build_step_doctor'
 require 'ceedling/diagnostics/toolchain_output'
+require 'ceedling/reportinator'
 
 # Explains #include directives nested deeper than a compiler allows.
 #
@@ -39,19 +40,6 @@ class IncludeDepthSpecialist
 
   INCLUDE_DIRECTIVE = /^[ \t]*#[ \t]*include[ \t]*([<"])([^>"\n]+)[>"]/
 
-  GUIDANCE = <<~GUIDANCE.freeze
-    HOW THIS HAPPENS:
-    • A compiler searches the include paths in order and uses the first file with the requested name.
-    • A forwarding header that #includes its own filename, to reach a header of that name elsewhere, finds itself again when its directory comes first.
-    • Two headers that #include each other without include guards repeat in the same way.
-    • The compiler stops at a fixed nesting limit and reports the loop as nesting too deep.
-
-    OPTIONS:
-    1. Order :paths ↳ :include (or TEST_INCLUDE_PATH()) so the directory holding the intended header comes before the forwarding header's directory.
-    2. List the forwarding header's parent directory instead, and #include it by its subdirectory, such as "freertos/timers.h".
-    3. Give headers that include each other include guards or #pragma once.
-  GUIDANCE
-
   constructor :file_wrapper
 
   def diagnoses()
@@ -72,9 +60,21 @@ class IncludeDepthSpecialist
   def examine(kase)
     lead    = 'The compiler output appears to report #include directives nested too deeply, which usually means a header includes itself.'
     finding = self_inclusion( error_header( kase.symptoms ), kase.inputs[:search_paths] || [] )
-    lead   += "\n#{finding}" if finding
 
-    return "#{lead}\n\n#{GUIDANCE}"
+    return Reportinator.generate_guidance(
+      lead: [lead, finding],
+      causes: [
+        'A compiler searches the include paths in order and uses the first file with the requested name.',
+        'A forwarding header that #includes its own filename, to reach a header of that name elsewhere, finds itself again when its directory comes first.',
+        'Two headers that #include each other without include guards repeat in the same way.',
+        'The compiler stops at a fixed nesting limit and reports the loop as nesting too deep.'
+      ],
+      options: [
+        "Order :paths ↳ :include (or TEST_INCLUDE_PATH()) so the directory holding the intended header comes before the forwarding header's directory.",
+        %q(List the forwarding header's parent directory instead, and #include it by its subdirectory, such as "freertos/timers.h".),
+        'Give headers that include each other include guards or #pragma once.'
+      ]
+    )
   end
 
   # The header on the line that reports the error, or nil

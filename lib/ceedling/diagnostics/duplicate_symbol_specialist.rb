@@ -7,6 +7,7 @@
 
 require 'ceedling/diagnostics/build_step_doctor'
 require 'ceedling/diagnostics/toolchain_output'
+require 'ceedling/reportinator'
 require 'ceedling/diagnostics/guidance_phrases'
 
 # Explains linker errors for symbols more than one linked object defines.
@@ -37,22 +38,6 @@ class DuplicateSymbolSpecialist
   ].freeze
 
 
-  # Each joins the end of the line before it, when the project uses mocks
-  MOCK_CAUSE  = "\n• A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them."
-  MOCK_OPTION = "\n4. Don't #include both a mock and its real header in one test and don't name a mocked module's source in TEST_SOURCE_FILE()."
-
-  GUIDANCE = <<~GUIDANCE.freeze
-    HOW THIS HAPPENS:
-    • A program may define each function and each global variable only once across all its object files.
-    • A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header.
-    • A test file that defines a function the source under test also defines places two definitions in one executable.%{mock_cause}
-
-    OPTIONS:
-    1. Declare header variables extern, and define each one in a single source file.
-    2. Make functions defined in headers static inline, or move their bodies into one source file.
-    3. Remove a test's own definition of a function the linked source already provides, or mock the source's header instead.%{mock_requirement}%{mock_option}
-  GUIDANCE
-
   constructor :configurator
 
   def diagnoses()
@@ -75,18 +60,27 @@ class DuplicateSymbolSpecialist
     pair = mock_and_source( kase.output, kase.inputs[:objects] || [] )
     lead += " This test links both '#{pair[0]}' and '#{pair[1]}', which may define the same functions." if pair
 
-    return "#{lead}\n\n#{guidance()}"
+    return Reportinator.generate_guidance( lead: lead, **guidance() )
   end
 
   # Mock causes and remedies appear only as the project's mocking allows
   def guidance()
     mocks = @configurator.project_use_mocks
 
-    return format( GUIDANCE,
-      mock_cause:       mocks ? MOCK_CAUSE : '',
-      mock_requirement: GuidancePhrases.requirements( mocks: mocks ),
-      mock_option:      mocks ? MOCK_OPTION : ''
-    )
+    return {
+      causes: [
+        'A program may define each function and each global variable only once across all its object files.',
+        'A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header.',
+        'A test file that defines a function the source under test also defines places two definitions in one executable.',
+        ('A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them.' if mocks)
+      ],
+      options: [
+        'Declare header variables extern, and define each one in a single source file.',
+        'Make functions defined in headers static inline, or move their bodies into one source file.',
+        "Remove a test's own definition of a function the linked source already provides, or mock the source's header instead.#{GuidancePhrases.requirements( mocks: mocks )}",
+        ("Don't #include both a mock and its real header in one test and don't name a mocked module's source in TEST_SOURCE_FILE()." if mocks)
+      ]
+    }
   end
 
   # A mock object and its source's object, by basename, or nil
