@@ -10,6 +10,7 @@ require 'ceedling/filesystem/build_roots'
 require 'tmpdir'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/includes/header_search'
 require 'ceedling/filename_extension'
 require 'ceedling/exceptions'
@@ -30,12 +31,26 @@ describe FileFinder do
     # whole query -> FileFinder -> FileFinderHelper -> PathMatcher chain, not a mocked stub of it.
     @file_finder_helper = FileFinderHelper.new( { loginator: @loginator } )
 
+    # A real TestBuildLayout, so a lookup finds each test's generated files where its build
+    # puts them
+    allow(@file_wrapper).to receive(:check_path_length)
+    allow(@configurator).to receive(:project_build_root).and_return('build')
+    allow(@configurator).to receive(:project_use_mocks).and_return( true )
+    allow(@configurator).to receive(:project_use_partials).and_return( true )
+    allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+    allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+    allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+    allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
+    allow(@configurator).to receive(:project_test_preprocess_build_directives_path).and_return('build/test/preprocess/build_directives')
+    @test_build_layout = TestBuildLayout.new( { configurator: @configurator, file_wrapper: @file_wrapper } )
+
     @file_finder = described_class.new({
       configurator:      @configurator,
       file_finder_helper: @file_finder_helper,
       file_path_utils:   @file_path_utils,
       file_wrapper:      @file_wrapper,
-      yaml_wrapper:       @yaml_wrapper
+      yaml_wrapper:       @yaml_wrapper,
+      test_build_layout: @test_build_layout
     })
   end
 
@@ -363,12 +378,12 @@ describe FileFinder do
       )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/test/unit/test_foo/test_foo.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/test/unit/test_foo/_t_/test_foo.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('test/unit/test_foo.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/test/integration/test_foo/test_foo.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/test/integration/test_foo/_t_/test_foo.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('test/integration/test_foo.c')
     end
@@ -384,7 +399,7 @@ describe FileFinder do
 
         tests.each do |test|
           name   = test.ext( '' )
-          object = File.join( 'build/test/out', name, File.basename( name ) + '.o' )
+          object = File.join( 'build/test/out', name, '_t_', File.basename( name ) + '.o' )
 
           expect(@file_finder.find_build_input_file( filepath: object, complain: :error, context: TEST_SYM, test: name )).to eq( test )
           expect(@file_finder.find_build_input_file( filepath: object, complain: :error, context: TEST_SYM )).to eq( test )
@@ -397,7 +412,7 @@ describe FileFinder do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['../shared/test/unit/test_s.c'] )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/_up_/shared/test/unit/test_s/test_s.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/_up_/shared/test/unit/test_s/_t_/test_s.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('../shared/test/unit/test_s.c')
     end
@@ -406,7 +421,7 @@ describe FileFinder do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/unit/test_calc.c', 'other/test/unit/test_calc.c'] )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/test/unit/test_calc/test_calc.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/test/unit/test_calc/_t_/test_calc.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('test/unit/test_calc.c')
     end
@@ -422,7 +437,7 @@ describe FileFinder do
       expect(@configurator).to receive(:collection_all_tests).once.and_return( ['test/test_calc.c', 'test/unit/test_calc.c'] )
 
       2.times do
-        @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_calc/test_calc.o', complain: :error, context: TEST_SYM )
+        @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_calc/_t_/test_calc.o', complain: :error, context: TEST_SYM )
       end
     end
 
@@ -440,23 +455,22 @@ describe FileFinder do
       end
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/unit/test_foo/test_foo_runner.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/unit/test_foo/_t_/test_foo_runner.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('build/test/runners/unit/test_foo_runner.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/integration/test_foo/test_foo_runner.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/integration/test_foo/_t_/test_foo_runner.o', complain: :error, context: TEST_SYM
       )
       expect(found).to eq('build/test/runners/integration/test_foo_runner.c')
     end
 
     it 'resolves a mock generated once per test, by the current test\'s own build directory, without treating that expected repetition as ambiguous' do
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       allow(@configurator).to receive(:collection_all_tests).and_return( ['TestAdcModel.c', 'TestModel.c'] )
 
       all_mocks = {
-        'build/test/mocks/TestAdcModel'  => ['build/test/mocks/TestAdcModel/MockTemperatureFilter.c'],
-        'build/test/mocks/TestModel'     => ['build/test/mocks/TestModel/MockTemperatureFilter.c']
+        'build/test/mocks/TestAdcModel/_t_'  => ['build/test/mocks/TestAdcModel/_t_/MockTemperatureFilter.c'],
+        'build/test/mocks/TestModel/_t_'     => ['build/test/mocks/TestModel/_t_/MockTemperatureFilter.c']
       }
       # The real FileWrapper only lists files under the specific glob it's given; a test's own
       # mock subtree is queried in isolation, which is exactly what keeps two tests' identically-
@@ -467,111 +481,145 @@ describe FileFinder do
       end
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestAdcModel/MockTemperatureFilter.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/TestAdcModel/_t_/MockTemperatureFilter.o', complain: :error, context: TEST_SYM
       )
-      expect(found).to eq('build/test/mocks/TestAdcModel/MockTemperatureFilter.c')
+      expect(found).to eq('build/test/mocks/TestAdcModel/_t_/MockTemperatureFilter.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestModel/MockTemperatureFilter.o', complain: :error, context: TEST_SYM
+        filepath: 'build/test/out/TestModel/_t_/MockTemperatureFilter.o', complain: :error, context: TEST_SYM
       )
-      expect(found).to eq('build/test/mocks/TestModel/MockTemperatureFilter.c')
+      expect(found).to eq('build/test/mocks/TestModel/_t_/MockTemperatureFilter.c')
     end
 
-    # One test's name continues another's, so its mock directory sits inside the other's
-    it 'keeps a test whose directory nests inside another test\'s from sharing that test\'s mocks' do
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
-      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
-      mocks = ['build/test/mocks/test/test_foo/Mockwidget.c', 'build/test/mocks/test/test_foo/test_bar/Mockwidget.c']
+    # A listing below a root, as the real FileWrapper gives, from files that each test's
+    # build put below its own root
+    def list_below(files)
       allow(@file_wrapper).to receive(:directory_listing) do |glob|
         root = glob.delete_suffix( '/**/*.c' )
-        mocks.select { |mock| mock.start_with?( root + '/' ) }
+        files.select { |file| file.start_with?( root + '/' ) }
       end
-
-      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/Mockwidget.o', complain: :error, context: TEST_SYM )
-      expect(found).to eq('build/test/mocks/test/test_foo/Mockwidget.c')
-
-      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test_bar/Mockwidget.o', complain: :error, context: TEST_SYM )
-      expect(found).to eq('build/test/mocks/test/test_foo/test_bar/Mockwidget.c')
     end
 
-    it 'keeps a test whose directory nests inside another test\'s from sharing that test\'s Partials' do
-      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+    # One test's name continues another's, beside that test's own subdirectory of the same name
+    it 'keeps a test whose name continues another test\'s from sharing that test\'s mocks' do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
-      partials = ['build/test/partials/test/test_foo/ceedling_partial_widget_impl.c', 'build/test/partials/test/test_foo/test_bar/ceedling_partial_widget_impl.c']
-      allow(@file_wrapper).to receive(:directory_listing) do |glob|
-        root = glob.delete_suffix( '/**/*.c' )
-        partials.select { |partial| partial.start_with?( root + '/' ) }
-      end
+      list_below( ['build/test/mocks/test/test_foo/_t_/Mockwidget.c', 'build/test/mocks/test/test_foo/test_bar/_t_/Mockwidget.c'] )
 
-      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/ceedling_partial_widget_impl.o', complain: :error, context: TEST_SYM )
-      expect(found).to eq('build/test/partials/test/test_foo/ceedling_partial_widget_impl.c')
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/_t_/Mockwidget.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/mocks/test/test_foo/_t_/Mockwidget.c')
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test_bar/_t_/Mockwidget.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/mocks/test/test_foo/test_bar/_t_/Mockwidget.c')
+    end
+
+    it 'keeps a test whose name continues another test\'s from sharing that test\'s Partials' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
+      list_below( ['build/test/partials/test/test_foo/_t_/ceedling_partial_widget_impl.c', 'build/test/partials/test/test_foo/test_bar/_t_/ceedling_partial_widget_impl.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/_t_/ceedling_partial_widget_impl.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/partials/test/test_foo/_t_/ceedling_partial_widget_impl.c')
+    end
+
+    # A test's mock lies in a folder named like a test nested below it, which exists
+    it 'finds a test\'s mock in a folder named like a nested test' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_c.c', 'test/test_c/test_x.c'] )
+      list_below( ['build/test/mocks/test/test_c/_t_/test_x/mock_qux.c'] )
+      allow(@configurator).to receive(:cmock_mock_prefix).and_return('mock_')
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_c/_t_/test_x/mock_qux.o', complain: :error, context: TEST_SYM, test: 'test/test_c' )
+      expect(found).to eq('build/test/mocks/test/test_c/_t_/test_x/mock_qux.c')
+
+      found = @file_finder.find_build_input_file( filepath: 'test_x/mock_qux.h', complain: :error, context: TEST_SYM, test: 'test/test_c' )
+      expect(found).to eq('build/test/mocks/test/test_c/_t_/test_x/mock_qux.c')
+    end
+
+    it 'finds a test\'s Partial in a folder named like a nested test' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_c.c', 'test/test_c/test_x.c'] )
+      list_below( ['build/test/partials/test/test_c/_t_/test_x/ceedling_partial_qux_impl.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'test_x/ceedling_partial_qux_impl', complain: :ignore, context: TEST_SYM, test: 'test/test_c' )
+      expect(found).to eq('build/test/partials/test/test_c/_t_/test_x/ceedling_partial_qux_impl.c')
+    end
+
+    # TEST_SOURCE_FILE() names a source by its path, with no test to scope a search by
+    it 'searches no test\'s mocks or Partials when no test is known' do
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/Mockwidget.c', 'src/ceedling_partial_widget_impl.c'] )
+      list_below( ['build/test/mocks/test/test_other/_t_/Mockwidget.c', 'build/test/partials/test/test_other/_t_/ceedling_partial_widget_impl.c'] )
+
+      expect( @file_finder.find_build_input_file( filepath: 'Mockwidget.c', complain: :ignore, context: TEST_SYM ) ).to eq('src/Mockwidget.c')
+      expect( @file_finder.find_build_input_file( filepath: 'ceedling_partial_widget_impl.c', complain: :ignore, context: TEST_SYM ) )
+        .to eq('src/ceedling_partial_widget_impl.c')
+      expect(@file_wrapper).to_not have_received(:directory_listing)
+    end
+
+    it 'searches no mocks or Partials of a disabled feature' do
+      allow(@configurator).to receive(:project_use_mocks).and_return( false )
+      allow(@configurator).to receive(:project_use_partials).and_return( false )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/Mockwidget.c'] )
+      list_below( ['build/test/mocks/test/test_c/_t_/Mockwidget.c'] )
+
+      expect( @file_finder.find_build_input_file( filepath: 'Mockwidget.c', complain: :ignore, context: TEST_SYM, test: 'test/test_c' ) )
+        .to eq('src/Mockwidget.c')
+      expect(@file_wrapper).to_not have_received(:directory_listing)
     end
 
     it 'lists a test\'s mocks with any bracket in its path escaped, so the listing is not a glob class' do
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test[1]/test_foo.c'] )
 
-      expect(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/test\[1\]/test_foo/**/*.c' )
-        .and_return( ['build/test/mocks/test[1]/test_foo/Mockwidget.c'] )
+      expect(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/test\[1\]/test_foo/_t_/**/*.c' )
+        .and_return( ['build/test/mocks/test[1]/test_foo/_t_/Mockwidget.c'] )
 
-      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test[1]/test_foo/Mockwidget.o', complain: :error, context: TEST_SYM )
-      expect(found).to eq('build/test/mocks/test[1]/test_foo/Mockwidget.c')
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test[1]/test_foo/_t_/Mockwidget.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/mocks/test[1]/test_foo/_t_/Mockwidget.c')
     end
 
     # A mock of a header at a search path's root sits in the test's mock root, and a same-named
     # mock below it ends with the same name
     it 'resolves a mock in the test\'s mock root beside a same-named mock below it' do
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_t.c'] )
       allow(@file_wrapper).to receive(:directory_listing).and_return(
-        ['build/test/mocks/test/test_t/b/Mocktask.c', 'build/test/mocks/test/test_t/Mocktask.c']
+        ['build/test/mocks/test/test_t/_t_/b/Mocktask.c', 'build/test/mocks/test/test_t/_t_/Mocktask.c']
       )
 
-      allow(@file_path_utils).to receive(:form_test_build_path).and_return('build/test/out/test/test_t')
 
       # The planner asks by each mock's #include
       found = @file_finder.find_build_input_file( filepath: 'Mocktask.h', complain: :error, context: TEST_SYM, test: 'test/test_t' )
-      expect(found).to eq('build/test/mocks/test/test_t/Mocktask.c')
+      expect(found).to eq('build/test/mocks/test/test_t/_t_/Mocktask.c')
 
       found = @file_finder.find_build_input_file( filepath: 'b/Mocktask.h', complain: :error, context: TEST_SYM, test: 'test/test_t' )
-      expect(found).to eq('build/test/mocks/test/test_t/b/Mocktask.c')
+      expect(found).to eq('build/test/mocks/test/test_t/_t_/b/Mocktask.c')
     end
 
     # A mock an earlier build placed deeper ends with the same folder and name
     it 'resolves a mock in a subdirectory of the test\'s mock root beside a same-named mock below another' do
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_t.c'] )
-      allow(@file_path_utils).to receive(:form_test_build_path).and_return('build/test/out/test/test_t')
       allow(@file_wrapper).to receive(:directory_listing).and_return(
-        ['build/test/mocks/test/test_t/src/drivers/Mocktask.c', 'build/test/mocks/test/test_t/drivers/Mocktask.c']
+        ['build/test/mocks/test/test_t/_t_/src/drivers/Mocktask.c', 'build/test/mocks/test/test_t/_t_/drivers/Mocktask.c']
       )
 
       found = @file_finder.find_build_input_file( filepath: 'drivers/Mocktask.h', complain: :error, context: TEST_SYM, test: 'test/test_t' )
-      expect(found).to eq('build/test/mocks/test/test_t/drivers/Mocktask.c')
+      expect(found).to eq('build/test/mocks/test/test_t/_t_/drivers/Mocktask.c')
     end
 
     it 'still raises when the very same test mocks two different same-named headers from different directories' do
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       allow(@file_wrapper).to receive(:directory_listing).and_return(
-        ['build/test/mocks/TestAdcModel/foo/MockBar.c', 'build/test/mocks/TestAdcModel/baz/MockBar.c']
+        ['build/test/mocks/TestAdcModel/_t_/foo/MockBar.c', 'build/test/mocks/TestAdcModel/_t_/baz/MockBar.c']
       )
 
       expect {
         @file_finder.find_build_input_file(
-          filepath: 'build/test/out/TestAdcModel/MockBar.o', complain: :error, context: TEST_SYM
+          filepath: 'build/test/out/TestAdcModel/_t_/MockBar.o', complain: :error, context: TEST_SYM
         )
       }.to raise_error(CeedlingException)
     end
 
     it 'resolves a mock scoped to its own test via an explicitly-given test identity, even when the object path itself is flat (e.g. a GCOV or Bullseye build with no per-test mirroring of its own)' do
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
       # This build mirrors nothing per test, so the object sits below neither the mock
-      # root nor a per-test out path and the mock resolves by name alone.
-      allow(@file_path_utils).to receive(:form_test_build_path).and_return('build/gcov/out')
+      # root nor the test's own out root and the mock resolves by name alone.
 
       all_mocks = {
-        'build/test/mocks/TestAdcModel' => ['build/test/mocks/TestAdcModel/MockTemperatureFilter.c'],
-        'build/test/mocks/TestModel'    => ['build/test/mocks/TestModel/MockTemperatureFilter.c']
+        'build/test/mocks/TestAdcModel/_t_' => ['build/test/mocks/TestAdcModel/_t_/MockTemperatureFilter.c'],
+        'build/test/mocks/TestModel/_t_'    => ['build/test/mocks/TestModel/_t_/MockTemperatureFilter.c']
       }
       allow(@file_wrapper).to receive(:directory_listing) do |glob|
         test_dir = all_mocks.keys.find { |dir| glob.start_with?(dir) }
@@ -584,12 +632,12 @@ describe FileFinder do
       found = @file_finder.find_build_input_file(
         filepath: 'build/gcov/out/MockTemperatureFilter.o', complain: :error, context: :gcov, test: 'TestAdcModel'
       )
-      expect(found).to eq('build/test/mocks/TestAdcModel/MockTemperatureFilter.c')
+      expect(found).to eq('build/test/mocks/TestAdcModel/_t_/MockTemperatureFilter.c')
 
       found = @file_finder.find_build_input_file(
         filepath: 'build/gcov/out/MockTemperatureFilter.o', complain: :error, context: :gcov, test: 'TestModel'
       )
-      expect(found).to eq('build/test/mocks/TestModel/MockTemperatureFilter.c')
+      expect(found).to eq('build/test/mocks/TestModel/_t_/MockTemperatureFilter.c')
     end
 
     it 'resolves a release object to the source at its own path, even when another same-named source exists elsewhere' do
@@ -609,18 +657,17 @@ describe FileFinder do
     end
 
     it 'resolves a module-under-test object to the source at its own path, even when another same-named module exists elsewhere' do
-      allow(@file_path_utils).to receive(:form_test_build_path).with('TestFoo', context: TEST_SYM).and_return('build/test/out/TestFoo')
       allow(@configurator).to receive(:collection_existing_test_build_input).and_return(
         ['drivers/foo/bar.c', 'drivers/baz/bar.c']
       )
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestFoo/drivers/foo/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
+        filepath: 'build/test/out/TestFoo/_t_/drivers/foo/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
       )
       expect(found).to eq('drivers/foo/bar.c')
 
       found = @file_finder.find_build_input_file(
-        filepath: 'build/test/out/TestFoo/drivers/baz/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
+        filepath: 'build/test/out/TestFoo/_t_/drivers/baz/bar.o', complain: :error, context: TEST_SYM, test: 'TestFoo'
       )
       expect(found).to eq('drivers/baz/bar.c')
     end
@@ -661,13 +708,12 @@ describe FileFinder do
 
     it 'resolves an object of a file in the running Ceedling installation, placed below `_ceedling_`' do
       helper = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins/fff/src/fff_unity_helper.c' )
-      allow(@file_path_utils).to receive(:form_test_build_path).with( 'test/test_x', context: TEST_SYM ).and_return( 'build/test/out/test/test_x' )
       allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/fff_unity_helper.c', helper] )
 
       Dir.mktmpdir do |project|
         Dir.chdir( project ) do
           found = @file_finder.find_build_input_file(
-            filepath: 'build/test/out/test/test_x/_ceedling_/plugins/fff/src/fff_unity_helper.o', complain: :error, context: TEST_SYM, test: 'test/test_x'
+            filepath: 'build/test/out/test/test_x/_t_/_ceedling_/plugins/fff/src/fff_unity_helper.o', complain: :error, context: TEST_SYM, test: 'test/test_x'
           )
           expect(found).to eq( helper )
         end
@@ -676,12 +722,11 @@ describe FileFinder do
 
     it 'recovers a nested test\'s identity from its object\'s path, rather than its parent test\'s' do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_foo.c', 'test/test_foo/test_bar.c'] )
-      allow(@file_path_utils).to receive(:form_test_build_path) { |name, **| File.join( 'build/test/out', name ) }
       allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/util.c'] )
 
-      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test_bar/test/test_foo/test_bar.o', complain: :error, context: TEST_SYM ))
+      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test_bar/_t_/test/test_foo/test_bar.o', complain: :error, context: TEST_SYM ))
         .to eq('test/test_foo/test_bar.c')
-      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/test/test_foo.o', complain: :error, context: TEST_SYM ))
+      expect(@file_finder.find_build_input_file( filepath: 'build/test/out/test/test_foo/_t_/test/test_foo.o', complain: :error, context: TEST_SYM ))
         .to eq('test/test_foo.c')
     end
 

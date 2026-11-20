@@ -25,6 +25,7 @@ require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/filename_extension'
 require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/constants'
 
 describe 'Partial module resolution (integration)' do
@@ -52,15 +53,30 @@ describe 'Partial module resolution (integration)' do
     allow(@configurator).to receive(:collection_all_source).and_return( RESOLUTION_SOURCES )
     allow(@configurator).to receive(:collection_all_tests).and_return( [] )
 
+    # Each test's generated files sit where TestBuildLayout puts them
+    allow(@configurator).to receive(:project_build_root).and_return('build')
+    allow(@configurator).to receive(:project_use_mocks).and_return( true )
+    allow(@configurator).to receive(:project_use_partials).and_return( true )
+    allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+    allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+    allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+    allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
+    allow(@configurator).to receive(:project_test_preprocess_build_directives_path).and_return('build/test/preprocess/build_directives')
+
+    file_wrapper = double('file_wrapper', check_path_length: nil)
+    layout       = TestBuildLayout.new({ :configurator => @configurator, :file_wrapper => file_wrapper })
+
     @finder = FileFinder.new({
       :configurator      => @configurator,
       :file_finder_helper => FileFinderHelper.new({ :loginator => loginator }),
       :file_path_utils   => FilePathUtils.new({
-        :configurator => @configurator,
-        :file_wrapper => double('file_wrapper')
+        :configurator      => @configurator,
+        :file_wrapper      => file_wrapper,
+        :test_build_layout => layout
       }),
-      :file_wrapper      => double('file_wrapper'),
-      :yaml_wrapper      => double('yaml_wrapper')
+      :file_wrapper      => file_wrapper,
+      :yaml_wrapper      => double('yaml_wrapper'),
+      :test_build_layout => layout
     })
   end
 
@@ -171,7 +187,7 @@ describe 'Partial module resolution (integration)' do
   # A mock's own generated source is found the same way, and two modules mocked as
   # Partials by directory put two same-named mocks in one test.
   context 'resolving build input for a generated mock' do
-    MOCKS_BUILD_PATH = 'build/test/mocks/test_both_configs'.freeze
+    MOCKS_BUILD_PATH = 'build/test/mocks/test_both_configs/_t_'.freeze
 
     GENERATED_MOCK_SOURCES = [
       "#{MOCKS_BUILD_PATH}/drivers/spi/mock_ceedling_partial_config_interface.c",
@@ -182,10 +198,6 @@ describe 'Partial module resolution (integration)' do
       allow(@configurator).to receive(:project_test_file_prefix).and_return('test_')
       allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
       allow(@configurator).to receive(:cmock_mock_prefix).and_return('mock_')
-      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
-      allow(@configurator).to receive(:project_build_root).and_return('build')
-      allow(@finder.instance_variable_get(:@file_path_utils))
-        .to receive(:form_test_build_path).and_return('build/test/out/test_both_configs')
       allow(@finder.instance_variable_get(:@file_wrapper))
         .to receive(:directory_listing).and_return( GENERATED_MOCK_SOURCES )
     end
@@ -206,7 +218,7 @@ describe 'Partial module resolution (integration)' do
       expect(
         find_mock_input(
           'drivers/spi/mock_ceedling_partial_config_interface.o',
-          root: 'build/test/out/test_both_configs'
+          root: 'build/test/out/test_both_configs/_t_'
         )
       ).to eq(GENERATED_MOCK_SOURCES.first)
     end
@@ -226,7 +238,7 @@ describe 'Partial module resolution (integration)' do
   # generated filenames rather than anything the test author wrote. A message here
   # must translate back to the module name before it can mean anything.
   context 'resolving build input for a generated Partial' do
-    PARTIALS_BUILD_PATH = 'build/test/partials/test_both_configs'.freeze
+    PARTIALS_BUILD_PATH = 'build/test/partials/test_both_configs/_t_'.freeze
 
     GENERATED_PARTIAL_SOURCES = [
       "#{PARTIALS_BUILD_PATH}/drivers/spi/ceedling_partial_config_impl.c",
@@ -237,14 +249,9 @@ describe 'Partial module resolution (integration)' do
       allow(@configurator).to receive(:project_test_file_prefix).and_return('test_')
       allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
       allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
-      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
-      allow(@configurator).to receive(:project_build_root).and_return('build')
 
-      # The test's own out root. Objects for generated Partials mirror below it, so the
-      # lookup measures against it as well as the Partials root.
-      allow(@finder.instance_variable_get(:@file_path_utils))
-        .to receive(:form_test_build_path).and_return('build/test/out/test_both_configs')
-
+      # Objects for generated Partials mirror below the test's own out root, so the lookup
+      # measures against it as well as the Partials root.
       @listing = GENERATED_PARTIAL_SOURCES
       allow(@finder.instance_variable_get(:@file_wrapper))
         .to receive(:directory_listing) { @listing }
@@ -287,7 +294,7 @@ describe 'Partial module resolution (integration)' do
       expect(
         find_partial_input(
           'drivers/uart/ceedling_partial_config_impl.o',
-          root: 'build/test/out/test_both_configs'
+          root: 'build/test/out/test_both_configs/_t_'
         )
       ).to eq(GENERATED_PARTIAL_SOURCES.last)
     end

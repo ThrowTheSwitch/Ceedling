@@ -188,8 +188,8 @@ module CommonSystemTestCases
 
         # Windows' Installer Detection reads a manifest beside each test executable
         if windows
-          manifests = Dir.glob('build/test/out/test/test_example_file_success/*.manifest')
-          expect(manifests).to eq(['build/test/out/test/test_example_file_success/test_example_file_success.exe.manifest'])
+          manifests = Dir.glob('build/test/out/test/test_example_file_success/_t_/*.manifest')
+          expect(manifests).to eq(['build/test/out/test/test_example_file_success/_t_/test_example_file_success.exe.manifest'])
         end
       end
     end

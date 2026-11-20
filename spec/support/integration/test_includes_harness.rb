@@ -23,6 +23,7 @@ require 'spec_integration_helper'
 require 'ceedling/filename_extension'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/includes/include_pathinator'
 require 'ceedling/test_context_extractor'
 require 'ceedling/test_invoker/test_invoker_types'
@@ -165,9 +166,10 @@ module IntegrationSpecHelpers
       )
       @file_wrapper = FileWrapper.new( loginator: NULL, verbosinator: NULL )
       @fpu          = TestIncludesFilePathUtils.new( 'build/scratch' )
+      @layout       = TestBuildLayout.new( configurator: @cfg, file_wrapper: @file_wrapper )
 
       @context_extractor = TestContextExtractor.new(
-        configurator: @cfg, parsing_parcels: ParsingParcels.new, include_factory: IncludeFactory.new( configurator: @cfg ),
+        configurator: @cfg, parsing_parcels: ParsingParcels.new, include_factory: IncludeFactory.new( configurator: @cfg, test_build_layout: @layout ),
         partializer_config: NULL, file_path_utils: @fpu, file_wrapper: @file_wrapper, yaml_wrapper: NULL, loginator: NULL
       )
       @context_extractor.setup
@@ -233,16 +235,16 @@ module IntegrationSpecHelpers
     def file_finder
       finder = FileFinder.new(
         configurator: @cfg, file_finder_helper: FileFinderHelper.new( loginator: NULL ),
-        file_path_utils: @fpu, file_wrapper: @file_wrapper, yaml_wrapper: NULL
+        file_path_utils: @fpu, file_wrapper: @file_wrapper, yaml_wrapper: NULL, test_build_layout: @layout
       )
       return finder
     end
 
     def build_extractinator
       handler = PreprocessinatorIncludesHandler.new(
-        configurator: @cfg, include_factory: IncludeFactory.new( configurator: @cfg ),
+        configurator: @cfg, include_factory: IncludeFactory.new( configurator: @cfg, test_build_layout: @layout ),
         preprocessinator_line_marker_includes_extractor: PreprocessinatorLineMarkerIncludesExtractor.new(
-          include_factory: IncludeFactory.new( configurator: @cfg ), file_wrapper: @file_wrapper
+          include_factory: IncludeFactory.new( configurator: @cfg, test_build_layout: @layout ), file_wrapper: @file_wrapper
         ),
         tool_executor: ShellingToolExecutor.new, file_wrapper: @file_wrapper, file_path_utils: @fpu, yaml_wrapper: YamlWrapper.new( file_wrapper: @file_wrapper ),
         parsing_parcels: ParsingParcels.new, quote_include_isolator: QuoteIncludeIsolator.new( file_wrapper: @file_wrapper, loginator: NULL ),

@@ -12,6 +12,7 @@ require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/path_mirror'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
 PROJECT_BUILD_ARTIFACTS_ROOT = 'artifacts' unless defined?(PROJECT_BUILD_ARTIFACTS_ROOT)
@@ -43,7 +44,9 @@ describe ConsoleReportinator do
   # Real, so reversing a generated Partial filename, or placing an object, exercises the
   # same code the build uses rather than a restatement of it. Touches no filesystem.
   let(:file_path_utils) do
-    FilePathUtils.new({ configurator: configurator, file_wrapper: double('file_wrapper', check_path_length: nil) })
+    file_wrapper = double('file_wrapper', check_path_length: nil)
+    layout       = TestBuildLayout.new({ configurator: configurator, file_wrapper: file_wrapper })
+    FilePathUtils.new({ configurator: configurator, file_wrapper: file_wrapper, test_build_layout: layout })
   end
   let(:system_objects) do
     {
@@ -239,7 +242,7 @@ describe ConsoleReportinator do
     it 'searches the directory its test\'s build placed the source\'s object in' do
       stub_exec(exit_code: 0, output: 'coverage text')
       expect(tool_executor).to receive(:build_command_line)
-        .with(TOOLS_GCOV_SUMMARY, [], 'foo.c', 'build/gcov/out/test_foo/src/nested')
+        .with(TOOLS_GCOV_SUMMARY, [], 'foo.c', 'build/gcov/out/test_foo/_t_/src/nested')
         .and_return({ options: {} })
       reportinator.send(:run_gcov_summary, 'test_foo', 'src/nested/foo.c', {})
     end
@@ -247,7 +250,7 @@ describe ConsoleReportinator do
     it 'searches the test-output root for a source at the project root' do
       stub_exec(exit_code: 0, output: 'coverage text')
       expect(tool_executor).to receive(:build_command_line)
-        .with(TOOLS_GCOV_SUMMARY, [], 'foo.c', 'build/gcov/out/test_foo')
+        .with(TOOLS_GCOV_SUMMARY, [], 'foo.c', 'build/gcov/out/test_foo/_t_')
         .and_return({ options: {} })
       reportinator.send(:run_gcov_summary, 'test_foo', 'foo.c', {})
     end
@@ -260,13 +263,13 @@ describe ConsoleReportinator do
 
       expect(tool_executor).to receive(:build_command_line)
         .with(TOOLS_GCOV_SUMMARY, [], 'ceedling_partial_config_impl.c',
-              File.join('build/gcov/out/test_foo', 'drivers/uart'))
+              File.join('build/gcov/out/test_foo/_t_', 'drivers/uart'))
         .and_return({ options: {} })
 
       reportinator.send(
         :run_gcov_summary,
         'test_foo',
-        'build/test/partials/test_foo/drivers/uart/ceedling_partial_config_impl.c',
+        'build/test/partials/test_foo/_t_/drivers/uart/ceedling_partial_config_impl.c',
         {}
       )
     end
@@ -275,13 +278,13 @@ describe ConsoleReportinator do
       stub_exec(exit_code: 0, output: 'coverage text')
 
       expect(tool_executor).to receive(:build_command_line)
-        .with(TOOLS_GCOV_SUMMARY, [], 'ceedling_partial_config_impl.c', 'build/gcov/out/test_foo')
+        .with(TOOLS_GCOV_SUMMARY, [], 'ceedling_partial_config_impl.c', 'build/gcov/out/test_foo/_t_')
         .and_return({ options: {} })
 
       reportinator.send(
         :run_gcov_summary,
         'test_foo',
-        'build/test/partials/test_foo/ceedling_partial_config_impl.c',
+        'build/test/partials/test_foo/_t_/ceedling_partial_config_impl.c',
         {}
       )
     end

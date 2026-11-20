@@ -2159,18 +2159,15 @@ describe TestBuildExecutor do
       allow(@configurator).to receive(:cmock_mock_suffix).and_return( '' )
       allow(@configurator).to receive(:cmock_mock_name_include_folder).and_return( true )
       allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( '.h' ) )
-      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c'] )
-      allow(@file_path_utils).to receive(:form_test_name) { |test| test.delete_prefix( 'test/' ).delete_suffix( '.c' ) }
-      allow(@configurator).to receive(:cmock_mock_path).and_return( 'build/test/mocks' )
       allow(@file_path_utils).to receive(:form_mock_output_path) do |root, subdir|
         subdir.nil? || subdir.empty? ? root : File.join( root, subdir )
       end
       allow(@file_wrapper).to receive(:rm_f)
       allow(@file_wrapper).to receive(:mv)
-      allow(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/a_test/**/*.held' ).and_return( [] )
-      allow(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/a_test/**/*.held_mock' ).and_return( [] )
+      allow(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/a_test/_t_/**/*.held' ).and_return( [] )
+      allow(@file_wrapper).to receive(:directory_listing).with( 'build/test/mocks/a_test/_t_/**/*.held_mock' ).and_return( [] )
 
-      @root     = 'build/test/mocks/a_test'
+      @root     = 'build/test/mocks/a_test/_t_'
       @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :paths => { :mocks => @root } )
       bar = TestInvokerTypes::MockWork.new(
         :details  => TestInvokerTypes::MockDetails.new(
@@ -2307,13 +2304,21 @@ describe TestBuildExecutor do
       @executor.stage_prune_header_copies( @state )
     end
 
-    # A test this run doesn't build keeps its copies, even below another test's mock root
-    it "leaves alone another test's mock root nested below this one" do
+    # Every file below a test's mock root is its own, whatever tests the project holds
+    it "prunes a copy in a folder named like a test nested below this one" do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c', 'test/a_test/test_x.c'] )
       listing( 'drivers/Mockfoo.h', 'drivers/foo.h', 'test_x/drivers/Mockfoo.h', 'test_x/drivers/foo.h' )
 
       expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/drivers/foo.h" )
-      expect(@file_wrapper).to_not receive(:rm_f).with( "#{@root}/test_x/drivers/foo.h" )
+      expect(@file_wrapper).to receive(:rm_f).with( "#{@root}/test_x/drivers/foo.h" )
+
+      @executor.stage_prune_header_copies( @state )
+    end
+
+    it "consults no other test's mock root" do
+      listing( 'drivers/Mockfoo.h', 'drivers/foo.h' )
+
+      expect(@configurator).to_not receive(:collection_all_tests)
 
       @executor.stage_prune_header_copies( @state )
     end
@@ -2325,12 +2330,9 @@ describe TestBuildExecutor do
       allow(@configurator).to receive(:cmock_mock_prefix).and_return( 'mock_' )
       allow(@configurator).to receive(:cmock_mock_suffix).and_return( '' )
       allow(@configurator).to receive(:extension_header).and_return( FilenameExtension.new( '.h' ) )
-      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c'] )
-      allow(@configurator).to receive(:cmock_mock_path).and_return( 'build/test/mocks' )
-      allow(@file_path_utils).to receive(:form_test_name) { |test| test.delete_prefix( 'test/' ).delete_suffix( '.c' ) }
       allow(@file_wrapper).to receive(:mv)
 
-      @root     = 'build/test/mocks/a_test'
+      @root     = 'build/test/mocks/a_test/_t_'
       @testable = TestInvokerTypes::Testable.new( :name => 'a_test', :paths => { :mocks => @root } )
       @state    = TestInvokerTypes::PipelineState.new( :testables => { :a_test => @testable }, :mocks_list => [], :lock => Mutex.new, :context => :test, :options => [] )
     end
@@ -2351,11 +2353,21 @@ describe TestBuildExecutor do
       @executor.stage_hold_header_copies( @state )
     end
 
-    it "leaves alone another test's mock root nested below this one" do
+    # Every file below a test's mock root is its own, whatever tests the project holds
+    it "sets aside a copy in a folder named like a test nested below this one" do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test/a_test.c', 'test/a_test/test_x.c'] )
       listing( 'test_x/drivers/mock_bar.h', 'test_x/drivers/bar.h' )
 
-      expect(@file_wrapper).to_not receive(:mv)
+      expect(@file_wrapper).to receive(:mv).with( "#{@root}/test_x/drivers/bar.h", "#{@root}/test_x/drivers/bar.h.held" )
+      expect(@file_wrapper).to receive(:mv).with( "#{@root}/test_x/drivers/mock_bar.h", "#{@root}/test_x/drivers/mock_bar.h.held_mock" )
+
+      @executor.stage_hold_header_copies( @state )
+    end
+
+    it "consults no other test's mock root" do
+      listing( 'drivers/mock_bar.h', 'drivers/bar.h' )
+
+      expect(@configurator).to_not receive(:collection_all_tests)
 
       @executor.stage_hold_header_copies( @state )
     end

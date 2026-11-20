@@ -7,12 +7,19 @@
 
 require 'spec_helper'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/filename_extension'
 require 'ceedling/filesystem/build_roots'
 require 'yaml'
 
 describe FilePathUtils do
+
+  # A FilePathUtils with a real TestBuildLayout of the same collaborators
+  def path_utils(configurator, file_wrapper)
+    layout = TestBuildLayout.new( { :configurator => configurator, :file_wrapper => file_wrapper } )
+    return described_class.new( { :configurator => configurator, :file_wrapper => file_wrapper, :test_build_layout => layout } )
+  end
 
   describe '.collapse_to_common_parents' do
 
@@ -316,10 +323,7 @@ describe FilePathUtils do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       # TEST_RUNNER_FILE_SUFFIX is a global constant created at runtime by
       # ConfiguratorBuilder from the project config.  Set it for these tests.
@@ -364,10 +368,7 @@ describe FilePathUtils do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_test_runners_path).and_return('build/test/runners')
       allow(@configurator).to receive(:test_runner_file_suffix).and_return('_runner')
@@ -405,10 +406,7 @@ describe FilePathUtils do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
       allow(@configurator).to receive(:project_release_dependencies_path).and_return('build/release/dependencies')
@@ -437,10 +435,7 @@ describe FilePathUtils do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:collection_build_roots).and_return( [] )
@@ -449,13 +444,13 @@ describe FilePathUtils do
     end
 
     it 'mirrors a dependencies filepath the same way as the object it accompanies, distinguishing same-named modules under test' do
-      expect( @fpu.form_test_dependencies_filepath('build/test/out/TestFoo/calculators/AdcCalc.o', name: 'TestFoo', context: :test) )
-        .to eq('build/test/dependencies/TestFoo/calculators/AdcCalc.d')
+      expect( @fpu.form_test_dependencies_filepath('build/test/out/TestFoo/_t_/calculators/AdcCalc.o', name: 'TestFoo', context: :test) )
+        .to eq('build/test/dependencies/TestFoo/_t_/calculators/AdcCalc.d')
     end
 
     it 'forms a flat dependencies filepath for a flat object' do
-      expect( @fpu.form_test_dependencies_filepath('build/test/out/TestFoo/AdcCalc.o', name: 'TestFoo', context: :test) )
-        .to eq('build/test/dependencies/TestFoo/AdcCalc.d')
+      expect( @fpu.form_test_dependencies_filepath('build/test/out/TestFoo/_t_/AdcCalc.o', name: 'TestFoo', context: :test) )
+        .to eq('build/test/dependencies/TestFoo/_t_/AdcCalc.d')
     end
 
     it 'forms a flat dependencies filepath when no test identity is given' do
@@ -470,8 +465,8 @@ describe FilePathUtils do
     end
 
     it 'forms the list filepath directly alongside the object, wherever it was mirrored to' do
-      expect( @fpu.form_test_build_list_filepath('build/test/out/TestFoo/calculators/AdcCalc.o') )
-        .to eq('build/test/out/TestFoo/calculators/AdcCalc.lst')
+      expect( @fpu.form_test_build_list_filepath('build/test/out/TestFoo/_t_/calculators/AdcCalc.o') )
+        .to eq('build/test/out/TestFoo/_t_/calculators/AdcCalc.lst')
     end
   end
 
@@ -480,10 +475,7 @@ describe FilePathUtils do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:collection_build_roots).and_return( [] )
@@ -496,7 +488,7 @@ describe FilePathUtils do
 
     it 'places a test\'s object where its build does, by the source\'s path from the project root' do
       expect( @fpu.form_test_object_filepath('src/a/util.c', name: 'test/test_util', context: :gcov) )
-        .to eq('build/gcov/out/test/test_util/src/a/util.o')
+        .to eq('build/gcov/out/test/test_util/_t_/src/a/util.o')
     end
 
     # Untested sources compile outside any test, so same-named ones keep apart only by path
@@ -507,8 +499,8 @@ describe FilePathUtils do
 
     it 'places a test\'s generated Partial below its own subdirectory, as its build does' do
       expect(
-        @fpu.form_test_object_filepath('build/test/partials/test/test_util/drv/ceedling_partial_util_impl.c', name: 'test/test_util', context: :gcov)
-      ).to eq('build/gcov/out/test/test_util/drv/ceedling_partial_util_impl.o')
+        @fpu.form_test_object_filepath('build/test/partials/test/test_util/_t_/drv/ceedling_partial_util_impl.c', name: 'test/test_util', context: :gcov)
+      ).to eq('build/gcov/out/test/test_util/_t_/drv/ceedling_partial_util_impl.o')
     end
   end
 
@@ -517,27 +509,24 @@ describe FilePathUtils do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_test_preprocess_build_directives_path).and_return('build/test/preprocess/build_directives')
     end
 
     it 'forms a per-test build directives cache directory path' do
       expect( @fpu.form_test_preprocess_build_directives_path('TestFoo') )
-        .to eq('build/test/preprocess/build_directives/TestFoo')
+        .to eq('build/test/preprocess/build_directives/TestFoo/_t_')
     end
 
     it 'forms a build directives cache filepath using the fixed internal .yml extension' do
       expect( @fpu.form_test_build_directives_cache_filepath('test/TestFoo.c', 'TestFoo') )
-        .to eq('build/test/preprocess/build_directives/TestFoo/TestFoo.c.yml')
+        .to eq('build/test/preprocess/build_directives/TestFoo/_t_/TestFoo.c.yml')
     end
 
     it 'forms a distinct source files cache filepath alongside the build directives cache' do
       expect( @fpu.form_preprocessed_source_files_cache_filepath('test/TestFoo.c', 'TestFoo') )
-        .to eq('build/test/preprocess/build_directives/TestFoo/TestFoo.c_source_files.yml')
+        .to eq('build/test/preprocess/build_directives/TestFoo/_t_/TestFoo.c_source_files.yml')
     end
   end
 
@@ -548,10 +537,7 @@ describe FilePathUtils do
         :loginator    => double('loginator').as_null_object,
         :verbosinator => double('verbosinator').as_null_object
       })
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_release_build_output_path).and_return('build/release/out')
       allow(@configurator).to receive(:project_build_root).and_return('build')
@@ -587,10 +573,7 @@ describe FilePathUtils do
         :loginator    => double('loginator').as_null_object,
         :verbosinator => double('verbosinator').as_null_object
       })
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_release_dependencies_path).and_return('build/release/dependencies')
       allow(@configurator).to receive(:project_build_root).and_return('build')
@@ -610,10 +593,7 @@ describe FilePathUtils do
   # path nothing ever wrote.
   describe '#form_mock_output_path' do
     before(:each) do
-      @fpu = described_class.new({
-        :configurator => double('configurator'),
-        :file_wrapper => double('file_wrapper')
-      })
+      @fpu = path_utils( double('configurator'), double('file_wrapper') )
     end
 
     it 'joins a mock root and the subdirectory its content mirrors' do
@@ -636,13 +616,11 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+      allow(@file_wrapper).to receive(:check_path_length)
       allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:collection_build_roots).and_return( [] )
       allow(@configurator).to receive(:project_use_partials).and_return( true )
@@ -655,25 +633,25 @@ describe FilePathUtils do
     # from the project root, so two same-named files in one test never share one
     it 'places a file by its path from the project root below the test subdirectory' do
       expect( @fpu.form_preprocessed_file_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/src/drivers/uart/config.c')
+        .to eq('build/test/preprocess/files/test_both/_t_/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/full_expansion/src/drivers/uart/config.c')
+        .to eq('build/test/preprocess/files/test_both/_t_/full_expansion/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_expanded_code_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/expanded_code/src/drivers/uart/config.c')
+        .to eq('build/test/preprocess/files/test_both/_t_/expanded_code/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_raw_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/directives_only/raw/src/drivers/uart/config.c')
+        .to eq('build/test/preprocess/files/test_both/_t_/directives_only/raw/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_compacted_directives_only_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/directives_only/src/drivers/uart/config.c')
+        .to eq('build/test/preprocess/files/test_both/_t_/directives_only/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_file_fallback_expansion_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/fallback_expansion/src/drivers/uart/config.c')
+        .to eq('build/test/preprocess/files/test_both/_t_/fallback_expansion/src/drivers/uart/config.c')
       expect( @fpu.form_preprocessed_includes_list_filepath('src/drivers/uart/config.c', 'test_both') )
-        .to eq('build/test/preprocess/includes/test_both/src/drivers/uart/config.c.yml')
+        .to eq('build/test/preprocess/includes/test_both/_t_/src/drivers/uart/config.c.yml')
     end
 
     it 'keeps a header far above the project below the test subdirectory' do
       far = File.expand_path( '../../far/inc/sdk.h' )
       expect( @fpu.form_preprocessed_file_filepath( far, 'test_both' ) )
-        .to eq( File.join( 'build/test/preprocess/files/test_both', BuildSubpath.of_directory( File.dirname( far ) ), 'sdk.h' ) )
+        .to eq( File.join( 'build/test/preprocess/files/test_both/_t_', BuildSubpath.of_directory( File.dirname( far ) ), 'sdk.h' ) )
       expect( BuildSubpath.of_directory( File.dirname( far ) ) ).to_not include( '..' )
     end
 
@@ -699,7 +677,7 @@ describe FilePathUtils do
 
     it 'places a header by its path from the project root' do
       expect( @fpu.form_preprocessed_file_filepath('include/drivers/uart/config.h', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/include/drivers/uart/config.h')
+        .to eq('build/test/preprocess/files/test_both/_t_/include/drivers/uart/config.h')
     end
 
     # A generated Partial or mock sits below its own test's generated root rather than a
@@ -708,17 +686,17 @@ describe FilePathUtils do
     it 'mirrors a generated Partial header below its own test root' do
       expect(
         @fpu.form_preprocessed_file_raw_directives_only_filepath(
-          'build/test/partials/test_both/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
+          'build/test/partials/test_both/_t_/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
         )
-      ).to eq('build/test/preprocess/files/test_both/directives_only/raw/drivers/uart/ceedling_partial_config_interface.h')
+      ).to eq('build/test/preprocess/files/test_both/_t_/directives_only/raw/drivers/uart/ceedling_partial_config_interface.h')
     end
 
     it 'gives two same-named generated Partial headers distinct artifacts' do
       uart = @fpu.form_preprocessed_file_raw_directives_only_filepath(
-        'build/test/partials/test_both/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
+        'build/test/partials/test_both/_t_/drivers/uart/ceedling_partial_config_interface.h', 'test_both'
       )
       spi = @fpu.form_preprocessed_file_raw_directives_only_filepath(
-        'build/test/partials/test_both/drivers/spi/ceedling_partial_config_interface.h', 'test_both'
+        'build/test/partials/test_both/_t_/drivers/spi/ceedling_partial_config_interface.h', 'test_both'
       )
 
       expect( uart ).to_not eq(spi)
@@ -727,14 +705,14 @@ describe FilePathUtils do
     it 'mirrors a generated mock below its own test root' do
       expect(
         @fpu.form_preprocessed_file_filepath(
-          'build/test/mocks/test_both/drivers/spi/mock_config.h', 'test_both'
+          'build/test/mocks/test_both/_t_/drivers/spi/mock_config.h', 'test_both'
         )
-      ).to eq('build/test/preprocess/files/test_both/drivers/spi/mock_config.h')
+      ).to eq('build/test/preprocess/files/test_both/_t_/drivers/spi/mock_config.h')
     end
 
     it 'keeps a generated file directly in its test root flat' do
-      expect( @fpu.form_preprocessed_file_filepath('build/test/mocks/test_both/Mockconfig.h', 'test_both') )
-        .to eq('build/test/preprocess/files/test_both/Mockconfig.h')
+      expect( @fpu.form_preprocessed_file_filepath('build/test/mocks/test_both/_t_/Mockconfig.h', 'test_both') )
+        .to eq('build/test/preprocess/files/test_both/_t_/Mockconfig.h')
     end
   end
 
@@ -750,7 +728,7 @@ describe FilePathUtils do
         :loginator    => double('loginator').as_null_object,
         :verbosinator => double('verbosinator').as_null_object
       })
-      @fpu = described_class.new({ :configurator => @configurator, :file_wrapper => @file_wrapper })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:collection_build_roots).and_return( [external_root, deep_root, 'src'] )
       allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
@@ -774,7 +752,7 @@ describe FilePathUtils do
 
     it 'places preprocessed files below a shortened root the same way' do
       expect( @fpu.form_preprocessed_file_raw_directives_only_filepath( "#{external_root}/cmsis_os2.h", 'test_os' ) )
-        .to eq( "build/test/preprocess/files/test_os/directives_only/raw/#{table.marker_for( external_root )}/cmsis_os2.h" )
+        .to eq( "build/test/preprocess/files/test_os/_t_/directives_only/raw/#{table.marker_for( external_root )}/cmsis_os2.h" )
     end
 
     it 'names a test below a shortened root by its whole path, as always' do
@@ -826,10 +804,7 @@ describe FilePathUtils do
         :loginator    => double('loginator').as_null_object,
         :verbosinator => double('verbosinator').as_null_object
       })
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:extension_object).and_return( FilenameExtension.new('.o') )
       allow(@configurator).to receive(:project_build_root).and_return('build')
@@ -908,10 +883,7 @@ describe FilePathUtils do
         :loginator    => double('loginator').as_null_object,
         :verbosinator => double('verbosinator').as_null_object
       })
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:extension_testpass).and_return( FilenameExtension.new('.pass') )
       allow(@configurator).to receive(:project_build_root).and_return( 'build' )
@@ -949,7 +921,7 @@ describe FilePathUtils do
 
   describe '#form_test_name' do
     before(:each) do
-      @fpu = described_class.new({ :configurator => double('configurator'), :file_wrapper => double('file_wrapper') })
+      @fpu = path_utils( double('configurator'), double('file_wrapper') )
     end
 
     it 'names a test by its path from the project root, without its extension' do
@@ -998,10 +970,7 @@ describe FilePathUtils do
       @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
 
       allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
       allow(@configurator).to receive(:project_build_root).and_return('build')
@@ -1013,16 +982,13 @@ describe FilePathUtils do
     it 'uses the fixed internal .yml extension regardless of a project-configured :extension ↳ :yaml setting' do
       expect(@configurator).to_not receive(:extension_yaml)
       expect( @fpu.form_preprocessed_includes_list_filepath('test/TestFoo.c', 'TestFoo') )
-        .to eq('build/test/preprocess/includes/TestFoo/test/TestFoo.c.yml')
+        .to eq('build/test/preprocess/includes/TestFoo/_t_/test/TestFoo.c.yml')
     end
   end
 
   describe '#form_partial_types_header_filename' do
     before(:each) do
-      @fpu = described_class.new({
-        :configurator => double('configurator'),
-        :file_wrapper => double('file_wrapper')
-      })
+      @fpu = path_utils( double('configurator'), double('file_wrapper') )
     end
 
     it 'forms a filename from the module name, the partial prefix, and a _types suffix' do
@@ -1040,10 +1006,7 @@ describe FilePathUtils do
   describe 'the remaining generated Partial filenames' do
     before(:each) do
       @configurator = double('configurator')
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => double('file_wrapper')
-      })
+      @fpu = path_utils( @configurator, double('file_wrapper') )
     end
 
     it 'forms an interface header filename with the partial prefix and an _interface suffix' do
@@ -1085,10 +1048,7 @@ describe FilePathUtils do
   describe 'generated Partial filenames for a module named by directory' do
     before(:each) do
       @configurator = double('configurator')
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => double('file_wrapper')
-      })
+      @fpu = path_utils( @configurator, double('file_wrapper') )
     end
 
     it 'prefixes the basename and keeps the directory for an implementation header' do
@@ -1136,10 +1096,7 @@ describe FilePathUtils do
     before(:each) do
       @configurator = double('configurator')
       allow(@configurator).to receive(:cmock_mock_prefix).and_return('Mock')
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => double('file_wrapper')
-      })
+      @fpu = path_utils( @configurator, double('file_wrapper') )
     end
 
     it 'recovers a module named without a directory' do
@@ -1200,27 +1157,77 @@ describe FilePathUtils do
     end
   end
 
-  describe '#form_named_path' do
+  # Each of a test's own directories sits below its root of that kind (TestBuildLayout)
+  describe "a test's own directories" do
     before(:each) do
+      @configurator = double('configurator')
       @file_wrapper = double('file_wrapper')
       allow(@file_wrapper).to receive(:check_path_length)
-      @fpu = described_class.new({
-        :configurator => double('configurator'),
-        :file_wrapper => @file_wrapper
-      })
+      allow(@configurator).to receive(:project_build_root).and_return('build')
+      allow(@configurator).to receive(:project_use_mocks).and_return( true )
+      allow(@configurator).to receive(:project_use_partials).and_return( true )
+      allow(@configurator).to receive(:cmock_mock_path).and_return('build/test/mocks')
+      allow(@configurator).to receive(:project_test_partials_path).and_return('build/test/partials')
+      allow(@configurator).to receive(:project_test_preprocess_includes_path).and_return('build/test/preprocess/includes')
+      allow(@configurator).to receive(:project_test_preprocess_files_path).and_return('build/test/preprocess/files')
+      allow(@configurator).to receive(:project_test_preprocess_build_directives_path).and_return('build/test/preprocess/build_directives')
+      @fpu = path_utils( @configurator, @file_wrapper )
     end
 
-    # form_named_path is private -- exercised via #send, same as its callers do internally.
-    it 'checks the constructed path length, identifying itself as the origin' do
-      @fpu.send(:form_named_path, 'build/test/preprocess/files', 'test_foo')
-      expect(@file_wrapper).to have_received(:check_path_length)
-        .with('build/test/preprocess/files/test_foo', origin: 'FilePathUtils#form_named_path')
+    it "places each below the test's own root of its kind" do
+      expect( @fpu.form_test_build_path( 'test/test_c', context: :test ) ).to eq('build/test/out/test/test_c/_t_')
+      expect( @fpu.form_test_dependencies_path( 'test/test_c', context: :test ) ).to eq('build/test/dependencies/test/test_c/_t_')
+      expect( @fpu.form_test_mocks_path( 'test/test_c' ) ).to eq('build/test/mocks/test/test_c/_t_')
+      expect( @fpu.form_test_partials_path( 'test/test_c' ) ).to eq('build/test/partials/test/test_c/_t_')
+      expect( @fpu.form_test_preprocess_includes_path( 'test/test_c' ) ).to eq('build/test/preprocess/includes/test/test_c/_t_')
+      expect( @fpu.form_test_preprocess_files_path( 'test/test_c' ) ).to eq('build/test/preprocess/files/test/test_c/_t_')
+      expect( @fpu.form_test_preprocess_build_directives_path( 'test/test_c' ) ).to eq('build/test/preprocess/build_directives/test/test_c/_t_')
     end
 
-    it 'checks the constructed path length including an optional subdir' do
-      @fpu.send(:form_named_path, 'build/test/preprocess/files', 'test_foo', subdir: 'full_expansion')
+    it "places each preprocessing directory below the test's own root" do
+      expect( @fpu.form_test_preprocess_files_full_expansion_path( 'test/test_c' ) )
+        .to eq('build/test/preprocess/files/test/test_c/_t_/full_expansion')
+      expect( @fpu.form_test_preprocess_files_directives_only_path( 'test/test_c' ) )
+        .to eq('build/test/preprocess/files/test/test_c/_t_/directives_only')
+      expect( @fpu.form_test_preprocess_files_raw_directives_only_path( 'test/test_c' ) )
+        .to eq('build/test/preprocess/files/test/test_c/_t_/directives_only/raw')
+    end
+
+    it "places a test's executable and linker map below its own root" do
+      allow(@configurator).to receive(:extension_executable).and_return( FilenameExtension.new('.out') )
+      allow(@configurator).to receive(:extension_map).and_return( FilenameExtension.new('.map') )
+      build = @fpu.form_test_build_path( 'test/test_c', context: :test )
+
+      expect( @fpu.form_test_executable_filepath( build, 'test/test_c.c' ) ).to eq('build/test/out/test/test_c/_t_/test_c.out')
+      expect( @fpu.form_test_build_map_filepath( build, 'build/test/out/test/test_c/_t_/test_c.out' ) ).to eq('build/test/out/test/test_c/_t_/test_c.map')
+    end
+
+    # A test's name continues another's, and that test's mock lies in a folder of the same name
+    it "keeps a nested test's directories apart from another test's subdirectory of its name" do
+      expect( @fpu.form_test_mocks_path( 'test/test_c/test_x' ) ).to eq('build/test/mocks/test/test_c/test_x/_t_')
+      expect( @fpu.form_mock_header_filepath( 'test/test_c', 'test_x/mock_qux.h' ) ).to eq('build/test/mocks/test/test_c/_t_/test_x/mock_qux.h')
+
+      expect( @fpu.form_test_partials_path( 'test/test_c/test_x' ) ).to eq('build/test/partials/test/test_c/test_x/_t_')
+      expect( @fpu.form_partial_header_filepath( 'test/test_c', 'test_x/ceedling_partial_qux_impl.h' ) )
+        .to eq('build/test/partials/test/test_c/_t_/test_x/ceedling_partial_qux_impl.h')
+    end
+
+    it "keeps a context's own output root for no test" do
+      expect( @fpu.form_test_build_path( nil, context: :gcov ) ).to eq('build/gcov/out')
+      expect( @fpu.form_test_dependencies_path( nil, context: :gcov ) ).to eq('build/gcov/dependencies')
+    end
+
+    it "gives a test's generated roots, Partials first" do
+      expect( @fpu.generated_roots( 'test/test_c' ) ).to eq(['build/test/partials/test/test_c/_t_', 'build/test/mocks/test/test_c/_t_'])
+      expect( @fpu.generated_roots( nil ) ).to eq([])
+    end
+
+    it "checks a root's length once, naming the layout as the origin" do
+      @fpu.form_test_preprocess_files_full_expansion_path( 'test/test_c' )
+
+      expect(@file_wrapper).to have_received(:check_path_length).once
       expect(@file_wrapper).to have_received(:check_path_length)
-        .with('build/test/preprocess/files/test_foo/full_expansion', origin: 'FilePathUtils#form_named_path')
+        .with('build/test/preprocess/files/test/test_c/_t_', origin: 'TestBuildLayout#root')
     end
   end
 
@@ -1231,10 +1238,7 @@ describe FilePathUtils do
       allow(@file_wrapper).to receive(:check_path_length)
       allow(@configurator).to receive(:project_build_root).and_return('build')
       allow(@configurator).to receive(:collection_build_roots).and_return( [] )
-      @fpu = described_class.new({
-        :configurator => @configurator,
-        :file_wrapper => @file_wrapper
-      })
+      @fpu = path_utils( @configurator, @file_wrapper )
     end
 
     # form_build_context_path is private -- exercised via #send, same as its callers do internally.

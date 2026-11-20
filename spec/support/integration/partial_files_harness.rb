@@ -146,7 +146,7 @@ module IntegrationSpecHelpers
     end
 
     def preprocessinator
-      factory       = IncludeFactory.new( configurator: @configurator )
+      factory       = IncludeFactory.new( configurator: @configurator, test_build_layout: TestBuildLayout.new( configurator: @configurator, file_wrapper: @file_wrapper ) )
       tool_executor = ShellingToolExecutor.new
       reconstructor = PreprocessinatorReconstructor.new( parsing_parcels: ParsingParcels.new, file_wrapper: @file_wrapper )
 

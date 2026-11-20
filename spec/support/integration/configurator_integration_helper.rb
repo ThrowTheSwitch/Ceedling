@@ -30,6 +30,7 @@ require 'ceedling/reportinator'
 require 'ceedling/ruby_expandinator'
 require 'ceedling/filesystem/file_path_collection_utils'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/tools/tool_validator'
 require 'ceedling/tools/tool_executor'
 require 'ceedling/tools/tool_executor_helper'
@@ -71,7 +72,8 @@ module ConfiguratorIntegrationHelpers
                :system_wrapper, :loginator, :reportinator, :ruby_expandinator )
     )
     # Setup publishes the shortened build roots once the configuration is built
-    o[:file_path_utils] = FilePathUtils.new( o.slice( :configurator, :file_wrapper ) )
+    o[:test_build_layout] = TestBuildLayout.new( o.slice( :configurator, :file_wrapper ) )
+    o[:file_path_utils]   = FilePathUtils.new( o.slice( :configurator, :file_wrapper, :test_build_layout ) )
 
     return o
   end

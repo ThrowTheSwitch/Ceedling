@@ -60,7 +60,7 @@ ceedling_system_tests do
         expect(roots.values).to include( 'lib/vendor/acme/hal', end_with( 'deep/sdk/inc' ) )
 
         hal_marker = roots.key( 'lib/vendor/acme/hal' )
-        expect(Dir.glob( "build/test/out/test/test_hal/#{hal_marker}/hal.o" )).to_not be_empty
+        expect(Dir.glob( "build/test/out/test/test_hal/_t_/#{hal_marker}/hal.o" )).to_not be_empty
 
         rebuild = @c.ceedling_build_exec( "test:all" )
         expect(@c.last_exit_status).to eq(0), rebuild

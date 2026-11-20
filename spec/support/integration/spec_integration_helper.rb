@@ -30,6 +30,7 @@ require 'ceedling/yaml_wrapper'
 require 'ceedling/parsing_parcels'
 require 'ceedling/includes/includes'
 require 'ceedling/includes/include_factory'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/preprocess/preprocessinator'
 require 'ceedling/tools/tool_executor'
 require 'ceedling/quote_include_isolator'
@@ -84,6 +85,11 @@ module IntegrationSpecHelpers
 
     def cmock_mock_path
       'mocks'
+    end
+
+    # A test's mock root lies below the mock path (TestBuildLayout)
+    def project_use_mocks
+      true
     end
   end
 
@@ -168,7 +174,7 @@ module IntegrationSpecHelpers
       @tool_exec    = ShellingToolExecutor.new
       @fpu          = ScratchFilePathUtils.new(@root)
       @file_wrapper = FileWrapper.new(loginator: NULL, verbosinator: NULL)
-      factory       = IncludeFactory.new(configurator: @cfg)
+      factory       = IncludeFactory.new(configurator: @cfg, test_build_layout: TestBuildLayout.new(configurator: @cfg, file_wrapper: @file_wrapper))
       line_marker   = PreprocessinatorLineMarkerIncludesExtractor.new(
         include_factory: factory, file_wrapper: @file_wrapper
       )

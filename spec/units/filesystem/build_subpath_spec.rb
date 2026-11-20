@@ -56,6 +56,24 @@ describe BuildSubpath do
       expect(BuildSubpath.decode( BuildSubpath.encode( '_UP_/x' ) )).to eq( '_UP_/x' )
     end
 
+    # A test's own build directories close its name with `_t_` (TestBuildLayout)
+    it 'places a directory named like the segment closing a test name apart from it, and reads it back' do
+      ['src/_t_', '_t_/x', 'src/__t_/x', 'src/_T_/x'].each do |path|
+        encoded = BuildSubpath.encode( path )
+
+        expect(ProjectPaths.segments( encoded ).map( &:downcase )).to_not include( BuildSubpath::OWN_SEGMENT ), "#{path} => #{encoded}"
+        expect(BuildSubpath.decode( encoded )).to eq( path ), "#{path} => #{encoded}"
+      end
+      expect(BuildSubpath.encode( 'src/_t_' )).to eq( 'src/__t_' )
+    end
+
+    it 'names a test whose path holds a directory named like `_t_` without that segment, and reads it back' do
+      name = BuildSubpath.encode( 'test/_t_/test_c' )
+
+      expect(name).to eq( 'test/__t_/test_c' )
+      expect(BuildSubpath.decode( name )).to eq( 'test/_t_/test_c' )
+    end
+
     # Windows has no relative path from one drive to another
     it 'places a file of the running Ceedling on another drive below `_ceedling_` too' do
       file = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins/fff/src' )

@@ -26,7 +26,7 @@ describe ReportTestsTeamcityStdout do
     @plugin.instance_variable_set(:@stream, @stream)
     @plugin.instance_variable_set(:@ceedling, {
       plugin_reportinator: @plugin_reportinator,
-      file_path_utils:     FilePathUtils.new( configurator: nil, file_wrapper: nil )
+      file_path_utils:     FilePathUtils.new( configurator: nil, file_wrapper: nil, test_build_layout: nil )
     })
   end
 
