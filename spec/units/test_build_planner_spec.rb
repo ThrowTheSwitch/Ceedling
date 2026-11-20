@@ -615,6 +615,20 @@ describe TestBuildPlanner do
         expect( @testable.objects ).to include( 'src/Foo.o' )
       end
 
+      # Stage 16 leaves these out of the link. An object's path doesn't always mirror its
+      # source's, since a long source root is shortened in the build tree.
+      it "records the original's object, formed as every object is, whether or not the build compiles it" do
+        allow(@file_path_utils).to receive(:form_test_build_objects_filelist) { |_path, files, **_kw| files.map { |f| f.ext( '.o' ) } }
+
+        [[], [:partial_originals]].each do |options|
+          @state.options = options
+
+          @planner.stage_determine_artifacts( @state )
+
+          expect( @testable.original_objects ).to eq( ['src/Foo.o'] )
+        end
+      end
+
       it "still compiles the test's other sources and generated files without the original" do
         @planner.stage_determine_artifacts( @state )
 
@@ -859,7 +873,7 @@ describe TestBuildPlanner do
     end
 
     it "is false for the module's generated Partial source" do
-      expect( @planner.partials_source_object?( 'build/test/partials/a_test/ceedling_partial_Foo.c', configs ) ).to be( false )
+      expect( @planner.partials_source_object?( 'build/test/partials/a_test/ceedling_partial_Foo_impl.c', configs ) ).to be( false )
     end
 
     # An object's path mirrors its source's own directory, so a module named by directory

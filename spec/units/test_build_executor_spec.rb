@@ -1192,6 +1192,28 @@ describe TestBuildExecutor do
       @executor.stage_build_executables( @state )
     end
 
+    # Stage 14 records the originals' objects by their sources. A long source root is shortened
+    # in the build tree, so an object's own path can't say whether it is an original.
+    it "leaves out of the link exactly the originals' objects stage 14 recorded, whatever their paths" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      original = 'build/test/out/a_test/_t_/_drivers_B0D837B0/uart/config.o'
+      @testable.objects          = ['build/foo.o', original]
+      @testable.original_objects = [original]
+
+      expect(@dependinator).to receive(:register).with( 'build/a_test.out', files: ['build/foo.o'], meta: hash_including( objects: ['build/foo.o'] ) )
+
+      @executor.stage_build_executables( @state )
+    end
+
+    it "links every object of a test with no Partial originals" do
+      allow(@dependinator).to receive(:stale?).and_return( false )
+      @testable.original_objects = []
+
+      expect(@dependinator).to receive(:register).with( 'build/a_test.out', files: ['build/foo.o'], meta: hash_including( objects: ['build/foo.o'] ) )
+
+      @executor.stage_build_executables( @state )
+    end
+
     # GH #1368: a library rebuilt under the same name changed nothing a link registered
     it "registers the library files its libraries resolve to, as files and as meta" do
       allow(@dependinator).to receive(:stale?).and_return( false )

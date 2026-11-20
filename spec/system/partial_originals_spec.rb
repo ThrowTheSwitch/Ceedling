@@ -185,4 +185,59 @@ ceedling_system_tests do
       end
     end
   end
+
+  # A long source root is shortened in the build tree, as `_drivers_<hash>`, so the original's
+  # object path no longer ends in the Partial's module path. The link must still leave it out.
+  describe "a Partial named by a directory under a shortened source root" do
+    def stage_shortened_root_project
+      FileUtils.mkdir_p( ['include/drivers/uart', 'components/platform/drivers/uart'] )
+      File.write( 'include/drivers/uart/config.h', "#ifndef UART_CONFIG_H\n#define UART_CONFIG_H\nint uart_baud(void);\n#endif\n" )
+      File.write( 'components/platform/drivers/uart/config.c', "#include \"drivers/uart/config.h\"\n\nint uart_baud(void) { return 115200; }\n" )
+      File.write( 'test/test_uart.c', <<~TEST )
+        #include "unity.h"
+        #include "ceedling.h"
+        #include TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)
+
+        void setUp(void) {}
+        void tearDown(void) {}
+
+        void test_uart_baud_is_the_default(void)
+        {
+          TEST_ASSERT_EQUAL_INT(115200, uart_baud());
+        }
+      TEST
+
+      @c.uncomment_project_yml_option_for_test( '- gcov' )
+      @c.comment_project_yml_option_for_test( '- gcovr' ) unless @gcov_reports.include?( :gcovr )
+      @c.merge_project_yml_for_test( {
+        :project => { :use_partials => true },
+        :paths   => { :source => ['components/platform/drivers/**'], :include => ['include/**'] },
+        :gcov    => { :reports => ['Cobertura'] }
+      } )
+    end
+
+    it "links the Partial and never the original in a coverage build" do
+      in_project do
+        stage_shortened_root_project
+
+        output = @c.ceedling_build_exec( "gcov:all" )
+
+        expect( Dir.glob( 'build/gcov/out/**/_drivers_*' ) ).to_not be_empty, "the source root was not shortened:\n#{output}"
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+1/)
+      end
+    end
+
+    it "links the Partial in a plain test build" do
+      in_project do
+        stage_shortened_root_project
+
+        output = @c.ceedling_build_exec( "test:all" )
+
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+1/)
+      end
+    end
+  end
+
 end
