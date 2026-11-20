@@ -116,6 +116,14 @@ describe PrerequisiteHeaderSpecialist do
       end
     end
 
+    # Clang on Windows joins a search path and a header name with a backslash
+    it 'names the guarded header with forward slashes when the output joins its path with a backslash' do
+      output = clang_output( file: 'rtos/include\\task.h' )
+
+      expect( preprocess( output ) ).to eq( [preprocess_guidance] )
+      expect( compile( clang_output( file: 'rtos/include\\task.h', chain: "In file included from #{MOCK_SOURCE}:6:\n" ) ) ).to eq( [compile_guidance] )
+    end
+
     it 'logs the guidance as a notice' do
       preprocess( gcc_output )
 
