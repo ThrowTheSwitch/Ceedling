@@ -59,6 +59,7 @@ require 'ceedling/preprocess/preprocessinator_file_assembler'
 require 'ceedling/preprocess/preprocessinator_code_finder'
 require 'ceedling/parsing_parcels'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/filesystem/file_wrapper'
 require 'ceedling/includes/includes'
 
@@ -789,9 +790,12 @@ module PartialsGenerationHelpers
   # Partializer names generated files with it. Each record carries its preprocessed paths, so
   # no build tree is needed.
   def partials_file_path_utils
+    configurator = RSpec::Mocks::Double.new( 'Configurator', project_test_preprocess_files_path: '/no/preprocessed/files' ).as_null_object
+
     FilePathUtils.new(
-      configurator: RSpec::Mocks::Double.new( 'Configurator', project_test_preprocess_files_path: '/no/preprocessed/files' ).as_null_object,
-      file_wrapper: partials_file_wrapper
+      configurator:      configurator,
+      file_wrapper:      partials_file_wrapper,
+      test_build_layout: TestBuildLayout.new( configurator: configurator, file_wrapper: partials_file_wrapper )
     )
   end
 

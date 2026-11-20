@@ -214,6 +214,15 @@ describe FileFinderHelper do
       expect(@ff_helper.resolve_file_in_collection('drivers/foo.h', search( ['src'], [] ), :silent)).to be_nil
     end
 
+    # The search looks at the header the query names as a path, which no search path reaches
+    it 'gives no letter case hint for a header spelled in the very same case' do
+      headers = search( ['src'], ['other/foo.h'] )
+
+      expect { @ff_helper.resolve_file_in_collection('other/foo.h', headers, :error) }
+        .to raise_error(CeedlingException, 'Found no file `other/foo.h` in search paths.')
+      expect(@ff_helper.resolve_file_in_collection('other/foo.h', headers, :ignore)).to be_nil
+    end
+
     context 'for a header stage 2 refused a search path' do
       let(:headers) { search( ['inc'], ['inc/Socket.h'], refusals: { 'socket.h' => 'Reference the parent folder.' } ) }
 

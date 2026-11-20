@@ -13,6 +13,7 @@
 require 'spec_helper'
 require 'configurator_integration_helper'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/test_invoker/test_build_setup'
@@ -59,7 +60,8 @@ describe 'Test naming (integration)' do
   # Stage 1 of a build of `tests`, with real naming and real directories
   def prepare(configurator, tests)
     file_wrapper    = FileWrapper.new( loginator: double( 'loginator', log: nil ), verbosinator: double( 'verbosinator', should_output?: false ) )
-    file_path_utils = FilePathUtils.new( configurator: configurator, file_wrapper: file_wrapper )
+    layout          = TestBuildLayout.new( configurator: configurator, file_wrapper: file_wrapper )
+    file_path_utils = FilePathUtils.new( configurator: configurator, file_wrapper: file_wrapper, test_build_layout: layout )
 
     collaborators = TestBuildSetup.constructor_keys.to_h { |key| [key, double( key.to_s )] }
     setup = TestBuildSetup.new( collaborators.merge(
@@ -72,10 +74,11 @@ describe 'Test naming (integration)' do
   end
 
   def finder(configurator, file_path_utils)
-    loginator = double( 'loginator', log: nil )
+    loginator    = double( 'loginator', log: nil )
+    file_wrapper = FileWrapper.new( loginator: loginator, verbosinator: double( 'verbosinator', should_output?: false ) )
     return FileFinder.new(
       configurator: configurator, file_finder_helper: FileFinderHelper.new( loginator: loginator ), file_path_utils: file_path_utils,
-      file_wrapper: FileWrapper.new( loginator: loginator, verbosinator: double( 'verbosinator', should_output?: false ) ), yaml_wrapper: nil
+      file_wrapper: file_wrapper, yaml_wrapper: nil, test_build_layout: TestBuildLayout.new( configurator: configurator, file_wrapper: file_wrapper )
     )
   end
 

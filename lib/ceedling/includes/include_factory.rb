@@ -10,7 +10,7 @@ require 'ceedling/includes/includes'
 
 class IncludeFactory
 
-  constructor :configurator
+  constructor :configurator, :test_build_layout
 
   def user_include_from_directive(directive)
     results = directive.match(PATTERNS::USER_INCLUDE_DIRECTIVE_FILENAME)
@@ -40,18 +40,15 @@ class IncludeFactory
 
   # A resolved mock include's filepath may carry a leading build directory path that
   # snuck in from discovering an empty mock stand-in or an already-generated mock file.
-  # That leading path is the current test's own mock subdirectory -- named by the test's
-  # path from the project root, so it can be more than one segment deep (e.g.
-  # `test/adc/TestFoo`) -- followed by however many further segments mirror
-  # the mocked header's own relative directory (e.g. `calculators/`). Knowing the current
-  # test's identity lets exactly the first part be removed, leaving any header-mirroring
-  # segments after it untouched. Without that identity, fall back to stripping everything
-  # up through the last segment, the best a caller lacking test context can do.
+  # That leading path is the current test's own mock root (TestBuildLayout), followed by
+  # however many further segments mirror the mocked header's own relative directory (e.g.
+  # `calculators/`). Knowing the current test's identity lets exactly the root be removed,
+  # leaving any header-mirroring segments after it untouched. Without that identity, fall
+  # back to stripping everything up through the last segment, the best a caller lacking
+  # test context can do.
   def strip_mock_test_subdir(filepath, test)
-    if test
-      prefix = File.join( @configurator.cmock_mock_path, test.to_s ) + '/'
-      return filepath.start_with?( prefix ) ? filepath[prefix.length..] : filepath
-    end
+    return @test_build_layout.subpath( filepath, kind: :mocks, name: test ) || filepath if test
+
     return filepath.sub( /^#{Regexp.escape( @configurator.cmock_mock_path )}\/.+\//, '' )
   end
 

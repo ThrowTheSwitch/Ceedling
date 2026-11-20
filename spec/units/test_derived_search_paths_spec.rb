@@ -37,7 +37,7 @@ describe TestDerivedSearchPaths do
 
     pathinator = IncludePathinator.new( configurator: @configurator, test_context_extractor: @extractor, loginator: @loginator, file_wrapper: @file_wrapper )
     pathinator.setup
-    finder = FileFinder.new( configurator: @configurator, file_finder_helper: nil, file_path_utils: nil, file_wrapper: @file_wrapper, yaml_wrapper: nil )
+    finder = FileFinder.new( configurator: @configurator, file_finder_helper: nil, file_path_utils: nil, file_wrapper: @file_wrapper, yaml_wrapper: nil, test_build_layout: nil )
 
     @derived = described_class.new(
       configurator: @configurator, include_pathinator: pathinator, test_search_paths: @search_paths,

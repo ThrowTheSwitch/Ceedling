@@ -57,6 +57,14 @@ describe BuildRoots do
       expect(table.marker_for( blank_root )).to eq( expected_marker( blank_root, 'root' ) )
     end
 
+    # Test and release builds share one table, and only a test build escapes a directory named `_t_`
+    it "keys a root's hash on the spelling a release build gives it" do
+      root = 'lib/vendor/_t_/acme/sdk/hal'
+      key  = ProjectPaths::WINDOWS ? root.downcase : root
+
+      expect(described_class.table( [root] ).marker_for( root )).to eq( "_hal_#{Digest::SHA256.hexdigest( key )[0, 8].upcase}" )
+    end
+
     it 'gives a marker the shape decoding recognizes' do
       expect(described_class.table( [keil_include] ).marker_for( keil_include )).to match( BuildRoots::MARKER )
     end

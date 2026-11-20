@@ -8,6 +8,7 @@
 require 'time'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
+require 'ceedling/dependencies/dependency_cache_store'
 
 # A pure query module for content-hash-based rebuild staleness -- not a build
 # scheduler. Ceedling's existing Rake-based, multithreaded, conditionally-
@@ -67,6 +68,7 @@ class DependencyTracker
   def setup()
     @mutex = Mutex.new
     @store_path = nil
+    @schema_version = DependencyCacheStore::CACHE_SCHEMA_VERSION
     @debug_root = nil
     @debug_tier = DEBUG_TIERS[:none]
     @relationships = {}
@@ -86,14 +88,18 @@ class DependencyTracker
   # deleted from disk -- see DependencyCacheStore#load) have their
   # DependencyDebugTree data pruned too, so the debug tree never outlives
   # the cache entries it exists to explain.
-  def open(store_path:, debug_tier: nil)
+  #
+  # `schema_version` is the version the cache's pipeline reads and writes (see
+  # CACHE_SCHEMA.md).
+  def open(store_path:, schema_version: DependencyCacheStore::CACHE_SCHEMA_VERSION, debug_tier: nil)
     @store_path = store_path
+    @schema_version = schema_version
     @debug_root = debug_root_for( store_path )
     @debug_tier = resolve_debug_tier( debug_tier )
 
     @mutex.synchronize do
       @relationships = {}
-      @cache = @dependency_cache_store.load( @store_path )
+      @cache = @dependency_cache_store.load( @store_path, schema_version: @schema_version )
       ( @cache['pruned'] || [] ).each { |target| @dependency_debug_tree.prune( @debug_root, target ) }
     end
   end
@@ -249,7 +255,7 @@ class DependencyTracker
       @cache['entries'].dup
     end
 
-    @dependency_cache_store.persist( @store_path, entries )
+    @dependency_cache_store.persist( @store_path, entries, schema_version: @schema_version )
   end
 
   # Explains why `target` is (or was last found to be) stale: which of

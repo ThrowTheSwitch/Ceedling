@@ -132,7 +132,7 @@ describe 'Path scenarios (integration)' do
         testable = scene[:state].testables.values.first
 
         shortened = scene[:paths].form_preprocessed_file_filepath( header, testable.name )
-        former    = File.join( scene[:configurator].project_test_preprocess_files_path, testable.name, BuildSubpath.encode( File.dirname( header ) ), 'cmsis_os2.h' )
+        former    = File.join( scene[:configurator].project_test_preprocess_files_path, testable.name, BuildSubpath::OWN_SEGMENT, BuildSubpath.encode( File.dirname( header ) ), 'cmsis_os2.h' )
 
         expect(shortened).to eq( former.sub( BuildSubpath.encode( far ), table.marker_for( far ) ) )
         expect(former.length - shortened.length).to eq( BuildSubpath.encode( far ).length - table.marker_for( far ).length )
@@ -312,7 +312,7 @@ describe 'Path scenarios (integration)' do
     it 'collects nothing from an existing build directory' do
       files = {
         'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C,
-        'app/build/test/mocks/test/test_m/mock_main.h' => h( 'mock' ), 'app/build/test/runners/test/test_m/test_m_runner.c' => c( 'r' )
+        'app/build/test/mocks/test/test_m/_t_/mock_main.h' => h( 'mock' ), 'app/build/test/runners/test/test_m/test_m_runner.c' => c( 'r' )
       }
       in_workspace( files ) do |ws, app|
         scene = scenario( scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: ['../**'] } ) )
@@ -325,7 +325,7 @@ describe 'Path scenarios (integration)' do
     it 'collects nothing from an existing build directory through a `:files` glob' do
       files = {
         'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C,
-        'app/build/test/mocks/test/test_m/mock_main.c' => c( 'mock' ), 'app/build/vendor/unity/src/unity.c' => c( 'unity' )
+        'app/build/test/mocks/test/test_m/_t_/mock_main.c' => c( 'mock' ), 'app/build/vendor/unity/src/unity.c' => c( 'unity' )
       }
       in_workspace( files ) do |ws, app|
         yaml  = scenario_yaml( ws: ws, app: app, paths: { test: ['test/**'], source: ['src/**'], include: ['src/**'] }, files: { source: ['+:**/*.c'] } )
@@ -342,7 +342,7 @@ describe 'Path scenarios (integration)' do
       files = {
         'app/src/main.c' => c( 'main' ), 'app/src/main.h' => h( 'main' ), 'app/test/test_m.c' => TEST_C,
         'app/build/gen/table.c' => c( 'table' ), 'app/build/gen/table.h' => h( 'table' ),
-        'app/build/test/mocks/test/test_m/mock_main.c' => c( 'mock' ), 'app/build/test/mocks/test/test_m/mock_main.h' => h( 'mock' )
+        'app/build/test/mocks/test/test_m/_t_/mock_main.c' => c( 'mock' ), 'app/build/test/mocks/test/test_m/_t_/mock_main.h' => h( 'mock' )
       }
       in_workspace( files ) do |ws, app|
         paths = { test: ['test/**'], source: ['src/**', 'build/**'], include: ['src/**', 'build/gen'] }

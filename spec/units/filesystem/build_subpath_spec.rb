@@ -56,6 +56,40 @@ describe BuildSubpath do
       expect(BuildSubpath.decode( BuildSubpath.encode( '_UP_/x' ) )).to eq( '_UP_/x' )
     end
 
+    # A test's own build directories close its name with `_t_` (TestBuildLayout)
+    it 'places a directory named like the segment closing a test name apart from it, and reads it back' do
+      ['src/_t_', '_t_/x', 'src/__t_/x', 'src/_T_/x'].each do |path|
+        encoded = BuildSubpath.encode( path )
+
+        expect(ProjectPaths.segments( encoded ).map( &:downcase )).to_not include( BuildSubpath::OWN_SEGMENT ), "#{path} => #{encoded}"
+        expect(BuildSubpath.decode( encoded )).to eq( path ), "#{path} => #{encoded}"
+      end
+      expect(BuildSubpath.encode( 'src/_t_' )).to eq( 'src/__t_' )
+    end
+
+    it 'names a test whose path holds a directory named like `_t_` without that segment, and reads it back' do
+      name = BuildSubpath.encode( 'test/_t_/test_c' )
+
+      expect(name).to eq( 'test/__t_/test_c' )
+      expect(BuildSubpath.decode( name )).to eq( 'test/_t_/test_c' )
+    end
+
+    # A release build has no per-test directories, so it places such a directory as it always has
+    it 'keeps a directory named like `_t_` as it is in a release build, and reads it back' do
+      ['src/_t_', '_t_/x', 'src/__t_/x', 'src/_T_/x'].each do |path|
+        encoded = BuildSubpath.encode( path, release: true )
+
+        expect(encoded).to eq( path )
+        expect(BuildSubpath.decode( encoded, release: true )).to eq( path ), "#{path} => #{encoded}"
+      end
+    end
+
+    it 'still places a directory named like another marker apart from it in a release build' do
+      expect(BuildSubpath.encode( 'src/_up_/_t_', release: true )).to eq( 'src/__up_/_t_' )
+      expect(BuildSubpath.decode( 'src/__up_/_t_', release: true )).to eq( 'src/_up_/_t_' )
+      expect(BuildSubpath.encode( '../_t_/x', release: true )).to eq( '_up_/_t_/x' )
+    end
+
     # Windows has no relative path from one drive to another
     it 'places a file of the running Ceedling on another drive below `_ceedling_` too' do
       file = File.join( BuildSubpath::INSTALLATION_ROOT, 'plugins/fff/src' )
@@ -135,6 +169,12 @@ describe BuildSubpath do
       expect(BuildSubpath.decode( "#{deep}/src", roots: table )).to eq( "#{deep_root}/src" )
     end
 
+    it 'keeps a directory named like `_t_` below a root as it is only in a release build' do
+      expect(BuildSubpath.encode( "#{external_root}/_t_/os", roots: table )).to eq( "#{external}/__t_/os" )
+      expect(BuildSubpath.encode( "#{external_root}/_t_/os", roots: table, release: true )).to eq( "#{external}/_t_/os" )
+      expect(BuildSubpath.decode( "#{external}/_t_/os", roots: table, release: true )).to eq( "#{external_root}/_t_/os" )
+    end
+
     it 'places a file below a root that is not shortened as it always has' do
       expect(BuildSubpath.encode( 'src/drv', roots: table )).to eq( 'src/drv' )
       expect(BuildSubpath.encode( '../shared/src', roots: table )).to eq( '_up_/shared/src' )
@@ -184,6 +224,12 @@ describe BuildSubpath do
       expect(BuildSubpath.of_directory( root, roots: table )).to eq( table.marker_for( root ) )
       expect(BuildSubpath.of_directory( root )).to eq( '_up_/vendor/acme/sdk/v3/include' )
       expect(BuildSubpath.of_directory( root, roots: BuildRoots.table( [] ) )).to eq( '_up_/vendor/acme/sdk/v3/include' )
+    end
+
+    it "remembers a release build's encoding apart from a test build's" do
+      expect(BuildSubpath.of_directory( 'src/_t_/drv' )).to eq( 'src/__t_/drv' )
+      expect(BuildSubpath.of_directory( 'src/_t_/drv', release: true )).to eq( 'src/_t_/drv' )
+      expect(BuildSubpath.of_directory( 'src/_t_/drv' )).to eq( 'src/__t_/drv' )
     end
   end
 end

@@ -194,8 +194,8 @@ ceedling_system_tests do
           # is untouched by the override), so its own NOTICE still fires -- but the
           # correctly-linked pass above already proves only beta/dup.c was ever compiled,
           # not both. A duplicate-symbol link error would have failed the build otherwise.
-          expect(File.exist?('build/test/out/test/test_dup_override/src/beta/dup.o')).to be true
-          expect(File.exist?('build/test/out/test/test_dup_override/src/alpha/dup.o')).to be false
+          expect(File.exist?('build/test/out/test/test_dup_override/_t_/src/beta/dup.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_override/_t_/src/alpha/dup.o')).to be false
 
           # A second, distinct NOTICE -- from extract_sources's own override, not the
           # header-ambiguity NOTICE above -- names the winning TEST_SOURCE_FILE() entry
@@ -224,8 +224,8 @@ ceedling_system_tests do
           expect(output).to match(/TESTED:\s+1/)
           expect(output).to match(/PASSED:\s+1/)
 
-          expect(File.exist?('build/test/out/test/test_dup_subtractive/src/alpha/dup.o')).to be false
-          expect(File.exist?('build/test/out/test/test_dup_subtractive/src/gamma/dup_gamma.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_subtractive/_t_/src/alpha/dup.o')).to be false
+          expect(File.exist?('build/test/out/test/test_dup_subtractive/_t_/src/gamma/dup_gamma.o')).to be true
 
           expect(output).to match(/TEST_SOURCE_FILE\(.*-:alpha[\/\\]dup\.c.*\)/)
           expect(output).to match(/removed/)
@@ -251,9 +251,39 @@ ceedling_system_tests do
           expect(output).to match(/TESTED:\s+1/)
           expect(output).to match(/PASSED:\s+1/)
 
-          expect(File.exist?('build/test/out/test/test_dup_subtractive_noop/src/alpha/dup.o')).to be true
+          expect(File.exist?('build/test/out/test/test_dup_subtractive_noop/_t_/src/alpha/dup.o')).to be true
 
           expect(output).to_not match(/TEST_SOURCE_FILE\(.*removed/)
+        end
+      end
+
+    end
+
+    # =========================================================================
+    describe "A hand-written source named with the mock prefix, beside a test that mocks its header" do
+    # =========================================================================
+
+      # test_a mocks spi.h, and test_b links a hand-written fake of the mock's name instead. A
+      # :support source would be linked into every test, test_a's too, so the fake is a source.
+      before do
+        in_project do
+          preamble = "#include \"unity.h\"\nvoid setUp(void) {}\nvoid tearDown(void) {}\n"
+          FileUtils.mkdir_p( 'src/fakes' )
+          File.write( 'src/spi.h', "#ifndef SPI_H\n#define SPI_H\nint spi_read(void);\n#endif\n" )
+          File.write( 'src/fakes/mock_spi.c', "int spi_read(void) { return 42; }\n" )
+          File.write( 'test/test_a.c', preamble + "#include \"mock_spi.h\"\n" \
+                                       "void test_a(void) { spi_read_ExpectAndReturn( 5 ); TEST_ASSERT_EQUAL_INT( 5, spi_read() ); }\n" )
+          File.write( 'test/test_b.c', preamble + "#include \"spi.h\"\nTEST_SOURCE_FILE(\"mock_spi.c\")\n" \
+                                       "void test_b(void) { TEST_ASSERT_EQUAL_INT( 42, spi_read() ); }\n" )
+        end
+      end
+
+      it "builds the hand-written source into the test that names it" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0), output
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
         end
       end
 

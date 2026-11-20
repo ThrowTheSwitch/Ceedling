@@ -19,6 +19,7 @@ require 'ceedling/includes/include_factory'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/test_context_extractor'
 require 'ceedling/test_invoker/test_source_file_directive_resolver'
 require 'ceedling/test_invoker/test_build_setup'
@@ -70,13 +71,14 @@ describe 'TEST_SOURCE_FILE() checks (integration)' do
     loginator    = graph[:loginator]
     file_wrapper = graph[:file_wrapper]
 
-    file_path_utils = FilePathUtils.new( configurator: configurator, file_wrapper: file_wrapper )
+    layout          = TestBuildLayout.new( configurator: configurator, file_wrapper: file_wrapper )
+    file_path_utils = FilePathUtils.new( configurator: configurator, file_wrapper: file_wrapper, test_build_layout: layout )
     file_finder     = FileFinder.new(
       configurator: configurator, file_finder_helper: FileFinderHelper.new( loginator: loginator ),
-      file_path_utils: file_path_utils, file_wrapper: file_wrapper, yaml_wrapper: graph[:yaml_wrapper]
+      file_path_utils: file_path_utils, file_wrapper: file_wrapper, yaml_wrapper: graph[:yaml_wrapper], test_build_layout: layout
     )
     extractor = TestContextExtractor.new(
-      configurator: configurator, parsing_parcels: ParsingParcels.new, include_factory: IncludeFactory.new( configurator: configurator ),
+      configurator: configurator, parsing_parcels: ParsingParcels.new, include_factory: IncludeFactory.new( configurator: configurator, test_build_layout: layout ),
       partializer_config: double( 'partializer_config' ).as_null_object, file_path_utils: file_path_utils, file_wrapper: file_wrapper,
       yaml_wrapper: graph[:yaml_wrapper], loginator: loginator
     )

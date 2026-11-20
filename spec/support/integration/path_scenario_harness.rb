@@ -20,6 +20,7 @@ require 'tmpdir'
 require 'fileutils'
 require 'configurator_integration_helper'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/filesystem/file_finder'
 require 'ceedling/filesystem/file_finder_helper'
 require 'ceedling/test_invoker/test_build_setup'
@@ -95,7 +96,8 @@ module PathScenarioHarness
     configurator = configure( yaml )[:configurator]
 
     file_wrapper    = FileWrapper.new( loginator: double( 'loginator', log: nil ), verbosinator: double( 'verbosinator', should_output?: false ) )
-    file_path_utils = FilePathUtils.new( configurator: configurator, file_wrapper: file_wrapper )
+    layout          = TestBuildLayout.new( configurator: configurator, file_wrapper: file_wrapper )
+    file_path_utils = FilePathUtils.new( configurator: configurator, file_wrapper: file_wrapper, test_build_layout: layout )
 
     collaborators = TestBuildSetup.constructor_keys.to_h { |key| [key, double( key.to_s )] }
     setup = TestBuildSetup.new( collaborators.merge(
@@ -106,7 +108,7 @@ module PathScenarioHarness
 
     finder = FileFinder.new(
       configurator: configurator, file_finder_helper: FileFinderHelper.new( loginator: double( 'loginator', log: nil ) ),
-      file_path_utils: file_path_utils, file_wrapper: file_wrapper, yaml_wrapper: nil
+      file_path_utils: file_path_utils, file_wrapper: file_wrapper, yaml_wrapper: nil, test_build_layout: layout
     )
 
     return { configurator: configurator, state: state, paths: file_path_utils, finder: finder }

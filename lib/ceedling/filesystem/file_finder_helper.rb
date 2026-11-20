@@ -89,7 +89,8 @@ class FileFinderHelper
   # can find any candidate at all, so the query's own basename gets one last check
   # against every list entry case-insensitively -- catches the common slip of a
   # filename typed with the wrong case before falling through to the caller's own
-  # not-found handling.
+  # not-found handling. An entry ending in the very same text is no such slip. It lies
+  # where the search doesn't reach, as a HeaderSearch's hint files may.
   #
   # `complain` of :silent skips that check. A caller asks for silence when it can't know
   # whether the reference is even live, such as a scan of #includes that ignores #if, and
@@ -104,12 +105,18 @@ class FileFinderHelper
     return handle_missing_file( filename, complain, refusal ) unless refusal.nil?
 
     files   = file_list.respond_to?( :hint_files ) ? file_list.hint_files( filename ) : file_list
-    matches = files.find_all {|v| v =~ /(?:\\|\/|^)#{Regexp.escape(filename)}$/i}
+    matches = letter_case_slips( filename, files )
     if (matches.length > 0)
       blow_up(filename, "However, a filename having different capitalization was found: '#{matches[0]}'.")
     end
 
     return handle_missing_file(filename, complain)
+  end
+
+  # The files ending in `filename` spelled in another letter case
+  def letter_case_slips(filename, files)
+    pattern = /(?:\\|\/|^)(#{Regexp.escape(filename)})$/i
+    return files.find_all { |file| (tail = file[pattern, 1]) && tail != filename }
   end
 
   def blow_up(filename, extra_message="")

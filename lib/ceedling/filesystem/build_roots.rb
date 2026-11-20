@@ -18,6 +18,7 @@ require 'ceedling/filesystem/build_subpath'
 # far outside the project, most of that path is the root's own location, which no build
 # step reads. Such a root is replaced by `_<name>_<hash>`: its own directory name, then 8
 # hex digits of SHA-256 of its encoded spelling. Everything below the root keeps its path.
+# Test and release builds share one table, so the spelling hashed is a release build's.
 #
 # Only the outermost of nested roots counts, so a whole tree shares one marker, and a root
 # is shortened only when its marker is shorter than its encoded spelling. The decision
@@ -74,7 +75,7 @@ module BuildRoots
   def self.candidates(roots, windows)
     # Two spellings of one place are one root
     return outermost( roots.map( &:to_s ).uniq { |root| ProjectPaths.absolute( root ) } ).filter_map do |root|
-      encoded = BuildSubpath.encode( root )
+      encoded = BuildSubpath.encode( root, release: true )
       # A file Ceedling ships is already placed briefly below `_ceedling_`
       next if encoded.start_with?( BuildSubpath::INSTALLED_SEGMENT )
 

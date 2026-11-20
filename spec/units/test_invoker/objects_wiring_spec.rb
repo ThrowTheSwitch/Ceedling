@@ -34,7 +34,12 @@ describe 'Test pipeline object wiring' do
     ['partializer_helper',               'ceedling/partials/partializer_helper'],
     ['partializer_reconciler',           'ceedling/partials/partializer_reconciler'],
     ['partializer_utils',                'ceedling/partials/partializer_utils'],
-    ['generator_partials',               'ceedling/generators/generator_partials']
+    ['generator_partials',               'ceedling/generators/generator_partials'],
+    ['test_build_layout',                'ceedling/filesystem/test_build_layout'],
+    ['dependinator',                     'ceedling/dependencies/dependinator'],
+    ['file_path_utils',                  'ceedling/filesystem/file_path_utils'],
+    ['file_finder',                      'ceedling/filesystem/file_finder'],
+    ['include_factory',                  'ceedling/includes/include_factory']
   ] ).each do |name, path|
     it "composes exactly what #{name}'s constructor takes" do
       require path

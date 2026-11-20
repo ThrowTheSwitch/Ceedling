@@ -108,7 +108,7 @@ ceedling_system_tests do
       configure( ['inc/**'], :all, { :paths => { :include => ['inc/**'], :support => ['test/support'] } } )
 
       build_passes
-      expect(File.read( 'build/test/mocks/test/test_c/hal/mock_foo.h' )).to include( 'foo_read' )
+      expect(File.read( 'build/test/mocks/test/test_c/_t_/hal/mock_foo.h' )).to include( 'foo_read' )
     end
   end
 

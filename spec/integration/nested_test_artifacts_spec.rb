@@ -82,7 +82,7 @@ describe 'Per-test logs of nested tests (integration)' do
 
   it 'keeps the gdb logs of same-named tests apart, each holding only the latest build' do
     in_project do
-      paths = FilePathUtils.new( configurator: double( 'configurator', project_log_path: 'build/logs' ), file_wrapper: file_wrapper )
+      paths = FilePathUtils.new( configurator: double( 'configurator', project_log_path: 'build/logs' ), file_wrapper: file_wrapper, test_build_layout: nil )
       logs  = ['test/a/test_crash', 'test/b/test_crash'].map { |name| paths.form_test_gdb_log( name, context: :test, name: 'test_boom' ) }
 
       2.times do |build|

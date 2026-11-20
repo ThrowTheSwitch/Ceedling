@@ -10,6 +10,7 @@ require 'ceedling/tools/tool_executor'
 require 'ceedling/constants'
 require 'ceedling/exceptions'
 require 'ceedling/filesystem/file_path_utils'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/filesystem/build_roots'
 
 PROJECT_BUILD_ROOT           = 'build'     unless defined?(PROJECT_BUILD_ROOT)
@@ -47,7 +48,10 @@ describe ReportGeneratorReportinator do
   # No configured root is long enough to shorten unless an example says so
   let(:build_roots)      { [] }
   # Real, so a shortened root's marker expands exactly as placement wrote it
-  let(:file_path_utils)  { FilePathUtils.new({ configurator: configurator, file_wrapper: file_wrapper }) }
+  let(:file_path_utils) do
+    layout = TestBuildLayout.new({ configurator: configurator, file_wrapper: file_wrapper })
+    FilePathUtils.new({ configurator: configurator, file_wrapper: file_wrapper, test_build_layout: layout })
+  end
   let(:system_objects) do
     {
       tool_validator: tool_validator,

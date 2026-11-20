@@ -5,6 +5,9 @@
 #   SPDX-License-Identifier: MIT
 # =========================================================================
 
+require 'ceedling/constants'
+require 'ceedling/dependencies/dependency_cache_store'
+
 # Ceedling-specific adapter between the build pipeline and the generic,
 # application-agnostic DependencyTracker -- owns the tracker's lifecycle
 # (where its cache file lives, when it's opened and flushed) so pipeline
@@ -26,12 +29,21 @@ class Dependinator
     File.join( PROJECT_BUILD_DEPENDENCIES_CACHE_PATH, ".#{identifier}.#{CACHE_FILENAME}" )
   end
 
+  # The schema version of a pipeline's cache (see CACHE_SCHEMA.md). A release build places
+  # its files apart from any test's own root, so its layout and version change on their own.
+  # Every other pipeline is a test build's.
+  def self.cache_schema_version(identifier)
+    return DependencyCacheStore::RELEASE_CACHE_SCHEMA_VERSION if identifier == RELEASE_SYM
+
+    return DependencyCacheStore::CACHE_SCHEMA_VERSION
+  end
+
   # `identifier` isolates one pipeline's cache from another's -- sharing a single
   # cache file between, say, test and release builds would make a full test:all
   # run's pruning flush (see `flush`) silently evict every cached release entry,
   # and vice versa, since pruning drops anything not registered in the current run.
   def open(identifier: :test)
-    @dependency_tracker.open( store_path: self.class.cache_store_path( identifier ) )
+    @dependency_tracker.open( store_path: self.class.cache_store_path( identifier ), schema_version: self.class.cache_schema_version( identifier ) )
   end
 
   def register(target, files: [], meta: {}, outputs: [])

@@ -7,6 +7,7 @@
 
 require 'spec_helper'
 require 'ceedling/dependencies/dependency_tracker'
+require 'ceedling/dependencies/dependency_cache_store'
 require 'ceedling/dependencies/dependinator'
 
 describe Dependinator do
@@ -27,16 +28,30 @@ describe Dependinator do
     end
   end
 
+  # A release build's layout changes apart from a test build's
+  describe '.cache_schema_version' do
+    it "gives a release build's cache the release schema version" do
+      expect( Dependinator.cache_schema_version( :release ) ).to eq( DependencyCacheStore::RELEASE_CACHE_SCHEMA_VERSION )
+    end
+
+    it "gives every test pipeline's cache the test schema version" do
+      [:test, :gcov, :bullseye, :valgrind].each do |identifier|
+        expect( Dependinator.cache_schema_version( identifier ) ).to eq( DependencyCacheStore::CACHE_SCHEMA_VERSION ), identifier.to_s
+      end
+    end
+  end
+
   describe '#open' do
     it 'opens the tracker at a cache file identified by the default :test identifier when none is given' do
-      expect( @tracker ).to receive(:open).with( store_path: '/proj/build/cache/.test.dep_cache.json' )
+      expect( @tracker ).to receive(:open).with( store_path: '/proj/build/cache/.test.dep_cache.json', schema_version: DependencyCacheStore::CACHE_SCHEMA_VERSION )
       @dependinator.open
     end
 
     it 'opens the tracker at a distinct cache file for a different identifier' do
-      expect( @tracker ).to receive(:open).with( store_path: '/proj/build/cache/.release.dep_cache.json' )
+      expect( @tracker ).to receive(:open).with( store_path: '/proj/build/cache/.release.dep_cache.json', schema_version: DependencyCacheStore::RELEASE_CACHE_SCHEMA_VERSION )
       @dependinator.open( identifier: :release )
     end
+
   end
 
   describe '#register' do

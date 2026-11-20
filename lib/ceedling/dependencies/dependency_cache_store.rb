@@ -56,29 +56,33 @@ require 'ceedling/dependencies/dependency_hasher'
 class DependencyCacheStore
 
   # Cache keys are build paths, so a change to where a build puts its output changes the
-  # schema too. CACHE_SCHEMA.md records each version and why it was raised.
-  CACHE_SCHEMA_VERSION = 3 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
+  # schema too. A release build's layout changes apart from a test build's, so each kind of
+  # pipeline has a version of its own: CACHE_SCHEMA_VERSION for every test pipeline, and
+  # RELEASE_CACHE_SCHEMA_VERSION for a release build. CACHE_SCHEMA.md records each version
+  # and why it was raised.
+  CACHE_SCHEMA_VERSION         = 4 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
+  RELEASE_CACHE_SCHEMA_VERSION = 3 unless const_defined?(:RELEASE_CACHE_SCHEMA_VERSION, false)
 
   constructor :file_wrapper, :loginator
 
-  # Loads and validates `store_path`, returning
+  # Loads and validates `store_path` against its pipeline's `schema_version`, returning
   # `{ 'schema_version', 'hash_algorithm', 'entries', 'pruned' }`. `entries`
   # is always a Hash of target path => entry Hash, with any invalid or
   # deleted-target entries dropped. `pruned` is the list of target paths
   # dropped this load (malformed or deleted) -- callers use it to also clean
   # up any DependencyDebugTree data for those same targets, so the debug
   # tree doesn't outlive the cache entries it exists to explain.
-  def load(store_path)
-    return empty_store unless @file_wrapper.exist?( store_path )
+  def load(store_path, schema_version: CACHE_SCHEMA_VERSION)
+    return empty_store( schema_version ) unless @file_wrapper.exist?( store_path )
 
     raw = @file_wrapper.read( store_path )
     parsed = JSON.parse( raw )
 
-    return degrade( store_path, "does not contain a JSON object" ) unless parsed.is_a?( Hash )
-    return upgrade( store_path ) if earlier_layout?( parsed['schema_version'] )
-    return degrade( store_path, "has an incompatible or missing schema_version" ) unless parsed['schema_version'] == CACHE_SCHEMA_VERSION
-    return degrade( store_path, "has an incompatible or missing hash_algorithm" ) unless parsed['hash_algorithm'] == DependencyHasher::HASH_ALGORITHM
-    return degrade( store_path, "is missing its entries object" ) unless parsed['entries'].is_a?( Hash )
+    return degrade( store_path, schema_version, "does not contain a JSON object" ) unless parsed.is_a?( Hash )
+    return upgrade( store_path, schema_version ) if earlier_layout?( parsed['schema_version'], schema_version )
+    return degrade( store_path, schema_version, "has an incompatible or missing schema_version" ) unless parsed['schema_version'] == schema_version
+    return degrade( store_path, schema_version, "has an incompatible or missing hash_algorithm" ) unless parsed['hash_algorithm'] == DependencyHasher::HASH_ALGORITHM
+    return degrade( store_path, schema_version, "is missing its entries object" ) unless parsed['entries'].is_a?( Hash )
 
     valid_entries = {}
     pruned = []
@@ -101,25 +105,26 @@ class DependencyCacheStore
     end
 
     {
-      'schema_version' => CACHE_SCHEMA_VERSION,
+      'schema_version' => schema_version,
       'hash_algorithm' => DependencyHasher::HASH_ALGORITHM,
       'entries'        => valid_entries,
       'pruned'         => pruned
     }
 
   rescue JSON::ParserError => e
-    degrade( store_path, "is not valid JSON (#{e.message})" )
+    degrade( store_path, schema_version, "is not valid JSON (#{e.message})" )
   end
 
-  # Persists `entries` (a Hash of target path => entry Hash) to `store_path`.
+  # Persists `entries` (a Hash of target path => entry Hash) to `store_path`, as of its
+  # pipeline's `schema_version`.
   # Writes to a temp file in the same directory and renames into place so a
   # reader never observes a partially-written cache file, even if two
   # Ceedling invocations somehow raced on the same project.
-  def persist(store_path, entries)
+  def persist(store_path, entries, schema_version: CACHE_SCHEMA_VERSION)
     @file_wrapper.mkdir( @file_wrapper.dirname( store_path ) )
 
     payload = {
-      'schema_version' => CACHE_SCHEMA_VERSION,
+      'schema_version' => schema_version,
       'hash_algorithm' => DependencyHasher::HASH_ALGORITHM,
       'entries'        => entries
     }
@@ -132,30 +137,30 @@ class DependencyCacheStore
   ### Private ###
   private
 
-  def empty_store
-    { 'schema_version' => CACHE_SCHEMA_VERSION, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => {}, 'pruned' => [] }
+  def empty_store(schema_version)
+    { 'schema_version' => schema_version, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => {}, 'pruned' => [] }
   end
 
-  def degrade(store_path, reason)
+  def degrade(store_path, schema_version, reason)
     @loginator.log(
       "Dependency cache #{store_path} #{reason} -- treating it as absent (full rebuild for tracked targets).",
       Verbosity::COMPLAIN
     )
-    empty_store
+    empty_store( schema_version )
   end
 
-  def earlier_layout?(version)
-    return version.is_a?( Integer ) && version.between?( 1, CACHE_SCHEMA_VERSION - 1 )
+  def earlier_layout?(version, schema_version)
+    return version.is_a?( Integer ) && version.between?( 1, schema_version - 1 )
   end
 
   # An earlier build layout leaves its output where this build no longer looks
-  def upgrade(store_path)
+  def upgrade(store_path, schema_version)
     @loginator.log(
       "Dependency cache #{store_path} comes from an earlier Ceedling build layout -- rebuilding everything once. " \
       "Run `ceedling clobber` to remove any orphaned build output left in the old layout.",
       Verbosity::COMPLAIN
     )
-    empty_store
+    empty_store( schema_version )
   end
 
   def valid_entry?(entry)

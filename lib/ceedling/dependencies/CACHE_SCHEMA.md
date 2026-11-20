@@ -1,9 +1,22 @@
 # Dependency Cache Schema Versions
 
 This file records each version of the delta build dependency cache's schema: what a
-cache of that version holds, and why the version was raised. The version is
-`DependencyCacheStore::CACHE_SCHEMA_VERSION` (`dependency_cache_store.rb`). Add a
-section here whenever it changes.
+cache of that version holds, and why the version was raised. Add a section here whenever
+a version changes.
+
+## Each pipeline's version
+
+Test and release builds each have a version of their own, since a change to one build's
+layout leaves the other's cache valid. Both are in `dependency_cache_store.rb`:
+
+- **`CACHE_SCHEMA_VERSION`** is every test pipeline's: `test` and each plugin's own
+  context, such as `gcov`.
+- **`RELEASE_CACHE_SCHEMA_VERSION`** is the release build's.
+
+`Dependinator.cache_schema_version` chooses one by the pipeline's identifier. A change
+to the file's shape raises both versions. A change to one build's layout raises only that
+build's version. Up to version 3 the two were one, and a section below names its
+pipelines when its version is only one build's.
 
 ## When the version changes
 
@@ -12,15 +25,16 @@ The version changes in either of two cases:
 - **The file's shape changes.** A field is added, removed, renamed, or reinterpreted in a
   way an older Ceedling would misread.
 - **The build layout changes.** Cache keys are build paths, so a release that moves where
-  a build puts its output changes the version even when the file's shape is unchanged.
-  Otherwise an old entry could vouch for a path that now holds a different target's
-  output.
+  a build puts its output changes that build's version even when the file's shape is
+  unchanged. Otherwise an old entry could vouch for a path that now holds a different
+  target's output.
 
 An optional field an older reader safely ignores needs no new version.
 
 ## How a version is read
 
-`DependencyCacheStore#load` compares a cache's `schema_version` with the current one:
+`DependencyCacheStore#load` compares a cache's `schema_version` with its pipeline's
+current one:
 
 - **Equal.** The cache is used. Malformed entries and entries whose target is gone are
   dropped one at a time.
@@ -38,7 +52,7 @@ Each pipeline, such as test or release, has its own cache file,
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "hash_algorithm": "sha256",
   "entries": {
     "<target path>": {
@@ -63,6 +77,18 @@ Each pipeline, such as test or release, has its own cache file,
     output's content hash.
 
 ## Versions
+
+### 4: each test's own root (1.2.3, test pipelines only)
+
+**Contents:** unchanged from version 3.
+
+**Why:** the test build layout changed. A test's name is its path, so one test's
+directory below a shared base could also be a subdirectory of another test's, and the two
+tests' files mixed (#1439). Each test's own directory below the mocks, Partials,
+preprocessing, output, and dependencies directories gained a closing `_t_` segment after
+the test's name, and its executable and linker map moved with its objects. Keys naming
+the old paths name places no build reads any more. A release build's paths didn't move,
+so its caches stay at version 3.
 
 ### 3: shortened build roots (1.2.3)
 

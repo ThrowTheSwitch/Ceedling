@@ -10,6 +10,7 @@ require 'ceedling/filename_extension'
 require 'ceedling/test_context_extractor'
 require 'ceedling/includes/includes'
 require 'ceedling/includes/include_factory'
+require 'ceedling/filesystem/test_build_layout'
 require 'ceedling/parsing_parcels'
 require 'ceedling/exceptions'
 require 'ceedling/c_extractor/c_extractor_code_text'
@@ -36,8 +37,9 @@ describe TestContextExtractor do
 
     ## Concrete injected dependencies
     @parsing_parcels = ParsingParcels.new()
-    @include_factory = IncludeFactory.new( {:configurator => @configurator} )
-    @file_path_utils = FilePathUtils.new( {:configurator => @configurator, :file_wrapper => @file_wrapper } )
+    layout           = TestBuildLayout.new( {:configurator => @configurator, :file_wrapper => @file_wrapper} )
+    @include_factory = IncludeFactory.new( {:configurator => @configurator, :test_build_layout => layout} )
+    @file_path_utils = FilePathUtils.new( {:configurator => @configurator, :file_wrapper => @file_wrapper, :test_build_layout => layout } )
 
     code_text                 = CExtractorCodeText.new
     c_extractor_preprocessing = CExtractorPreprocessing.new({ c_extractor_code_text: code_text })
