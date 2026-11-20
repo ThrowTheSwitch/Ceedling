@@ -10,7 +10,7 @@ A release has a section only if it breaks something. Each section lists what cha
 
 ---
 
-# [1.2.3] — Unreleased
+# [1.2.3] — 2026-11-20
 
 ## Each tool argument closes its own quotes
 

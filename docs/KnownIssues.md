@@ -16,7 +16,7 @@ Each release has its own section, listing every issue known to affect it. An iss
 
 ---
 
-## 1.2.3 — Unreleased
+## 1.2.3 — 2026-11-20
 
 Ceedling 1.2.x requires Ruby 3+ but only unofficially supports Ruby 4.
 
