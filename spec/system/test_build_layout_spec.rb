@@ -113,7 +113,7 @@ ceedling_system_tests do
   end
 
   # An earlier release placed each test's files at its name alone, and its cache holds that
-  # layout's paths. No search path reaches those files, so a build never needs a clobber.
+  # layout's paths. Setting that cache aside rebuilds every test.
   it "rebuilds a build directory of the earlier layout without a clobber" do
     in_project do
       write_test_mocking_in_folder
@@ -130,6 +130,46 @@ ceedling_system_tests do
 
       expect(output).to match(/PASSED:\s+2/)
       expect(output).to match(/comes from an earlier Ceedling build layout -- rebuilding everything once/)
+    end
+  end
+
+  # Gives each cache in build/cache a schema version an earlier release wrote
+  def set_cache_schema(version, pattern = '.*.dep_cache.json')
+    Dir.glob( File.join( 'build/cache', pattern ) ).each do |path|
+      File.write( path, JSON.generate( JSON.parse( File.read( path ) ).merge( 'schema_version' => version ) ) )
+    end
+  end
+
+  # A release build has no per-test directories, so the test layout leaves it as it was
+  describe "a release build" do
+    before do
+      in_project do
+        @c.merge_project_yml_for_test( { :project => { :release_build => true } } )
+        header( 'src/_t_/foo.h', 'FOO_H', 'int foo(void);' )
+        write( 'src/_t_/foo.c', "#include \"foo.h\"\nint foo(void) { return 0; }\n" )
+        write( 'src/main.c', "#include \"foo.h\"\nint main(void) { return foo(); }\n" )
+      end
+    end
+
+    it "places a source in a directory named `_t_` at its own path" do
+      in_project do
+        build( 'release' )
+
+        expect(File.exist?( 'build/release/out/src/_t_/foo.o' )).to be( true )
+        expect(File.exist?( 'build/release/dependencies/src/_t_/foo.d' )).to be( true )
+      end
+    end
+
+    it "keeps its cache from an earlier release, compiling nothing" do
+      in_project do
+        build( 'release' )
+        set_cache_schema( 3, '.release.dep_cache.json' )
+
+        output = build( 'release' )
+
+        expect(output).to_not match(/earlier Ceedling build layout/)
+        expect(output).to_not match(/^Compiling /)
+      end
     end
   end
 

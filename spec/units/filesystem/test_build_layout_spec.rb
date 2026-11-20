@@ -93,7 +93,14 @@ describe TestBuildLayout do
     it "checks the root's length once" do
       @layout.root( :out, 'test/test_c', context: :test )
 
-      expect(@file_wrapper).to have_received(:check_path_length).once.with( 'build/test/out/test/test_c/_t_', origin: 'TestBuildLayout#root' )
+      expect(@file_wrapper).to have_received(:check_path_length).once
+    end
+
+    # Windows limits a directory's path more tightly than a file's
+    it "checks the root's length as a directory's" do
+      @layout.root( :mocks, 'test/test_c' )
+
+      expect(@file_wrapper).to have_received(:check_path_length).with( 'build/test/mocks/test/test_c/_t_', origin: 'TestBuildLayout#root', directory: true )
     end
   end
 
@@ -135,38 +142,33 @@ describe TestBuildLayout do
 
   describe '#locate' do
     LAYOUT_BASES.each do |kind, base|
-      it "names the kind, test and subpath of a file below a test's #{kind} root" do
-        location = @layout.locate( "#{base}/test/test_c/_t_/test_x/mock_qux.c", context: :test )
-
-        expect( location ).to eq( TestBuildLayout::Location.new( kind: kind, name: 'test/test_c', subpath: 'test_x/mock_qux.c' ) )
+      it "names the test of a file below its #{kind} root" do
+        expect( @layout.locate( "#{base}/test/test_c/_t_/test_x/mock_qux.c", context: :test ) ).to eq( 'test/test_c' )
       end
     end
 
     it "tells a nested test's file from its parent's file in a folder of the nested test's name" do
-      expect( @layout.locate( 'build/test/mocks/test/test_c/test_x/_t_/mock_qux.c' ).name ).to eq( 'test/test_c/test_x' )
-      expect( @layout.locate( 'build/test/mocks/test/test_c/_t_/test_x/mock_qux.c' ).name ).to eq( 'test/test_c' )
+      expect( @layout.locate( 'build/test/mocks/test/test_c/test_x/_t_/mock_qux.c' ) ).to eq( 'test/test_c/test_x' )
+      expect( @layout.locate( 'build/test/mocks/test/test_c/_t_/test_x/mock_qux.c' ) ).to eq( 'test/test_c' )
     end
 
     # The first `_t_` ends the name, since no name holds one
-    it 'ends the name at the first `_t_`, keeping a later one in the subpath' do
-      location = @layout.locate( 'build/test/mocks/test/test_c/_t_/_t_/mock_qux.c' )
-
-      expect( location.name ).to eq( 'test/test_c' )
-      expect( location.subpath ).to eq( '_t_/mock_qux.c' )
+    it 'ends the name at the first `_t_`' do
+      expect( @layout.locate( 'build/test/mocks/test/test_c/_t_/_t_/mock_qux.c' ) ).to eq( 'test/test_c' )
     end
 
     it "names a test whose own directory is named like `_t_` by its escaped name" do
       name = BuildSubpath.encode( 'test/_t_/test_c' )
 
-      expect( @layout.locate( @layout.file( :out, name, 'x.o', context: :test ), context: :test ).name ).to eq( 'test/__t_/test_c' )
+      expect( @layout.locate( @layout.file( :out, name, 'x.o', context: :test ), context: :test ) ).to eq( 'test/__t_/test_c' )
     end
 
-    it 'gives the root itself an empty subpath' do
-      expect( @layout.locate( 'build/test/out/test/test_c/_t_', context: :test ).subpath ).to eq( '' )
+    it 'names the test of its root itself' do
+      expect( @layout.locate( 'build/test/out/test/test_c/_t_', context: :test ) ).to eq( 'test/test_c' )
     end
 
     it "locates a file below the context's own output root" do
-      expect( @layout.locate( 'build/gcov/out/test/test_c/_t_/src/x.o', context: :gcov ).name ).to eq( 'test/test_c' )
+      expect( @layout.locate( 'build/gcov/out/test/test_c/_t_/src/x.o', context: :gcov ) ).to eq( 'test/test_c' )
       expect( @layout.locate( 'build/gcov/out/test/test_c/_t_/src/x.o', context: :test ) ).to be_nil
     end
 
@@ -183,19 +185,18 @@ describe TestBuildLayout do
       expect( @layout.locate( 'build/test/mocks/test/test_c/_t_/mock_x.c' ) ).to be_nil
     end
 
+    # Below the output base, the mock's test would be `mocks/test/test_c`
     it 'counts the most specific base holding a path' do
       allow(@configurator).to receive(:cmock_mock_path).and_return( 'build/test/out/mocks' )
 
-      location = @layout.locate( 'build/test/out/mocks/test/test_c/_t_/mock_x.c', context: :test )
-      expect( location.kind ).to eq( :mocks )
-      expect( location.name ).to eq( 'test/test_c' )
+      expect( @layout.locate( 'build/test/out/mocks/test/test_c/_t_/mock_x.c', context: :test ) ).to eq( 'test/test_c' )
     end
   end
 
   describe '#subpath' do
-    LAYOUT_BASES.each do |kind, base|
+    LAYOUT_BASES.reject { |kind, _| TestBuildLayout::CONTEXTUAL.key?( kind ) }.each do |kind, base|
       it "gives a path below a test's #{kind} root" do
-        expect( @layout.subpath( "#{base}/test/test_c/_t_/drv/x.h", kind: kind, name: 'test/test_c', context: :test ) ).to eq( 'drv/x.h' )
+        expect( @layout.subpath( "#{base}/test/test_c/_t_/drv/x.h", kind: kind, name: 'test/test_c' ) ).to eq( 'drv/x.h' )
       end
     end
 

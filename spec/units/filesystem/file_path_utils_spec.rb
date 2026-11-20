@@ -502,6 +502,13 @@ describe FilePathUtils do
         @fpu.form_test_object_filepath('build/test/partials/test/test_util/_t_/drv/ceedling_partial_util_impl.c', name: 'test/test_util', context: :gcov)
       ).to eq('build/gcov/out/test/test_util/_t_/drv/ceedling_partial_util_impl.o')
     end
+
+    # A test context's own objects sit below the base every test's root shares
+    it 'places a source in a directory named `_t_` apart from any test root, in or outside a test' do
+      expect( @fpu.form_test_object_filepath('src/_t_/foo.c', name: 'test/test_c', context: :test) )
+        .to eq('build/test/out/test/test_c/_t_/src/__t_/foo.o')
+      expect( @fpu.form_test_object_filepath('src/_t_/foo.c', context: :gcov) ).to eq('build/gcov/out/src/__t_/foo.o')
+    end
   end
 
   describe '#form_test_preprocess_build_directives_path, #form_test_build_directives_cache_filepath, #form_preprocessed_source_files_cache_filepath' do
@@ -564,6 +571,12 @@ describe FilePathUtils do
       expect { @fpu.form_release_build_objects_filelist( ['build/vendor/c_exception/lib/CException.c', 'CException.c'] ) }
         .to raise_error( CeedlingException, /`build\/vendor\/c_exception\/lib\/CException.c` and `CException.c`.*`build\/release\/out\/CException.o`/ )
     end
+
+    # A release build has no per-test directories, so nothing in its paths is reserved for them
+    it 'places a source in a directory named `_t_` at its own path' do
+      objects = @fpu.form_release_build_objects_filelist( ['src/_t_/foo.c', 'src/__t_/bar.c'] )
+      expect( objects ).to eq(['build/release/out/src/_t_/foo.o', 'build/release/out/src/__t_/bar.o'])
+    end
   end
 
   describe '#form_release_dependencies_filelist' do
@@ -584,6 +597,10 @@ describe FilePathUtils do
     it 'places each dependency file the same way as its corresponding object' do
       deps = @fpu.form_release_dependencies_filelist( ['drivers/foo/bar.c', 'drivers/baz/bar.c'] )
       expect( deps ).to eq(['build/release/dependencies/drivers/foo/bar.d', 'build/release/dependencies/drivers/baz/bar.d'])
+    end
+
+    it 'places the dependency file of a source in a directory named `_t_` at its own path' do
+      expect( @fpu.form_release_dependencies_filelist( ['src/_t_/foo.c'] ) ).to eq(['build/release/dependencies/src/_t_/foo.d'])
     end
   end
 
@@ -713,6 +730,14 @@ describe FilePathUtils do
     it 'keeps a generated file directly in its test root flat' do
       expect( @fpu.form_preprocessed_file_filepath('build/test/mocks/test_both/_t_/Mockconfig.h', 'test_both') )
         .to eq('build/test/preprocess/files/test_both/_t_/Mockconfig.h')
+    end
+
+    # Without a test, a file still lies within the build directory
+    it 'places a file named for no test below the base every test shares' do
+      expect( @fpu.form_preprocessed_file_full_expansion_filepath('src/foo.h', nil) )
+        .to eq('build/test/preprocess/files/full_expansion/src/foo.h')
+      expect( @fpu.form_preprocessed_includes_list_filepath('src/foo.h', nil) )
+        .to eq('build/test/preprocess/includes/src/foo.h.yml')
     end
   end
 
@@ -1227,7 +1252,7 @@ describe FilePathUtils do
 
       expect(@file_wrapper).to have_received(:check_path_length).once
       expect(@file_wrapper).to have_received(:check_path_length)
-        .with('build/test/preprocess/files/test/test_c/_t_', origin: 'TestBuildLayout#root')
+        .with('build/test/preprocess/files/test/test_c/_t_', origin: 'TestBuildLayout#root', directory: true)
     end
   end
 

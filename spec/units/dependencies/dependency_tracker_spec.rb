@@ -127,6 +127,31 @@ describe DependencyTracker do
 
       expect( @tracker.stale?('foo.o') ).to be(true)
     end
+
+    def stub_cache(version)
+      cache_json = JSON.generate(
+        'schema_version' => version,
+        'hash_algorithm' => DependencyHasher::HASH_ALGORITHM,
+        'entries' => { 'kept.o' => { 'self_hash' => 'a' * 64, 'meta_hash' => nil, 'deps' => {} } }
+      )
+      allow( @file_wrapper ).to receive(:exist?).with('cache.json').and_return(true)
+      allow( @file_wrapper ).to receive(:exist?).with('kept.o').and_return(true)
+      allow( @file_wrapper ).to receive(:read).with('cache.json').and_return( cache_json )
+    end
+
+    # A release build's layout changes apart from a test build's
+    it 'reads and writes a cache of the schema version its pipeline gives' do
+      stub_cache( 3 )
+      written = nil
+      allow( @file_wrapper ).to receive(:write) { |_path, content| written = content }
+
+      @tracker.open( store_path: 'cache.json', schema_version: 3 )
+      @tracker.flush
+
+      expect( JSON.parse( written )['schema_version'] ).to eq( 3 )
+      expect( JSON.parse( written )['entries'] ).to have_key( 'kept.o' )
+    end
+
   end
 
   # ── #register additive semantics ────────────────────────────────────────

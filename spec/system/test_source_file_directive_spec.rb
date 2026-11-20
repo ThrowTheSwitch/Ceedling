@@ -259,6 +259,36 @@ ceedling_system_tests do
 
     end
 
+    # =========================================================================
+    describe "A hand-written source named with the mock prefix, beside a test that mocks its header" do
+    # =========================================================================
+
+      # test_a mocks spi.h, and test_b links a hand-written fake of the mock's name instead. A
+      # :support source would be linked into every test, test_a's too, so the fake is a source.
+      before do
+        in_project do
+          preamble = "#include \"unity.h\"\nvoid setUp(void) {}\nvoid tearDown(void) {}\n"
+          FileUtils.mkdir_p( 'src/fakes' )
+          File.write( 'src/spi.h', "#ifndef SPI_H\n#define SPI_H\nint spi_read(void);\n#endif\n" )
+          File.write( 'src/fakes/mock_spi.c', "int spi_read(void) { return 42; }\n" )
+          File.write( 'test/test_a.c', preamble + "#include \"mock_spi.h\"\n" \
+                                       "void test_a(void) { spi_read_ExpectAndReturn( 5 ); TEST_ASSERT_EQUAL_INT( 5, spi_read() ); }\n" )
+          File.write( 'test/test_b.c', preamble + "#include \"spi.h\"\nTEST_SOURCE_FILE(\"mock_spi.c\")\n" \
+                                       "void test_b(void) { TEST_ASSERT_EQUAL_INT( 42, spi_read() ); }\n" )
+        end
+      end
+
+      it "builds the hand-written source into the test that names it" do
+        in_project do
+          output = @c.ceedling_build_exec("test:all")
+          expect(@c.last_exit_status).to eq(0), output
+          expect(output).to match(/TESTED:\s+2/)
+          expect(output).to match(/PASSED:\s+2/)
+        end
+      end
+
+    end
+
   end
 
 end

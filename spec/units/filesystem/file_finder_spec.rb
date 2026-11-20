@@ -563,6 +563,60 @@ describe FileFinder do
       expect(@file_wrapper).to_not have_received(:directory_listing)
     end
 
+    # A hand-written fake may take a mock's name, and a test links it through TEST_SOURCE_FILE()
+    it 'finds a hand-written source named with the mock prefix that its test\'s mocks don\'t hold' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_b.c'] )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['test/support/Mockspi.c'] )
+      list_below( ['build/test/mocks/test/test_a/_t_/Mockspi.c'] )
+
+      found = @file_finder.find_build_input_file(
+        filepath: 'build/test/out/test/test_b/_t_/test/support/Mockspi.o', complain: :error, context: TEST_SYM, test: 'test/test_b'
+      )
+      expect(found).to eq('test/support/Mockspi.c')
+    end
+
+    it 'finds a hand-written source named with the Partial prefix that its test\'s Partials don\'t hold' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_b.c'] )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['test/support/ceedling_partial_spi.c'] )
+      list_below( [] )
+
+      found = @file_finder.find_build_input_file(
+        filepath: 'build/test/out/test/test_b/_t_/test/support/ceedling_partial_spi.o', complain: :error, context: TEST_SYM, test: 'test/test_b'
+      )
+      expect(found).to eq('test/support/ceedling_partial_spi.c')
+    end
+
+    it 'finds a test\'s own mock ahead of a hand-written source of the same name' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_b.c'] )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['Mockspi.c'] )
+      list_below( ['build/test/mocks/test/test_b/_t_/Mockspi.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_b/_t_/Mockspi.o', complain: :error, context: TEST_SYM )
+      expect(found).to eq('build/test/mocks/test/test_b/_t_/Mockspi.c')
+    end
+
+    it 'names the mock it sought when neither its test\'s mocks nor the build input hold it' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_b.c'] )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/other.c'] )
+      list_below( [] )
+
+      expect {
+        @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_b/_t_/drv/Mockspi.o', complain: :error, context: TEST_SYM )
+      }.to raise_error( CeedlingException, 'Found no file `drv/Mockspi.c` in search paths.' )
+    end
+
+    it 'warns once of a mock that neither its test\'s mocks nor the build input hold' do
+      allow(@configurator).to receive(:collection_all_tests).and_return( ['test/test_b.c'] )
+      allow(@configurator).to receive(:collection_existing_test_build_input).and_return( ['src/other.c'] )
+      list_below( [] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/test/out/test/test_b/_t_/drv/Mockspi.o', complain: :warn, context: TEST_SYM )
+
+      expect(found).to be_nil
+      expect(@loginator).to have_received(:log).once
+      expect(@loginator).to have_received(:log).with( 'Found no file `drv/Mockspi.c` in search paths.', Verbosity::COMPLAIN )
+    end
+
     it 'lists a test\'s mocks with any bracket in its path escaped, so the listing is not a glob class' do
       allow(@configurator).to receive(:collection_all_tests).and_return( ['test[1]/test_foo.c'] )
 
@@ -654,6 +708,17 @@ describe FileFinder do
         filepath: 'build/release/out/drivers/baz/bar.o', complain: :error, context: RELEASE_SYM
       )
       expect(found).to eq('drivers/baz/bar.c')
+    end
+
+    # A release build has no per-test directories, so it places a directory named `_t_` as is
+    it 'resolves a release object of a source in a directory named like `_t_` to exactly that source' do
+      allow(@configurator).to receive(:collection_release_build_input).and_return( ['src/_t_/foo.c', 'src/__t_/foo.c'] )
+
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/src/_t_/foo.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('src/_t_/foo.c')
+
+      found = @file_finder.find_build_input_file( filepath: 'build/release/out/src/__t_/foo.o', complain: :error, context: RELEASE_SYM )
+      expect(found).to eq('src/__t_/foo.c')
     end
 
     it 'resolves a module-under-test object to the source at its own path, even when another same-named module exists elsewhere' do

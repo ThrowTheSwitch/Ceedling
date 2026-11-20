@@ -131,6 +131,35 @@ describe DependencyCacheStore do
       expect( DependencyCacheStore::CACHE_SCHEMA_VERSION ).to eq( 4 )
     end
 
+    # Each test's own root changed only test build paths
+    it 'keeps the 1.2.3 release build layout at schema version 3' do
+      expect( DependencyCacheStore::RELEASE_CACHE_SCHEMA_VERSION ).to eq( 3 )
+    end
+
+    it 'uses a cache of the schema version its pipeline gives as it is' do
+      payload = JSON.generate(
+        'schema_version' => 3, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => { 'foo.o' => valid_entry }
+      )
+      stub_file( 'build/cache/.release.dep_cache.json', payload )
+
+      result = @store.load( 'build/cache/.release.dep_cache.json', schema_version: 3 )
+
+      expect( result['entries'] ).to eq( 'foo.o' => valid_entry )
+      expect( result['schema_version'] ).to eq( 3 )
+      expect( @loginator ).not_to have_received(:log)
+    end
+
+    it "treats a cache newer than its pipeline's schema version as absent" do
+      payload = JSON.generate(
+        'schema_version' => 4, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => { 'foo.o' => valid_entry }
+      )
+      stub_file( 'build/cache/.release.dep_cache.json', payload )
+
+      expect(@loginator).to receive(:log).with( /has an incompatible or missing schema_version/, Verbosity::COMPLAIN )
+
+      expect( @store.load( 'build/cache/.release.dep_cache.json', schema_version: 3 )['entries'] ).to eq( {} )
+    end
+
     it 'rebuilds once from a cache of shortened roots without per-test roots' do
       payload = JSON.generate(
         'schema_version' => 3, 'hash_algorithm' => DependencyHasher::HASH_ALGORITHM, 'entries' => { 'foo.o' => valid_entry }
@@ -413,6 +442,18 @@ describe DependencyCacheStore do
       expect( @file_wrapper ).not_to receive(:write).with('/build/dep_cache.json', anything)
 
       @store.persist( '/build/dep_cache.json', {} )
+    end
+
+    it "writes the schema version its pipeline gives" do
+      allow( @file_wrapper ).to receive(:dirname).and_return('/build')
+      allow( @file_wrapper ).to receive(:mkdir)
+      allow( @file_wrapper ).to receive(:mv)
+      written = nil
+      allow( @file_wrapper ).to receive(:write) { |_path, content| written = content }
+
+      @store.persist( '/build/.release.dep_cache.json', {}, schema_version: DependencyCacheStore::RELEASE_CACHE_SCHEMA_VERSION )
+
+      expect( JSON.parse( written )['schema_version'] ).to eq( DependencyCacheStore::RELEASE_CACHE_SCHEMA_VERSION )
     end
   end
 
