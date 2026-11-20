@@ -40,9 +40,11 @@ describe PrerequisiteHeaderSpecialist do
     return "#{chain}#{file}:5:6: error: #error #{text}\n    5 |     #error #{text}\n      |      ^~~~~\n"
   end
 
-  def clang_output(message = GUARD_MESSAGE, file: GUARDED_HEADER, quoted: true, chain: '')
+  # Apple Clang echoes the line without the line-number gutter that Clang 18 writes
+  def clang_output(message = GUARD_MESSAGE, file: GUARDED_HEADER, quoted: true, chain: '', gutter: true)
     text = quoted ? "\"#{message}\"" : message
-    return "#{chain}#{file}:5:6: error: #{text}\n    5 |     #error #{text}\n      |      ^\n1 error generated.\n"
+    echo = gutter ? "    5 |     #error #{text}\n      |      ^\n" : "    #error #{text}\n     ^\n"
+    return "#{chain}#{file}:5:6: error: #{text}\n#{echo}1 error generated.\n"
   end
 
   def preprocess(output, role: :mock, source: GUARDED_HEADER)
@@ -90,7 +92,9 @@ describe PrerequisiteHeaderSpecialist do
       'GCC'                    => -> (spec) { spec.gcc_output },
       'Clang'                  => -> (spec) { spec.clang_output },
       'GCC, unquoted text'     => -> (spec) { spec.gcc_output( 'include FreeRTOS.h first', quoted: false ) },
-      'Clang, unquoted text'   => -> (spec) { spec.clang_output( 'include FreeRTOS.h first', quoted: false ) }
+      'Clang, unquoted text'   => -> (spec) { spec.clang_output( 'include FreeRTOS.h first', quoted: false ) },
+      'Apple Clang'            => -> (spec) { spec.clang_output( gutter: false ) },
+      'Apple Clang, unquoted'  => -> (spec) { spec.clang_output( 'include FreeRTOS.h first', quoted: false, gutter: false ) }
     }.each do |wording, output|
       it "prescribes both settings for #{wording}" do
         expect( preprocess( output.call( self ) ) ).to eq( [preprocess_guidance] )
@@ -165,7 +169,8 @@ describe PrerequisiteHeaderSpecialist do
   context 'when compiling a source' do
     {
       'GCC'   => -> (spec) { spec.gcc_output( chain: "In file included from #{MOCKS_DIR}/mock_task.h:7,\n                 from #{MOCK_SOURCE}:6:\n" ) },
-      'Clang' => -> (spec) { spec.clang_output( chain: "In file included from #{MOCK_SOURCE}:6:\nIn file included from #{MOCKS_DIR}/mock_task.h:7:\n" ) }
+      'Clang' => -> (spec) { spec.clang_output( chain: "In file included from #{MOCK_SOURCE}:6:\nIn file included from #{MOCKS_DIR}/mock_task.h:7:\n" ) },
+      'Apple Clang' => -> (spec) { spec.clang_output( chain: "In file included from #{MOCK_SOURCE}:6:\nIn file included from #{MOCKS_DIR}/mock_task.h:7:\n", gutter: false ) }
     }.each do |compiler, output|
       it "prescribes the :includes_h_pre_orig_header setting alone for a generated mock, from #{compiler}" do
         expect( compile( output.call( self ) ) ).to eq( [compile_guidance] )
