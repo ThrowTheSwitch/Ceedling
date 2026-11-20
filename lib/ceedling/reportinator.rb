@@ -101,7 +101,7 @@ class Reportinator
       guidance_section( section, Array( items ).compact, headings )
     end
 
-    blocks = [Array( lead ).compact.join( "\n" ), *sections, closing.to_s].map( &:chomp ).reject( &:empty? )
+    blocks = [Array( lead ).compact.join( "\n" ), *sections, closing.to_s].map( &:rstrip ).reject( &:empty? )
 
     return blocks.empty? ? '' : "#{blocks.join( "\n\n" )}\n"
   end

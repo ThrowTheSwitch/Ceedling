@@ -105,7 +105,7 @@ class GeneratorHelper
   # What the crashed executable's output shows, as a sentence, or '' when it holds the counts
   def crash_output_notice(output)
     return 'It produced no output, including no final test result counts.' if output.nil? || output.strip.empty?
-    return 'It produced some output but contains no final test result counts.' if (output =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?
+    return 'It produced some output but no final test result counts.' if (output =~ PATTERNS::TEST_STDOUT_STATISTICS).nil?
 
     return ''
   end
