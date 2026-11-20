@@ -40,6 +40,21 @@ class IncludeDepthSpecialist
 
   INCLUDE_DIRECTIVE = /^[ \t]*#[ \t]*include[ \t]*([<"])([^>"\n]+)[>"]/
 
+  LEAD = 'The compiler output appears to report #include directives nested too deeply, which usually means a header includes itself.'
+
+  CAUSES = [
+    'A compiler searches the include paths in order and uses the first file with the requested name.',
+    'A forwarding header that #includes its own filename, to reach a header of that name elsewhere, finds itself again when its directory comes first.',
+    'Two headers that #include each other without include guards repeat in the same way.',
+    'The compiler stops at a fixed nesting limit and reports the loop as nesting too deep.'
+  ].freeze
+
+  OPTIONS = [
+    "Order :paths ↳ :include (or TEST_INCLUDE_PATH()) so the directory holding the intended header comes before the forwarding header's directory.",
+    %q(List the forwarding header's parent directory instead, and #include it by its subdirectory, such as "freertos/timers.h".),
+    'Give headers that include each other include guards or #pragma once.'
+  ].freeze
+
   constructor :file_wrapper
 
   def diagnoses()
@@ -58,23 +73,9 @@ class IncludeDepthSpecialist
   private
 
   def examine(kase)
-    lead    = 'The compiler output appears to report #include directives nested too deeply, which usually means a header includes itself.'
     finding = self_inclusion( error_header( kase.symptoms ), kase.inputs[:search_paths] || [] )
 
-    return Reportinator.generate_guidance(
-      lead: [lead, finding],
-      causes: [
-        'A compiler searches the include paths in order and uses the first file with the requested name.',
-        'A forwarding header that #includes its own filename, to reach a header of that name elsewhere, finds itself again when its directory comes first.',
-        'Two headers that #include each other without include guards repeat in the same way.',
-        'The compiler stops at a fixed nesting limit and reports the loop as nesting too deep.'
-      ],
-      options: [
-        "Order :paths ↳ :include (or TEST_INCLUDE_PATH()) so the directory holding the intended header comes before the forwarding header's directory.",
-        %q(List the forwarding header's parent directory instead, and #include it by its subdirectory, such as "freertos/timers.h".),
-        'Give headers that include each other include guards or #pragma once.'
-      ]
-    )
+    return Reportinator.generate_guidance( lead: [LEAD, finding], causes: CAUSES, options: OPTIONS )
   end
 
   # The header on the line that reports the error, or nil

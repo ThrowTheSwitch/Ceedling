@@ -41,6 +41,40 @@ class PartialNameSpecialist
   # How many of a test's real names a prescription lists
   NAMES_LISTED = 12
 
+  LOCAL_VAR_LEAD = 'The compiler output appears to report a name that PARTIAL_LOCAL_VAR() builds and nothing declares. ' \
+                   "If so, the macro's arguments may not match a static variable inside one of the module's functions."
+
+  LOCAL_VAR_CAUSES = [
+    'PARTIAL_LOCAL_VAR(function, variable) pastes its arguments into one name, partial_<function>_<variable>, as the test compiles.',
+    "Each argument must match the module's source exactly, case included. A misspelling builds a name nothing declares.",
+    'Only a variable declared static inside a function is promoted. A variable at file scope keeps its own name.',
+    "The macro builds a name the compiler reads. It can't take a string or a runtime value.",
+    'A test reaches promoted variables through a TEST_PARTIAL_*_MODULE() macro. A MOCK_PARTIAL_*_MODULE() macro provides none.'
+  ].freeze
+
+  LOCAL_VAR_OPTIONS = [
+    "Check each argument against the function and its static variable in the module's source.",
+    'Name a variable at file scope directly, without the macro.',
+    'Include the module with a TEST_PARTIAL_*_MODULE() macro.'
+  ].freeze
+
+  TYPE_LEAD = 'The compiler output appears to report a type that PARTIAL_TYPE() or PARTIAL_LOCAL_TYPE() names and nothing declares. ' \
+              "If so, the macro's arguments may not match a variable declared together with its type."
+
+  TYPE_CAUSES = [
+    'A Partial names the type of a variable declared together with its type, as in `static struct { int count; } s_ctx;`.',
+    'PARTIAL_TYPE(module, variable) and PARTIAL_LOCAL_TYPE(module, function, variable) paste their arguments into that name as the test compiles.',
+    "The module argument is the module's name alone, without a directory. A character a C identifier can't hold is written as `_`, as in my_sensor for my-sensor.",
+    'Variables declared in one statement share one type, named for the first of them.',
+    'A variable whose type is named elsewhere, as in `static struct ctx s_ctx;`, uses that name, here `struct ctx`.'
+  ].freeze
+
+  TYPE_OPTIONS = [
+    "Check each argument against the module's name and its declaration, case included.",
+    "Use PARTIAL_LOCAL_TYPE() for a static declared inside a function, with the function's name.",
+    'Write a type named elsewhere by its own name.'
+  ].freeze
+
   constructor :configurator, :file_wrapper
 
   def diagnoses()
@@ -62,21 +96,9 @@ class PartialNameSpecialist
     return nil unless names?( kase, LOCAL_VAR, [LOCAL_VAR_MACRO] )
 
     return Reportinator.generate_guidance(
-      lead: 'The compiler output appears to report a name that PARTIAL_LOCAL_VAR() builds and nothing declares. ' \
-            "If so, the macro's arguments may not match a static variable inside one of the module's functions.",
-      causes: [
-        'PARTIAL_LOCAL_VAR(function, variable) pastes its arguments into one name, partial_<function>_<variable>, as the test compiles.',
-        "Each argument must match the module's source exactly, case included. A misspelling builds a name nothing declares.",
-        'Only a variable declared static inside a function is promoted. A variable at file scope keeps its own name.',
-        "The macro builds a name the compiler reads. It can't take a string or a runtime value.",
-        'A test reaches promoted variables through a TEST_PARTIAL_*_MODULE() macro. A MOCK_PARTIAL_*_MODULE() macro provides none.'
-      ],
-      options: [
-        "Check each argument against the function and its static variable in the module's source.",
-        'Name a variable at file scope directly, without the macro.',
-        'Include the module with a TEST_PARTIAL_*_MODULE() macro.',
-        listed( kase, LOCAL_VAR, 'Promoted variables' )
-      ]
+      lead:    LOCAL_VAR_LEAD,
+      causes:  LOCAL_VAR_CAUSES,
+      options: [*LOCAL_VAR_OPTIONS, listed( kase, LOCAL_VAR, 'Promoted variables' )]
     )
   end
 
@@ -84,21 +106,9 @@ class PartialNameSpecialist
     return nil unless names?( kase, TYPE, TYPE_MACROS )
 
     return Reportinator.generate_guidance(
-      lead: 'The compiler output appears to report a type that PARTIAL_TYPE() or PARTIAL_LOCAL_TYPE() names and nothing declares. ' \
-            "If so, the macro's arguments may not match a variable declared together with its type.",
-      causes: [
-        'A Partial names the type of a variable declared together with its type, as in `static struct { int count; } s_ctx;`.',
-        'PARTIAL_TYPE(module, variable) and PARTIAL_LOCAL_TYPE(module, function, variable) paste their arguments into that name as the test compiles.',
-        "The module argument is the module's name alone, without a directory. A character a C identifier can't hold is written as `_`, as in my_sensor for my-sensor.",
-        'Variables declared in one statement share one type, named for the first of them.',
-        'A variable whose type is named elsewhere, as in `static struct ctx s_ctx;`, uses that name, here `struct ctx`.'
-      ],
-      options: [
-        "Check each argument against the module's name and its declaration, case included.",
-        "Use PARTIAL_LOCAL_TYPE() for a static declared inside a function, with the function's name.",
-        'Write a type named elsewhere by its own name.',
-        listed( kase, TYPE, 'Type names' )
-      ]
+      lead:    TYPE_LEAD,
+      causes:  TYPE_CAUSES,
+      options: [*TYPE_OPTIONS, listed( kase, TYPE, 'Type names' )]
     )
   end
 

@@ -38,6 +38,22 @@ class DuplicateSymbolSpecialist
   ].freeze
 
 
+  CAUSES = [
+    'A program may define each function and each global variable only once across all its object files.',
+    'A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header.',
+    'A test file that defines a function the source under test also defines places two definitions in one executable.'
+  ].freeze
+
+  OPTIONS = [
+    'Declare header variables extern, and define each one in a single source file.',
+    'Make functions defined in headers static inline, or move their bodies into one source file.',
+    "Remove a test's own definition of a function the linked source already provides, or mock the source's header instead."
+  ].freeze
+
+  # Each appears only when the project uses mocks
+  MOCK_CAUSE  = 'A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them.'
+  MOCK_OPTION = "Don't #include both a mock and its real header in one test and don't name a mocked module's source in TEST_SOURCE_FILE()."
+
   constructor :configurator
 
   def diagnoses()
@@ -68,18 +84,8 @@ class DuplicateSymbolSpecialist
     mocks = @configurator.project_use_mocks
 
     return {
-      causes: [
-        'A program may define each function and each global variable only once across all its object files.',
-        'A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header.',
-        'A test file that defines a function the source under test also defines places two definitions in one executable.',
-        ('A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them.' if mocks)
-      ],
-      options: [
-        'Declare header variables extern, and define each one in a single source file.',
-        'Make functions defined in headers static inline, or move their bodies into one source file.',
-        "Remove a test's own definition of a function the linked source already provides, or mock the source's header instead.#{GuidancePhrases.requirements( mocks: mocks )}",
-        ("Don't #include both a mock and its real header in one test and don't name a mocked module's source in TEST_SOURCE_FILE()." if mocks)
-      ]
+      causes:  [*CAUSES, (MOCK_CAUSE if mocks)],
+      options: [*OPTIONS.first( 2 ), "#{OPTIONS.last}#{GuidancePhrases.requirements( mocks: mocks )}", (MOCK_OPTION if mocks)]
     }
   end
 
