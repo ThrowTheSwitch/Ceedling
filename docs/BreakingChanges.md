@@ -16,6 +16,14 @@ A release has a section only if it breaks something. Each section lists what cha
 
 Tool validation now fails a tool whose `:executable` or argument leaves a quote open ([tool definitions](https://docs.throwtheswitch.org/Ceedling/1.2.0/configuration/reference/tools/#tool-definition-configurable-elements)). A tool that opens a quote in one `:arguments` entry and closes it in a later one worked before and now fails. Join such entries into one, as in `- -DMSG="a b"` in place of `- -DMSG="a` and `- b"`.
 
+## Each test’s build output sits below its own `_t_` directory
+
+A test’s build directory could lie inside another test’s, and the two tests’ files then mixed. Ceedling names each test by its path, so `test/test_calc.c` and `test/test_calc/test_io.c` built into `build/test/out/test/test_calc/` and a folder within it. Each test’s directory now ends in `_t_`, as in `build/test/out/test/test_calc/_t_/`. No test’s directory can hold another’s.
+
+A test’s objects, executable, linker map, mocks, Partials and preprocessed files move into this directory. Runners, results and logs stay where they were, and release builds are unchanged. Update anything that reads a test’s executable or mocks by path, such as a debugger launch configuration. A glob such as `build/test/out/**/*.out` still finds every executable.
+
+The first test build after upgrading rebuilds every test once. Run `ceedling clobber` after upgrading to remove the old layout’s files, which coverage reports and some `#include`s could otherwise still reach.
+
 ---
 
 # [1.2.2] — 2026-10-31
