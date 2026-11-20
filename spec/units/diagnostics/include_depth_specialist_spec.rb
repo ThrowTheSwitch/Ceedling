@@ -30,7 +30,7 @@ describe IncludeDepthSpecialist do
     @doctor = BuildStepDoctor.new(
       loginator: @loginator, header_collision_specialist: nobody, missing_symbol_specialist: nobody,
       duplicate_symbol_specialist: nobody, partial_name_specialist: nobody,
-      include_depth_specialist: described_class.new( file_wrapper: @file_wrapper )
+      include_depth_specialist: described_class.new( file_wrapper: @file_wrapper ), prerequisite_header_specialist: nobody
     ).tap( &:setup )
   end
 

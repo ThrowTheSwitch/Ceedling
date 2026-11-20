@@ -26,7 +26,8 @@ describe MissingSymbolSpecialist do
       loginator: @loginator, header_collision_specialist: nobody,
       missing_symbol_specialist: described_class.new( configurator: @configurator ), duplicate_symbol_specialist: nobody,
       partial_name_specialist: nobody,
-      include_depth_specialist: nobody
+      include_depth_specialist: nobody,
+      prerequisite_header_specialist: nobody
     ).tap( &:setup )
   end
 

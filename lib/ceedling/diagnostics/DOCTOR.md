@@ -4,7 +4,7 @@ The build step doctor explains a failed build step to the test developer. When a
 
 ## Why it exists
 
-Some toolchain errors have causes that only Ceedling's conventions explain. A redeclaration error can mean a mocked header's real content reached the compilation a second way. A missing symbol most often means a test's `#include` directives left out a source it needs. A duplicate symbol can mean a mock was linked beside the source it stands in for. An `#include` nested too deeply most often means a header that includes its own filename found itself first. The raw error names none of this. A developer reading only the compiler's words may spend a long time finding a cause Ceedling could have pointed to.
+Some toolchain errors have causes that only Ceedling's conventions explain. A redeclaration error can mean a mocked header's real content reached the compilation a second way. A missing symbol most often means a test's `#include` directives left out a source it needs. A duplicate symbol can mean a mock was linked beside the source it stands in for. An `#include` nested too deeply most often means a header that includes its own filename found itself first. An `#error` in a mocked header can mean the header refuses to be included without a prerequisite header, which the test file's own `#include` directives never reach. The raw error names none of this. A developer reading only the compiler's words may spend a long time finding a cause Ceedling could have pointed to.
 
 Each kind of guidance follows the same pattern:
 
@@ -37,6 +37,7 @@ An examination that raises is a bug in guidance, never a reason to hide a build'
 | `DuplicateSymbolSpecialist` | linking | `:duplicate_symbols`: a symbol more than one linked object defines. The guidance names a mock linked beside the source it stands in for. |
 | `IncludeDepthSpecialist` | preprocessing, compilation | `:include_nested_too_deeply`: `#include` directives nested past the compiler's limit. The guidance names a header that includes its own filename and reaches itself first. It tells an angled `#include`, which the search path order decides, from a quoted one, which reaches its own directory first whatever that order. |
 | `PartialNameSpecialist` | compilation | `:partial_local_var` and `:partial_type`: a name that `PARTIAL_LOCAL_VAR()`, or `PARTIAL_TYPE()` or `PARTIAL_LOCAL_TYPE()`, builds and nothing declares, in the test file of a build with Partials. The guidance lists the names the test's generated Partial headers provide. |
+| `PrerequisiteHeaderSpecialist` | preprocessing, compilation | `:prerequisite_header_preprocess`: an `#error` in a header being preprocessed to be mocked, which may guard it against inclusion before a prerequisite header. The guidance names the prerequisite the message names, and both settings that resolve it: a `-include` preprocessor flag and `:cmock` ↳ `:includes_h_pre_orig_header`. `:prerequisite_header_compile`: the same `#error` in the compilation of a generated mock, whose guidance names `:includes_h_pre_orig_header` alone. |
 
 `TestSubstitutions` (`test_invoker/test_substitutions.rb`) answers two questions both sibling-header isolation and the collision diagnoses ask: which real headers a test substitutes, and which directories hold Ceedling's own generated content.
 
@@ -46,7 +47,7 @@ The doctor sees a failure just before it is raised, at four places:
 
 - **`TestBuildExecutor#compile_test_component`**, for a C compilation, with `tool`, `source`, `object`, `search_paths`, `flags`, `defines`, `testable`, and `dependencies`. `dependencies` is the first attempt's `.d` file, whose paths are the real headers, even when an isolated retry produced the failure. This site calls `diagnose` itself, after any isolated retry has failed too.
 - **`TestBuildExecutor#generate_executable`**, for a link, with `tool`, `objects`, `executable`, `flags`, `lib_args`, `lib_paths`, and `testable`. The link runs under `attend`.
-- **`PreprocessinatorFileAssembler`'s full expansions of a test file and of a header to be mocked**, with `tool`, `source`, `search_paths`, `flags`, and `defines`. Both run under `attend`. Neither has a fallback, so a failure there ends the build.
+- **`PreprocessinatorFileAssembler`'s full expansions of a test file and of a header to be mocked**, with `tool`, `source`, `search_paths`, `flags`, `defines`, and `role`. `role` is `:mock` for a header to be mocked and `:test` for a test file. Both run under `attend`. Neither has a fallback, so a failure there ends the build.
 
 Compilation and linking failures are where guidance helps a test developer most. Ceedling runs the preprocessor many times per test. Most of those runs are expected to fail at times and fall back by design, so they aren't connected. A misplaced prescription there would only add noise. The full expansions of a test file and of a header to be mocked are the exception, since their failure stops the build. Assembly and release builds aren't connected either. The engine accepts a `:warning` outcome, so connecting more needs only a call site.
 
@@ -143,3 +144,14 @@ A wording alone matches any undeclared name, so `PartialNameSpecialist` also ask
 | MSVC | `C1014` `too many include files` | expected |
 | IAR, Arm armcc, TI, Green Hills | `#include file … includes itself`, `include file nesting` | expected |
 | TASKING, SDCC, others | generic: `include depth`, `include nesting`, `nested include`, `nested too deep`, `too many include` | expected |
+
+### Prerequisite guards at preprocessing or compilation
+
+Any `#error` matches the symptoms, so each diagnosis also asks where the error is. A preprocessed header must be the one to be mocked or reach the error through its `#include` chain, and a compiled source must be a generated mock. The prerequisite is the first header the message names that isn't the guarded header, in phrasings such as `must appear … before`, `must be included before`, and `include X first`. A message that names none leaves the guidance general.
+
+| Family | Wordings | Evidence |
+|---|---|---|
+| GCC | `file.h:5:6: error: #error "message"`, and unquoted `error: #error message` | real toolchain (GCC 13) |
+| Clang | `file.h:5:6: error: "message"`, and unquoted `error: message`, each with the `#error` line echoed beneath, after a `5 |` gutter (Clang 18) or none (Apple Clang 15) | real toolchain (Clang 18, Apple Clang 15) |
+
+Clang writes no `#error` in its message, so only the echoed line tells the directive from any other error. A build that turns off caret diagnostics leaves nothing to match.

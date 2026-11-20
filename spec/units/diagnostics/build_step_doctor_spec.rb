@@ -25,7 +25,8 @@ describe BuildStepDoctor do
       missing_symbol_specialist:   specialist( *others ),
       duplicate_symbol_specialist: specialist,
       partial_name_specialist:     specialist,
-      include_depth_specialist:    specialist
+      include_depth_specialist:    specialist,
+      prerequisite_header_specialist: specialist
     )
   end
 

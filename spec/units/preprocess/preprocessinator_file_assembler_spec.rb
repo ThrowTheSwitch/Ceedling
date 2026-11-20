@@ -44,7 +44,7 @@ RSpec.describe PreprocessinatorFileAssembler do
     recorder  = BuildStepDoctor::Diagnosis.new(
       name: :recorder, steps: [:preprocess], symptoms: /nested/, examination: ->(kase) { @examined << kase; 'guidance' }
     )
-    specialists = %i[header_collision_specialist missing_symbol_specialist duplicate_symbol_specialist partial_name_specialist]
+    specialists = %i[header_collision_specialist missing_symbol_specialist duplicate_symbol_specialist partial_name_specialist prerequisite_header_specialist]
                   .to_h { |name| [name, double( name.to_s, diagnoses: [] )] }
     @build_step_doctor = BuildStepDoctor.new(
       loginator: @loginator, include_depth_specialist: double( 'specialist', diagnoses: [recorder] ), **specialists
@@ -334,7 +334,7 @@ RSpec.describe PreprocessinatorFileAssembler do
         expect { call_collect_mockable(fallback: true, extras: false) }.to raise_error( failure )
         expect(@examined.map( &:step )).to eq( [:preprocess] )
         expect(@examined.first.inputs).to eq(
-          { tool: :full_preprocessor, source: filepath, search_paths: include_paths, flags: flags, defines: defines }
+          { tool: :full_preprocessor, source: filepath, search_paths: include_paths, flags: flags, defines: defines, role: :mock }
         )
         expect(@loginator).to have_received(:log).with( 'guidance', Verbosity::ERRORS, LogLabels::NOTICE )
       end
@@ -841,7 +841,7 @@ RSpec.describe PreprocessinatorFileAssembler do
         )
       }.to raise_error( failure )
       expect(@examined.first.inputs).to eq(
-        { tool: {}, source: filepath, search_paths: ['vendor/include'], flags: ['-w'], defines: ['TEST'] }
+        { tool: {}, source: filepath, search_paths: ['vendor/include'], flags: ['-w'], defines: ['TEST'], role: :test }
       )
     end
 
