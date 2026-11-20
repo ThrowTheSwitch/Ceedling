@@ -49,6 +49,7 @@ The path modules sit in `lib/ceedling/filesystem/`, whose [README](README.md) li
 | `destination_collision.rb` | `DestinationCollision` | Stopping a build when two inputs map to one output |
 | `file_path_collection_utils.rb` | `FilePathCollectionUtils` | Collecting `:paths` directories and `:files` revisions |
 | `file_path_utils.rb` | `FilePathUtils` | Test names and every build file's path |
+| `test_build_layout.rb` | `TestBuildLayout` | Each test's own build directories, and which test's a build path lies in |
 | `file_finder.rb` | `FileFinder` | Finding a build file's input from the build file's path |
 | `../config/build_root_policy.rb` | `BuildRootPolicy` | What a build root may be, and what Ceedling creates in it |
 | `../config/configurator_builder.rb` | `ConfiguratorBuilder` | Building collections with the exclusions applied |
@@ -62,6 +63,7 @@ Every change to path code must keep these invariants. Specs pin each one.
 - Two distinct inputs never share one output. `DestinationCollision` stops the build when they would.
 - `BuildSubpath.decode( BuildSubpath.encode( dir, roots: t ), roots: t )` returns `dir` in intake's spelling, for any table `t`, including none.
 - A collection holds each place once, however many entries or spellings reach it.
+- No test's own build directory lies inside another's. No test name holds `_t_`, so the first `_t_` below a per-test base ends a name.
 - `ProjectPaths`, `BuildSubpath`, and `BuildRoots` never depend on DIY objects or configuration. A table of roots is passed in.
 - Comparison folds case on Windows only. Stored spellings never change case.
 
@@ -106,7 +108,7 @@ Every change to path code must keep these invariants. Specs pin each one.
 
 ### Markers
 
-Four marker segments stand for what a relative path cannot hold.
+Marker segments stand for what a relative path cannot hold. One more, `_t_`, closes a test's name in the test's own build directories.
 
 | Marker | Stands for | Example directory | Encoded subpath |
 | --- | --- | --- | --- |
@@ -116,6 +118,7 @@ Four marker segments stand for what a relative path cannot hold.
 | `_unc_` | A Windows UNC share | `//server/share/inc` | `_unc_/server/share/inc` |
 | `_ceedling_` | A file Ceedling ships, from the running installation, outside the project | `<installation>/plugins/fff/src` | `_ceedling_/plugins/fff/src` |
 | `_<name>_<hash>` | A long configured root (see [Shortened roots](#shortened-roots)) | `../../../Keil_v5/ARM/CMSIS/Include/os` | `_Include_3F2A91C0/os` |
+| `_t_` | The end of a test's name below a per-test base (see [Each test's own root](#each-tests-own-root-testbuildlayout)). `encode` never writes it | Test `test/test_c` | `build/test/mocks/test/test_c/_t_` |
 
 The project root itself encodes as `''`. Its files sit directly below the output root.
 
@@ -141,7 +144,7 @@ A long configured root adds its whole location to every build path below it. A v
 
 ### Escaping a marker-named directory
 
-A real directory named like a marker gains one leading `_`. `MARKER_NAMED` matches `_up_`, `_abs_`, `_unc_`, and `_ceedling_`, already led by any number of `_`, in any case. `ROOT_MARKER_NAMED` matches anything shaped like a root marker, `_` led and ending in `_` and 8 hexadecimal digits, such as a date-stamped `_v_20240101`. An escaped name always begins with `__`, and a root marker never does. So `src/_up_/x` encodes as `src/__up_/x`, and `src/__abs_` as `src/___abs_`. `decode` strips one leading `_` from a marker-named segment that begins with `__`. The match ignores case because macOS and Windows file systems fold case, so `_UP_` and `_up_` can name one directory there.
+A real directory named like a marker gains one leading `_`. `MARKER_NAMED` matches `_up_`, `_abs_`, `_unc_`, `_ceedling_`, and `_t_` (`OWN_SEGMENT`), already led by any number of `_`, in any case. A test at `test/_t_/test_c.c` is therefore named `test/__t_/test_c`. `ROOT_MARKER_NAMED` matches anything shaped like a root marker, `_` led and ending in `_` and 8 hexadecimal digits, such as a date-stamped `_v_20240101`. An escaped name always begins with `__`, and a root marker never does. So `src/_up_/x` encodes as `src/__up_/x`, and `src/__abs_` as `src/___abs_`. `decode` strips one leading `_` from a marker-named segment that begins with `__`. The match ignores case because macOS and Windows file systems fold case, so `_UP_` and `_up_` can name one directory there.
 
 ### Decoding
 
@@ -159,11 +162,11 @@ A real directory named like a marker gains one leading `_`. `MARKER_NAMED` match
 
 The rule has three cases, tried in order.
 
-1. A file below one of the caller's `generated_roots` mirrors below that root. These roots are the test's own mock and Partials directories, from `generated_roots(test)`. A mock's object therefore keeps the mock's own subdirectory.
+1. A file below one of the caller's `generated_roots` mirrors below that root. These roots are the test's own mock and Partials roots, from `TestBuildLayout#generated_roots`. A mock's object therefore keeps the mock's own subdirectory below the test's own output root.
 2. A file elsewhere below the build root lands flat. These are vendored framework sources and runners, which never share a basename within one test.
 3. Any other file lands at `BuildSubpath.of_directory( File.dirname( file ), roots: build_roots )`.
 
-In test `test/drivers/test_uart`, the source `src/drivers/uart.c` builds to `build/test/out/test/drivers/test_uart/src/drivers/uart.o`. A release builds it to `build/release/out/src/drivers/uart.o`. The source `../shared/crc.c` builds to `…/_up_/shared/crc.o`.
+In test `test/drivers/test_uart`, the source `src/drivers/uart.c` builds to `build/test/out/test/drivers/test_uart/_t_/src/drivers/uart.o`. A release builds it to `build/release/out/src/drivers/uart.o`. The source `../shared/crc.c` builds to `…/_up_/shared/crc.o`.
 
 ### Forming paths
 
@@ -173,7 +176,7 @@ In test `test/drivers/test_uart`, the source `src/drivers/uart.c` builds to `bui
 
 These callers use the rule.
 
-- `form_test_object_filepath` and `form_test_build_objects_filelist` place test objects below `build/test/out/<test name>/`.
+- `form_test_object_filepath` and `form_test_build_objects_filelist` place test objects below `build/test/out/<test name>/_t_/`, the test's own output root.
 - `form_release_build_objects_filelist` and `form_release_dependencies_filelist` place release objects and their `.d` files.
 - `form_release_dependencies_filepath` mirrors a release object's own subpath below the release dependencies directory.
 - `preprocessed_file_subpath` places preprocessed headers and sources below each test's preprocessing directories.
@@ -181,7 +184,26 @@ These callers use the rule.
 
 ### Test names
 
-A test's name is its path from the project root without its extension. `form_test_name(filepath)` is `BuildSubpath.encode( filepath.ext( '' ) )`, with no roots table, so a test name never shortens. The name places the test's build output, results, runner, mocks, preprocessing, and logs. `test/unit/test_foo.c` is named `test/unit/test_foo`. A test at `../tests/test_x.c` is named `_up_/tests/test_x`. `TestBuildValidations` stops the build through `DestinationCollision` when two tests share a name.
+A test's name is its path from the project root without its extension. `form_test_name(filepath)` is `BuildSubpath.encode( filepath.ext( '' ) )`, with no roots table, so a test name never shortens. The name places the test's build output, results, runner, mocks, preprocessing, and logs. Below each per-test base, `_t_` closes the name (see [Each test's own root](#each-tests-own-root-testbuildlayout)). `test/unit/test_foo.c` is named `test/unit/test_foo`. A test at `../tests/test_x.c` is named `_up_/tests/test_x`. `TestBuildValidations` stops the build through `DestinationCollision` when two tests share a name.
+
+### Each test's own root: `TestBuildLayout`
+
+`TestBuildLayout` composes every per-test directory, and is the one place that does. A test's name is a path, so `<base>/<name>` alone can't keep tests apart. `build/test/mocks/test/test_c/test_x/` would be both test `test/test_c/test_x`'s mock directory and the folder `test_x` below test `test/test_c`'s. Each kind of per-test file therefore has a base every test shares, and a test's root of that kind is `<base>/<name>/_t_`. No name holds `_t_`, since `BuildSubpath` escapes a directory named like it.
+
+| Kind | Base |
+| --- | --- |
+| `:mocks` | `:cmock` ↳ `:mock_path`, with mocks enabled |
+| `:partials` | `build/test/partials`, with Partials enabled |
+| `:preprocess_includes`, `:preprocess_files`, `:build_directives` | `build/test/preprocess/includes`, `…/files`, `…/build_directives` |
+| `:out`, `:dependencies` | `<build_root>/<context>/out` and `…/dependencies`, such as `build/gcov/out` |
+
+- `root(kind, name, context:)` gives `<base>/<name>/_t_`, or nil for an empty name or a disabled feature. It checks the root's length once through `FileWrapper#check_path_length`. Every per-test path gains these 4 characters.
+- `file(kind, name, subpath, context:)` gives a file below a root.
+- `generated_roots(name)` gives the enabled Partials and mock roots.
+- `locate(path, context:)` gives a `Location` of `kind`, `name`, and `subpath`, or nil. Below a base, the first `_t_` ends the name exactly, so no table of test names is needed.
+- `subpath(path, kind:, name:, context:)` gives the path below one test's root, or nil.
+
+`FilePathUtils` forms each test's directories, its object and dependencies files, its preprocessed files, and its stand-in headers through it. A test's executable and linker map sit in its own output root with its objects. `form_test_build_path( nil, context: )` and `form_test_dependencies_path( nil, context: )` give the context's base, where a plugin's own sources outside any test build. `FileFinder` scopes its mock and Partial searches to a test's roots, and `IncludeFactory` strips a mock `#include`'s leading root through `subpath`. Every other stage reads a test's directories from `Testable#paths`. Runners, results, logs, and artifacts are files named by a test's basename below the directories of its name, which can't collide, so they stay outside the layout.
 
 ### The Dependencies plugin
 
@@ -189,7 +211,7 @@ The Dependencies plugin places objects by a different root. `Dependencies#prepar
 
 ## Mocks: `MockLocator`
 
-Mocks keep placement relative to their include root, not the project root. CMock's folder semantics need it. The test's search path `-I build/test/mocks/<test>` must resolve `#include "drv/mock_gpio.h"` as written. A mock's identity, its CMock symbols and runner entries, also comes from that path.
+Mocks keep placement relative to their include root, not the project root. CMock's folder semantics need it. The test's search path `-I build/test/mocks/<test>/_t_`, its mock root, must resolve `#include "drv/mock_gpio.h"` as written. A mock's identity, its CMock symbols and runner entries, also comes from that path.
 
 `FileFinder#resolve_mock` finds the mocked header through the test's `HeaderSearch`, joining each search path with the `#include`'s path as the compiler does. It then takes the header's subdirectory below the most specific root of `collection_mirror_roots_headers` through `PathMirror.relative_subdir_from_clean_roots`. Containment is by whole directories, so a header outside every root yields `''`. Its mock then lands flat in the test's mock directory, or at the path its `#include` folder writes, as for a `:files` ↳ `:include` header outside every `:paths` root.
 
@@ -214,7 +236,7 @@ A lookup from a build file inverts placement exactly. It finds the input by path
 
 `find_compiled_input` tries an exact query first through `exact_file`. `exact_file` builds an index per collection, keyed by `compare_by_identity` and then by absolute path. A tail match by trailing segments follows only when the exact query misses. It also serves a query that is not exact, such as an object below a third-party plugin's build root that placement does not know.
 
-`test_context_of(filepath)` recovers a test name from a path below `build/test/out/`. Objects nest below the name at their own paths, so it returns the longest known test name that the directory begins with.
+`test_context_of(filepath, context)` recovers a test name from a build file's path through `TestBuildLayout#locate`. A source-tree query, from an `#include` or `TEST_SOURCE_FILE()`, recovers none. The mock and Partial searches look only below a known test's own roots, so such a query never finds another test's generated files.
 
 `header_root_relative_query(filepath)` correlates a header with the source beside it. Headers and sources often sit below different roots, such as `include/` and `src/`. The query is the header's subdirectory below its root in `collection_mirror_roots_include`, so `include/drv/gpio.h` looks for a source whose path ends in `drv/gpio`. `Partializer` uses the same roots for module sources.
 
@@ -312,6 +334,7 @@ A change to path code keeps the invariants by following the patterns above. Thes
 - Compare places with `ProjectPaths.contains?` or `subdir_below`. Never compare path text with `start_with?` or `include?`.
 - Spell configured paths with `standardize` at intake and `canonical` where a symlinked spelling matters.
 - Place build files through `form_build_subpath` or `build_filepath`. Never join a source's directory under a build root directly.
+- Compose a per-test directory only through `TestBuildLayout`, and read a test's directories from `Testable#paths`.
 - Run a new list of outputs through `DestinationCollision`.
 - Add a marker by updating `MARKER_NAMED` (or `ROOT_MARKER_NAMED`), `encode`, and `decode` together, with a round-trip spec.
 - Keep `ProjectPaths`, `BuildSubpath`, `BuildRoots`, `PathSpellings`, and `PathExclusions` free of DIY objects and configuration.
@@ -321,6 +344,6 @@ A change to path code keeps the invariants by following the patterns above. Thes
 
 Each tier pins a different layer of this design.
 
-- **Unit.** `spec/units/filesystem/project_paths_spec.rb`, `build_subpath_spec.rb`, `build_roots_spec.rb`, `path_mirror_spec.rb`, `path_matcher_spec.rb`, `destination_collision_spec.rb`, `file_path_utils_spec.rb`, `file_path_collection_utils_spec.rb`, and `file_finder_spec.rb`, with `spec/units/mock_locator_spec.rb`, `spec/units/library_resolver_spec.rb`, and `spec/units/config/build_root_policy_spec.rb`. Windows drive and UNC examples run only on Windows.
+- **Unit.** `spec/units/filesystem/project_paths_spec.rb`, `build_subpath_spec.rb`, `build_roots_spec.rb`, `path_mirror_spec.rb`, `path_matcher_spec.rb`, `destination_collision_spec.rb`, `test_build_layout_spec.rb`, `file_path_utils_spec.rb`, `file_path_collection_utils_spec.rb`, and `file_finder_spec.rb`, with `spec/units/mock_locator_spec.rb`, `spec/units/library_resolver_spec.rb`, and `spec/units/config/build_root_policy_spec.rb`. Windows drive and UNC examples run only on Windows.
 - **Integration.** `spec/integration/path_scenarios_spec.rb` and `path_intake_scenarios_spec.rb` configure real projects in temporary workspaces through `spec/support/integration/path_scenario_harness.rb`. `expect_collections_outside_build` and `expect_one_spelling_each` assert the invariants.
-- **System.** `spec/system/path_handling_probes_spec.rb`, `short_build_paths_spec.rb`, `build_output_mirroring_spec.rb`, `rake_release_task_path_disambiguation_spec.rb`, `bracket_path_handling_spec.rb`, and `special_path_characters_spec.rb` run full builds.
+- **System.** `spec/system/path_handling_probes_spec.rb`, `test_build_layout_spec.rb`, `short_build_paths_spec.rb`, `build_output_mirroring_spec.rb`, `rake_release_task_path_disambiguation_spec.rb`, `bracket_path_handling_spec.rb`, and `special_path_characters_spec.rb` run full builds.
