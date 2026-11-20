@@ -80,6 +80,55 @@ class Reportinator
     Reportinator.generate_duration_string( end_time_s - start_time_s, precision: precision, abbreviate: abbreviate )
   end
 
+  # Default headings for each guidance section, as [plural, singular]
+  GUIDANCE_HEADINGS = {
+    causes:  ['HOW THIS HAPPENS', 'HOW THIS HAPPENS'],
+    notes:   ['NOTES', 'NOTE'],
+    options: ['OPTIONS', 'OPTIONS']
+  }.freeze
+
+  # Builds guidance text in Ceedling's one layout for explaining a failure or a limit.
+  # Blocks come in the order lead, causes, notes, options and closing, one blank line apart.
+  # Causes and notes are bullets and options are numbered. A section with one item collapses
+  # to one line: a cause or a note keeps its heading inline, and a lone option stands alone.
+  # Nil items drop out, so a caller writes a conditional item as `(text if condition)`.
+  # An empty section is left out. +lead+ is a String or an Array of lines. +headings+ gives a
+  # section's [plural, singular] headings, or one String for both. Items are never wrapped.
+  def self.generate_guidance(lead: nil, causes: [], notes: [], options: [], closing: nil, headings: {})
+    validate_guidance_headings( headings )
+
+    sections = { causes: causes, notes: notes, options: options }.map do |section, items|
+      guidance_section( section, Array( items ).compact, headings )
+    end
+
+    blocks = [Array( lead ).compact.join( "\n" ), *sections, closing.to_s].map( &:rstrip ).reject( &:empty? )
+
+    return blocks.empty? ? '' : "#{blocks.join( "\n\n" )}\n"
+  end
+
+  # Heading overrides name only the sections the layout has
+  def self.validate_guidance_headings(headings)
+    unknown = headings.keys - GUIDANCE_HEADINGS.keys
+    raise ::ArgumentError, "Unknown guidance section #{unknown.map( &:inspect ).join( ', ' )}" unless unknown.empty?
+  end
+
+  # One guidance section as a block of text, or '' when it has no items
+  def self.guidance_section(section, items, headings)
+    plural, singular = Array( headings[section] || GUIDANCE_HEADINGS[section] )
+
+    return '' if items.empty?
+    return ((section == :options) ? items.first : "#{singular || plural}: #{items.first}") if items.size == 1
+
+    lines = items.each_with_index.map { |item, index| "#{guidance_marker( section, index )} #{item}" }
+    return "#{plural}:\n#{lines.join( "\n" )}"
+  end
+
+  # A numbered option's number, or a bullet for any other section's item
+  def self.guidance_marker(section, index)
+    return (section == :options) ? "#{index + 1}." : '•'
+  end
+  private_class_method :validate_guidance_headings, :guidance_section, :guidance_marker
+
   def generate_duration_string(seconds_s, precision: 2, abbreviate: false)
     return Reportinator.generate_duration_string( seconds_s, precision: precision, abbreviate: abbreviate )
   end

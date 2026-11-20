@@ -286,6 +286,22 @@ describe IncludePathinator do
       @pathinator.validate_header_files_collection
     end
 
+    it 'words its notice as options' do
+      allow(@configurator).to receive(:collection_all_headers).and_return(Rake::FileList.new)
+      allow(@extractor).to receive(:lookup_all_include_paths).and_return([])
+      allow(@file_wrapper).to receive(:instantiate_file_list).with([]).and_return(Rake::FileList.new)
+
+      expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN )
+        No header files found in project.
+
+        OPTIONS:
+        1. Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.
+        2. Verify header files with `ceedling paths:include` and/or `ceedling files:include`.
+      NOTICE
+
+      @pathinator.validate_header_files_collection
+    end
+
     it 'does not log when headers are found' do
       allow(@configurator).to receive(:collection_all_headers).and_return(Rake::FileList.new(['inc/foo.h']))
       allow(@extractor).to receive(:lookup_all_include_paths).and_return([])

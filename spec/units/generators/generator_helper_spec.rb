@@ -147,6 +147,50 @@ describe GeneratorHelper do
       return logged
     end
 
+    it 'explains a crash with no output in the guidance layout' do
+      expect(notice( :none )).to eq( <<~NOTICE )
+        Test executable `test_a.out` seems to have crashed, likely terminating early due to a bad code reference. It produced no output, including no final test result counts.
+
+        POSSIBLE CAUSES:
+        • Bad memory access
+        • Stack overflow
+        • Heap error
+        • Bad branch in source or test code
+
+        Consider configuring :project ↳ :use_backtrace to help find the cause (see documentation).
+      NOTICE
+    end
+
+    it 'says so when the output holds no final test result counts' do
+      shell_result[:output] = "starting\n"
+
+      expect(notice( :gdb )).to start_with(
+        "Test executable `test_a.out` seems to have crashed, likely terminating early due to a bad code reference. " \
+        "It produced some output but no final test result counts.\n\nPOSSIBLE CAUSES:\n"
+      )
+    end
+
+    it 'adds nothing to the lead when the output holds final test result counts' do
+      shell_result[:output] = VALID_STATS_OUTPUT
+
+      expect(notice( :gdb )).to eq( <<~NOTICE )
+        Test executable `test_a.out` seems to have crashed, likely terminating early due to a bad code reference.
+
+        POSSIBLE CAUSES:
+        • Bad memory access
+        • Stack overflow
+        • Heap error
+        • Bad branch in source or test code
+      NOTICE
+    end
+
+    it 'closes with the :gdb advice for :simple backtraces' do
+      expect(notice( :simple )).to end_with(
+        "• Bad branch in source or test code\n\n" \
+        "Consider configuring :project ↳ :use_backtrace to use the :gdb option to find the cause (see documentation).\n"
+      )
+    end
+
     it 'suggests backtraces when there are none' do
       expect(notice( :none )).to include( 'Consider configuring :project ↳ :use_backtrace to help find the cause' )
     end

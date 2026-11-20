@@ -11,6 +11,7 @@ require 'fileutils'
 require 'rbconfig'
 require 'ceedling/handoff'
 require 'ceedling/constants'
+require 'ceedling/reportinator'
 require 'app_cfg'
 
 describe Handoff do
@@ -76,6 +77,15 @@ describe Handoff do
     end
   end
 
+  # Handoff can't load Reportinator, so it keeps its own copy of the guidance layout
+  describe '.guidance' do
+    it 'lays out a lead and options as Reportinator.generate_guidance does' do
+      [['Only option.'], ['First.', 'Second.', 'Third.']].each do |options|
+        expect( described_class.send( :guidance, 'Lead.', options ) ).to eq( Reportinator.generate_guidance( lead: 'Lead.', options: options ) )
+      end
+    end
+  end
+
   # GH #1365: a launcher before 1.2.2 always loads the application into its own process
   describe '.complete_in_process' do
     before(:each) do
@@ -99,7 +109,7 @@ describe Handoff do
 
         expect(@loginator).to receive(:log).with(
           "#{@launcher.describe( 'Ceedling launcher' )} loaded #{app.describe} into its own process. " +
-          "Restarting in #{app.name}'s own process. Upgrade Ceedling and review your installations to avoid this.",
+          "Restarting in #{app.name}'s own process.\n\nUpgrade Ceedling and review your installations to avoid this.\n",
           Verbosity::COMPLAIN
         ).ordered
         expect(described_class).to receive(:exec).with(
@@ -120,9 +130,12 @@ describe Handoff do
     def expect_fallback(app)
       expect(@loginator).to receive(:log).with(
         "#{@launcher.describe( 'Ceedling launcher' )} loaded #{app.describe} into its own process. " +
-        "Continuing in the launcher's process, which can fail or misbehave. Upgrade Ceedling, or run this " +
-        "installation's own launcher directly with `ruby #{app.bin_path}`. A project created with `--local` has a " +
-        "launch script at its root that does this: run `./ceedling` from the project root (`.\\ceedling.cmd` on Windows).",
+        "Continuing in the launcher's process, which can fail or misbehave.\n\n" \
+        "OPTIONS:\n" \
+        "1. Upgrade Ceedling.\n" \
+        "2. Run this installation's own launcher directly with `ruby #{app.bin_path}`.\n" \
+        "3. In a project created with `--local`, run `./ceedling` from the project root (`.\\ceedling.cmd` on Windows). " \
+        "Its launch script does this.\n",
         Verbosity::COMPLAIN
       )
     end

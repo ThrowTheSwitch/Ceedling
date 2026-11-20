@@ -349,7 +349,40 @@ describe 'Partial module resolution (integration)' do
 
     it 'offers extensionless module paths as candidates' do
       expect { find_partial_input('ceedling_partial_config_impl.h') }
-        .to raise_error( CeedlingException, %r{drivers/spi/config,} )
+        .to raise_error( CeedlingException, %r{^• drivers/spi/config$} )
+    end
+
+    it 'words the ambiguity as candidates and options' do
+      message = <<~MESSAGE
+        Ambiguous Partial module reference 'config' found.
+
+        CANDIDATES:
+        • drivers/spi/config
+        • drivers/uart/config
+
+        OPTIONS:
+        1. Include more trailing path to distinguish among them.
+        2. Name one with a directory, e.g. TEST_PARTIAL_ALL_MODULE_AT(drivers/spi, config).
+      MESSAGE
+
+      expect { find_partial_input('ceedling_partial_config_impl.h') }
+        .to raise_error( CeedlingException ) { |error| expect( error.message ).to eq( message ) }
+    end
+
+    # A bare candidate cannot serve as the hint, so the one option left stands as a sentence
+    it 'leaves out the macro option when no candidate carries a directory' do
+      @listing = ["#{PARTIALS_BUILD_PATH}/ceedling_partial_config_impl.c", "#{PARTIALS_BUILD_PATH}/ceedling_partial_config_impl.c"]
+
+      message = <<~MESSAGE
+        Ambiguous Partial module reference 'config' found.
+
+        CANDIDATES: config
+
+        Include more trailing path to distinguish among them.
+      MESSAGE
+
+      expect { find_partial_input('ceedling_partial_config_impl.h') }
+        .to raise_error( CeedlingException ) { |error| expect( error.message ).to eq( message ) }
     end
 
     it 'names no generated filename or build directory' do

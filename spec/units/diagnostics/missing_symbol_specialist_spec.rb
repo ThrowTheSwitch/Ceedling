@@ -93,22 +93,62 @@ describe MissingSymbolSpecialist do
     prescriptions( "undefined reference to `foo'" ).first
   end
 
-  it 'opens tentatively, then gives causes, education, and options in left-justified blocks' do
+  # The approved text for a project with mocks on, test preprocessing off, and Partials off
+  APPROVED_MISSING_SYMBOLS = <<~TEXT.freeze
+    The linker output appears to report missing symbols.
+
+    POSSIBLE CAUSES:
+    • This test lacks #include statements corresponding to needed source files (see notes below).
+    • Project file paths omit source files corresponding to #include statements in this test.
+    • Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.
+    • This test does not #include needed mocks (that triggers their generation).
+
+    NOTES:
+    • A test file directs the build of a test executable with #include statements.
+    • By convention, Ceedling assumes header filenames correspond to source filenames.
+    • Which code files to compile and link are determined by #include statements.
+    • An #include statement convention directs the generation of mocks from header files.
+
+    OPTIONS:
+    1. Doublecheck this test's #include statements.
+    2. Simplify complex macros or fully specify symbols for this test in :project ↳ :defines.
+    3. Enable test preprocessing with :project ↳ :use_test_preprocessor, so macros and #ifdefs decide which #include statements count.
+    4. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.
+    5. Mock the header that declares a missing function, so the mock supplies it.
+
+    See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.
+  TEXT
+
+  it 'gives the approved text with mocks on' do
     allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
 
-    expect( notice ).to start_with(
-      "The linker output appears to report missing symbols. If so, the following may be to blame:\n" \
-      "1. This test lacks #include statements corresponding to needed source files (see note below).\n"
-    )
-    expect( notice ).to include(
-      "4. This test does not #include needed mocks (that triggers their generation).\n\n" \
-      "NOTE: A test file directs the build of a test executable with #include statements:\n" \
-      "• By convention, Ceedling assumes header filenames correspond to source filenames.\n",
-      "\n\nOPTIONS:\n1. Doublecheck this test's #include statements.\n",
-      "4. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.\n",
-      "5. Mock the header that declares a missing function, so the mock supplies it.\n"
-    )
+    expect( notice ).to eq( APPROVED_MISSING_SYMBOLS )
+  end
+
+  it 'gives every block left-justified, one blank line apart' do
+    allow( @configurator ).to receive( :project_use_mocks ).and_return( true )
+
     expect( notice.lines.grep( /\A\s/ ) ).to all( eq( "\n" ) )
+    expect( notice ).not_to include( "\n\n\n" )
+  end
+
+  it 'drops the mock cause and the mock note with mocks off, and names the setting a mock remedy needs' do
+    expected = APPROVED_MISSING_SYMBOLS
+      .sub( "• This test does not #include needed mocks (that triggers their generation).\n", '' )
+      .sub( "• An #include statement convention directs the generation of mocks from header files.\n", '' )
+      .sub( "supplies it.\n", "supplies it. Mocking requires :project ↳ :use_mocks.\n" )
+
+    expect( notice ).to eq( expected )
+  end
+
+  it 'opens with a lead that no longer hedges' do
+    expect( notice ).to start_with( "The linker output appears to report missing symbols.\n\nPOSSIBLE CAUSES:\n" )
+    expect( notice ).not_to include( 'the following may be to blame' )
+  end
+
+  it 'gives the notes as bullets under a plural heading, not a NOTE: line' do
+    expect( notice ).to include( "\n\nNOTES:\n• A test file directs the build of a test executable with #include statements.\n" )
+    expect( notice ).not_to include( 'NOTE:' )
   end
 
   it 'no longer blames mixed C and C++ file extensions' do
@@ -118,7 +158,7 @@ describe MissingSymbolSpecialist do
   context 'without test preprocessing' do
     it 'blames macros obscuring #include statements read as text, and offers to enable preprocessing' do
       expect( notice ).to include(
-        "3. Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n",
+        "• Complex macros, #ifdefs, etc. have obscured correct #include statements in this test.\n",
         "3. Enable test preprocessing with :project ↳ :use_test_preprocessor, so macros and #ifdefs decide which #include statements count.\n"
       )
     end
@@ -128,7 +168,7 @@ describe MissingSymbolSpecialist do
     before(:each) { allow( @configurator ).to receive( :project_use_test_preprocessor_tests ).and_return( true ) }
 
     it 'blames macros as the preprocessor evaluates them, and offers no preprocessing option' do
-      expect( notice ).to include( "3. Macros or #ifdefs, evaluated with this test's defines, leave out an #include statement the test needs.\n" )
+      expect( notice ).to include( "• Macros or #ifdefs, evaluated with this test's defines, leave out an #include statement the test needs.\n" )
       expect( notice ).not_to include( 'Enable test preprocessing' )
     end
   end
@@ -142,8 +182,23 @@ describe MissingSymbolSpecialist do
 
     it 'blames a function a Partial left out, and offers to select it' do
       expect( notice ).to include(
-        "4. A Partial in this test leaves out a function the test or the Partial's code calls. A Partial carries only the functions its directive selects.\n",
+        "• A Partial in this test leaves out a function the test or the Partial's code calls. A Partial carries only the functions its directive selects.\n",
         "6. Select a function a Partial left out with +name in its directive, or select the whole module with TEST_PARTIAL_ALL_MODULE.\n"
+      )
+    end
+  end
+
+  context 'with Partials and test preprocessing both enabled' do
+    before(:each) do
+      allow( @configurator ).to receive( :project_use_partials ).and_return( true )
+      allow( @configurator ).to receive( :project_use_test_preprocessor_tests ).and_return( true )
+    end
+
+    it 'numbers only the options present' do
+      expect( notice ).to include(
+        "\n\nOPTIONS:\n1. Doublecheck this test's #include statements.\n",
+        "3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.\n",
+        "5. Select a function a Partial left out with +name in its directive, or select the whole module with TEST_PARTIAL_ALL_MODULE.\n\nSee the docs on"
       )
     end
   end

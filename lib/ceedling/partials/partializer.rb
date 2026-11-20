@@ -18,6 +18,7 @@ require 'ceedling/filesystem/path_matcher'
 require 'ceedling/filesystem/project_paths'
 require 'ceedling/filesystem/path_mirror'
 require 'ceedling/encodinator'
+require 'ceedling/reportinator'
 
 class Partializer
 
@@ -32,82 +33,52 @@ class Partializer
   # A typedef of a struct or union, whose type a variable may hold before it is complete
   AGGREGATE_TYPEDEF = /\Atypedef\s+(?:struct|union)(?![\w$])/ unless const_defined?(:AGGREGATE_TYPEDEF, false)
 
-  # Explains helpers a Partial leaves behind because the module header has no include guard
-  UNGUARDED_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_HELPERS_NOTICE, false)
-    Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
-    Selected functions call %<these>s, but %<header>s has no include guard. Without a guard
-    a Partial cannot stand in for the header everywhere it is included, and a carried copy could
-    collide with the real one.
+  # Closes every notice that sends the reader to the Partials docs
+  PARTIALS_CONVENTIONS_NOTICE_CLOSING = 'See the docs on Partials conventions.' unless const_defined?(:PARTIALS_CONVENTIONS_NOTICE_CLOSING, false)
 
-    OPTIONS:
-      1. Give %<header>s an include guard so the Partial can stand in for it.
-      2. Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other
-         header this module includes pulls in %<header>s.
+  # The notices below are templates laid out by Reportinator.generate_guidance. Each %<name>s
+  # is filled from the values its caller gives.
 
-    See the docs on Partials conventions.
-  NOTICE
+  # Explains helpers a Partial leaves behind because the module header can't be stood in for
+  UNGUARDED_HELPERS_NOTICE = {
+    lead:    'Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.',
+    causes:  [
+      'Selected functions call %<these>s.',
+      '%<unguarded>s',
+      "A Partial stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.",
+      'Without one, a carried copy could collide with the real one.'
+    ],
+    options: [
+      '%<fix>s so the Partial can stand in for it.',
+      'Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other header this module includes pulls in %<header>s.'
+    ]
+  }.freeze unless const_defined?(:UNGUARDED_HELPERS_NOTICE, false)
 
-  # Explains what a mock-only Partial leaves behind because its module header has no include guard
-  UNGUARDED_EXTRAS_NOTICE = <<~NOTICE unless const_defined?(:UNGUARDED_EXTRAS_NOTICE, false)
-    Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.
-    %<header>s has no include guard. Without a guard the mock can't stand in for the header everywhere
-    it's included, and a copy could collide with the real one. Code that uses %<these>s compiles only where
-    another #include brings in the real header.
+  # Explains what a mock-only Partial leaves behind because its module header can't be stood in for
+  UNGUARDED_EXTRAS_NOTICE = {
+    lead:    'Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.',
+    causes:  [
+      '%<unguarded>s',
+      "A mock stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.",
+      'Without one, a kept copy could collide with the real one, so the mock leaves %<them>s out.',
+      'Code that uses %<these>s compiles only where another #include brings in the real header.'
+    ],
+    options: ['%<fix>s so the mock keeps %<them>s.']
+  }.freeze unless const_defined?(:UNGUARDED_EXTRAS_NOTICE, false)
 
-    Give %<header>s an include guard so the mock keeps %<them>s.
-
-    See the docs on Partials conventions.
-  NOTICE
-
-  # The same for a header that guards itself with `#pragma once`, which no generated file can
-  # define the way it defines an include guard
-  PRAGMA_ONCE_EXTRAS_NOTICE = <<~NOTICE unless const_defined?(:PRAGMA_ONCE_EXTRAS_NOTICE, false)
-    Partial %<partial>s ⏩️ Its mock leaves %<items>s from %<header>s behind.
-
-    HOW THIS HAPPENS:
-    • %<header>s uses `#pragma once`, which is not an include guard.
-    • A mock stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
-    • Without one, a kept copy could collide with the real one, so the mock leaves %<them>s out.
-    • Code that uses %<these>s compiles only where another #include brings in the real header.
-
-    Replace `#pragma once` in %<header>s with an include guard so the mock keeps %<them>s.
-
-    See the docs on Partials conventions.
-  NOTICE
-
-  # The same for a module header that guards itself with `#pragma once`
-  PRAGMA_ONCE_HELPERS_NOTICE = <<~NOTICE unless const_defined?(:PRAGMA_ONCE_HELPERS_NOTICE, false)
-    Partial %<partial>s ⏩️ Not carrying %<noun>s %<helpers>s from %<header>s.
-
-    HOW THIS HAPPENS:
-    • Selected functions call %<these>s.
-    • %<header>s uses `#pragma once`, which is not an include guard.
-    • A Partial stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
-    • Without one, a carried copy could collide with the real one.
-
-    OPTIONS:
-    1. Replace `#pragma once` in %<header>s with an include guard so the Partial can stand in for it.
-    2. Select the %<noun>s with `+name` (for example `+%<first>s`). This works only when no other header this module includes pulls in %<header>s.
-
-    See the docs on Partials conventions.
-  NOTICE
-
-  # Explains what other Partials go without from a module a test both tests and mocks. The
-  # notice follows the linker failure guidance: what happened, why, then numbered options.
-  TESTED_MOCK_NOTICE = <<~NOTICE unless const_defined?(:TESTED_MOCK_NOTICE, false)
-    Partial %<partial>s ⏩️ Other Partials in this test include %<header>s's mock, which leaves %<items>s out.
-
-    HOW THIS HAPPENS:
-    • A module both tested and mocked in one test keeps its header's helpers and static variables in its own implementation.
-    • Every other Partial that includes %<header>s gets the mock's interface in its place, which declares only the mocked functions.
-    • Code in those Partials that uses %<them>s fails to compile or link.
-
-    OPTIONS:
-    1. Test %<module>s in a test file of its own, and only mock it in this one.
-    2. Move what the other Partials use into a header that %<header>s includes, which the mock keeps.
-
-    See the docs on Partials conventions.
-  NOTICE
+  # Explains what other Partials go without from a module a test both tests and mocks
+  TESTED_MOCK_NOTICE = {
+    lead:    "Partial %<partial>s ⏩️ Other Partials in this test include %<header>s's mock, which leaves %<items>s out.",
+    causes:  [
+      "A module both tested and mocked in one test keeps its header's helpers and static variables in its own implementation.",
+      "Every other Partial that includes %<header>s gets the mock's interface in its place, which declares only the mocked functions.",
+      'Code in those Partials that uses %<them>s fails to compile or link.'
+    ],
+    options: [
+      'Test %<module>s in a test file of its own, and only mock it in this one.',
+      'Move what the other Partials use into a header that %<header>s includes, which the mock keeps.'
+    ]
+  }.freeze unless const_defined?(:TESTED_MOCK_NOTICE, false)
 
   include Partials
 
@@ -197,10 +168,11 @@ class Partializer
     items = _extras_others_use( c_module, interface, header_guarded, config, partials )
     return if items.empty?
 
-    notice = format(
-      TESTED_MOCK_NOTICE, partial: "#{test}::#{config.module}", header: config.header.filepath, module: config.module,
+    values = {
+      partial: "#{test}::#{config.module}", header: config.header.filepath, module: config.module,
       items: _withheld_phrase( items ), them: items.size > 1 ? 'them' : 'it'
-    )
+    }
+    notice = _partials_notice( TESTED_MOCK_NOTICE, **values )
     @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
 
@@ -753,14 +725,33 @@ class Partializer
   # notice follows the linker failure guidance: what happened, why, then numbered options.
   def _log_unguarded_helpers(test, partial, names, header)
     many   = names.size > 1
-    notice = format(
-      _pragma_once?( header ) ? PRAGMA_ONCE_HELPERS_NOTICE : UNGUARDED_HELPERS_NOTICE,
-      partial: "#{test}::#{partial}", header: header, first: names.first,
-      helpers: names.map { |n| "`#{n}()`" }.join( ', ' ),
+    values = {
+      partial: "#{test}::#{partial}", header: header, first: names.first, helpers: names.map { |n| "`#{n}()`" }.join( ', ' ),
       noun: many ? 'helpers' : 'helper', these: many ? 'these helpers' : 'this helper'
-    )
+    }
 
+    notice = _partials_notice( UNGUARDED_HELPERS_NOTICE, **values, **_guard_values( header ) )
     @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
+  end
+
+  # Fills a notice template from its values and lays it out as guidance
+  def _partials_notice(template, **values)
+    filled = template.transform_values do |text|
+      text.is_a?( Array ) ? text.map { |item| format( item, **values ) } : format( text, **values )
+    end
+
+    return Reportinator.generate_guidance( **filled, closing: PARTIALS_CONVENTIONS_NOTICE_CLOSING )
+  end
+
+  # Why a header can't be stood in for, and what fixes that. It has no include guard, or
+  # `#pragma once` guards it, which no generated file can define the way it defines a guard.
+  def _guard_values(header)
+    return { unguarded: "#{header} has no include guard.", fix: "Give #{header} an include guard" } unless _pragma_once?( header )
+
+    return {
+      unguarded: "#{header} uses `#pragma once`, which is not an include guard.",
+      fix:       "Replace `#pragma once` in #{header} with an include guard"
+    }
   end
 
   # Lists what a mock-only Partial keeps, and explains what an unguarded header's mock leaves behind
@@ -770,12 +761,13 @@ class Partializer
     return if extras.withheld.empty?
 
     many   = extras.withheld.size > 1
-    notice = _pragma_once?( header ) ? PRAGMA_ONCE_EXTRAS_NOTICE : UNGUARDED_EXTRAS_NOTICE
-    @loginator.log(
-      format( notice, partial: partial, header: header, items: _withheld_phrase( extras.withheld ),
-              these: many ? 'these' : 'it', them: many ? 'them' : 'it' ),
-      Verbosity::COMPLAIN, LogLabels::NOTICE
-    )
+    values = {
+      partial: partial, header: header, items: _withheld_phrase( extras.withheld ),
+      these: many ? 'these' : 'it', them: many ? 'them' : 'it'
+    }
+
+    notice = _partials_notice( UNGUARDED_EXTRAS_NOTICE, **values, **_guard_values( header ) )
+    @loginator.log( notice, Verbosity::COMPLAIN, LogLabels::NOTICE )
   end
 
   # The header is read again only when something stays behind, to say what guards it

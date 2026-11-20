@@ -7,6 +7,7 @@
 
 require 'pathname'
 require 'ceedling/exceptions'
+require 'ceedling/reportinator'
 require 'ceedling/filesystem/file_path_utils'
 require 'ceedling/filesystem/project_paths'
 require 'ceedling/includes/header_search'
@@ -14,9 +15,11 @@ require 'ceedling/filesystem/path_matcher'
 
 class IncludePathinator
 
-  NO_HEADERS_MESSAGE = "No header files found in project.\n" +
-                       "Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.\n" +
-                       "Verify header files with `ceedling paths:include` and\\or `ceedling files:include`."
+  NO_HEADERS_MESSAGE = Reportinator.generate_guidance(
+    lead:    'No header files found in project.',
+    options: ['Add search paths to :paths ↳ :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.',
+              'Verify header files with `ceedling paths:include` and/or `ceedling files:include`.']
+  ).freeze
 
   # What `header_listing` remembers for a directory under the build root
   LISTED_FRESH = :listed_fresh

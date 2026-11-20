@@ -16,6 +16,7 @@ require 'strscan'
 require 'ceedling/constants'
 require 'ceedling/parsing_parcels'
 require 'ceedling/preprocess/c_preprocessor_conditionals'
+require 'ceedling/reportinator'
 
 class PartializerHelper
 
@@ -61,18 +62,14 @@ class PartializerHelper
   # The names a carry plan decides by, grouped once per module
   CarryFacts = Struct.new( :selected, :defined, :declared, :helpers, keyword_init: true ) unless const_defined?(:CarryFacts, false)
 
+  # How to name a definition the extractor read no function name from
+  UNREADABLE_NAME_OPTIONS = [
+    'If it returns or takes a function pointer, give that type a name with a typedef and use the name in this declaration.',
+    'If a macro generates the declaration, declare the function directly.'
+  ].freeze unless const_defined?(:UNREADABLE_NAME_OPTIONS, false)
+
   # What the helper scan shares while it walks. That is the plan it fills and the facts that gate it.
   CarryScan = Struct.new( :plan, :declared, :fallback, :header_guarded, keyword_init: true ) unless const_defined?(:CarryScan, false)
-
-  # Names a definition the extractor read no function name from, and how to spell it plainly
-  UNREADABLE_NAME_ERROR = <<~ERROR.chomp unless const_defined?(:UNREADABLE_NAME_ERROR, false)
-    Partial %<partial>s ⏩️ Cannot read the name of the function declared by `%<declaration>s`.
-
-    OPTIONS:
-      1. If it returns or takes a function pointer, give that type a name with a typedef and use the name in this declaration.
-      2. If a macro generates the declaration, declare the function directly.
-  ERROR
-
 
   include Partials
 
@@ -1042,7 +1039,8 @@ class PartializerHelper
     return if unnamed.nil?
 
     signature = _normalized( unnamed.signature ).dup.force_encoding( Encoding::UTF_8 ).scrub( '?' )
-    raise CeedlingException.new( format( UNREADABLE_NAME_ERROR, partial: "#{name}::#{module_name}", declaration: signature ) )
+    lead = "Partial #{name}::#{module_name} ⏩️ Cannot read the name of the function declared by `#{signature}`."
+    raise CeedlingException.new( Reportinator.generate_guidance( lead: lead, options: UNREADABLE_NAME_OPTIONS ) )
   end
 
   # Validate that every function name in additions and subtractions exists in c_module.

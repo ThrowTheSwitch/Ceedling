@@ -98,16 +98,35 @@ module Handoff
 
   def self.loaded_message(launcher, app, restart)
     loaded = "#{launcher.describe( 'Ceedling launcher' )} loaded #{app.describe()} into its own process."
-    return "#{loaded} Restarting in #{app.name()}'s own process. Upgrade Ceedling and review your installations to avoid this." if restart
 
-    return "#{loaded} #{continuing_advice( app )}"
+    return guidance(
+      "#{loaded} Restarting in #{app.name()}'s own process.",
+      ['Upgrade Ceedling and review your installations to avoid this.']
+    ) if restart
+
+    return continuing_advice( loaded, app )
   end
 
-  def self.continuing_advice(app)
-    return "Continuing in the launcher's process, which can fail or misbehave. Upgrade Ceedling, or run this " +
-           "installation's own launcher directly with `ruby #{display_path( app.bin_path )}`. A project created " +
-           "with `--local` has a launch script at its root that does this: run `./ceedling` from the project root " +
-           "(`.\\ceedling.cmd` on Windows)."
+  def self.continuing_advice(loaded, app)
+    return guidance(
+      "#{loaded} Continuing in the launcher's process, which can fail or misbehave.",
+      [
+        'Upgrade Ceedling.',
+        "Run this installation's own launcher directly with `ruby #{display_path( app.bin_path )}`.",
+        'In a project created with `--local`, run `./ceedling` from the project root (`.\\ceedling.cmd` on Windows). ' \
+        'Its launch script does this.'
+      ]
+    )
+  end
+
+  # Lays out a lead and options as Reportinator.generate_guidance does. This file can't use
+  # it, since it runs before this installation's lib loads and an older launcher's lib
+  # would answer for Reportinator.
+  def self.guidance(lead, options)
+    return "#{lead}\n\n#{options.first}\n" if options.size == 1
+
+    numbered = options.each_with_index.map { |option, index| "#{index + 1}. #{option}" }
+    return "#{lead}\n\nOPTIONS:\n#{numbered.join( "\n" )}\n"
   end
 
   # Relative to the working directory when beneath it, as a user would type it
@@ -116,6 +135,6 @@ module Handoff
     return filepath.start_with?( cwd ) ? filepath.delete_prefix( cwd ) : filepath
   end
 
-  private_class_method :launcher_root_of, :command_line, :in_handoff?, :loaded_message, :continuing_advice, :display_path
+  private_class_method :launcher_root_of, :command_line, :in_handoff?, :loaded_message, :continuing_advice, :guidance, :display_path
 
 end

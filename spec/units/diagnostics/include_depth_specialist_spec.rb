@@ -134,4 +134,34 @@ describe IncludeDepthSpecialist do
 
     expect( prescriptions( output ).first ).to include( "'#{FORWARDING}' includes <timers.h>" )
   end
+
+
+  DEPTH_LEAD = 'The compiler output appears to report #include directives nested too deeply, which usually means a header includes itself.'
+
+  DEPTH_GUIDANCE = <<~TEXT
+    HOW THIS HAPPENS:
+    • A compiler searches the include paths in order and uses the first file with the requested name.
+    • A forwarding header that #includes its own filename, to reach a header of that name elsewhere, finds itself again when its directory comes first.
+    • Two headers that #include each other without include guards repeat in the same way.
+    • The compiler stops at a fixed nesting limit and reports the loop as nesting too deep.
+
+    OPTIONS:
+    1. Order :paths ↳ :include (or TEST_INCLUDE_PATH()) so the directory holding the intended header comes before the forwarding header's directory.
+    2. List the forwarding header's parent directory instead, and #include it by its subdirectory, such as "freertos/timers.h".
+    3. Give headers that include each other include guards or #pragma once.
+  TEXT
+
+  it 'gives the exact text with the finding as a second lead line' do
+    expect( prescriptions( GCC_NESTING ).first ).to eq(
+      "#{DEPTH_LEAD}\n" \
+      "'#{FORWARDING}' includes <timers.h>, and the search paths find that name in the header's own directory first " \
+      "('vendor/esp32/include/freertos'), so it includes itself. '#{KERNEL}' is later in the search paths.\n\n#{DEPTH_GUIDANCE}"
+    )
+  end
+
+  it 'gives the exact text of the general guidance alone' do
+    @files.delete( FORWARDING )
+
+    expect( prescriptions( GCC_NESTING ).first ).to eq( "#{DEPTH_LEAD}\n\n#{DEPTH_GUIDANCE}" )
+  end
 end

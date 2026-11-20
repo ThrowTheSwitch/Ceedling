@@ -114,4 +114,40 @@ describe DuplicateSymbolSpecialist do
       expect( prescriptions( output, objects: objects + ['build/out/util.o'] ).first ).not_to include( 'links both' )
     end
   end
+
+
+  DUPLICATE_LEAD = "The linker output appears to report a symbol defined more than once.\n\n"
+
+  DUPLICATE_CAUSES = <<~TEXT
+    HOW THIS HAPPENS:
+    • A program may define each function and each global variable only once across all its object files.
+    • A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header.
+    • A test file that defines a function the source under test also defines places two definitions in one executable.
+  TEXT
+
+  DUPLICATE_OPTIONS = <<~TEXT
+    OPTIONS:
+    1. Declare header variables extern, and define each one in a single source file.
+    2. Make functions defined in headers static inline, or move their bodies into one source file.
+  TEXT
+
+  it 'gives the exact text with mocks, numbering the mock option fourth' do
+    expect( prescriptions( GNU_DUPLICATE ).first ).to eq(
+      DUPLICATE_LEAD + DUPLICATE_CAUSES.chomp +
+      "\n• A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them.\n\n" +
+      DUPLICATE_OPTIONS +
+      "3. Remove a test's own definition of a function the linked source already provides, or mock the source's header instead.\n" \
+      "4. Don't #include both a mock and its real header in one test and don't name a mocked module's source in TEST_SOURCE_FILE().\n"
+    )
+  end
+
+  it 'gives the exact text without mocks, ending at the third option' do
+    allow( @configurator ).to receive( :project_use_mocks ).and_return( false )
+
+    expect( prescriptions( GNU_DUPLICATE ).first ).to eq(
+      DUPLICATE_LEAD + DUPLICATE_CAUSES + "\n" + DUPLICATE_OPTIONS +
+      "3. Remove a test's own definition of a function the linked source already provides, or mock the source's header instead. " \
+      "Mocking requires :project ↳ :use_mocks.\n"
+    )
+  end
 end

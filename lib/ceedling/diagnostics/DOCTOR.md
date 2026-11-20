@@ -61,12 +61,15 @@ The doctor composes its specialists, rather than each specialist registering its
 1. Add a `Diagnosis` to an existing specialist's `diagnoses`, or write a new specialist and compose it into `build_step_doctor` in `objects.yml`.
 2. Give it symptoms for each toolchain family you can, ending in a generic net. Err toward matching, since the examination decides whether the case applies.
 3. Write its examination against the `Case` inputs. Return nil when the inputs show the cause doesn't apply.
-4. Write its prescription in the shared shape:
-   - a tentative opening, such as "The linker output appears to report…", since no matcher reads every toolchain perfectly;
-   - a blank line, then a heading such as `HOW THIS HAPPENS:` over `•` bullets on the C mechanics, mentioning Ceedling only briefly;
-   - a blank line, then `OPTIONS:` over a numbered list of ways to resolve the problem;
-   - every line left-justified, so a narrow terminal wraps it cleanly. The loginator turns `•` into `*` when decorators are off.
-   - adapted to the project, read from the configurator at examination time. A cause tied to a feature, such as mocks, Partials, or test preprocessing, appears only when the project's settings make it possible. A remedy that mocks or Partializes a header appears either way, and names the setting that turns on a disabled feature (`GuidancePhrases`).
+4. Build its prescription with `Reportinator.generate_guidance`, which lays out the shared shape. Pass the text of each part and leave the layout to the formatter:
+   - `lead:` a tentative opening, such as "The linker output appears to report…", since no matcher reads every toolchain perfectly. An Array of lines adds a finding the examination made.
+   - `causes:` the C mechanics, mentioning Ceedling only briefly, as `•` bullets under `HOW THIS HAPPENS:`. `headings:` renames a section, as `MissingSymbolSpecialist` does with `POSSIBLE CAUSES:`.
+   - `notes:` education that no cause or option carries, as `•` bullets under `NOTES:`.
+   - `options:` the ways to resolve the problem, numbered under `OPTIONS:`.
+   - `closing:` an optional last line, such as a pointer to the docs.
+   - A section with one item collapses to one line: a cause or a note keeps its heading inline, and a lone option stands alone. An empty section is left out.
+   - Every line is left-justified, and the formatter never wraps an item, so a narrow terminal wraps it cleanly. The loginator turns `•` into `*` when decorators are off.
+   - The prescription adapts to the project, read from the configurator at examination time. A cause tied to a feature, such as mocks, Partials, or test preprocessing, appears only when the project's settings make it possible. Write it as `(text if condition)`, since the formatter drops nil items and numbers only the options present, so no item names its own number. A remedy that mocks or Partializes a header appears either way, and names the setting that turns on a disabled feature (`GuidancePhrases`).
 5. Cover it in a unit spec under `spec/units/diagnostics/`, with one case per wording, and in `spec/integration/build_step_doctor_spec.rb` when a real compiler can produce the failure.
 
 ## Known toolchain wordings

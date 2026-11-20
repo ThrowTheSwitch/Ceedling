@@ -173,6 +173,153 @@ describe Reportinator do
   end
 
   # ---------------------------------------------------------------------------
+  # .generate_guidance
+  # ---------------------------------------------------------------------------
+
+  describe '.generate_guidance' do
+    it 'builds every section in order, one blank line apart, ending in one newline' do
+      text = described_class.generate_guidance(
+        lead:    'The linker output appears to report missing symbols.',
+        causes:  ['A test lacks an #include.', 'Paths omit a source file.'],
+        notes:   ['Headers name sources.', 'Includes direct the build.'],
+        options: ['Doublecheck the #includes.', 'Add the path.'],
+        closing: 'See the docs on conventions.'
+      )
+
+      expect( text ).to eq( <<~TEXT )
+        The linker output appears to report missing symbols.
+
+        HOW THIS HAPPENS:
+        • A test lacks an #include.
+        • Paths omit a source file.
+
+        NOTES:
+        • Headers name sources.
+        • Includes direct the build.
+
+        OPTIONS:
+        1. Doublecheck the #includes.
+        2. Add the path.
+
+        See the docs on conventions.
+      TEXT
+    end
+
+    context 'with one item in a section' do
+      it 'keeps a lone cause on its heading line' do
+        expect( described_class.generate_guidance( lead: 'Lead.', causes: ['A cause.'] ) ).to eq( "Lead.\n\nHOW THIS HAPPENS: A cause.\n" )
+      end
+
+      it 'gives a lone note the singular heading' do
+        expect( described_class.generate_guidance( lead: 'Lead.', notes: ['A note.'] ) ).to eq( "Lead.\n\nNOTE: A note.\n" )
+      end
+
+      it 'drops the heading of a lone option' do
+        expect( described_class.generate_guidance( lead: 'Lead.', options: ['Do this.'] ) ).to eq( "Lead.\n\nDo this.\n" )
+      end
+    end
+
+    context 'with nil items and empty sections' do
+      it 'drops nil items and numbers only the options present' do
+        text = described_class.generate_guidance( options: ['First.', nil, 'Third.', nil] )
+
+        expect( text ).to eq( "OPTIONS:\n1. First.\n2. Third.\n" )
+      end
+
+      it 'collapses a section that nil items leave with one item' do
+        expect( described_class.generate_guidance( causes: [nil, 'Only cause.'] ) ).to eq( "HOW THIS HAPPENS: Only cause.\n" )
+      end
+
+      it 'leaves out empty and all-nil sections' do
+        text = described_class.generate_guidance( lead: 'Lead.', causes: [], notes: [nil], options: nil, closing: 'Closing.' )
+
+        expect( text ).to eq( "Lead.\n\nClosing.\n" )
+      end
+
+      it 'returns an empty string with nothing to build' do
+        expect( described_class.generate_guidance() ).to eq( '' )
+      end
+    end
+
+    context 'with heading overrides' do
+      it 'uses an override plural for two or more items' do
+        text = described_class.generate_guidance( causes: ['One.', 'Two.'], headings: { causes: ['POSSIBLE CAUSES', 'POSSIBLE CAUSE'] } )
+
+        expect( text ).to eq( "POSSIBLE CAUSES:\n• One.\n• Two.\n" )
+      end
+
+      it 'uses an override singular for one item' do
+        text = described_class.generate_guidance( causes: ['One.'], headings: { causes: ['POSSIBLE CAUSES', 'POSSIBLE CAUSE'] } )
+
+        expect( text ).to eq( "POSSIBLE CAUSE: One.\n" )
+      end
+
+      it 'uses one String override as both plural and singular' do
+        many = described_class.generate_guidance( notes: ['a', 'b'], headings: { notes: 'CANDIDATES' } )
+        one  = described_class.generate_guidance( notes: ['a'], headings: { notes: 'CANDIDATES' } )
+
+        expect( many ).to eq( "CANDIDATES:\n• a\n• b\n" )
+        expect( one ).to eq( "CANDIDATES: a\n" )
+      end
+
+      it 'renames the options heading' do
+        text = described_class.generate_guidance( options: ['a', 'b'], headings: { options: 'FIXES' } )
+
+        expect( text ).to eq( "FIXES:\n1. a\n2. b\n" )
+      end
+
+      it 'rejects an override for an unknown section' do
+        expect { described_class.generate_guidance( notes: ['a'], headings: { advice: 'ADVICE' } ) }.to raise_error( ArgumentError, /advice/ )
+      end
+    end
+
+    context 'with the lead' do
+      it 'joins a multi-line lead given as an Array' do
+        text = described_class.generate_guidance( lead: ['First line.', 'Second line.'], options: ['Fix.'] )
+
+        expect( text ).to eq( "First line.\nSecond line.\n\nFix.\n" )
+      end
+
+      it 'drops nil lines from an Array lead' do
+        text = described_class.generate_guidance( lead: ['First line.', nil], options: ['Fix.'] )
+
+        expect( text ).to eq( "First line.\n\nFix.\n" )
+      end
+
+      it 'keeps a lead String holding its own line breaks' do
+        text = described_class.generate_guidance( lead: "First line.\nSecond line.", options: ['Fix.'] )
+
+        expect( text ).to eq( "First line.\nSecond line.\n\nFix.\n" )
+      end
+
+      it 'starts with the first section when there is no lead' do
+        text = described_class.generate_guidance( causes: ['One.', 'Two.'], closing: 'See the docs.' )
+
+        expect( text ).to eq( "HOW THIS HAPPENS:\n• One.\n• Two.\n\nSee the docs.\n" )
+      end
+    end
+
+    it 'ends in one newline when a lead or closing already ends in one' do
+      text = described_class.generate_guidance( lead: "Lead.\n", closing: "Closing.\n" )
+
+      expect( text ).to eq( "Lead.\n\nClosing.\n" )
+    end
+
+    it 'keeps one blank line between blocks when a lead or closing ends in several newlines' do
+      text = described_class.generate_guidance( lead: "Lead.\n\n", options: ['x'], closing: "Closing.\n\n" )
+
+      expect( text ).to eq( "Lead.\n\nx\n\nClosing.\n" )
+    end
+
+    it 'never wraps or indents a long item' do
+      item = 'word ' * 40
+      text = described_class.generate_guidance( options: [item.strip, 'Short.'] )
+
+      expect( text.lines.first(3) ).to eq( ["OPTIONS:\n", "1. #{item.strip}\n", "2. Short.\n"] )
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # #generate_banner
   # ---------------------------------------------------------------------------
 
