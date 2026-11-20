@@ -118,7 +118,7 @@ Marker segments stand for what a relative path cannot hold. One more, `_t_`, clo
 | `_unc_` | A Windows UNC share | `//server/share/inc` | `_unc_/server/share/inc` |
 | `_ceedling_` | A file Ceedling ships, from the running installation, outside the project | `<installation>/plugins/fff/src` | `_ceedling_/plugins/fff/src` |
 | `_<name>_<hash>` | A long configured root (see [Shortened roots](#shortened-roots)) | `../../../Keil_v5/ARM/CMSIS/Include/os` | `_Include_3F2A91C0/os` |
-| `_t_` | The end of a test's name below a per-test base (see [Each test's own root](#each-tests-own-root-testbuildlayout)). `encode` never writes it | Test `test/test_c` | `build/test/mocks/test/test_c/_t_` |
+| `_t_` | The end of a test's name below a per-test base (see [Each test's own root](#each-tests-own-root-testbuildlayout)). `TestBuildLayout` writes it, and `encode` never does | Test `test/test_c`'s own root | `test/test_c/_t_` |
 
 The project root itself encodes as `''`. Its files sit directly below the output root.
 
@@ -130,7 +130,7 @@ A long configured root adds its whole location to every build path below it. A v
 
 - **The roots** are `collection_build_roots`, the canonical bases of `:paths` ↳ `:source`, `:include`, `:test`, and `:support` with globs stripped, which `ConfiguratorBuilder#collect_build_roots` takes through `collect_mirror_roots`. `TEST_INCLUDE_PATH()` directories, `:files` entries, and the search paths a test's `#include`s imply for `:files` headers are not roots.
 - **Outermost only.** A root inside another root is dropped, so a whole tree shares one marker and keeps its structure below it.
-- **Shorter only.** A root is shortened only when its marker is shorter than its encoded spelling. A marker is `_`, the root's own directory name with any leading `_` dropped (or `root`), `_`, and 8 upper-case hexadecimal digits of SHA-256 of the root's encoded spelling, case-folded on Windows. That is 10 characters more than the name, so `src` never shortens, and a climbing or deeply nested root always does. The decision depends only on the root's spelling, so it holds from run to run and changes only when the root does.
+- **Shorter only.** A root is shortened only when its marker is shorter than its encoded spelling. A marker is `_`, the root's own directory name with any leading `_` dropped (or `root`), `_`, and 8 upper-case hexadecimal digits of SHA-256 of the root's encoded release spelling, case-folded on Windows. That is 10 characters more than the name, so `src` never shortens, and a climbing or deeply nested root always does. The decision depends only on the root's spelling, so it holds from run to run and changes only when the root does.
 - **Collisions.** `BuildRoots.collisions` finds two roots that would share a marker, and `collect_build_roots` stops configuration naming both.
 - **Traceability.** `FilePathUtils#publish_build_roots` writes each marker and its root to `<build_root>/build_roots.yml`, or removes the file when no root is shortened, and `Setupinator` logs each at DEBUG.
 
@@ -138,17 +138,26 @@ A long configured root adds its whole location to every build path below it. A v
 
 ### Choosing a marker
 
-`encode(path, roots:)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies in one of `INSTALLED_DIRS`, the file is Ceedling's own and goes under `_ceedling_`. Next, a path below a shortened root of `roots` takes the root's marker, followed by its path below the root. `INSTALLED_DIRS` are the `assets`, `bin`, `lib`, `plugins`, and `vendor` directories of `INSTALLATION_ROOT`, the directory above `lib/`. Otherwise, if the relative form is still absolute, the path takes `_abs_` or `_unc_`, and failing that each `..` becomes `_up_`. Without a table, no root is shortened.
+`encode(path, roots:, release:)` decides in a fixed order. It first asks whether the path lies outside the working directory by containment. If so and the path lies in one of `INSTALLED_DIRS`, the file is Ceedling's own and goes under `_ceedling_`. Next, a path below a shortened root of `roots` takes the root's marker, followed by its path below the root. `INSTALLED_DIRS` are the `assets`, `bin`, `lib`, `plugins`, and `vendor` directories of `INSTALLATION_ROOT`, the directory above `lib/`. Otherwise, if the relative form is still absolute, the path takes `_abs_` or `_unc_`, and failing that each `..` becomes `_up_`. Without a table, no root is shortened.
 
 `_ceedling_` keeps Ceedling's own files short and stable. A gem installation can sit many directories away from a project. Without the marker its plugin sources would encode as a long chain of `_up_` segments that changes with every install location. A Ceedling copy vendored inside the project lies within the working directory, so it encodes by its ordinary path. A project may also sit inside a Ceedling checkout, as the system specs' projects do. Its sibling directories lie outside `INSTALLED_DIRS`, so they encode by `_up_` like any other.
 
 ### Escaping a marker-named directory
 
-A real directory named like a marker gains one leading `_`. `MARKER_NAMED` matches `_up_`, `_abs_`, `_unc_`, `_ceedling_`, and `_t_` (`OWN_SEGMENT`), already led by any number of `_`, in any case. A test at `test/_t_/test_c.c` is therefore named `test/__t_/test_c`. `ROOT_MARKER_NAMED` matches anything shaped like a root marker, `_` led and ending in `_` and 8 hexadecimal digits, such as a date-stamped `_v_20240101`. An escaped name always begins with `__`, and a root marker never does. So `src/_up_/x` encodes as `src/__up_/x`, and `src/__abs_` as `src/___abs_`. `decode` strips one leading `_` from a marker-named segment that begins with `__`. The match ignores case because macOS and Windows file systems fold case, so `_UP_` and `_up_` can name one directory there.
+A real directory named like a marker gains one leading `_`. `MARKER_NAMED` matches `_up_`, `_abs_`, `_unc_`, and `_ceedling_`, already led by any number of `_`, in any case. `ROOT_MARKER_NAMED` matches anything shaped like a root marker, `_` led and ending in `_` and 8 hexadecimal digits, such as a date-stamped `_v_20240101`. An escaped name always begins with `__`, and a root marker never does. So `src/_up_/x` encodes as `src/__up_/x`, and `src/__abs_` as `src/___abs_`. `decode` strips one leading `_` from a marker-named segment that begins with `__`. The match ignores case because macOS and Windows file systems fold case, so `_UP_` and `_up_` can name one directory there.
+
+### Test and release spellings
+
+A test build escapes one more name, since `_t_` (`OWN_SEGMENT`) closes a test's name below each per-test base. `encode` and `decode` take `release:`, false by default.
+
+- **A test build** escapes each segment of the release spelling that `OWN_NAMED` matches, `_t_` led by any number of `_`, in any case. A test at `test/_t_/test_c.c` is therefore named `test/__t_/test_c`, and its source `src/_t_/foo.c` builds to `…/_t_/src/__t_/foo.o`. No marker `encode` writes matches `OWN_NAMED`, so the escape is a layer over the release spelling, and `decode` takes it off first. The escape applies wherever `BuildSubpath` places a file. A mock or Partial mirrors its header's directory below the test's root as it is, so its root's `_t_` still comes first.
+- **A release build** has no per-test directories and keeps such a directory as it is. `src/_t_/foo.c` builds to `build/release/out/src/_t_/foo.o`. `FilePathUtils` places release objects and dependencies files, and `FileFinder` decodes a release object, with `release: true`.
+
+`BuildRoots` hashes a root's release spelling, so test and release builds, which share one table, give a root one marker.
 
 ### Decoding
 
-`decode(subpath, roots:)` inverts `encode` exactly. A leading segment shaped like a root marker (`ROOT_MARKER`) becomes the root the table holds for it, joined with the rest. A marker the table doesn't hold, left by a build with other roots, decodes to nil. A leading `_ceedling_` joins the rest to `INSTALLATION_ROOT` and returns it relative to the working directory. A leading `_unc_` rebuilds `//server/share/…`. A leading `_abs_` rebuilds `D:/…` from its drive segment. Any other subpath maps each `_up_` back to `..` and unescapes the rest.
+`decode(subpath, roots:, release:)` inverts `encode` exactly. A leading segment shaped like a root marker (`ROOT_MARKER`) becomes the root the table holds for it, joined with the rest. A marker the table doesn't hold, left by a build with other roots, decodes to nil. A leading `_ceedling_` joins the rest to `INSTALLATION_ROOT` and returns it relative to the working directory. A leading `_unc_` rebuilds `//server/share/…`. A leading `_abs_` rebuilds `D:/…` from its drive segment. Any other subpath maps each `_up_` back to `..` and unescapes the rest.
 
 ### Memo
 
@@ -188,7 +197,7 @@ A test's name is its path from the project root without its extension. `form_tes
 
 ### Each test's own root: `TestBuildLayout`
 
-`TestBuildLayout` composes every per-test directory, and is the one place that does. A test's name is a path, so `<base>/<name>` alone can't keep tests apart. `build/test/mocks/test/test_c/test_x/` would be both test `test/test_c/test_x`'s mock directory and the folder `test_x` below test `test/test_c`'s. Each kind of per-test file therefore has a base every test shares, and a test's root of that kind is `<base>/<name>/_t_`. No name holds `_t_`, since `BuildSubpath` escapes a directory named like it.
+`TestBuildLayout` composes every per-test directory, and is the one place that does. A test's name is a path, so `<base>/<name>` alone can't keep tests apart. `build/test/mocks/test/test_c/test_x/` would be both test `test/test_c/test_x`'s mock directory and the folder `test_x` below test `test/test_c`'s. Each kind of per-test file therefore has a base every test shares, and a test's root of that kind is `<base>/<name>/_t_`. No name holds `_t_`, since a test build's `BuildSubpath` spelling escapes a directory named like it (see [Test and release spellings](#test-and-release-spellings)).
 
 | Kind | Base |
 | --- | --- |
@@ -197,11 +206,11 @@ A test's name is its path from the project root without its extension. `form_tes
 | `:preprocess_includes`, `:preprocess_files`, `:build_directives` | `build/test/preprocess/includes`, `…/files`, `…/build_directives` |
 | `:out`, `:dependencies` | `<build_root>/<context>/out` and `…/dependencies`, such as `build/gcov/out` |
 
-- `root(kind, name, context:)` gives `<base>/<name>/_t_`, or nil for an empty name or a disabled feature. It checks the root's length once through `FileWrapper#check_path_length`. Every per-test path gains these 4 characters.
+- `root(kind, name, context:)` gives `<base>/<name>/_t_`, or nil for an empty name or a disabled feature. It checks the root's length once, as a directory's, through `FileWrapper#check_path_length`. Every per-test path gains these 4 characters.
 - `file(kind, name, subpath, context:)` gives a file below a root.
 - `generated_roots(name)` gives the enabled Partials and mock roots.
-- `locate(path, context:)` gives a `Location` of `kind`, `name`, and `subpath`, or nil. Below a base, the first `_t_` ends the name exactly, so no table of test names is needed.
-- `subpath(path, kind:, name:, context:)` gives the path below one test's root, or nil.
+- `locate(path, context:)` gives the name of the test whose root holds the path, or nil. Below a base, the first `_t_` ends the name exactly, so no table of test names is needed.
+- `subpath(path, kind:, name:)` gives the path below one test's root of a kind with no build context, or nil.
 
 `FilePathUtils` forms each test's directories, its object and dependencies files, its preprocessed files, and its stand-in headers through it. A test's executable and linker map sit in its own output root with its objects. `form_test_build_path( nil, context: )` and `form_test_dependencies_path( nil, context: )` give the context's base, where a plugin's own sources outside any test build. `FileFinder` scopes its mock and Partial searches to a test's roots, and `IncludeFactory` strips a mock `#include`'s leading root through `subpath`. Every other stage reads a test's directories from `Testable#paths`. Runners, results, logs, and artifacts are files named by a test's basename below the directories of its name, which can't collide, so they stay outside the layout.
 
@@ -232,11 +241,13 @@ A lookup from a build file inverts placement exactly. It finds the input by path
 
 1. A path outside the build root is a source-tree query from an `#include` or `TEST_SOURCE_FILE()`. `header_root_relative_query` handles it.
 2. Inside the build root, `placement_root` names the release output root or the test's build path.
-3. The subdirectory below that root is decoded by `BuildSubpath.decode` with `FilePathUtils#build_roots` and joined with the basename. The query is marked exact. A marker no root holds falls back to the bare basename.
+3. The subdirectory below that root is decoded by `BuildSubpath.decode` with `FilePathUtils#build_roots`, in the release spelling for a release object, and joined with the basename. The query is marked exact. A marker no root holds falls back to the bare basename.
 
 `find_compiled_input` tries an exact query first through `exact_file`. `exact_file` builds an index per collection, keyed by `compare_by_identity` and then by absolute path. A tail match by trailing segments follows only when the exact query misses. It also serves a query that is not exact, such as an object below a third-party plugin's build root that placement does not know.
 
 `test_context_of(filepath, context)` recovers a test name from a build file's path through `TestBuildLayout#locate`. A source-tree query, from an `#include` or `TEST_SOURCE_FILE()`, recovers none. The mock and Partial searches look only below a known test's own roots, so such a query never finds another test's generated files.
+
+A name with the mock or Partial prefix may also be a hand-written source's, linked through `TEST_SOURCE_FILE()`. A miss among the test's own generated files therefore falls through to `find_compiled_input`. A miss of both complains of the generated file, by the name the generated search sought.
 
 `header_root_relative_query(filepath)` correlates a header with the source beside it. Headers and sources often sit below different roots, such as `include/` and `src/`. The query is the header's subdirectory below its root in `collection_mirror_roots_include`, so `include/drv/gpio.h` looks for a source whose path ends in `drv/gpio`. `Partializer` uses the same roots for module sources.
 

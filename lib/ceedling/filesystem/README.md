@@ -14,7 +14,7 @@ Pure modules with no state beyond memos.
 | --- | --- | --- |
 | [`project_paths.rb`](project_paths.rb) | `ProjectPaths` | One spelling for every path. Absolute, relative, and canonical forms, and containment by whole directories |
 | [`working_dir.rb`](working_dir.rb) | `WorkingDir` | The working directory, read once, and `chdir`, the one way Ceedling code changes it |
-| [`build_subpath.rb`](build_subpath.rb) | `BuildSubpath` | A build file's place from its source's path from the project root, with the `_up_`, `_abs_`, `_unc_`, and `_ceedling_` markers, and back. It escapes a directory named like `_t_`, the segment closing a test's name |
+| [`build_subpath.rb`](build_subpath.rb) | `BuildSubpath` | A build file's place from its source's path from the project root, with the `_up_`, `_abs_`, `_unc_`, and `_ceedling_` markers, and back. A test build also escapes a directory named like `_t_`, the segment closing a test's name, and a release build doesn't |
 | [`build_roots.rb`](build_roots.rb) | `BuildRoots` | Which long configured roots build paths spell by a short `_<name>_<hash>` marker, and each marker |
 | [`path_spellings.rb`](path_spellings.rb) | `PathSpellings` | A place's listed and real spellings, and how far one place lies below another |
 | [`path_exclusions.rb`](path_exclusions.rb) | `PathExclusions` | What collection leaves out: `-:` entries, excluded places, and reserved places |
