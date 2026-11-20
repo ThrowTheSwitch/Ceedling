@@ -347,7 +347,7 @@ class FileFinder
     return [basename, false] if subdir.nil? || subdir.empty?
 
     # A marker no shortened root holds was placed by another configuration
-    source_dir = BuildSubpath.decode( subdir, roots: @file_path_utils.build_roots )
+    source_dir = BuildSubpath.decode( subdir, roots: @file_path_utils.build_roots, release: release )
     return [basename, false] if source_dir.nil?
 
     return [File.join( source_dir, basename ), true]

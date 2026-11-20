@@ -13,8 +13,12 @@ require 'ceedling/filesystem/project_paths'
 # installation ships, outside the project, goes under `_ceedling_`. Given a table of
 # shortened roots (see BuildRoots), a path below one of them goes under the root's
 # `_<name>_<hash>` marker instead, keeping its path below the root. A directory of a path
-# that is itself named like any of these, or like `_t_`, gains a leading `_`, so `decode`
-# inverts `encode` exactly.
+# that is itself named like any of these gains a leading `_`, so `decode` inverts `encode`
+# exactly.
+#
+# A test build also escapes a directory named like `_t_` in the same way, since that
+# segment closes a test's name. A release build has no per-test directories, so it is
+# `release:` and keeps such a directory as it is.
 module BuildSubpath
 
   PARENT_SEGMENT    = '_up_'
@@ -23,12 +27,16 @@ module BuildSubpath
   INSTALLED_SEGMENT = '_ceedling_'
 
   # The segment that closes a test's name in its own build directories (see TestBuildLayout).
-  # `encode` writes it nowhere, and escapes a directory named like it, so no name holds it.
+  # A test build's `encode` writes it nowhere, and escapes a directory named like it, so no
+  # name holds it.
   OWN_SEGMENT = '_t_'
 
   # A segment of a path named like a marker, perhaps already led by more `_`, in any case,
   # since macOS and Windows file systems fold it
-  MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling|t)_\z/i
+  MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling)_\z/i
+
+  # A segment named like OWN_SEGMENT in the same way
+  OWN_NAMED = /\A_+t_\z/i
 
   # A segment of a path shaped like a shortened root's marker (see BuildRoots::MARKER),
   # perhaps already led by more `_`, in any case
@@ -50,20 +58,18 @@ module BuildSubpath
 
   # The build subpath that places a file of `path` by its path from the project root, or
   # below the marker of the shortened root in `roots` that holds it
-  def self.encode(path, roots: nil)
-    full = ProjectPaths.absolute( path )
-    return outside_segments( full, roots ).join( '/' ) unless ProjectPaths.contains?( ProjectPaths.working_dir, full )
+  def self.encode(path, roots: nil, release: false)
+    segments = placed_segments( ProjectPaths.absolute( path ), roots )
+    segments = segments.map { |segment| escape_own( segment ) } unless release
 
-    root = roots&.containing( full )
-    return root_segments( roots, root, full ).join( '/' ) unless root.nil?
-
-    return relative_segments( ProjectPaths.relative( full ) ).join( '/' )
+    return segments.join( '/' )
   end
 
   # The path, in intake's spelling, that `encode` made `subpath` from, or nil for a root
   # marker that `roots` does not hold
-  def self.decode(subpath, roots: nil)
+  def self.decode(subpath, roots: nil, release: false)
     segments = ProjectPaths.segments( subpath )
+    segments = segments.map { |segment| unescape_own( segment ) } unless release
     rest     = unescaped( segments.drop( 1 ) )
 
     return decoded_root( roots, segments.first, rest ) if segments.first.to_s.match?( ROOT_MARKER )
@@ -71,11 +77,21 @@ module BuildSubpath
     return decoded_marker( segments, rest ) || segments.map { |segment| segment == PARENT_SEGMENT ? '..' : unescape( segment ) }.join( '/' )
   end
 
-  # `encode` for a directory, memoized per table of roots, since a build places many files
-  # from each directory. The working directory itself encodes as ''.
-  def self.of_directory(dir, roots: nil)
-    key = [ProjectPaths.working_dir, roots&.digest, dir.to_s]
-    return @lock.synchronize { @subpaths[key] ||= encode( dir, roots: roots ) }
+  # `encode` for a directory, memoized per table of roots and kind of build, since a build
+  # places many files from each directory. The working directory itself encodes as ''.
+  def self.of_directory(dir, roots: nil, release: false)
+    key = [ProjectPaths.working_dir, roots&.digest, release, dir.to_s]
+    return @lock.synchronize { @subpaths[key] ||= encode( dir, roots: roots, release: release ) }
+  end
+
+  # The segments of a release build's spelling of an absolute path
+  def self.placed_segments(full, roots)
+    return outside_segments( full, roots ) unless ProjectPaths.contains?( ProjectPaths.working_dir, full )
+
+    root = roots&.containing( full )
+    return root_segments( roots, root, full ) unless root.nil?
+
+    return relative_segments( ProjectPaths.relative( full ) )
   end
 
   # A path outside the project, a climb or another drive: a file Ceedling ships goes below
@@ -128,6 +144,16 @@ module BuildSubpath
     return segment.match?( MARKER_NAMED ) || segment.match?( ROOT_MARKER_NAMED )
   end
 
+  # No marker `encode` writes is named like OWN_SEGMENT, so a test build escapes the
+  # segments of a release build's spelling, and unescapes them before reading it
+  def self.escape_own(segment)
+    return segment.match?( OWN_NAMED ) ? "_#{segment}" : segment
+  end
+
+  def self.unescape_own(segment)
+    return segment.match?( OWN_NAMED ) && segment.start_with?( '__' ) ? segment[1..] : segment
+  end
+
   # A path below a shortened root: the root's marker, then the path below the root
   def self.root_segments(roots, root, full)
     below = ProjectPaths.subdir_below( ProjectPaths.absolute( root ), full )
@@ -155,6 +181,7 @@ module BuildSubpath
   end
 
   private_class_method :installed?, :installed_segments, :absolute_segments, :escape, :unescape, :unescaped,
-                       :marker_named?, :root_segments, :decoded_root, :outside_segments, :relative_segments, :decoded_marker
+                       :marker_named?, :root_segments, :decoded_root, :outside_segments, :relative_segments, :decoded_marker,
+                       :placed_segments, :escape_own, :unescape_own
 
 end

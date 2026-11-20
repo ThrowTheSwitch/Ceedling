@@ -189,8 +189,10 @@ class FilePathUtils
     return subdir.empty? ? File.join(root, basename) : File.join(root, subdir, basename)
   end
 
+  # A release build has no per-test directories, so it places each file by its release spelling
+  # (see BuildSubpath)
   def form_release_build_objects_filelist(files)
-    return mirror_build_objects( files, root: @configurator.project_release_build_output_path, ext: @configurator.extension_object.primary )
+    return mirror_build_objects( files, root: @configurator.project_release_build_output_path, ext: @configurator.extension_object.primary, release: true )
   end
 
   # `filepath` is an already-mirrored object path -- its own directory is exactly where its
@@ -200,7 +202,7 @@ class FilePathUtils
   end
 
   def form_release_dependencies_filelist(files)
-    return mirror_build_objects( files, root: @configurator.project_release_dependencies_path, ext: @configurator.extension_dependencies.primary )
+    return mirror_build_objects( files, root: @configurator.project_release_dependencies_path, ext: @configurator.extension_dependencies.primary, release: true )
   end
 
   ### Tests ###
@@ -603,16 +605,16 @@ class FilePathUtils
   # it contains a literal `[`/`]`. FileWrapper#instantiate_file_list_literal (`<<`, not
   # `.new`/`.include`) adds every entry as-is, with no glob interpretation at all -- the
   # correct construction for a list that's already the real, final answer.
-  def mirror_build_objects(files, root:, ext:, generated_roots: [])
+  def mirror_build_objects(files, root:, ext:, generated_roots: [], release: false)
     sources = @file_wrapper.instantiate_file_list_literal( files ).to_a.uniq { |file| ProjectPaths.absolute( file ) }
-    objects = sources.map { |file| build_filepath( file, root: root, ext: ext, generated_roots: generated_roots ) }
+    objects = sources.map { |file| build_filepath( file, root: root, ext: ext, generated_roots: generated_roots, release: release ) }
 
     validate_distinct_build_files!( sources, objects )
     return @file_wrapper.instantiate_file_list_literal( objects )
   end
 
-  def build_filepath(file, root:, ext:, generated_roots:)
-    subdir   = form_build_subpath( file, generated_roots: generated_roots )
+  def build_filepath(file, root:, ext:, generated_roots:, release: false)
+    subdir   = form_build_subpath( file, generated_roots: generated_roots, release: release )
     basename = File.basename( file ).ext( ext )
     path     = subdir.empty? ? File.join( root, basename ) : File.join( root, subdir, basename )
 
@@ -626,12 +628,12 @@ class FilePathUtils
   # caller's generated roots (a test's mocks or Partials) mirrors below that root; one
   # below the build root otherwise (vendored frameworks, runners) lands flat; and any other
   # lands by its own path from the project root, so two sources never share one.
-  def form_build_subpath(file, generated_roots: [])
+  def form_build_subpath(file, generated_roots: [], release: false)
     generated = PathMirror.relative_subdir_if_rooted_in_clean_roots( file, generated_roots )
     return generated unless generated.nil?
     return '' if ProjectPaths.contains?( @configurator.project_build_root, file )
 
-    return BuildSubpath.of_directory( File.dirname( file ), roots: build_roots )
+    return BuildSubpath.of_directory( File.dirname( file ), roots: build_roots, release: release )
   end
 
   # Two sources building to one file would leave one of them out of the build
