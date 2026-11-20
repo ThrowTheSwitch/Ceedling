@@ -391,6 +391,34 @@ ceedling_system_tests do
       end
     end
 
+    # A Partial's module includes a header beside it, which an earlier search path shadows with a
+    # header of the same name. The generated Partial's #include reaches the one beside the module.
+    [:mocks, :all].product( [false, true] ).each do |preprocessor, fallback|
+      it "reach a header beside a Partial's module that an earlier search path shadows, under :use_test_preprocessor #{preprocessor}#{fallback ? ' with fallback' : ''}" do
+        in_project do
+          write( 'src/hw/config.h', "#ifndef HW_CONFIG_H\n#define HW_CONFIG_H\ntypedef int hw_t;\n#endif\n" )
+          write( 'lib/config.h', "#ifndef LIB_CONFIG_H\n#define LIB_CONFIG_H\n#define LIB_K 1\ntypedef int lib_t;\n#endif\n" )
+          write( 'lib/motor.h', "#ifndef MOTOR_H\n#define MOTOR_H\n#include \"config.h\"\nint motor_run(int a);\n#endif\n" )
+          write( 'lib/motor.c', "#include \"motor.h\"\nstatic int twice(int a) { return 2 * a + LIB_K; }\nint motor_run(int a) { return twice( a ); }\n" )
+          write( 'lib/port.h', "#ifndef PORT_H\n#define PORT_H\n#include \"config.h\"\nlib_t port_read(void);\n#endif\n" )
+          write( 'lib/port.c', "#include \"port.h\"\nlib_t port_read(void) { return 0; }\n" )
+          write( 'test/test_motor.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                      "#include TEST_PARTIAL_ALL_MODULE(motor)\nvoid test_twice(void) { TEST_ASSERT_EQUAL_INT(7, twice( 3 )); }\n" )
+          write( 'test/test_port.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                     "#include MOCK_PARTIAL_PUBLIC_MODULE(port)\n" \
+                                     "void test_read(void) { port_read_ExpectAndReturn( 3 ); TEST_ASSERT_EQUAL_INT(3, port_read()); }\n" )
+
+          configure( ['src/hw/', 'lib/'], preprocessor, { :project => { :use_test_preprocessor => preprocessor, :use_partials => true } } )
+          @c.merge_project_yml_for_test( { :paths => { :source => ['lib/'] } } )
+          @c.merge_project_yml_for_test( { :test_build => { :preprocess_force_fallback => true } } ) if fallback
+
+          output = @c.ceedling_build_exec( "test:all" )
+          expect(@c.last_exit_status).to eq(0), output
+          expect(output).to match(/PASSED:\s+2/)
+        end
+      end
+    end
+
     # A preprocessor names each #include by the path it found the header by. A later search path
     # joined with that path can name another header, which must never take its place.
     it "include the header the compiler found, never one a later search path joins its path to" do
@@ -438,18 +466,43 @@ ceedling_system_tests do
       end
     end
 
-    # A quoted #include looks beside the test file first. One there that no search path reaches
-    # leaves the runner the header the search paths find.
-    it "include in the runner the search paths' header where none reaches the one beside the test" do
+    # A quoted #include looks beside the test file first, and the test's own compile finds that
+    # header. A header there that no search path reaches is another header than the search paths'
+    # of the same name, so the runner includes it by its absolute path.
+    it "include in the runner the header beside the test, never one of its name a search path finds" do
       in_project do
-        write( 'test/drivers/foo.h', "#ifndef TFOO_H\n#define TFOO_H\n#define FOO_ARG 7\n#endif\n" )
-        write( 'src/drivers/foo.h', "#ifndef SFOO_H\n#define SFOO_H\n#define FOO_ARG 7\n#endif\n" )
-        write( 'test/test_b.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\nvoid test_b(void) { TEST_ASSERT_EQUAL_INT(7, FOO_ARG); }\n" )
+        write( 'test/drivers/foo.h', "#ifndef TFOO_H\n#define TFOO_H\n#define WHICH 1\n#endif\n" )
+        write( 'src/drivers/foo.h', "#ifndef SFOO_H\n#define SFOO_H\n#define WHICH 2\n#endif\n" )
+        write( 'src/other.h', "int other_read(void);\n" )
+        write( 'test/test_b.c', HEADER_SEARCH_PREAMBLE + "#include \"drivers/foo.h\"\n#include \"mock_other.h\"\n" \
+                                "void test_b(void) { TEST_ASSERT_EQUAL_INT(1, WHICH); }\n" )
 
         configure( ['src/'], :none )
         @c.remove_project_yml_option_for_test( :paths, :test )
         @c.merge_project_yml_for_test( { :paths => { :test => ['test/'] } } )
         build_passes
+
+        runner = File.readlines( Dir.glob( 'build/test/runners/**/test_b_runner.c' ).first ).select { |line| line.include?( 'foo.h' ) }
+        expect(runner).to eq( ["#include \"#{File.expand_path( 'test/drivers/foo.h' )}\"\n"] )
+      end
+    end
+
+    # Ceedling generates a Partial's header into the build root, where the compiler's -I reaches
+    # it by its filename. The runner names it so, never by its absolute path.
+    [:none, :mocks, :all].each do |preprocessor|
+      it "include in the runner a Partial's generated header by its filename under :use_test_preprocessor #{preprocessor}" do
+        in_project do
+          write( 'src/calc.h', "#ifndef CALC_H\n#define CALC_H\nint calc(int a);\n#endif\n" )
+          write( 'src/calc.c', "#include \"calc.h\"\nstatic int twice(int a) { return 2 * a; }\nint calc(int a) { return twice( a ) + 1; }\n" )
+          write( 'test/test_calc.c', HEADER_SEARCH_PREAMBLE.sub( "\n", "\n#include \"ceedling.h\"\n" ) +
+                                     "#include TEST_PARTIAL_ALL_MODULE(calc)\nvoid test_twice(void) { TEST_ASSERT_EQUAL_INT(6, twice( 3 )); }\n" )
+
+          configure( ['src'], preprocessor, { :project => { :use_test_preprocessor => preprocessor, :use_partials => true } } )
+          build_passes
+
+          runner = File.readlines( Dir.glob( 'build/test/runners/**/test_calc_runner.c' ).first ).select { |line| line.include?( 'ceedling_partial_calc_impl.h' ) }
+          expect(runner).to eq( ["#include \"ceedling_partial_calc_impl.h\"\n"] )
+        end
       end
     end
 

@@ -50,7 +50,9 @@ end
 # both name `src/drivers/foo.h`. A spelling reaches a header when the compiler, joining it
 # with each search path in order, finds that header first. A file Ceedling generates lives
 # away from the file it comes from, so it includes each header by a spelling that reaches it
-# (`spelling`). A respelling replaces a text that reaches another header, or none.
+# (`spelling`) or, where no spelling reaches it, by its absolute path. A header generated in the
+# build root keeps its text, since the compiler's own search paths reach it. A respelling
+# replaces a text that reaches another header, or none.
 #
 # An #include after stage 4 can carry a path the test never wrote: GCC's resolved
 # path for a plain #include, or a computed mock's place below its mirror root. When no
@@ -81,11 +83,13 @@ class HeaderSearch
   TIERS = [:joined, :trailing, :named].freeze
 
   # `paths` in search order. `lister` gives a directory's headers. `refusals` explain, by
-  # the query a test's #include asks for, why no search path reaches its header.
-  def initialize(paths, lister, refusals: {})
-    @paths    = paths
-    @listings = HeaderListings.new( lister )
-    @refusals = refusals.to_h { |query, why| [normalized( query ), why] }
+  # the query a test's #include asks for, why no search path reaches its header. `build_root`
+  # holds the headers Ceedling generates.
+  def initialize(paths, lister, refusals: {}, build_root: nil)
+    @paths      = paths
+    @listings   = HeaderListings.new( lister )
+    @refusals   = refusals.to_h { |query, why| [normalized( query ), why] }
+    @build_root = build_root
   end
 
   # The headers `query` names, the one the compiler includes first. Empty for none.
@@ -141,6 +145,12 @@ class HeaderSearch
       found = joined( normalized( text ) ).first
       !found.nil? and location( found ) == target
     end
+  end
+
+  # Whether `header` lies in the build root. The compiler's search paths include the directories
+  # Ceedling generates headers in, which these paths leave out.
+  def generated?(header)
+    return !@build_root.nil? && ProjectPaths.contains?( @build_root, header )
   end
 
   # Every header directly in a search path, in search order

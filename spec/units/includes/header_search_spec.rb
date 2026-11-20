@@ -11,14 +11,14 @@ require 'ceedling/includes/includes'
 
 describe HeaderSearch do
   # A directory tree's headers, listed as IncludePathinator lists a directory
-  def search(paths, tree)
+  def search(paths, tree, **options)
     @listed = Hash.new( 0 )
     lister  = lambda do |dir|
       @listed[dir] += 1
       tree.select { |header| File.dirname( header ) == dir }.sort
     end
 
-    return described_class.new( paths, lister )
+    return described_class.new( paths, lister, **options )
   end
 
   describe "#header_candidates" do
@@ -258,6 +258,60 @@ describe HeaderSearch do
       expect( lost.spelled_by( search( ['src'], ['src/foo.h'] ), resolved: true ) ).to equal( lost )
     end
 
+    # A header beside its includer, under no search path, is reached by none of its spellings
+    it "writes a resolved #include no spelling reaches by its header's absolute path" do
+      headers = search( ['src/hw', 'src'], ['src/hw/config.h', 'lib/config.h'] )
+      spelled = UserInclude.new( 'lib/config.h' ).spelled_by( headers, resolved: true )
+      absolute = "#{ProjectPaths.working_dir}/lib/config.h"
+
+      expect( [spelled.filepath, spelled.include_path, spelled.to_s] ).to eq( ['lib/config.h', absolute, "#include \"#{absolute}\""] )
+    end
+
+    it "keeps an #include's anchoring when it writes the header's absolute path" do
+      headers = search( ['src/hw'], ['src/hw/config.h', 'lib/config.h'] )
+      spelled = UserInclude.new( 'lib/config.h', directory_relative: true ).spelled_by( headers, resolved: true )
+
+      expect( [spelled.directory_relative?, spelled.include_path] ).to eq( [true, "#{ProjectPaths.working_dir}/lib/config.h"] )
+    end
+
+    it "writes a resolved #include a spelling reaches by that spelling, never by an absolute path" do
+      headers = search( ['src/hw', 'lib'], ['src/hw/config.h', 'lib/util.h'] )
+      spelled = UserInclude.new( 'lib/util.h' ).spelled_by( headers, resolved: true )
+
+      expect( [spelled.filepath, spelled.to_s] ).to eq( ['lib/util.h', '#include "util.h"'] )
+    end
+
+    it "writes an #include as written by its header's absolute path where the header is beside its includer and no search path finds one of that name" do
+      headers = search( ['src/hw'], ['src/hw/other.h', 'lib/config.h'] )
+      spelled = UserInclude.new( 'config.h' ).spelled_by( headers, from: 'lib' )
+      absolute = "#{ProjectPaths.working_dir}/lib/config.h"
+
+      expect( [spelled.filepath, spelled.include_path] ).to eq( ['lib/config.h', absolute] )
+    end
+
+    # A generated directory is on the compiler's search paths, though a test's header search
+    # leaves it out, so the compiler reaches a header there by the text it already has
+    it "keeps the text of a resolved #include whose header lies in the build root and no search path reaches" do
+      headers = search( ['src'], ['src/foo.h', 'build/test/partials/test_foo/ceedling_partial_foo_impl.h'], build_root: 'build' )
+      include = UserInclude.new( 'build/test/partials/test_foo/ceedling_partial_foo_impl.h' )
+
+      expect( include.spelled_by( headers, resolved: true ) ).to equal( include )
+    end
+
+    it "writes a resolved #include whose header lies outside the build root and no search path reaches by its absolute path" do
+      headers = search( ['src'], ['src/foo.h', 'builds/foo/config.h'], build_root: 'build' )
+      spelled = UserInclude.new( 'builds/foo/config.h' ).spelled_by( headers, resolved: true )
+
+      expect( spelled.include_path ).to eq( "#{ProjectPaths.working_dir}/builds/foo/config.h" )
+    end
+
+    it "spells a header in the build root by a spelling that reaches it" do
+      headers = search( ['build/test/mocks', 'src'], ['build/test/mocks/mock_foo.h'], build_root: 'build' )
+      spelled = UserInclude.new( 'build/test/mocks/mock_foo.h' ).spelled_by( headers, resolved: true )
+
+      expect( spelled.to_s ).to eq( '#include "mock_foo.h"' )
+    end
+
     # Reconciliation spells two same-named headers apart, which a shorter text could undo
     it "keeps the text an #include has where that text reaches its header" do
       headers = search( ['src', 'src/app', 'src/hw'], ['src/app/config.h', 'src/hw/config.h'] )
@@ -282,9 +336,32 @@ describe HeaderSearch do
       expect( [spelled.filepath, spelled.to_s] ).to eq( ['src/config.h', '#include "config.h"'] )
     end
 
-    # The compiler finds the search paths' header from where a generated file lives
-    it "spells an #include as written by the search paths' header where none reaches the one beside its includer" do
+    # The compiler finds a header beside the includer by the quote rule, which a generated file's
+    # own directory doesn't share, so a search path's header of the same name is another header
+    it "writes an #include as written by the absolute path of the header beside its includer where no search path reaches it" do
       headers = search( ['src'], ['src/drivers/foo.h', 'test/drivers/foo.h'] )
+      spelled = UserInclude.new( 'drivers/foo.h' ).spelled_by( headers, from: 'test' )
+      absolute = "#{ProjectPaths.working_dir}/test/drivers/foo.h"
+
+      expect( [spelled.filepath, spelled.include_path, spelled.to_s] ).to eq( ['test/drivers/foo.h', absolute, "#include \"#{absolute}\""] )
+    end
+
+    it "keeps an anchored #include's anchoring when it writes the absolute path of the header beside its includer" do
+      headers = search( ['src'], ['src/drivers/foo.h', 'test/drivers/foo.h'] )
+      spelled = UserInclude.new( 'test/drivers/foo.h', directory_relative: true ).spelled_by( headers, from: 'test' )
+
+      expect( [spelled.directory_relative?, spelled.include_path] ).to eq( [true, "#{ProjectPaths.working_dir}/test/drivers/foo.h"] )
+    end
+
+    it "spells an #include as written by the search paths' header when none is beside its includer" do
+      headers = search( ['src'], ['src/drivers/foo.h'] )
+      spelled = UserInclude.new( 'drivers/foo.h' ).spelled_by( headers, from: 'test' )
+
+      expect( [spelled.filepath, spelled.to_s] ).to eq( ['src/drivers/foo.h', '#include "drivers/foo.h"'] )
+    end
+
+    it "spells an #include as written by the spelling that reaches the header beside its includer" do
+      headers = search( ['test', 'src'], ['src/drivers/foo.h', 'test/drivers/foo.h'] )
       spelled = UserInclude.new( 'drivers/foo.h' ).spelled_by( headers, from: 'test' )
 
       expect( [spelled.filepath, spelled.to_s] ).to eq( ['test/drivers/foo.h', '#include "drivers/foo.h"'] )
