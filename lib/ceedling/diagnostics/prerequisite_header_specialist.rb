@@ -61,17 +61,25 @@ class PrerequisiteHeaderSpecialist
 
   # The expansion of a header to be mocked, whose #error is in that header or one it includes
   def examine_preprocess(kase)
-    return nil unless kase.inputs[:role] == :mock && reaches?( kase.output, kase.symptoms[:file], kase.inputs[:source] )
+    guarded = guarded_header( kase )
+    return nil unless kase.inputs[:role] == :mock && reaches?( kase.output, guarded, kase.inputs[:source] )
 
-    return preprocess_guidance( kase.symptoms[:file], prerequisite( kase.symptoms ) )
+    return preprocess_guidance( guarded, prerequisite( kase.symptoms ) )
   end
 
   # The compilation of a generated mock, whose #error is in a header the mock includes
   def examine_compile(kase)
     source = kase.inputs[:source]
-    return nil unless generated_mock?( source, kase.inputs[:testable] ) && !same_file?( kase.symptoms[:file], source )
+    guarded = guarded_header( kase )
+    return nil unless generated_mock?( source, kase.inputs[:testable] ) && !same_file?( guarded, source )
 
-    return compile_guidance( kase.symptoms[:file], source, prerequisite( kase.symptoms ) )
+    return compile_guidance( guarded, source, prerequisite( kase.symptoms ) )
+  end
+
+  # The header holding the #error, with forward slashes. Clang on Windows joins a search
+  # path and a header name with a backslash.
+  def guarded_header(kase)
+    return kase.symptoms[:file].tr( '\\', '/' )
   end
 
   def preprocess_guidance(guarded, prerequisite)
