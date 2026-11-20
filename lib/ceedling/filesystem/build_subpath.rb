@@ -13,8 +13,8 @@ require 'ceedling/filesystem/project_paths'
 # installation ships, outside the project, goes under `_ceedling_`. Given a table of
 # shortened roots (see BuildRoots), a path below one of them goes under the root's
 # `_<name>_<hash>` marker instead, keeping its path below the root. A directory of a path
-# that is itself named like any of these gains a leading `_`, so `decode` inverts `encode`
-# exactly.
+# that is itself named like any of these, or like `_t_`, gains a leading `_`, so `decode`
+# inverts `encode` exactly.
 module BuildSubpath
 
   PARENT_SEGMENT    = '_up_'
@@ -22,9 +22,13 @@ module BuildSubpath
   UNC_SEGMENT       = '_unc_'
   INSTALLED_SEGMENT = '_ceedling_'
 
+  # The segment that closes a test's name in its own build directories (see TestBuildLayout).
+  # `encode` writes it nowhere, and escapes a directory named like it, so no name holds it.
+  OWN_SEGMENT = '_t_'
+
   # A segment of a path named like a marker, perhaps already led by more `_`, in any case,
   # since macOS and Windows file systems fold it
-  MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling)_\z/i
+  MARKER_NAMED = /\A_+(?:up|abs|unc|ceedling|t)_\z/i
 
   # A segment of a path shaped like a shortened root's marker (see BuildRoots::MARKER),
   # perhaps already led by more `_`, in any case

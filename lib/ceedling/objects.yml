@@ -49,6 +49,11 @@ file_path_utils:
     - configurator
     - file_wrapper
 
+test_build_layout:
+  compose:
+    - configurator
+    - file_wrapper
+
 file_path_collection_utils:
   compose:
     - file_wrapper
