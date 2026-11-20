@@ -275,9 +275,19 @@ Ceedling names each test by its path from your project’s root, without its
 file extension. `test/unit/test_calc.c` is named `test/unit/test_calc`. Every
 test gets its own build output, even when test files share a filename.
 
+Each build directory that holds files of every test, such as `build/test/out/` or
+`build/test/mocks/`, gives each test its own directory: the test’s name followed by
+`_t_`. A test’s name is a path, so `_t_` keeps one test’s directory apart from the
+folders below another’s. `test/unit/test_calc` and `test/unit/test_calc/test_io`
+build to `build/test/out/test/unit/test_calc/_t_/` and
+`build/test/out/test/unit/test_calc/test_io/_t_/`, and a mock that `test_calc`
+includes as `test_io/mock_io.h` sits at
+`build/test/mocks/test/unit/test_calc/_t_/test_io/mock_io.h`.
+
 The name places a test’s output beneath each build directory:
 
-* Executable: `build/test/out/test/unit/test_calc/`
+* Executable: `build/test/out/test/unit/test_calc/_t_/`
+* Mocks: `build/test/mocks/test/unit/test_calc/_t_/`
 * Results: `build/test/results/test/unit/test_calc.pass`
 * Logs from plugins and backtraces, such as
   `build/artifacts/valgrind/test/unit/test_calc.log` or
@@ -285,7 +295,7 @@ The name places a test’s output beneath each build directory:
 
 Within a test’s directory, each object sits at its source’s own path from your
 project’s root, so same-named sources never share a path. `src/drivers/uart.c`
-compiles to `build/test/out/test/unit/test_calc/src/drivers/uart.o`. Preprocessed
+compiles to `build/test/out/test/unit/test_calc/_t_/src/drivers/uart.o`. Preprocessed
 files and dependency files follow the same layout, and a release build places its
 objects the same way below `build/release/out/`. Mocks sit below their test’s own
 mock directory, and runners and Unity, CMock, and CException objects sit directly in
@@ -296,7 +306,7 @@ your project, such as a vendor’s include directory, or one nested deep inside 
 is written as its own directory name and 8 hexadecimal digits, and everything below
 the root keeps its path. With `../../../Keil_v5/ARM/CMSIS/Include` among your
 `:paths`, a preprocessed copy of `Include/cmsis_os2.h` lands at
-`build/test/preprocess/files/<test>/directives_only/raw/_Include_3F2A91C0/cmsis_os2.h`.
+`build/test/preprocess/files/<test>/_t_/directives_only/raw/_Include_3F2A91C0/cmsis_os2.h`.
 A root is shortened only when its short name is shorter than its own path, so roots
 such as `src/` and `test/` are unchanged. `build/build_roots.yml` lists each shortened
 root and its short name, and `--verbosity=debug` logs them. Test names never change.
@@ -309,7 +319,8 @@ and a file of the running Ceedling installation outside your project, such as a
 plugin’s source, beneath `_ceedling_`. None of these reaches outside the build
 directory. A directory of your project that is itself named like one of these, or like a
 shortened root, gains a leading `_` (e.g. `__up_/`), so it never shares a name with
-a path outside your project.
+a path outside your project. In a test build, a directory named `_t_` gains one too,
+so it never ends a test’s name. A release build places it as it is.
 
 Two tests share a name only if their paths differ in extension alone (e.g.
 `test_a.c` and `test_a.cpp`). A build that includes either test stops with an
