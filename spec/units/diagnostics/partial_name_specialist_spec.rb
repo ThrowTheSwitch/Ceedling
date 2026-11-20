@@ -126,4 +126,81 @@ describe PartialNameSpecialist do
       expect( prescriptions( GCC_TYPE ).first ).to include( "4. Type names this test's Partials provide: ceedling_partial_ticker_tick_st_t\n" )
     end
   end
+
+
+  LOCAL_VAR_LEAD = "The compiler output appears to report a name that PARTIAL_LOCAL_VAR() builds and nothing declares. " \
+                   "If so, the macro's arguments may not match a static variable inside one of the module's functions.\n\n"
+
+  LOCAL_VAR_TEXT = <<~TEXT
+    HOW THIS HAPPENS:
+    • PARTIAL_LOCAL_VAR(function, variable) pastes its arguments into one name, partial_<function>_<variable>, as the test compiles.
+    • Each argument must match the module's source exactly, case included. A misspelling builds a name nothing declares.
+    • Only a variable declared static inside a function is promoted. A variable at file scope keeps its own name.
+    • The macro builds a name the compiler reads. It can't take a string or a runtime value.
+    • A test reaches promoted variables through a TEST_PARTIAL_*_MODULE() macro. A MOCK_PARTIAL_*_MODULE() macro provides none.
+
+    OPTIONS:
+    1. Check each argument against the function and its static variable in the module's source.
+    2. Name a variable at file scope directly, without the macro.
+    3. Include the module with a TEST_PARTIAL_*_MODULE() macro.
+  TEXT
+
+  TYPE_LEAD = "The compiler output appears to report a type that PARTIAL_TYPE() or PARTIAL_LOCAL_TYPE() names and nothing declares. " \
+              "If so, the macro's arguments may not match a variable declared together with its type.\n\n"
+
+  TYPE_TEXT = <<~TEXT
+    HOW THIS HAPPENS:
+    • A Partial names the type of a variable declared together with its type, as in `static struct { int count; } s_ctx;`.
+    • PARTIAL_TYPE(module, variable) and PARTIAL_LOCAL_TYPE(module, function, variable) paste their arguments into that name as the test compiles.
+    • The module argument is the module's name alone, without a directory. A character a C identifier can't hold is written as `_`, as in my_sensor for my-sensor.
+    • Variables declared in one statement share one type, named for the first of them.
+    • A variable whose type is named elsewhere, as in `static struct ctx s_ctx;`, uses that name, here `struct ctx`.
+
+    OPTIONS:
+    1. Check each argument against the module's name and its declaration, case included.
+    2. Use PARTIAL_LOCAL_TYPE() for a static declared inside a function, with the function's name.
+    3. Write a type named elsewhere by its own name.
+  TEXT
+
+  it 'gives the exact text of a promoted variable diagnosis with no names to list' do
+    expect( prescriptions( GCC_LOCAL ).first ).to eq( LOCAL_VAR_LEAD + LOCAL_VAR_TEXT )
+  end
+
+  it 'gives the exact text of a Partial type diagnosis with no names to list' do
+    expect( prescriptions( GCC_TYPE ).first ).to eq( TYPE_LEAD + TYPE_TEXT )
+  end
+
+  context "with this test's Partials generated, for exact text" do
+    before(:each) do
+      headers = ['build/test/partials/test_ticker/ceedling_partial_ticker_impl.h']
+      allow( @file_wrapper ).to receive( :directory_listing ).with( 'build/test/partials/test_ticker/**/*.h' ).and_return( headers )
+      allow( @file_wrapper ).to receive( :read ).with( headers[0] ).and_return(
+        "extern int partial_tick_count;\nextern ceedling_partial_ticker_tick_st_t partial_tick_st;\n"
+      )
+    end
+
+    it 'gives the exact text of a promoted variable diagnosis with its names as a fourth option' do
+      expect( prescriptions( GCC_LOCAL ).first ).to eq(
+        LOCAL_VAR_LEAD + LOCAL_VAR_TEXT + "4. Promoted variables this test's Partials provide: partial_tick_count, partial_tick_st\n"
+      )
+    end
+
+    it 'gives the exact text of a Partial type diagnosis with its names as a fourth option' do
+      expect( prescriptions( GCC_TYPE ).first ).to eq(
+        TYPE_LEAD + TYPE_TEXT + "4. Type names this test's Partials provide: ceedling_partial_ticker_tick_st_t\n"
+      )
+    end
+  end
+
+  it 'truncates a long list of names after twelve, with an ellipsis' do
+    names   = (1..14).map { |n| format( 'partial_v%02d', n ) }
+    headers = ['build/test/partials/test_ticker/ceedling_partial_ticker_impl.h']
+    allow( @file_wrapper ).to receive( :directory_listing ).with( 'build/test/partials/test_ticker/**/*.h' ).and_return( headers )
+    allow( @file_wrapper ).to receive( :read ).with( headers[0] ).and_return( names.map { |name| "extern int #{name};\n" }.join )
+
+    expect( prescriptions( GCC_LOCAL ).first ).to end_with(
+      "3. Include the module with a TEST_PARTIAL_*_MODULE() macro.\n" \
+      "4. Promoted variables this test's Partials provide: #{names.first( 12 ).join( ', ' )}, …\n"
+    )
+  end
 end
