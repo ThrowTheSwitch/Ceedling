@@ -773,12 +773,12 @@ describe PartializerHelper do
         function_definitions: [defined( 'ticker_count', 'int ticker_count(void)' ), defined( nil, 'int (*ticker_get(void))(int)' )]
       )
 
-      message = <<~MESSAGE.chomp
+      message = <<~MESSAGE
         Partial test_ticker::ticker ⏩️ Cannot read the name of the function declared by `int (*ticker_get(void))(int)`.
 
         OPTIONS:
-          1. If it returns or takes a function pointer, give that type a name with a typedef and use the name in this declaration.
-          2. If a macro generates the declaration, declare the function directly.
+        1. If it returns or takes a function pointer, give that type a name with a typedef and use the name in this declaration.
+        2. If a macro generates the declaration, declare the function directly.
       MESSAGE
 
       expect { @helper.validate_function_names_readable( c_module, 'test_ticker', 'ticker' ) }

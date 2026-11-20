@@ -75,6 +75,27 @@ describe GeneratorTestResultsSanityChecker do
       expect{@sanity_checker.verify(@results, 3)}.to raise_error(RuntimeError)
     end
 
+    it 'explains a failed check with its possible causes' do
+      @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
+      @results[:source] = {:file => 'test_calc.c'}
+      @results[:counts][:total] = 3
+      allow(@configurator).to receive(:extension_executable).and_return(FilenameExtension.new('.out'))
+
+      message = <<~MESSAGE
+        Internal sanity check for test fixture 'test_calc.out' finds that Unity's final test count (3) does not match Ceedling's summation of all test cases (9).
+
+        POSSIBLE CAUSES:
+        • Your test + source dereferenced a null pointer.
+        • Your test + source indexed past the end of a buffer.
+        • Your test + source committed a memory access violation.
+        • Your test fixture produced an exit code of 0 despite execution ending prematurely.
+
+        NOTE: Sanity check failures of test results are usually a symptom of interrupted test execution.
+      MESSAGE
+
+      expect{@sanity_checker.verify(@results, 3)}.to raise_error( CeedlingException ) { |error| expect( error.message ).to eq( message ) }
+    end
+
     it 'rasies error if basic check fails for failed' do
       @configurator.sanity_checks = TestResultsSanityChecks::NORMAL
       @results[:counts][:failed] = 0

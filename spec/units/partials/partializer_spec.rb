@@ -699,21 +699,21 @@ describe Partializer do
 
       carry_with( plan )
 
-      expect(@loginator).to have_received(:log).with(
-        "Partial test_engine::engine \u23e9\ufe0f Not carrying helpers `clamp()`, `counter()` from src/engine.h.\n" \
-        "Selected functions call these helpers, but src/engine.h has no include guard. Without a guard\n" \
-        "a Partial cannot stand in for the header everywhere it is included, and a carried copy could\n" \
-        "collide with the real one.\n" \
-        "\n" \
-        "OPTIONS:\n" \
-        "  1. Give src/engine.h an include guard so the Partial can stand in for it.\n" \
-        "  2. Select the helpers with `+name` (for example `+clamp`). This works only when no other\n" \
-        "     header this module includes pulls in src/engine.h.\n" \
-        "\n" \
-        "See the docs on Partials conventions.\n",
-        Verbosity::COMPLAIN,
-        LogLabels::NOTICE
-      )
+      expect(@loginator).to have_received(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+        Partial test_engine::engine ⏩️ Not carrying helpers `clamp()`, `counter()` from src/engine.h.
+
+        HOW THIS HAPPENS:
+        • Selected functions call these helpers.
+        • src/engine.h has no include guard.
+        • A Partial stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+        • Without one, a carried copy could collide with the real one.
+
+        OPTIONS:
+        1. Give src/engine.h an include guard so the Partial can stand in for it.
+        2. Select the helpers with `+name` (for example `+clamp`). This works only when no other header this module includes pulls in src/engine.h.
+
+        See the docs on Partials conventions.
+      NOTICE
       expect(@loginator).to have_received(:log).once
     end
 
@@ -1043,9 +1043,12 @@ describe Partializer do
 
       expect(@loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
         Partial test_sensor::sensor ⏩️ Its mock leaves helper `twice()` and variable `table` from src/sensor.h behind.
-        src/sensor.h has no include guard. Without a guard the mock can't stand in for the header everywhere
-        it's included, and a copy could collide with the real one. Code that uses these compiles only where
-        another #include brings in the real header.
+
+        HOW THIS HAPPENS:
+        • src/sensor.h has no include guard.
+        • A mock stands in for a header everywhere it's included by defining the header's include guard. Ceedling relies on include guards for this.
+        • Without one, a kept copy could collide with the real one, so the mock leaves them out.
+        • Code that uses these compiles only where another #include brings in the real header.
 
         Give src/sensor.h an include guard so the mock keeps them.
 

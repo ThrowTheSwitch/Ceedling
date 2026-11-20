@@ -99,7 +99,7 @@ describe Handoff do
 
         expect(@loginator).to receive(:log).with(
           "#{@launcher.describe( 'Ceedling launcher' )} loaded #{app.describe} into its own process. " +
-          "Restarting in #{app.name}'s own process. Upgrade Ceedling and review your installations to avoid this.",
+          "Restarting in #{app.name}'s own process.\n\nUpgrade Ceedling and review your installations to avoid this.\n",
           Verbosity::COMPLAIN
         ).ordered
         expect(described_class).to receive(:exec).with(
@@ -120,9 +120,12 @@ describe Handoff do
     def expect_fallback(app)
       expect(@loginator).to receive(:log).with(
         "#{@launcher.describe( 'Ceedling launcher' )} loaded #{app.describe} into its own process. " +
-        "Continuing in the launcher's process, which can fail or misbehave. Upgrade Ceedling, or run this " +
-        "installation's own launcher directly with `ruby #{app.bin_path}`. A project created with `--local` has a " +
-        "launch script at its root that does this: run `./ceedling` from the project root (`.\\ceedling.cmd` on Windows).",
+        "Continuing in the launcher's process, which can fail or misbehave.\n\n" \
+        "OPTIONS:\n" \
+        "1. Upgrade Ceedling.\n" \
+        "2. Run this installation's own launcher directly with `ruby #{app.bin_path}`.\n" \
+        "3. In a project created with `--local`, run `./ceedling` from the project root (`.\\ceedling.cmd` on Windows). " \
+        "Its launch script does this.\n",
         Verbosity::COMPLAIN
       )
     end

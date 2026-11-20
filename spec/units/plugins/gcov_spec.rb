@@ -300,6 +300,28 @@ describe Gcov do
         expect { gcov.process_untested_sources(sources: ['src/a.c']) }.to raise_error(ShellException)
       end
 
+      it 'words its guidance in the guidance layout' do
+        allow(dependinator).to receive(:stale?).and_return(true)
+        allow(generator).to receive(:generate_object_file_c)
+          .and_raise(ShellException.new(name: 'compile', message: 'compile failed'))
+        gcov = build_process_gcov({ gcov_untested_sources: GCOV_UNTESTED_SOURCES_COMPILE, gcov_mcdc: false })
+
+        expect(loginator).to receive(:log).with( <<~NOTICE, Verbosity::COMPLAIN, LogLabels::NOTICE )
+          Compiling untested 'a.c' with coverage failed.
+
+          NOTE: Compilation of an untested source for coverage (:gcov ↳ :untested_sources ➡️ :compile) may require defines, flags, or platform symbols & headers not present in the test suite build.
+
+          OPTIONS:
+          1. Provide needed compilation essentials using Ceedling features and/or code stand-ins.
+          2. Switch :gcov ↳ :untested_sources to :list to log untested files without compiling them.
+          3. Switch :gcov ↳ :untested_sources to :ignore to disable this feature entirely.
+
+          See the Gcov plugin docs for more explanation and recommendations.
+        NOTICE
+
+        expect { gcov.process_untested_sources(sources: ['src/a.c']) }.to raise_error(ShellException)
+      end
+
       it 're-raises a ShellException without logging guidance when guidance: false' do
         allow(dependinator).to receive(:stale?).and_return(true)
         allow(generator).to receive(:generate_object_file_c)
