@@ -41,7 +41,8 @@ describe HeaderCollisionSpecialist do
     @doctor = BuildStepDoctor.new(
       loginator: @loginator, header_collision_specialist: specialist,
       missing_symbol_specialist: nobody, duplicate_symbol_specialist: nobody, partial_name_specialist: nobody,
-      include_depth_specialist: nobody
+      include_depth_specialist: nobody,
+      prerequisite_header_specialist: nobody
     ).tap( &:setup )
   end
 

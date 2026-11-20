@@ -30,6 +30,7 @@ require 'ceedling/diagnostics/missing_symbol_specialist'
 require 'ceedling/diagnostics/duplicate_symbol_specialist'
 require 'ceedling/diagnostics/partial_name_specialist'
 require 'ceedling/diagnostics/include_depth_specialist'
+require 'ceedling/diagnostics/prerequisite_header_specialist'
 
 PROJECT_BUILD_VENDOR_UNITY_PATH      = 'build/vendor/unity'      unless defined?( PROJECT_BUILD_VENDOR_UNITY_PATH )
 PROJECT_BUILD_VENDOR_CMOCK_PATH      = 'build/vendor/cmock'      unless defined?( PROJECT_BUILD_VENDOR_CMOCK_PATH )
@@ -69,10 +70,11 @@ describe 'BuildStepDoctor (integration)' do
       missing_symbol_specialist:   MissingSymbolSpecialist.new( configurator: configurator ),
       duplicate_symbol_specialist: DuplicateSymbolSpecialist.new( configurator: configurator ),
       partial_name_specialist:     PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper ),
-      include_depth_specialist:    IncludeDepthSpecialist.new( file_wrapper: file_wrapper )
+      include_depth_specialist:    IncludeDepthSpecialist.new( file_wrapper: file_wrapper ),
+      prerequisite_header_specialist: PrerequisiteHeaderSpecialist.new( configurator: configurator )
     ).tap( &:setup )
 
-    @testable = TestInvokerTypes::Testable.new( name: 'a_test', paths: { build: File.join( @root, 'build' ) } )
+    @testable = TestInvokerTypes::Testable.new( name: 'a_test', paths: { build: File.join( @root, 'build' ), mocks: File.join( @root, 'build', 'mocks' ) } )
   end
 
   after(:each) do
@@ -95,6 +97,16 @@ describe 'BuildStepDoctor (integration)' do
 
     expect( status.success? ).to be( false ), "expected #{compiler} to fail on #{source}, but it compiled:\n#{output}"
     [output, deps]
+  end
+
+  # Expands `source` with `-E`, as Ceedling's full preprocessor does, and returns the output of an
+  # expansion that must fail
+  def preprocess_failing(compiler, source, includes:)
+    args   = includes.map { |dir| "-I#{File.join( @root, dir )}" }
+    output, status = Open3.capture2e( compiler, *args, '-E', source, '-o', File.join( @root, 'a_test.i' ) )
+
+    expect( status.success? ).to be( false ), "expected #{compiler} to fail on #{source}, but it expanded:\n#{output}"
+    output
   end
 
   # Compiles each source to an object, then links them, returning the output of a link
@@ -200,6 +212,61 @@ describe 'BuildStepDoctor (integration)' do
         expect( @logged.first ).to include( "This test links both 'mock_gpio.o' and 'gpio.o'" )
       end
 
+      # FreeRTOS guards nearly every public header against inclusion before FreeRTOS.h
+      it 'explains a header to be mocked that guards against inclusion before a prerequisite header' do
+        guarded = write( 'rtos/include/task.h', "#ifndef INC_FREERTOS_H\n    #error \"include FreeRTOS.h must appear in source files before include task.h\"\n#endif\nvoid vTaskDelay(int ticks);\n" )
+
+        output = preprocess_failing( compiler, guarded, includes: ['rtos/include'] )
+        @doctor.diagnose( step: :preprocess, output: output, inputs: { role: :mock, source: guarded, search_paths: [] } )
+
+        expect( @logged.size ).to eq( 1 ), "expected one prescription from #{compiler}'s output:\n#{output}"
+        expect( @logged.first ).to include( "an #error directive in '#{guarded}'", "before 'FreeRTOS.h'.", '`-include FreeRTOS.h`' )
+      end
+
+      it 'explains a header to be mocked whose included header guards against inclusion before a prerequisite header' do
+        guarded = write( 'rtos/include/task.h', "#ifndef INC_FREERTOS_H\n    #error \"include FreeRTOS.h must appear in source files before include task.h\"\n#endif\n" )
+        queue   = write( 'rtos/include/queue.h', "#include \"task.h\"\n" )
+
+        output = preprocess_failing( compiler, queue, includes: ['rtos/include'] )
+        @doctor.diagnose( step: :preprocess, output: output, inputs: { role: :mock, source: queue, search_paths: [] } )
+
+        expect( @logged.size ).to eq( 1 ), "expected one prescription from #{compiler}'s output:\n#{output}"
+        expect( @logged.first ).to include( "an #error directive in '#{guarded}'" )
+      end
+
+      it 'gives no prerequisite guidance for the expansion of a test file' do
+        write( 'rtos/include/task.h', "#ifndef INC_FREERTOS_H\n    #error \"include FreeRTOS.h must appear in source files before include task.h\"\n#endif\n" )
+        source = write( 'test/test_task.c', "#include \"task.h\"\n" )
+
+        output = preprocess_failing( compiler, source, includes: ['rtos/include'] )
+        @doctor.diagnose( step: :preprocess, output: output, inputs: { role: :test, source: source, search_paths: [] } )
+
+        expect( @logged ).to eq( [] )
+      end
+
+      it 'explains a generated mock whose header guards against inclusion before a prerequisite header' do
+        guarded = write( 'rtos/include/task.h', "#ifndef INC_FREERTOS_H\n    #error \"include FreeRTOS.h must appear in source files before include task.h\"\n#endif\nvoid vTaskDelay(int ticks);\n" )
+        write( 'build/mocks/mock_task.h', "#include \"task.h\"\n" )
+        source = write( 'build/mocks/mock_task.c', "#include \"mock_task.h\"\n" )
+
+        output, = compile_failing( compiler, source, includes: ['build/mocks', 'rtos/include'] )
+        @doctor.diagnose( step: :compile, output: output, inputs: { source: source, testable: @testable } )
+
+        expect( @logged.size ).to eq( 1 ), "expected one prescription from #{compiler}'s output:\n#{output}"
+        expect( @logged.first ).to include( "an #error directive in '#{guarded}' while compiling the generated mock 'mock_task.c'" )
+        expect( @logged.first ).to end_with( "Add 'FreeRTOS.h' to :cmock ↳ :includes_h_pre_orig_header, so the generated mock includes it before the header.\n" )
+      end
+
+      it 'gives no prerequisite guidance for a test file that includes a guarded header first' do
+        write( 'rtos/include/task.h', "#ifndef INC_FREERTOS_H\n    #error \"include FreeRTOS.h must appear in source files before include task.h\"\n#endif\n" )
+        source = write( 'test/test_task.c', "#include \"task.h\"\n" )
+
+        output, = compile_failing( compiler, source, includes: ['rtos/include'] )
+        @doctor.diagnose( step: :compile, output: output, inputs: { source: source, testable: @testable } )
+
+        expect( @logged ).to eq( [] )
+      end
+
       it 'prescribes nothing for an error that is no collision' do
         write( 'include/a.h', "int a;\n" )
         write( 'include/b.h', "int b;\n" )
@@ -223,7 +290,7 @@ describe 'BuildStepDoctor (integration)' do
       @doctor = BuildStepDoctor.new(
         loginator: @loginator, header_collision_specialist: nobody, missing_symbol_specialist: nobody,
         duplicate_symbol_specialist: nobody, partial_name_specialist: PartialNameSpecialist.new( configurator: configurator, file_wrapper: file_wrapper ),
-        include_depth_specialist: nobody
+        include_depth_specialist: nobody, prerequisite_header_specialist: nobody
       ).tap( &:setup )
     end
 

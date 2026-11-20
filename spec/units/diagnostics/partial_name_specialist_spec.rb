@@ -25,7 +25,8 @@ describe PartialNameSpecialist do
     @doctor = BuildStepDoctor.new(
       loginator: @loginator, header_collision_specialist: nobody, missing_symbol_specialist: nobody, duplicate_symbol_specialist: nobody,
       partial_name_specialist: described_class.new( configurator: @configurator, file_wrapper: @file_wrapper ),
-      include_depth_specialist: nobody
+      include_depth_specialist: nobody,
+      prerequisite_header_specialist: nobody
     ).tap( &:setup )
 
     @testable = TestInvokerTypes::Testable.new( name: 'test_ticker', filepath: 'test/test_ticker.c', paths: { partials: 'build/test/partials/test_ticker' } )
