@@ -73,6 +73,21 @@ describe PrerequisiteHeaderSpecialist do
     GUIDANCE
   end
 
+  # With no prerequisite named, the options say what to fill in
+  def general_preprocess_guidance()
+    return preprocess_guidance( header: 'a prerequisite header' ).sub( /^1\. .*\n2\. .*\n/, <<~OPTIONS )
+      1. Add `-include` and the prerequisite header's name to :flags ↳ :test ↳ :preprocess, so the header's preprocessing sees the prerequisite first.
+      2. Add the prerequisite header's name to :cmock ↳ :includes_h_pre_orig_header, so the generated mock includes it before the header.
+    OPTIONS
+  end
+
+  def general_compile_guidance()
+    return compile_guidance( header: 'a prerequisite header' ).sub(
+      /^Add a prerequisite header to .*\n/,
+      "Add the prerequisite header's name to :cmock ↳ :includes_h_pre_orig_header, so the generated mock includes it before the header.\n"
+    )
+  end
+
   def compile_guidance(header: "'FreeRTOS.h'")
     return <<~GUIDANCE
       The compiler output appears to report an #error directive in 'rtos/include/task.h' while compiling the generated mock 'mock_task.c'. The directive may guard the header against being included before #{header}.
@@ -158,7 +173,7 @@ describe PrerequisiteHeaderSpecialist do
       'task.h must not be included directly'
     ].each do |message|
       it "keeps the guidance general for '#{message}'" do
-        general = preprocess_guidance( header: 'a prerequisite header', flag: '`-include` with a prerequisite header' )
+        general = general_preprocess_guidance()
 
         expect( preprocess( gcc_output( message ) ) ).to eq( [general] )
         expect( preprocess( clang_output( message ) ) ).to eq( [general] )
@@ -178,7 +193,7 @@ describe PrerequisiteHeaderSpecialist do
     end
 
     it 'keeps the guidance general when the message names no prerequisite' do
-      expect( compile( gcc_output( 'do not include this header directly' ) ) ).to eq( [compile_guidance( header: 'a prerequisite header' )] )
+      expect( compile( gcc_output( 'do not include this header directly' ) ) ).to eq( [general_compile_guidance] )
     end
 
     it 'ignores the compilation of a test file' do
