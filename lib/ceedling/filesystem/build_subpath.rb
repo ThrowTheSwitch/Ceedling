@@ -17,8 +17,8 @@ require 'ceedling/filesystem/project_paths'
 # exactly.
 #
 # A test build also escapes a directory named like `_t_` in the same way, since that
-# segment closes a test's name. A release build has no per-test directories, so it is
-# `release:` and keeps such a directory as it is.
+# segment closes a test's name. A release build, `release: true`, has no per-test
+# directories and keeps such a directory as it is.
 module BuildSubpath
 
   PARENT_SEGMENT    = '_up_'
