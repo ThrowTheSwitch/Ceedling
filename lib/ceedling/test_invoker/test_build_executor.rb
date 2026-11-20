@@ -48,12 +48,10 @@ class TestBuildExecutor
   # any mock is planned, so a copy would stand in for its header there. CMock's mock includes the
   # header by a text that may reach only the copy, so stage 4 places a stand-in in the mock's
   # place, as on a first build. A copy is a header with its mock beside it, since no build
-  # removes a mock. A test this run doesn't build keeps its mock root, even below another test's.
+  # removes a mock. No test's mock root lies below another's, so a root holds its own test's files.
   def stage_hold_header_copies(state)
-    every = every_mock_root()
-
     run_mock_roots( state ).each do |root|
-      each_copy( root, every ) do |copy|
+      each_copy( root ) do |copy|
         mock = mock_beside( copy )
         @file_wrapper.mv( copy, copy + HELD_COPY_SUFFIX )
         @file_wrapper.mv( mock, mock + HELD_MOCK_SUFFIX )
@@ -66,12 +64,11 @@ class TestBuildExecutor
   # stays on the test's search path, with or without mocks, so a copy that outlives its mock
   # shadows the header.
   def stage_prune_header_copies(state)
-    keep  = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
-    every = every_mock_root()
+    keep = mock_files( state.mocks_list ) + header_copies( state.mocks_list )
 
     run_mock_roots( state ).each do |root|
-      restore_held_copies( root, keep, every )
-      each_copy( root, every ) { |copy| @file_wrapper.rm_f( copy ) unless keep.include?( copy ) }
+      restore_held_copies( root, keep )
+      each_copy( root ) { |copy| @file_wrapper.rm_f( copy ) unless keep.include?( copy ) }
     end
   end
 
@@ -675,34 +672,28 @@ class TestBuildExecutor
     return @mock_locator.placement( mocks_root: mock.testable.paths[:mocks], subdir: details.path, include_path: details.include_path ).directory
   end
 
-  # Yields each copy below `root`, a header with its mock beside it, except below another of the
-  # mock roots in `every`
-  def each_copy(root, every)
-    nested  = every.select { |other| below?( other, root ) }
+  # Yields each copy below `root`, a header with its mock beside it
+  def each_copy(root)
     headers = root_headers( root )
     listed  = headers.to_set
     headers.each do |path|
-      next if !listed.include?( mock_beside( path ) ) or nested.any? { |other| below?( path, other ) }
-
-      yield( path )
+      yield( path ) if listed.include?( mock_beside( path ) )
     end
   end
 
   # Puts each mock set aside below `root` back, and each copy where `keep` names it, removing
-  # the other copies, except below another of the mock roots in `every`
-  def restore_held_copies(root, keep, every)
-    each_held( root, HELD_MOCK_SUFFIX, every ) { |held, mock| @file_wrapper.mv( held, mock ) }
-    each_held( root, HELD_COPY_SUFFIX, every ) do |held, copy|
+  # the other copies
+  def restore_held_copies(root, keep)
+    each_held( root, HELD_MOCK_SUFFIX ) { |held, mock| @file_wrapper.mv( held, mock ) }
+    each_held( root, HELD_COPY_SUFFIX ) do |held, copy|
       keep.include?( copy ) ? @file_wrapper.mv( held, copy ) : @file_wrapper.rm_f( held )
     end
   end
 
-  # Yields each file set aside below `root` with `suffix`, and its own path, except below another
-  # of the mock roots in `every`
-  def each_held(root, suffix, every)
-    nested = every.select { |other| below?( other, root ) }
+  # Yields each file set aside below `root` with `suffix`, and its own path
+  def each_held(root, suffix)
     @file_wrapper.directory_listing( FilePathUtils.glob( root, '**', "*#{suffix}" ) ).each do |path|
-      yield( path, path.delete_suffix( suffix ) ) unless nested.any? { |other| below?( path, other ) }
+      yield( path, path.delete_suffix( suffix ) )
     end
   end
 
@@ -719,24 +710,11 @@ class TestBuildExecutor
     return state.testables.each_value.filter_map { |testable| testable.paths[:mocks] }.uniq
   end
 
-  # The mock root of every test in the project, whether or not this run builds it. Composed
-  # without FilePathUtils#form_test_mocks_path, whose length check warns of a path only a
-  # test this run builds should warn of.
-  def every_mock_root
-    return @configurator.collection_all_tests.map do |test|
-      File.join( @configurator.cmock_mock_path, @file_path_utils.form_test_name( test.to_s ) )
-    end
-  end
-
   # Every header below a mock root
   def root_headers(root)
     return @configurator.extension_header.flat_map do |ext|
       @file_wrapper.directory_listing( FilePathUtils.glob( root, '**', "*#{ext}" ) )
     end
-  end
-
-  def below?(path, directory)
-    return path.start_with?( File.join( directory, '' ) )
   end
 
   # The settings that have a mock include its real header by `header_include` in place of
