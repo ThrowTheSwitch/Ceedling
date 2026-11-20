@@ -38,7 +38,7 @@ Each pipeline, such as test or release, has its own cache file,
 
 ```json
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "hash_algorithm": "sha256",
   "entries": {
     "<target path>": {
@@ -63,6 +63,17 @@ Each pipeline, such as test or release, has its own cache file,
     output's content hash.
 
 ## Versions
+
+### 4: each test's own root (1.2.3)
+
+**Contents:** unchanged from version 3.
+
+**Why:** the build layout changed. A test's name is its path, so one test's directory
+below a shared base could also be a subdirectory of another test's, and the two tests'
+files mixed (#1439). Each test's own directory below the mocks, Partials, preprocessing,
+output, and dependencies directories gained a closing `_t_` segment after the test's
+name, and its executable and linker map moved with its objects. Keys naming the old
+paths name places no build reads any more.
 
 ### 3: shortened build roots (1.2.3)
 

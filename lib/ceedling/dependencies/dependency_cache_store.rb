@@ -57,7 +57,7 @@ class DependencyCacheStore
 
   # Cache keys are build paths, so a change to where a build puts its output changes the
   # schema too. CACHE_SCHEMA.md records each version and why it was raised.
-  CACHE_SCHEMA_VERSION = 3 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
+  CACHE_SCHEMA_VERSION = 4 unless const_defined?(:CACHE_SCHEMA_VERSION, false)
 
   constructor :file_wrapper, :loginator
 
