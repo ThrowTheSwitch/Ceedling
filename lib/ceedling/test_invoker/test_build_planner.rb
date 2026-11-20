@@ -167,6 +167,12 @@ class TestBuildPlanner
       compilations += test_support
       compilations.uniq!
 
+      # A Partial's original never links. Only a build that asks for originals, such as a
+      # coverage build, compiles it, since a coverage report reads it.
+      unless state.options.include?( :partial_originals )
+        compilations.delete_if { |source| partials_source_object?( source, testable.partials.configs ) }
+      end
+
       # A mock and a generated Partial each sit below one of this test's own generated
       # roots rather than a configured source root, so nothing in the standard roots
       # mirrors them. Without these, two same-named mocks or modules collapse onto one
@@ -290,7 +296,7 @@ class TestBuildPlanner
       sources << @file_finder.find_build_input_file( filepath: include.filepath, complain: :ignore, context: context, test: test_name )
     end
 
-    # Add to the source list any testable Partials (no mock Partials)
+    # Add to the source list the original source of any testable Partial (no mock Partials)
     #
     # `_module` is a bare module name, not a path -- FileFinder has no directory
     # structure to infer a test identity from, so without `test: test_name` here

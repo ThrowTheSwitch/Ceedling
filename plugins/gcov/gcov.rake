@@ -27,7 +27,7 @@ namespace GCOV_SYM do
   desc 'Run code coverage for all tests'
   task all: [:prepare] do
     # Run tests with coverage
-    @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:[] )
+    @ceedling[:test_invoker].setup_and_invoke( tests:COLLECTION_ALL_TESTS, context:GCOV_SYM, options:[:partial_originals] )
 
     # Optionally compile untested sources with coverage for complete source coverage results in the final report.
     # This comes after the tests because it depends on the accrued knowledge of which source files have associated tests.
@@ -60,7 +60,7 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:[] )
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:[:partial_originals] )
     else
       @ceedling[:loginator].log("\nFound no tests matching pattern /#{args.regex}/.")
     end
@@ -75,7 +75,7 @@ namespace GCOV_SYM do
     end
 
     if !matches.empty?
-      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:[] )
+      @ceedling[:test_invoker].setup_and_invoke( tests:matches, context:GCOV_SYM, options:[:partial_originals] )
     else
       @ceedling[:loginator].log( 'Found no tests including the given path or path component', Verbosity::ERRORS )
     end
@@ -92,7 +92,7 @@ namespace GCOV_SYM do
      end
    ]) do |test|
     @ceedling[:rake_wrapper][:prepare].invoke
-    @ceedling[:test_invoker].setup_and_invoke( tests:[test.source], context:GCOV_SYM, options:[] )
+    @ceedling[:test_invoker].setup_and_invoke( tests:[test.source], context:GCOV_SYM, options:[:partial_originals] )
   end
 end
 
@@ -121,7 +121,7 @@ namespace GCOV_SYM do
     @ceedling[:test_invoker].setup_and_invoke(
       tests: COLLECTION_ALL_TESTS,
       context: GCOV_SYM,
-      options: [:sources_only]
+      options: [:sources_only, :partial_originals]
     )
     @ceedling[:gcov].process_untested_sources( sources: COLLECTION_ALL_SOURCE, guidance: false )
   end

@@ -106,7 +106,7 @@ namespace BULLSEYE_SYM do
       @ceedling[:test_invoker].setup_and_invoke(
         tests: COLLECTION_ALL_TESTS,
         context: BULLSEYE_SYM,
-        options: { sources_only: true }
+        options: { sources_only: true, partial_originals: true }
       )
       @ceedling[:bullseye].process_untested_sources( sources: COLLECTION_ALL_SOURCE, guidance: false )
     end

@@ -753,7 +753,8 @@ class TestBuildExecutor
       flags = testable.compile_flags
       tool, flags, defines = resolve_compile_tool(
         context: context, operation: OPERATION_COMPILE_SYM, tool: @configurator.tools_test_compiler,
-        flags: flags, defines: defines, module_name: test, source: source, object: object
+        flags: flags, defines: defines, module_name: test, source: source, object: object,
+        partial_original: partials_source_object?( source, testable.partials.configs )
       )
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool, isolation: testable.header_isolation )
 
@@ -835,7 +836,8 @@ class TestBuildExecutor
       flags = testable.assembler_flags
       tool, flags, defines = resolve_compile_tool(
         context: context, operation: OPERATION_ASSEMBLE_SYM, tool: @configurator.tools_test_assembler,
-        flags: flags, defines: defines, module_name: test, source: source, object: object
+        flags: flags, defines: defines, module_name: test, source: source, object: object,
+        partial_original: partials_source_object?( source, testable.partials.configs )
       )
       stale = register_and_check_object_staleness( object: object, source: source, dependencies: dependencies, flags: flags, defines: defines, search_paths: search_paths, tool: tool, isolation: testable.header_isolation )
 
@@ -970,10 +972,13 @@ class TestBuildExecutor
   # than the plain test compiler it's about to be swapped out for. The resolved
   # values are also what the real compile itself uses (see the two call sites
   # above), so the two can never disagree about which tool actually ran.
-  def resolve_compile_tool(context:, operation:, tool:, flags:, defines:, module_name:, source:, object:)
+  #
+  # `partial_original` marks the compile of a Partial's original source, whose object never
+  # links, so a plugin can quiet it.
+  def resolve_compile_tool(context:, operation:, tool:, flags:, defines:, module_name:, source:, object:, partial_original:)
     arg_hash = {
       context: context, operation: operation, tool: tool, flags: flags, defines: defines,
-      module_name: module_name, source: source, object: object
+      module_name: module_name, source: source, object: object, partial_original: partial_original
     }
     @plugin_manager.pre_test_compile_register( arg_hash )
     return arg_hash[:tool], arg_hash[:flags], arg_hash[:defines]
