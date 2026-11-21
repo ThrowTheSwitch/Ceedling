@@ -178,7 +178,29 @@ describe Partializer do
         @partializer.populate_filepaths(configs)
       end
 
-      it "raises when it names no header" do
+      # A module is a source, a header, or both
+      it "resolves a module with a source and no header" do
+        configs = { 'drivers/calc' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+
+        allow(@file_finder).to receive(:find_header_file).and_return(nil)
+        allow(@file_finder).to receive(:find_source_file).with('drivers/calc', :ignore).and_return('src/drivers/calc.c')
+
+        @partializer.populate_filepaths(configs)
+
+        expect(configs['drivers/calc'].source.filepath).to eq('src/drivers/calc.c')
+      end
+
+      # A bare name names no directory, so matching nothing keeps the older degenerate Partial
+      it "doesn't raise for a bare module name that matches no file" do
+        configs = { 'confg' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
+
+        allow(@file_finder).to receive(:find_header_file).and_return(nil)
+        allow(@file_finder).to receive(:find_source_file).and_return(nil)
+
+        expect { @partializer.populate_filepaths(configs) }.to_not raise_error
+      end
+
+      it "raises when it names no file, neither a header nor a source" do
         configs = { 'drivers/uart/confg' => make_config(tests: make_tests(present: true), mocks: make_mocks(present: false)) }
 
         allow(@file_finder).to receive(:find_header_file).and_return(nil)
@@ -191,18 +213,29 @@ describe Partializer do
     end
 
     context "a Partial that only mocks public functions" do
-      it "never looks up a source, whichever way its module was named" do
-        configs = {
-          'drivers/uart/config' => make_config(
-            tests: make_tests(present: false),
-            mocks: make_mocks(present: true, type: Partials::PUBLIC)
-          )
-        }
+      it "never looks up a source when a header declares its functions, whichever way its module was named" do
+        ['config', 'drivers/uart/config'].each do |name|
+          configs = { name => make_config( tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC) ) }
 
-        allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
-        expect(@file_finder).to_not receive(:find_source_file)
+          allow(@file_finder).to receive(:find_header_file).and_return('include/drivers/uart/config.h')
+          expect(@file_finder).to_not receive(:find_source_file)
 
-        @partializer.populate_filepaths(configs)
+          @partializer.populate_filepaths(configs)
+        end
+      end
+
+      # Without a header, the source holds the module's public functions
+      it "looks up the source of a module with no header, whichever way its module was named" do
+        ['calc', 'drivers/calc'].each do |name|
+          configs = { name => make_config( tests: make_tests(present: false), mocks: make_mocks(present: true, type: Partials::PUBLIC) ) }
+
+          allow(@file_finder).to receive(:find_header_file).and_return(nil)
+          allow(@file_finder).to receive(:find_source_file).with(name, :ignore).and_return('src/drivers/calc.c')
+
+          @partializer.populate_filepaths(configs)
+
+          expect(configs[name].source.filepath).to eq('src/drivers/calc.c')
+        end
       end
     end
 
