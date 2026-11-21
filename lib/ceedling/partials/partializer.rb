@@ -219,12 +219,13 @@ class Partializer
       # Every partial involves processing header files
       config.header.filepath = @file_finder.find_header_file(_module, :ignore, collection: collection)
 
-      _validate_named_directory_resolved!(_module, config.header.filepath, test_filepath)
-
-      # Source file not needed only when mocking public functions exclusively
-      unless !config.tests.present? && config.mocks.type == PUBLIC
+      # Mocking only public functions needs no source when a header declares them. A module
+      # with no header holds its public functions in its source.
+      unless !config.tests.present? && config.mocks.type == PUBLIC && !config.header.filepath.nil?
         config.source.filepath = _find_module_source(_module, config.header.filepath)
       end
+
+      _validate_named_directory_resolved!(_module, config.header.filepath || config.source.filepath, test_filepath)
     end
 
     return configs
@@ -262,11 +263,12 @@ class Partializer
   end
 
   # A bare module name that matches nothing keeps its older behavior, generating a
-  # degenerate Partial. A directory that matches nothing is a typo worth saying so,
-  # since naming the directory was a deliberate act and no older behavior is at stake.
-  def _validate_named_directory_resolved!(_module, header_filepath, test_filepath)
+  # degenerate Partial. A directory that matches neither a header nor a source is a typo
+  # worth saying so, since naming the directory was a deliberate act and no older
+  # behavior is at stake.
+  def _validate_named_directory_resolved!(_module, found_filepath, test_filepath)
     return unless _names_directory?(_module)
-    return unless header_filepath.nil?
+    return unless found_filepath.nil?
 
     location = test_filepath.nil? ? '' : " referenced in #{test_filepath}"
 
