@@ -2,7 +2,7 @@
 
 This plugin measures code coverage with the commercially available 
 [Bullseye Coverage][bullseye] tool. It adds a set of `bullseye:` build tasks 
-that mirror Ceedling's `test:` tasks. These tasks instrument your code, 
+that mirror Ceedling’s `test:` tasks. These tasks instrument your code, 
 run your tests, and report how much of your source the tests actually exercised.
 
 !!! warning "Requires a commercial license"
@@ -47,7 +47,7 @@ whether each individual boolean operand did the same.
 This plugin labels condition/decision coverage as BRANCHES in its console
 output.
 
-Bullseye's own site offers a [conceptual overview of code coverage][bullseye-coverage].
+Bullseye’s own site offers a [conceptual overview of code coverage][bullseye-coverage].
 It includes suggested incremental coverage goals.
 
 ### The coverage data file
@@ -56,7 +56,7 @@ Coverage data accumulates in `test.cov` at your project root. Every
 instrumented test executable writes to it. Every reporting tool reads from it.
 
 This file lives at your project root rather than under `build/` for a specific
-reason. Bullseye records each source path relative to the coverage data file's
+reason. Bullseye records each source path relative to the coverage data file’s
 own location. Report exclusions match against that stored path. Your project
 root is the only common ancestor of every source location a project can have.
 Those locations include `src/`, `test/`, vendored framework sources, and
@@ -69,22 +69,22 @@ Coverage data accumulates across runs. Use `ceedling clean` or
 ### Supported tool versions
 
 This plugin is verified against Bullseye Coverage 9.25.9 on Linux x64. It
-relies on command-line conventions that have been stable across Bullseye's
+relies on command-line conventions that have been stable across Bullseye’s
 release history and across platforms.
 
 ## Installation and set up
 
 ### Install Bullseye
 
-Obtain an installer from [Bullseye's download page][bullseye-download]. Install
+Obtain an installer from [Bullseye’s download page][bullseye-download]. Install
 and activate it following [Licensing](licensing.md).
 
-Bullseye's tools must be on your `PATH`. Ceedling's
+Bullseye’s tools must be on your `PATH`. Ceedling’s
 [`:environment`](../../configuration/reference/environment.md) settings can
 also supply the path.
 
 !!! note "Docker images"
-    Ceedling's `madsciencelab-plugins` Docker image variants do not include
+    Ceedling’s `madsciencelab-plugins` Docker image variants do not include
     Bullseye. This requires a license that a freely available image cannot carry. 
     Download Bullseye and then either extend the image or install into a running 
     container.
@@ -145,14 +145,14 @@ one of three values.
     symbols to be defined, certain flags to be set, or entire stand-in shims
     for platform headers and code.
 
-    Ceedling's
+    Ceedling’s
     [`:defines`](../../configuration/reference/defines.md)
     and
     [`:flags`](../../configuration/reference/flags.md)
     matchers can provide these. Bullseye tasks extract symbols and flags from
     the `:test` context by default. Use the `:bullseye` context in those
     matchers to supply anything specific to coverage builds. For an untested
-    source, matchers match against the source file's own path.
+    source, matchers match against the source file’s own path.
 
 `:compile` also enables a standalone `bullseye:untested_sources` task.
 
@@ -192,7 +192,7 @@ Generates a machine-readable coverage report for CI tooling. It takes one of
 three values.
 
 * `:none` — No XML report.
-* `:native` — Bullseye's own XML schema.
+* `:native` — Bullseye’s own XML schema.
 * `:cobertura` — Cobertura format (a popular format across coverage reporting
     tools and CI dashboards).
 
@@ -282,7 +282,7 @@ Bullseye is a single self-contained toolchain.
 ### Console summaries
 
 Two summaries print after a `bullseye:` task. Per-function detail lists each
-function's invocation status and condition/decision coverage. Whole-file totals
+function’s invocation status and condition/decision coverage. Whole-file totals
 follow as a single banner.
 
 ```
@@ -354,7 +354,7 @@ A full interactive HTML report is generated to
 
 Enabling [`:xml_report:`](#xml_report) writes
 `build/artifacts/bullseye/coverage.xml`. Cobertura format suits CI dashboards
-that already consume it. Bullseye's native schema carries more detail,
+that already consume it. Bullseye’s native schema carries more detail,
 including per-probe results.
 
 ### Report exclusions
@@ -369,14 +369,14 @@ including those `report:bullseye` writes.
 Bullseye calls the underlying concept a region. A region is an inclusion or
 exclusion rule. Regions can match by filename, directory, function, or C++
 class and namespace. This plugin uses filename-pattern exclusions only. See
-[Bullseye's region reference][bullseye-regions] for the full syntax.
+[Bullseye’s region reference][bullseye-regions] for the full syntax.
 
 ## Additional tasks
 
 ### Coverage Browser
 
-The `bullseye:browser` task opens Bullseye's graphical Coverage Browser
-against your project's coverage data file.
+The `bullseye:browser` task opens Bullseye’s graphical Coverage Browser
+against your project’s coverage data file.
 
 ```shell
  > ceedling bullseye:browser
@@ -397,35 +397,59 @@ See [Licensing](licensing.md) for how to read its output.
 
 ### Advanced usage
 
-This plugin's tool definitions and defaults are contained in
+This plugin’s tool definitions and defaults are contained in
 [defaults_bullseye.rb](../../snapshot/plugins/bullseye/config/defaults_bullseye.rb)
 and [defaults.yml](../../snapshot/plugins/bullseye/config/defaults.yml). Both
-are useful references for overriding plugin behavior with Ceedling's advanced
+are useful references for overriding plugin behavior with Ceedling’s advanced
 features.
 
 ### Tool wrapping and custom flags
 
-This plugin's compiler and linker tools wrap `gcc` with Bullseye's `covc`.
-`covc` parses everything before the wrapped compiler's name as its own option.
+This plugin’s compiler and linker tools wrap `gcc` with Bullseye’s `covc`.
+`covc` parses everything before the wrapped compiler’s name as its own option.
 Anything after that name is passed through to the compiler.
 
-The wrapped compiler name is therefore folded into each tool's `:executable`
+The wrapped compiler name is therefore folded into each tool’s `:executable`
 setting as `covc -q gcc`. It is not left as a leading argument.
 
 Keep this ordering in mind when overriding `:bullseye_compiler` or
 `:bullseye_linker`. Your own `:arguments:` entries must land after the wrapped
-compiler's name. So must any flags Ceedling injects through `:defines` and
+compiler’s name. So must any flags Ceedling injects through `:defines` and
 `:flags` matchers.
+
+### Compiler warnings
+
+A `bullseye:` build shows no compiler warnings. `covc` compiles its
+instrumented copy of each source with `-w`, which silences every warning, and
+`-Werror` cannot fail the build. A plain `test:` build (with no extra flags 
+set via `:flags`) shows warnings, except for a function a 
+[Test Partial](../../testing-guide/partials/overview.md) leaves out.
+
+### Partials and the original source
+
+A plain test build using Partials never compiles a module’s original source.
+By necessity, a `bullseye:` build compiles the original of each module a test 
+incorporates as a [Test Partial](../../testing-guide/partials/overview.md) as 
+part of retargeting coverage results from the Partial to the original source.
+The Partial’s `#line` directives map its coverage onto the original’s lines. 
+The original’s compilation registers every function of the module, so a 
+function the Partial leaves out reports at 0% instead of vanishing from the 
+report. When Partials are active, the original’s object never links into the 
+test executable.
+
+The generated Partial files never appear in reports, since their coverage counts
+against the original. The [console summaries](#console-summaries) list the
+original source, not the Partial’s files.
 
 ### "unknown option" errors from `covc`
 
-A flag that belongs to `gcc` landed before the wrapped compiler's name. See
+A flag that belongs to `gcc` landed before the wrapped compiler’s name. See
 [Tool wrapping and custom flags](#tool-wrapping-and-custom-flags).
 
 ### `bullseye:browser` fails to launch `CoverageBrowser`
 
 `CoverageBrowser` is a GUI application with its own runtime dependencies. GTK
-is one example on Linux. Install your platform's GUI toolkit dependencies
+is one example on Linux. Install your platform’s GUI toolkit dependencies
 alongside Bullseye.
 
 Headless environments rarely have these libraries. Console summaries, HTML

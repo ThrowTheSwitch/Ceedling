@@ -20,15 +20,23 @@ Ceedling can create two kinds of Partials:
     We solve this by simply creating two peer test files for the different Partials
     usage scenarios.
 
-When a test file references a Partial, Ceedling excludes the original source
-file from that test executable's build. The generated Partial 
-source is compiled and linked in place of the original source C.
+When a test file references a Partial, the generated Partial source is compiled
+and linked in place of the original source C. The original source is never listed
+among the object files that link into the test executable.
+
+A plain test build using Partials never compiles the original source. A
+coverage build compiles a Test Partial’s original by necessity, as part of
+retargeting coverage results from the Partial to the original source. See the
+[gcov](../../plugins/gcov/troubleshooting.md#partials-and-the-original-source)
+and [Bullseye](../../plugins/bullseye/index.md#partials-and-the-original-source)
+plugins for what each reads from it. When Partials are active, the original’s
+object never links.
 
 !!! note "Purpose-specific C language handling"
     Ceedling includes its own custom, purpose-specific lexing for recognizing
     C language elements. This was the best way to handle all cases across
     platforms. This custom lexer even handles many compiler extensions 
-    (e.g. Microsoft's `__declspec` and GCC's `__attribute__()`).
+    (e.g. Microsoft’s `__declspec` and GCC’s `__attribute__()`).
     
     On the upside, this approach provides everything Partials need. On the 
     downside, until exercised by a great deal of real world code, this custom 
@@ -56,12 +64,16 @@ When creating a Partial, Ceedling:
        rely on. That includes prototypes of functions defined elsewhere or left
        out, and the header helpers the functions use
        ([details](conventions.md#what-a-partial-carries-from-your-module)).
-1. Structures the test build to omit the original source file from the 
-   resulting test executable. Generated Partials stand in for the original C
-   code from which the Partials are derived.
+1. Structures the test build to leave the original source file out of the test
+   executable linking step. Generated Partials stand in for the original C code 
+   from which the Partials are derived. A plain test build never compiles the 
+   original. A coverage build compiles the original by necessity, as part of 
+   retargeting coverage results to the original source (the next step).
+   The original source module’s object file is never linked in the test 
+   executable.
 1. Maps the functions and carried items in generated Partials back to their
-   original filepaths and line numbers (using C's `#line` directive) for
-   correct test coverage reporting.
+   original filepaths and line numbers (using C’s `#line` directive) for
+   correct test coverage reporting ([details](conventions.md#what-is-carried)).
 
 !!! tip "Walk-through example"
     See [Partials Walk-Through Example](example.md) for a complete end-to-end
@@ -82,7 +94,7 @@ only declarations Ceedling has already resolved, with no inline bodies, so CMock
 reads it as generated, without the preprocessing other mocked headers get.
 
 A module your test mocks but doesn't test can also get an extras header. It
-keeps your header's helpers, `static` variables, and other declarations the
+keeps your header’s helpers, `static` variables, and other declarations the
 mock leaves out
 ([details](conventions.md#what-a-mock-partial-keeps-from-your-header)), and
 exists only when it keeps something. The interface header includes it, and

@@ -91,7 +91,10 @@ void test_ConvertRawToMilliCelsius(void)
 1. Compiles and links the Partial implementation source (in place of the original 
    `sensor` source module) and the test file into the test executable. The 
    symbols and includes of `sensor.h` and `sensor.c` are duplicated in the 
-   Partials while the original `sensor.c` is omitted from the build.
+   Partials while the original `sensor.c` is left out of the objects linked
+   into the test executable. A plain test build never compiles `sensor.c`. A
+   coverage build compiles it by necessity to retarget coverage results from
+   the Partial to `sensor.c` but still does not link it.
 
 ## Using the mockable partial
 
@@ -144,6 +147,9 @@ void test_Sensor_ReadCelsius(void)
    Partial implementation source from (4) in place of the original `sensor` 
    source module, and the test file into the test executable. The 
    symbols and includes of `sensor.h` and `sensor.c` are duplicated in the 
-   Partials while the original `sensor.c` is omitted from the build.
+   Partials while the original `sensor.c` is left out of the objects linked
+   into the test executable. A plain test build never compiles `sensor.c`. A
+   coverage build compiles it by necessity, to retarget coverage results from
+   the Partial to `sensor.c`, and still doesn't link it.
 
 <br/><br/>

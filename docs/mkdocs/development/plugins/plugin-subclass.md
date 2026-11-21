@@ -142,7 +142,7 @@ These methods are called before and after execution of preprocessing for header
 files to be mocked (see [Conventions & Behaviors][preprocessing] for preprocessing details). If a
 project does not enable preprocessing or a build does not include tests, these
 are not called. This pair of methods is called once for each mocked header in a
-test build. A mocked Partial's generated header is never preprocessed, so it
+test build. A mocked Partial’s generated header is never preprocessed, so it
 draws no call.
 
 The argument `arg_hash` follows the structure below:
@@ -270,9 +270,20 @@ arg_hash = {
   :source => "<filepath>",
   :object => "<filepath>",
   :flags => [<flags>],
-  :defines => [<defines>]
+  :defines => [<defines>],
+  # True for the original source of a module a Partial replaces, false otherwise
+  :partial_original => <boolean>
 }
 ```
+
+A plain test build never compiles a Partial’s original source. But, a plugin’s rake
+tasks can ask for originals by passing `:partial_originals` among the `options:` of
+`setup_and_invoke`, as the gcov and Bullseye plugins do. A coverage build needs
+the original by necessity, as part of retargeting coverage results from Partials
+to the original source ([details](rake-tasks.md#running-a-test-build-from-a-rake-task)).
+This hook then receives each original with `:partial_original` set to true. Its 
+object is never linked into a test executable. A plugin may adjust its flags, as 
+the gcov plugin does to add `-w`.
 
 ## `Plugin` hook methods `pre_compile_execute(arg_hash)` and `post_compile_execute(arg_hash)`
 
@@ -467,7 +478,7 @@ arg_hash = {
   :shell_result => { ... },
   # Set by a plugin that recognizes the cause; nil otherwise
   :explanation => nil,
-  # True for the crash's main run, whose explanation reaches the crash notice;
+  # True for the crash’s main run, whose explanation reaches the crash notice;
   # false for a backtrace rerun
   :crash_notice => true,
   # Optional, set alongside :explanation
