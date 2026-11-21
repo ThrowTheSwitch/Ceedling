@@ -555,6 +555,87 @@ describe TestBuildPlanner do
       expect(@testable.objects).to include( 'build/test/runners/a_test/TestFoo_runner.o' )
     end
 
+    # A Partial's original is compiled only for a build that asks, such as gcov's. Its source
+    # stays a source either way, since coverage reports and untested-source scans read it.
+    context "with a Partial whose original source is among the sources" do
+      before(:each) do
+        @testable.partials.configs = { 'Foo' => double( "Config" ) }
+        @testable.partials.tests   = ['Foo']
+        allow(@file_finder).to receive(:find_build_input_file)
+          .with( filepath: 'Foo', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/Foo.c' )
+      end
+
+      it "leaves the original out of the compile list and the objects when the build doesn't ask for originals" do
+        captured = nil
+        allow(@file_path_utils).to receive(:form_test_build_objects_filelist) do |_path, files, **_kw|
+          captured ||= files
+          files.map { |f| f.ext( '.o' ) }
+        end
+
+        @planner.stage_determine_artifacts( @state )
+
+        expect( captured ).to_not include( 'src/Foo.c' )
+        expect( @testable.objects ).to_not include( 'src/Foo.o' )
+      end
+
+      it "keeps the original among the testable's sources when the build doesn't ask for originals" do
+        @planner.stage_determine_artifacts( @state )
+
+        expect( @testable.sources ).to eq( ['src/Foo.c'] )
+      end
+
+      it "compiles the original when the build asks for originals" do
+        @state.options = [:partial_originals]
+        captured = nil
+        allow(@file_path_utils).to receive(:form_test_build_objects_filelist) do |_path, files, **_kw|
+          captured ||= files
+          files.map { |f| f.ext( '.o' ) }
+        end
+
+        @planner.stage_determine_artifacts( @state )
+
+        expect( captured ).to include( 'src/Foo.c' )
+        expect( @testable.objects ).to include( 'src/Foo.o' )
+      end
+
+      it "keeps the original among the testable's sources when the build asks for originals" do
+        @state.options = [:partial_originals]
+
+        @planner.stage_determine_artifacts( @state )
+
+        expect( @testable.sources ).to eq( ['src/Foo.c'] )
+      end
+
+      # Bullseye passes its options as a Hash, and Hash#include? looks at its keys
+      it "reads the option from a Hash of options by its key" do
+        @state.options = { partial_originals: true }
+
+        @planner.stage_determine_artifacts( @state )
+
+        expect( @testable.objects ).to include( 'src/Foo.o' )
+      end
+
+      # Stage 16 leaves these out of the link. An object's path doesn't always mirror its
+      # source's, since a long source root is shortened in the build tree.
+      it "records the original's object, formed as every object is, whether or not the build compiles it" do
+        allow(@file_path_utils).to receive(:form_test_build_objects_filelist) { |_path, files, **_kw| files.map { |f| f.ext( '.o' ) } }
+
+        [[], [:partial_originals]].each do |options|
+          @state.options = options
+
+          @planner.stage_determine_artifacts( @state )
+
+          expect( @testable.original_objects ).to eq( ['src/Foo.o'] )
+        end
+      end
+
+      it "still compiles the test's other sources and generated files without the original" do
+        @planner.stage_determine_artifacts( @state )
+
+        expect( @testable.objects ).to include( 'test/TestFoo.o', 'build/test/runners/a_test/TestFoo_runner.o' )
+      end
+    end
+
     context "with a mocked header whose real source would otherwise also be compiled" do
       before(:each) do
         mock = MockInclude.new( 'MockFoo.h' )
@@ -775,57 +856,51 @@ describe TestBuildPlanner do
     end
   end
 
-  describe "#remove_partials_source_objects" do
-    it "removes an object whose basename matches a Partial module name" do
-      objects = ['build/test/out/a_test/Foo.o', 'build/test/out/a_test/Bar.o']
+  describe "#partials_source_object?" do
+    let(:configs) { { 'Foo' => double( "Config" ) } }
 
-      @planner.remove_partials_source_objects( objects, { 'Foo' => double( "Config" ) } )
-
-      expect(objects).to eq( ['build/test/out/a_test/Bar.o'] )
+    it "is true for an object whose basename matches a Partial module name" do
+      expect( @planner.partials_source_object?( 'build/test/out/a_test/Foo.o', configs ) ).to be( true )
     end
 
-    it "leaves the list untouched when no object matches a Partial module name" do
-      objects = ['build/test/out/a_test/Bar.o']
-
-      @planner.remove_partials_source_objects( objects, { 'Foo' => double( "Config" ) } )
-
-      expect(objects).to eq( ['build/test/out/a_test/Bar.o'] )
+    it "is false when nothing matches a Partial module name" do
+      expect( @planner.partials_source_object?( 'build/test/out/a_test/Bar.o', configs ) ).to be( false )
     end
 
-    # A Partialized module's own object must not reach the link, since the generated
-    # Partial already carries that module's functions. An object's path mirrors its
-    # source's own directory, so a module named by directory is matched by the end of
-    # that path.
-    it "removes the mirrored object of a module named by directory" do
-      objects = [
-        'build/test/out/a_test/drivers/uart/config.o',
-        'build/test/out/a_test/a_test.o'
-      ]
+    # A Partialized module's own source is told from its object by nothing but the extension
+    it "is true for the module's source as well as its object" do
+      expect( @planner.partials_source_object?( 'src/Foo.c', configs ) ).to be( true )
+    end
 
-      @planner.remove_partials_source_objects( objects, { 'drivers/uart/config' => double( "Config" ) } )
+    it "is false for the module's generated Partial source" do
+      expect( @planner.partials_source_object?( 'build/test/partials/a_test/ceedling_partial_Foo_impl.c', configs ) ).to be( false )
+    end
 
-      expect(objects).to eq( ['build/test/out/a_test/a_test.o'] )
+    # An object's path mirrors its source's own directory, so a module named by directory
+    # is matched by the end of that path.
+    it "is true for the mirrored object of a module named by directory" do
+      configs = { 'drivers/uart/config' => double( "Config" ) }
+
+      expect( @planner.partials_source_object?( 'build/test/out/a_test/drivers/uart/config.o', configs ) ).to be( true )
+      expect( @planner.partials_source_object?( 'build/test/out/a_test/a_test.o', configs ) ).to be( false )
     end
 
     # Matching on basename alone would take this one too, dropping a module the test
     # never Partialized and losing its functions from the link.
-    it "leaves a same-named module's object in another directory alone" do
-      objects = [
-        'build/test/out/a_test/drivers/uart/config.o',
-        'build/test/out/a_test/drivers/spi/config.o'
-      ]
+    it "is false for a same-named module's object in another directory" do
+      configs = { 'drivers/uart/config' => double( "Config" ) }
 
-      @planner.remove_partials_source_objects( objects, { 'drivers/uart/config' => double( "Config" ) } )
-
-      expect(objects).to eq( ['build/test/out/a_test/drivers/spi/config.o'] )
+      expect( @planner.partials_source_object?( 'build/test/out/a_test/drivers/spi/config.o', configs ) ).to be( false )
     end
 
-    it "still removes a mirrored object for a module named without a directory" do
-      objects = ['build/test/out/a_test/drivers/uart/config.o']
+    it "is true for a mirrored object of a module named without a directory" do
+      configs = { 'config' => double( "Config" ) }
 
-      @planner.remove_partials_source_objects( objects, { 'config' => double( "Config" ) } )
+      expect( @planner.partials_source_object?( 'build/test/out/a_test/drivers/uart/config.o', configs ) ).to be( true )
+    end
 
-      expect(objects).to eq( [] )
+    it "is false when the test has no Partials" do
+      expect( @planner.partials_source_object?( 'build/test/out/a_test/Foo.o', {} ) ).to be( false )
     end
   end
 
@@ -929,16 +1004,16 @@ describe TestBuildPlanner do
       expect(result).to eq( ['src/drivers/bar.c'] )
     end
 
-    it "includes testable Partials' own generated sources, but not mock Partials" do
+    it "includes the original sources of testable Partials, but not those of mock Partials" do
       allow(@test_context_extractor).to receive(:lookup_all_header_includes_list)
         .with( 'test/TestFoo.c' ).and_return( [] )
       @testable.partials.tests = ['Baz']
       allow(@file_finder).to receive(:find_build_input_file)
-        .with( filepath: 'Baz', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'build/test/partials/a_test/Baz.c' )
+        .with( filepath: 'Baz', complain: :ignore, context: :test, test: 'a_test' ).and_return( 'src/Baz.c' )
 
       result = @planner.extract_sources( :test, 'test/TestFoo.c', @testable.partials, @testable.name )
 
-      expect(result).to include( 'build/test/partials/a_test/Baz.c' )
+      expect(result).to include( 'src/Baz.c' )
     end
 
     # A Partial's own module name (e.g. 'Baz') carries no directory of its own for

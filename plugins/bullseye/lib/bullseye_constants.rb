@@ -37,11 +37,16 @@ BULLSEYE_COVFILE_PATH        = 'test.cov'
 # Vendor/framework sources never subject to coverage instrumentation or reporting
 BULLSEYE_IGNORE_SOURCES      = ['unity', 'cmock', 'cexception']
 
+# The options of every Bullseye test build. The tool entries are a Hash's keys, which the
+# pipeline's option check reads. :partial_originals asks the build to compile a Partial's
+# original, whose functions covc then registers, so one the Partial leaves out reports at
+# 0% instead of vanishing.
 TOOL_COLLECTION_BULLSEYE_TASKS = {
-  :test_compiler  => TOOLS_BULLSEYE_COMPILER,
-  :test_assembler => TOOLS_TEST_ASSEMBLER,
-  :test_linker    => TOOLS_BULLSEYE_LINKER,
-  :test_fixture   => TOOLS_BULLSEYE_FIXTURE
+  :test_compiler     => TOOLS_BULLSEYE_COMPILER,
+  :test_assembler    => TOOLS_TEST_ASSEMBLER,
+  :test_linker       => TOOLS_BULLSEYE_LINKER,
+  :test_fixture      => TOOLS_BULLSEYE_FIXTURE,
+  :partial_originals => true
 }
 
 # Untested Sources Processing Modes

@@ -6,7 +6,7 @@ See the detailed documentation for using Partials in `docs/mkdocs/testing-guide/
 
 ## Where This Fits in a Test Build
 
-Ceedling’s test pipeline drives this subsystem through a handful of stages dedicated to Partials. Those stages read a test’s Partial configuration, preprocess the real header and source files that a test’s Partials depend on, and then generate the Partial files themselves. The stage-by-stage view of that pipeline lives in this codebase’s `test_invoker/` documentation. 
+Ceedling’s test pipeline drives this subsystem through a handful of stages dedicated to Partials. Those stages read a test’s Partial configuration, preprocess the real header and source files that a test’s Partials depend on, and then generate the Partial files themselves. The stage-by-stage view of that pipeline lives in this codebase’s `test_invoker/` documentation. A module’s original source never links into a test executable, and only a coverage build compiles it, as that documentation describes.
 
 ## Choosing Functions With Macros
 

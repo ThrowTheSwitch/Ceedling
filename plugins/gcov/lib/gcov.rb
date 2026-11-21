@@ -256,6 +256,10 @@ class Gcov < Plugin
   # is what actually invalidates a gcov-context object's cache -- not the plain test
   # compiler this replaces. Compile all non-assembly files with coverage; gcovr
   # --exclude filters non-production files from reports.
+  #
+  # A Partial's original is compiled only so its coverage data can be read, and its
+  # object never links. Its warnings are noise, since the Partial's own compile reports any
+  # real one in the code it carries, so its compile adds -w.
   def pre_test_compile_register(arg_hash)
     return unless arg_hash[:context] == GCOV_SYM
     return if EXTENSION_ASSEMBLY.match?(arg_hash[:source])
@@ -264,6 +268,7 @@ class Gcov < Plugin
 
     arg_hash[:tool] = TOOLS_GCOV_COMPILER
     arg_hash[:flags] += ['-fcondition-coverage'] if @project_config[:gcov_mcdc]
+    arg_hash[:flags] += ['-w'] if arg_hash[:partial_original]
 
     # The whole :gcov config as meta, redundant alongside the :mcdc-derived flag
     # above -- belt-and-suspenders against a future :gcov key affecting a compile

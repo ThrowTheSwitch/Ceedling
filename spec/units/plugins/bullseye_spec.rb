@@ -240,6 +240,19 @@ describe Bullseye do
   ## Build pipeline hooks
   ##
 
+  # Bullseye's reports need the compile of a Partial's original, since covc registers every
+  # function it compiles, even in an object never linked. Its pipeline options ask for it.
+  describe 'pipeline options' do
+    it 'ask the build to compile a Partial original' do
+      expect(TOOL_COLLECTION_BULLSEYE_TASKS).to include(:partial_originals)
+      expect(TOOL_COLLECTION_BULLSEYE_TASKS[:partial_originals]).to be(true)
+    end
+
+    it 'still carry the Bullseye tools' do
+      expect(TOOL_COLLECTION_BULLSEYE_TASKS).to include(:test_compiler, :test_linker, :test_fixture)
+    end
+  end
+
   describe '#pre_test_compile_register' do
     it 'swaps in the Bullseye compiler and adds the coverage define for the bullseye context' do
       bullseye = build_bullseye({})
@@ -703,6 +716,40 @@ describe Bullseye do
 
       expect(tool_executor).to receive(:build_command_line).once
         .with(TOOLS_BULLSEYE_REPORT_COVFN, [], 'src/a.c').and_return({})
+
+      bullseye.send(:report_per_function_coverage_results)
+    end
+
+    # Bullseye holds no data under a generated Partial's name, since the Partial's #line
+    # directives map its coverage to the original's lines
+    it 'skips a generated Partial source and keeps its original' do
+      bullseye = build_covfn_bullseye(
+        ['src/a.c', 'build/test/partials/test_a/ceedling_partial_a_impl.c', 'build/test/partials/test_a/ceedling_partial_a_interface.c'],
+        "banner\nline\nDETAIL\n"
+      )
+
+      expect(tool_executor).to receive(:build_command_line)
+        .with(TOOLS_BULLSEYE_REPORT_COVFN, [], 'src/a.c').and_return({})
+      expect(tool_executor).to_not receive(:build_command_line)
+        .with(TOOLS_BULLSEYE_REPORT_COVFN, [], %r{/ceedling_partial_a_})
+
+      bullseye.send(:report_per_function_coverage_results)
+    end
+
+    it 'does not skip a source whose name only contains the Partial prefix' do
+      bullseye = build_covfn_bullseye(['src/my_ceedling_partial_a.c'], "banner\nline\nDETAIL\n")
+
+      expect(tool_executor).to receive(:build_command_line).once
+        .with(TOOLS_BULLSEYE_REPORT_COVFN, [], 'src/my_ceedling_partial_a.c').and_return({})
+
+      bullseye.send(:report_per_function_coverage_results)
+    end
+
+    # BullseyeCoverage 9.27.1 words it without the cov814 code
+    it 'reports a source carrying no coverage data when covfn words the warning without its code' do
+      bullseye = build_covfn_bullseye(['src/a.c'], "banner\nline\nwarning: report is empty\n")
+
+      expect(loginator).to receive(:log).with(/src\/a\.c contains no coverage data/, Verbosity::COMPLAIN)
 
       bullseye.send(:report_per_function_coverage_results)
     end

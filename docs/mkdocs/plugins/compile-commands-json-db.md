@@ -22,6 +22,8 @@ Once enabled, this plugin maintains the database as `<build root>/artifacts/comp
 
 The database accumulates across builds. Ceedling compiles only what changed since a previous build, so entries from earlier builds carry over. The database holds one entry per source file, and the most recent compile of a file replaces any earlier entry. The file is written once at the end of each build, including a failed build, and only if something compiled.
 
+A module that tests reach only through a [Test Partial](../testing-guide/partials/overview.md) gets no entry from a plain test build. That build compiles the Partial in place of the module’s own source and never compiles the original. A coverage build, such as `gcov:`, compiles the original by necessity, as part of retargeting coverage results from the Partial to the original source, and adds an entry. So does a release build.
+
 A source file that Ceedling compiles from a temporary copy, as it does to isolate certain header files, is listed under its original path, with a command that names that original path.
 
 [clangd]: https://clangd.llvm.org

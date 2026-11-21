@@ -33,8 +33,18 @@ Resulting, example command line:
 A Rake task can trigger a full test build itself by calling
 `@ceedling[:test_invoker].setup_and_invoke`. Pass a context symbol unique to
 your plugin. Ceedling uses this context to distinguish build pipelines. It
-also keeps your build's delta build state separate from ordinary test builds.
+also keeps your build’s delta build state separate from ordinary test builds.
 See [Delta Builds](../../getting-started/builds.md) for how this tracking works.
+
+A plain test build using Partials compiles a [Test Partial](../../testing-guide/partials/overview.md)
+in place of its module’s original source, and never compiles the original. A
+plugin whose reports read that original adds `:partial_originals` to
+`options:`, as in `setup_and_invoke( tests: tests, context: :my_plugin,
+options: [:partial_originals] )`. The gcov and Bullseye plugins do this.
+For these coverage builds, by necessity, the original source is compiled
+as part of retargeting coverage results from Partials to the original
+source. When Partials are active, the original’s object never links into
+a test executable.
 
 ## Example Rake plugin layout
 

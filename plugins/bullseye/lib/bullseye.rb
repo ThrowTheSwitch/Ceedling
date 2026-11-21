@@ -586,13 +586,16 @@ class Bullseye < Plugin
     source_extensions = EXTENSION_SOURCE.pattern
     coverage_sources.delete_if {|item| item =~ /#{@configurator.cmock_mock_prefix}.+#{source_extensions}$/}
     coverage_sources.delete_if {|item| item =~ /(?:#{BULLSEYE_IGNORE_SOURCES.join('|')})#{source_extensions}$/}
+    # Bullseye holds no data under a generated Partial's name. Its #line directives map the
+    # Partial's coverage to the original, which stays in the list.
+    coverage_sources.delete_if {|item| File.basename( item ).start_with?( PARTIAL_FILENAME_PREFIX )}
 
     coverage_sources.each do |source|
       command          = @ceedling[:tool_executor].build_command_line(TOOLS_BULLSEYE_REPORT_COVFN, [], source)
       shell_results    = @ceedling[:tool_executor].exec( command )
       coverage_results = shell_results[:output].dup
       coverage_results.sub!(/.*\n.*\n/,'') # Remove the Bullseye tool banner
-      if (coverage_results =~ /warning cov814: report is empty/)
+      if (coverage_results =~ /warning(?: cov814)?: report is empty/)
         coverage_results = "#{source} contains no coverage data"
         @loginator.log(coverage_results, Verbosity::COMPLAIN)
       else

@@ -6,9 +6,11 @@
 # =========================================================================
 
 require_relative 'bullseye_helpers'
+require_relative 'partial_originals_fixtures'
 
 module BullseyeCommonTestCases
   include BullseyeHelpers
+  include PartialOriginalsFixtures
 
   ##
   ## Basic operations
@@ -50,6 +52,45 @@ module BullseyeCommonTestCases
 
         expect(@c.last_exit_status).to eq(1)
         expect(output).to match(/FAILED:\s+[1-9]/)
+      end
+    end
+  end
+
+  ##
+  ## Partials
+  ##
+
+  # A Partial that leaves a function out still has that function reported, at 0%, since covc
+  # registers every function of the original it compiles even though that object never links.
+  # Bullseye holds no data under a generated Partial's name, so the per-function console report
+  # leaves those files out rather than asking covfn about them.
+  def bullseye_partials_left_out_function
+    @c.with_context do
+      Dir.chdir @proj_name do
+        prep_project_yml_for_coverage
+        write_partial_originals_project( left_out: true )
+        @c.merge_project_yml_for_test( partial_originals_project_settings )
+
+        output = @c.ceedling_build_exec('bullseye:all')
+
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+2/)
+
+        summary = output.to_s[/BULLSEYE: CODE COVERAGE SUMMARY.*\z/m]
+        expect(summary).to_not be_nil
+
+        # covfn names a function on its own line, with its coverage as a percentage
+        reported = ->(name) { summary.lines.find { |line| line.match?( /\b#{name}\b/ ) } }
+
+        expect(reported.call( 'sensor_clamped' )).to match(/(?<![\d.])0(\.0+)?\s*%/)
+        expect(reported.call( 'sensor_get' )).to_not be_nil
+        expect(reported.call( 'sensor_get' )).to_not match(/(?<![\d.])0(\.0+)?\s*%/)
+
+        # covfn is never asked about a generated Partial file, and so has nothing to report
+        # about its absence from the coverage data
+        expect(summary).to_not match(/ceedling_partial_/)
+        expect(summary).to_not match(/not found/)
+        expect(summary).to_not match(/report is empty/)
       end
     end
   end

@@ -91,32 +91,24 @@ module TestPipelineHelpers
     include.filename.start_with?( @configurator.cmock_mock_prefix + PARTIAL_FILENAME_PREFIX )
   end
 
-  # A Partial's own module name doubles as its generated source file's basename, so an
-  # object list built from #include-derived sources can end up carrying an object for a
-  # module that a Partial has already taken over -- this removes those, leaving the
-  # Partial's own separately-generated source as the module's only linked object.
+  # Whether a source is a Partialized module's own original.
   #
-  # The original module's own source is still compiled like every other source in the
-  # test's compile list (stage 15) -- only its membership among the objects handed to the
-  # linker (TestBuildExecutor#stage_build_executables, stage 16) is trimmed, right before
-  # linking. Compiling it unconditionally keeps that source's own dependency tracking (and,
-  # under coverage profiling -- gcov, Bullseye -- its #line-directive mapping of a Partial's
-  # generated code back to the original module's own lines) working the same way it does for
-  # every other source, rather than carving out a special case for whether the result of
-  # compiling it is ever actually linked.
-  # A Partialized module's own object must not reach the link, since the generated
-  # Partial already carries that module's functions.
+  # A Partial's own module name doubles as its generated source file's basename, so a list
+  # built from #include-derived sources can carry an original that a Partial has already
+  # taken over. The Partial's separately generated source is the only one of the two that
+  # links. The original's object is made only for a build that asks for originals, as a
+  # coverage build does, since a coverage report reads it.
   #
-  # An object's path mirrors its source's own directory below the configured roots, so
-  # a module is matched by the end of that path. Matching on basename alone would also
-  # take a same-named module's object from another directory, dropping a module the
-  # test never Partialized and losing its functions from the link.
-  def remove_partials_source_objects(objects, configs)
-    queries = configs.keys.map { |_module| PathMirror.path_segments( _module ) }
+  # A module is matched by the end of the source's path. Matching on basename alone would
+  # also take a same-named module from another directory. Only a source's path is asked,
+  # never an object's, since a shortened source root keeps an object's path from mirroring
+  # its source's.
+  def partials_source_object?(path, configs)
+    segments = PathMirror.path_segments( path.ext( '' ) )
 
-    objects.delete_if do |filepath|
-      segments = PathMirror.path_segments( filepath.ext( '' ) )
-      queries.any? { |query| segments.last( query.length ) == query }
+    return configs.keys.any? do |_module|
+      query = PathMirror.path_segments( _module )
+      segments.last( query.length ) == query
     end
   end
 

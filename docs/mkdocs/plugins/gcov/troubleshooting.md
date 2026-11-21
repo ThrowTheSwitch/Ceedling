@@ -6,6 +6,29 @@ Details of interest for this plugin to be modified or made use of using
 Ceedling’s advanced features are primarily contained in 
 [defaults_gcov.rb](../../snapshot/plugins/gcov/config/defaults_gcov.rb) and [defaults.yml](../../snapshot/plugins/gcov/config/defaults.yml).
 
+## Partials and the original source
+
+A plain test build using Partials never compiles a module’s original source.
+By necessity, a gcov build compiles the original of every module a test builds 
+as a [Test Partial](../../testing-guide/partials/overview.md) as part of
+retargeting coverage results from the Partial to the original source. The
+Partial’s `#line` directives map its own coverage onto the original’s lines.
+When Partials are active, the original’s object never links into the test 
+executable.
+
+The generated Partial files themselves stay out of reports. Both
+[ReportGenerator](reportgenerator.md#report-filtering) and
+[gcovr](gcovr.md) exclude them by default.
+
+Gcov compiles the original with `-w`, which turns off its compiler warnings.
+Its object never links, so any warnings are noise. Without `-w`, GCC can
+report `used but never defined` for a `static` function the test mocks.
+
+The Partial’s own compilation still reports warnings in every function the 
+Partial carries. A function the Partial leaves out compiles only in the 
+original, so its warnings appear in no build. Build a test whose Partial 
+carries that function to see the warnings.
+
 ## "gcovr not found"
 
 `gcovr` is a Python-based application. Depending on the particulars of its 
@@ -41,14 +64,14 @@ Another solution is simple in concept. Instead of calling `gcovr` directly, call
 `python` with the `gcovr` script as a command line argument (followed by all of
 the configured `gcovr` arguments).
 
-`gcovr`'s tool definition, like every Ceedling tool definition, can be
+`gcovr`’s tool definition, like every Ceedling tool definition, can be
 overridden directly in your project configuration. Overriding `:tools` merges
-into the plugin's own default tool definition key by key, so redefining
+into the plugin’s own default tool definition key by key, so redefining
 `:executable` alone would leave the default `:arguments` — meant for calling
 `gcovr` directly — in place. Instead, provide the whole tool definition,
-inserting the path to the `gcovr` script as `python`'s first argument ahead
-of the plugin's own `${1}`/`${2}`/`${3}` placeholders (`--root`, `--exclude`,
-and the plugin's remaining built options, respectively):
+inserting the path to the `gcovr` script as `python`’s first argument ahead
+of the plugin’s own `${1}`/`${2}`/`${3}` placeholders (`--root`, `--exclude`,
+and the plugin’s remaining built options, respectively):
 
 ```yaml
 :tools:

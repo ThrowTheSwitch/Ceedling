@@ -12,6 +12,20 @@ Each release has its own section, listing only what changed in that release.
 
 ---
 
+# [Unreleased]
+
+## 💪 Fixed
+
+- [#1429](https://github.com/ThrowTheSwitch/Ceedling/issues/1429) Fixed a test build compiling the original source of each module a test builds as a [Test Partial](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/partials/), though that object is never linked into the test executable. That compile could warn `'f' used but never defined` for a `static` function the test mocks, and `-Werror` failed it. A plain test build using Partials now never compiles the original. The [gcov](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/gcov/) and [Bullseye](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) plugins still compile it by necessity, as part of retargeting coverage results from the Partial to the original source, but still never link it. Gcov compiles it with `-w`, which turns off its warnings.
+- Fixed a gcov build of a Test Partial named with a directory, such as `TEST_PARTIAL_PUBLIC_MODULE_AT(drivers/uart, config)`, failing to link with duplicate symbols when its source root is shortened in build paths ([build output](https://docs.throwtheswitch.org/Ceedling/1.2.0/testing-guide/conventions/#test-names-build-output)). The original’s object was linked beside its Partial. A test build of such a Partial failed the same way.
+- Fixed the [Bullseye plugin’s](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/bullseye/) per-function console report asking `covfn` about the generated files of a Partial. It printed `source … not found` and `warning: report is empty` for each one. The report now skips them, and it recognizes an empty report in Bullseye 9.27.1’s wording.
+
+## ⚠️ Changed
+
+- A plain test build using Partials no longer compiles a Test Partial’s original source ([#1429](https://github.com/ThrowTheSwitch/Ceedling/issues/1429)). Only a coverage build compiles it.
+   1. The [compilation database plugin](https://docs.throwtheswitch.org/Ceedling/1.2.0/plugins/compile-commands-json-db/) gets no entry from a plain test build for a module that tests reach only through a Partial. A `gcov:` or release build adds one.
+   2. A warning in a function a Partial leaves out appears in no build. Only the original holds that function, a plain test build never compiles the original, and a coverage build compiles it with its warnings off. Build a test whose Partial carries the function to see warnings.
+
 # [1.2.3] — 2026-11-20
 
 ## 💪 Fixed
