@@ -264,5 +264,47 @@ ceedling_system_tests do
       end
     end
 
+
+    # A module is a source, a header, or both. A module with only a source is named the same
+    # way as any other, by its bare name or by directory.
+    context "with a module that has a source and no header" do
+      def write_module_and_test(name, includes, body)
+        FileUtils.mkdir_p( 'src/drivers' )
+        File.write( 'src/drivers/calc.c', "static int twice(int x) { return 2 * x; }\n\nint calc_quad(int x) { return twice(twice(x)); }\n" )
+        File.write( "test/#{name}.c", PARTIALS_DISAMBIG_PREAMBLE + includes +
+                    "\nvoid setUp(void) {}\nvoid tearDown(void) {}\nvoid test_it(void) { #{body} }\n" )
+        @c.merge_project_yml_for_test( { :project => { :use_partials => true } } )
+      end
+
+      def build_passing
+        output = @c.ceedling_build_exec( "test:all" )
+        expect(@c.last_exit_status).to eq(0), output
+        expect(output).to match(/PASSED:\s+1/)
+      end
+
+      it "builds a Partial of the module named by directory" do
+        in_project do
+          write_module_and_test( 'test_calc', "#include TEST_PARTIAL_MODULE_AT(drivers, calc)\nTEST_PARTIAL_CONFIG_AT(drivers, calc, twice, )\n",
+                                 'TEST_ASSERT_EQUAL_INT(42, twice(21));' )
+          build_passing
+        end
+      end
+
+      it "mocks the module's public functions, named by directory" do
+        in_project do
+          write_module_and_test( 'test_calc_mock', "#include MOCK_PARTIAL_PUBLIC_MODULE_AT(drivers, calc)\n",
+                                 'calc_quad_ExpectAndReturn(1, 4); TEST_ASSERT_EQUAL_INT(4, calc_quad(1));' )
+          build_passing
+        end
+      end
+
+      it "mocks the module's public functions, named bare" do
+        in_project do
+          write_module_and_test( 'test_calc_mock', "#include MOCK_PARTIAL_PUBLIC_MODULE(calc)\n",
+                                 'calc_quad_ExpectAndReturn(1, 4); TEST_ASSERT_EQUAL_INT(4, calc_quad(1));' )
+          build_passing
+        end
+      end
+    end
   end
 end
