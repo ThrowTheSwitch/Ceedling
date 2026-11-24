@@ -165,7 +165,7 @@ current:
       outcome:
         status: fail
         stage: Building Test Executables
-        error: 'ld: Undefined symbols:'
+        error: 'Undefined symbols:'
         stages:
           Preparing Build Paths...: []
           Collecting Essential Test Context:
