@@ -100,7 +100,7 @@ The oracle answers one question per directive: given this includer, this spellin
 
 The oracle checks its own answers. An angle include answered from its includer's directory, which no search path names, raises an error, as does a probe with neither an entry nor a missing-file error.
 
-The oracle builds its `-I` list from the project file, apart from Ceedling's configurator, so every variant also checks that the two agree. Each build compares the oracle's order with each test's search paths at stage 5. Both keep only the directories that hold a header, since no other directory can answer an include. Ceedling's generated paths under `build/`, its vendored paths and its derived paths are left out. A difference fails the row and names both orders.
+The oracle builds its `-I` list from the project file, apart from Ceedling's configurator, so every variant also checks that the two agree. Each build compares the oracle's order with each test's search paths at stage 5. Both keep only the directories with a header at or below them, since no other directory can answer an include. `.` counts for `"src/drivers/bar.h"` though it holds no header itself. Ceedling's generated paths under `build/`, its vendored paths and its derived paths are left out. A difference fails the row and names both orders, and so do two empty lists, which would prove nothing. A test whose build stopped before stage 5 has no search paths, so it is skipped.
 
 `CONTRACT_CC` picks the compiler. The default is `gcc`, which is Apple Clang on macOS and MinGW GCC on Windows. A leg's `cc` overrides it for that leg.
 
@@ -110,7 +110,14 @@ A row has three columns, and each example checks one of them for one variant.
 
 - **Compiler** covers `resolved` only, since the link set, placements and search paths have no compiler answer. It is stored once, not per platform, as one list of answers per build step. Every variant on every platform asserts that its live oracle equals it, so a toolchain that resolves differently fails the row.
 - **Current** covers every section. Each platform has its own section in the recorded file, and in it one list of build reports per variant. A variant asserts its live reports equal its platform's section. A missing section fails.
-- **Target** is the behavior the redesign promises. A row's `target` maps a variant key to its promised build reports, giving only the sections it promises. A row with a target asserts it as pending until a change makes it pass.
+- **Target** is the behavior the redesign promises. A row's `target` maps a variant key to its promised build reports, one per build, each giving only the sections it promises. The loader rejects a key that names no variant, an empty list and a section no report holds. Each build is compared by its own promised sections. A row with a target asserts it as pending until a change makes it pass.
+
+Recording drops a section for a variant the row no longer has, on every platform, so no stale section lingers uncompared.
+
+### Known limits
+
+- The directive scanner reads every `#include` line, including one inside `#if 0` or a comment that spans lines. A row must not hold such a line.
+- One compiler column serves every variant. A leg that changes `:paths` or writes different directives would need its own column, and no row has one yet.
 
 Where current and compiler both answer a resolved entry and differ, the row must declare it in `divergences`. An undeclared difference fails the row, and so does a declaration no variant shows.
 
