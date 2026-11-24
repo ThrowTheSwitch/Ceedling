@@ -72,7 +72,8 @@ module Contract
 
     # Pass or fail by exit status, then the first error line and the stage it fell under.
     # `stages` holds each stage heading's progress lines, so a delta build shows which
-    # stages did work.
+    # stages did work. Tool output and guidance text are left out of them, since their
+    # wording varies by compiler and release, and the error line carries the failure.
     def outcome
       stages = log_stages
       stage, error = first_error( stages, COMPILER_ERROR ) || first_error( stages, ERROR_LINE ) || [nil, nil]
@@ -82,7 +83,7 @@ module Contract
         'status' => @status.to_i.zero? ? 'pass' : 'fail',
         'stage'  => stage,
         'error'  => error,
-        'stages' => stages
+        'stages' => stages.transform_values { |lines| lines.select { |line| line.end_with?( '...' ) } }
       }
     end
 

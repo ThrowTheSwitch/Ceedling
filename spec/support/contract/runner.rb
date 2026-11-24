@@ -32,6 +32,8 @@ module Contract
     # One variant's builds. `skipped` gives the reason a variant could not run here.
     Result = Struct.new( :variant, :builds, :seconds, :skipped, keyword_init: true )
 
+    IMPLICIT_DECLARATION = '-Werror=implicit-function-declaration'.freeze
+
     # The project file every row starts from
     BASE_PROJECT = {
       project: {
@@ -93,6 +95,13 @@ module Contract
       project = merge( BASE_PROJECT, @row.project )
       project = merge( project, variant.leg.project )
       project = merge( project, { project: { use_test_preprocessor: variant.mode.to_sym } } )
+
+      # GCC 13 warns about an implicit declaration and GCC 14 rejects it. The error makes a
+      # row's outcome the same on every compiler, after any flags the row sets itself.
+      compile = project.dig( :flags, :test, :compile )
+      unless compile.is_a?( Hash )
+        project = merge( project, { flags: { test: { compile: Array( compile ) + [IMPLICIT_DECLARATION] } } } )
+      end
 
       plugins = project[:plugins] || {}
       project[:plugins] = plugins.merge(
