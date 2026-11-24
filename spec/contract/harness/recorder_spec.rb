@@ -100,4 +100,30 @@ describe Contract::Check do
     expect { described_class.declared!( found, ['a "mock_y.h"'], 'row' ) }.not_to raise_error
   end
 
+  describe '.search_order!' do
+    let( :header_dirs ) { ['.', 'src', 'src/lock', 'src/log'] }
+
+    # Generated, vendor and derived paths are Ceedling's own, and a directory without a
+    # header can answer no include, so neither counts
+    it "passes the oracle's order when Ceedling searches the header directories the same way" do
+      ceedling = ['build/test/mocks/t', '.', 'src', 'src/empty', 'src/lock', 'src/log', 'src/derived', '%{ceedling}/vendor/unity/src']
+      oracle   = ['test', '.', 'src', 'src/empty', 'src/lock', 'src/log']
+
+      expect { described_class.search_order!( oracle, ceedling, derived: ['src/derived'], header_dirs: header_dirs, what: 'row' ) }.not_to raise_error
+    end
+
+    it 'fails when Ceedling searches two header directories in another order, naming both orders' do
+      ceedling = ['.', 'src', 'src/log', 'src/lock']
+      oracle   = ['.', 'src', 'src/lock', 'src/log']
+
+      expect { described_class.search_order!( oracle, ceedling, derived: [], header_dirs: header_dirs, what: 'row' ) }.to raise_error(
+        Contract::Mismatch, %r{row searches its header directories in another order than the oracle:\n  Ceedling \[".", "src", "src/log", "src/lock"\]\n  oracle   \[".", "src", "src/lock", "src/log"\]}
+      )
+    end
+
+    it 'fails when the oracle searches a header directory Ceedling does not' do
+      expect { described_class.search_order!( ['src', 'src/lock'], ['src'], derived: [], header_dirs: header_dirs, what: 'row' ) }.to raise_error( Contract::Mismatch )
+    end
+  end
+
 end
