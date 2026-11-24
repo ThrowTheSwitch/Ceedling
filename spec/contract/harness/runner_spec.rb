@@ -92,9 +92,9 @@ describe Contract::Runner do
       expect( @report['entered']['mocks_read'] ).to eq( 'test/test_a' => { 'build/test/mocks/test/test_a/_t_/mock_b.h' => 'stand-in' } )
     end
 
-    it "gives the oracle's search order and the directories holding headers, normalized" do
+    it "gives the oracle's search order and the tree's headers, normalized" do
       expect( @build.search_order ).to eq( ['test', 'src'] )
-      expect( @build.header_dirs ).to eq( ['src'] )
+      expect( @build.headers ).to eq( ['src/a.h', 'src/b.h'] )
     end
 
     it 'asks the oracle about the same tree' do

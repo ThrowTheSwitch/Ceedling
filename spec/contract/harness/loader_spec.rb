@@ -24,6 +24,21 @@ describe Contract::Loader do
     return Contract::Loader.parse( data, source: 'spec' )
   end
 
+  # A misspelled variant key would leave its target unchecked, as a skip, forever
+  it 'rejects a target keyed by no variant of the row' do
+    target = { 'test' => [{ 'outcome' => { 'status' => 'pass' } }] }
+    expect { parse( minimal.merge( 'target' => target ) ) }.to raise_error( Contract::RowError, /target names test, which is no variant of this row; its variants are none/ )
+  end
+
+  it 'rejects a target that promises no build' do
+    expect { parse( minimal.merge( 'target' => { 'none' => [] } ) ) }.to raise_error( Contract::RowError, /target for none promises no build/ )
+  end
+
+  it 'rejects a target section the report does not have' do
+    target = { 'none' => [{ 'resolve' => {} }] }
+    expect { parse( minimal.merge( 'target' => target ) ) }.to raise_error( Contract::RowError, /target for none names resolve, which no report holds/ )
+  end
+
   it 'fills each optional field with its default' do
     row = parse( minimal )
 

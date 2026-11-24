@@ -62,6 +62,17 @@ describe Contract::Recorder do
     end
   end
 
+  it 'drops a recorded section for a variant the row no longer has, on every platform' do
+    Dir.mktmpdir do |dir|
+      recorder = described_class.new( row, dir: dir )
+      recorder.write( { 'id' => row.id, 'current' => { 'linux' => { 'all' => ['stale'] }, 'windows' => { 'none' => ['kept'], 'all' => ['stale'] } } } )
+
+      merged = recorder.merged( 'linux', [result( 'none', report, compiler )] )
+      expect( merged['current']['linux'].keys ).to eq( ['none'] )
+      expect( merged['current']['windows'] ).to eq( 'none' => ['kept'] )
+    end
+  end
+
 end
 
 describe Contract::Check do
@@ -101,28 +112,62 @@ describe Contract::Check do
   end
 
   describe '.search_order!' do
-    let( :header_dirs ) { ['.', 'src', 'src/lock', 'src/log'] }
+    let( :headers ) { ['top.h', 'src/lock/lock.h', 'src/log/log.h'] }
 
-    # Generated, vendor and derived paths are Ceedling's own, and a directory without a
-    # header can answer no include, so neither counts
+    # Generated, vendor and derived paths are Ceedling's own, and a directory with no
+    # header at or below it can answer no include, so neither counts
     it "passes the oracle's order when Ceedling searches the header directories the same way" do
       ceedling = ['build/test/mocks/t', '.', 'src', 'src/empty', 'src/lock', 'src/log', 'src/derived', '%{ceedling}/vendor/unity/src']
       oracle   = ['test', '.', 'src', 'src/empty', 'src/lock', 'src/log']
 
-      expect { described_class.search_order!( oracle, ceedling, derived: ['src/derived'], header_dirs: header_dirs, what: 'row' ) }.not_to raise_error
+      expect { described_class.search_order!( oracle, ceedling, derived: ['src/derived'], headers: headers, what: 'row' ) }.not_to raise_error
     end
 
     it 'fails when Ceedling searches two header directories in another order, naming both orders' do
       ceedling = ['.', 'src', 'src/log', 'src/lock']
       oracle   = ['.', 'src', 'src/lock', 'src/log']
 
-      expect { described_class.search_order!( oracle, ceedling, derived: [], header_dirs: header_dirs, what: 'row' ) }.to raise_error(
+      expect { described_class.search_order!( oracle, ceedling, derived: [], headers: headers, what: 'row' ) }.to raise_error(
         Contract::Mismatch, %r{row searches its header directories in another order than the oracle:\n  Ceedling \[".", "src", "src/log", "src/lock"\]\n  oracle   \[".", "src", "src/lock", "src/log"\]}
       )
     end
 
     it 'fails when the oracle searches a header directory Ceedling does not' do
-      expect { described_class.search_order!( ['src', 'src/lock'], ['src'], derived: [], header_dirs: header_dirs, what: 'row' ) }.to raise_error( Contract::Mismatch )
+      expect { described_class.search_order!( ['src', 'src/lock'], ['src'], derived: [], headers: headers, what: 'row' ) }.to raise_error( Contract::Mismatch )
+    end
+
+    # `.` holds no header of its own, but it answers "src/drivers/bar.h" by joining
+    it 'counts a directory that holds a header only below it, so a moved -I . fails' do
+      joined = ['src/drivers/bar.h']
+
+      expect { described_class.search_order!( ['.', 'src/drivers'], ['src/drivers', '.'], derived: [], headers: joined, what: 'row' ) }.to raise_error( Contract::Mismatch, /Ceedling \["src\/drivers", "\."\]/ )
+      expect { described_class.search_order!( ['.', 'src/drivers'], ['.', 'src/drivers'], derived: [], headers: joined, what: 'row' ) }.not_to raise_error
+    end
+
+    # A check over two empty lists proves nothing
+    it 'fails when no directory on either side can answer an include' do
+      expect { described_class.search_order!( ['test'], ['test'], derived: [], headers: ['src/a.h'], what: 'row' ) }.to raise_error( Contract::Mismatch, /no searched directory holds a header/ )
+    end
+  end
+
+  describe '.target!' do
+    let( :live ) do
+      [{ 'outcome' => { 'status' => 'pass' }, 'link_set' => { 'a.out' => ['old.c'] } },
+       { 'outcome' => { 'status' => 'pass' }, 'link_set' => { 'a.out' => ['new.c'] } }]
+    end
+
+    it "compares each build by the sections its own target promises" do
+      target = [{ 'outcome' => { 'status' => 'pass' } }, { 'link_set' => { 'a.out' => ['new.c'] } }]
+      expect { described_class.target!( target, live, 'row' ) }.not_to raise_error
+    end
+
+    it 'fails a later build whose promised section differs' do
+      target = [{ 'outcome' => { 'status' => 'pass' } }, { 'link_set' => { 'a.out' => ['old.c'] } }]
+      expect { described_class.target!( target, live, 'row' ) }.to raise_error( Contract::Mismatch, /\[1\] > link_set/ )
+    end
+
+    it 'fails a target that promises a different number of builds' do
+      expect { described_class.target!( [{ 'outcome' => { 'status' => 'pass' } }], live, 'row' ) }.to raise_error( Contract::Mismatch, /promises 1 build, and 2 ran/ )
     end
   end
 
