@@ -247,6 +247,25 @@ jobs:
           CEEDLING_TEST_COVERAGE: ${{ matrix.ruby == '3.3' && 'integration' || 'false' }}
         run: rake specs:integration
 
+      # Contract rows build small projects with this checkout's Ceedling and compare each
+      # with its recording and with what the compiler resolves (spec/contract/README.md).
+      # Observed reports land in CONTRACT_OUT, uploaded whether or not the rows pass, so a
+      # platform's recorded sections can be taken from this run.
+      - name: Contract rows
+        timeout-minutes: 15  # Linux has needed under a minute
+        env:
+          CONTRACT_OUT: tmp/contract
+        run: bundle exec rspec spec/contract
+
+      - name: Upload Contract Row Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: contract-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/contract/
+          if-no-files-found: ignore
+          retention-days: 7
+
       # The SBOM generator's own specs, which specs:units and specs:integration do not
       # reach -- those suites ship in the gem and run against an installed Ceedling,
       # where tools/ does not exist. Run across every Ruby in the matrix, the generator
@@ -450,6 +469,25 @@ jobs:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:integration
 
+      # Contract rows build small projects with this checkout's Ceedling and compare each
+      # with its recording and with what the compiler resolves (spec/contract/README.md).
+      # Observed reports land in CONTRACT_OUT, uploaded whether or not the rows pass, so a
+      # platform's recorded sections can be taken from this run.
+      - name: Contract rows
+        timeout-minutes: 15  # Linux has needed under a minute
+        env:
+          CONTRACT_OUT: tmp/contract
+        run: bundle exec rspec spec/contract
+
+      - name: Upload Contract Row Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: contract-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/contract/
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Install GCovr for Gcov plugin test
       - name: "Install GCovr for Tests of Ceedling Plugin: Gcov"
         run: |
@@ -559,6 +597,25 @@ jobs:
         env:
           CI_RSPEC_PROGRESS_FORMAT: true
         run: rake specs:integration
+
+      # Contract rows build small projects with this checkout's Ceedling and compare each
+      # with its recording and with what the compiler resolves (spec/contract/README.md).
+      # Observed reports land in CONTRACT_OUT, uploaded whether or not the rows pass, so a
+      # platform's recorded sections can be taken from this run.
+      - name: Contract rows
+        timeout-minutes: 15  # Linux has needed under a minute
+        env:
+          CONTRACT_OUT: tmp/contract
+        run: bundle exec rspec spec/contract
+
+      - name: Upload Contract Row Reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: contract-${{ runner.os }}-ruby-${{ matrix.ruby }}
+          path: tmp/contract/
+          if-no-files-found: ignore
+          retention-days: 7
 
       # gdb is not installed on macOS runners — backtrace specs detect absence and skip
       # valgrind is unavailable on macOS — valgrind specs already skip via @valgrind_available guard
