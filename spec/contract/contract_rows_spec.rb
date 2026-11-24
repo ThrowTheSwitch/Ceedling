@@ -106,6 +106,22 @@ describe 'Contract rows' do
             end
           end
 
+          it "searches its header directories in Ceedling's configured order" do
+            result = result_for( row, variant.key, runs_here )
+
+            checked do
+              result.builds.each_with_index do |build, index|
+                build.report['search_paths']['tests'].each do |test, paths|
+                  Contract::Check.search_order!(
+                    build.search_order, paths['test'],
+                    derived: paths['derived'], header_dirs: build.header_dirs,
+                    what: "#{row.id} #{variant.key} build #{index + 1} #{test}"
+                  )
+                end
+              end
+            end
+          end
+
           unless row.target.nil?
             it 'meets its target' do
               result = result_for( row, variant.key, runs_here )

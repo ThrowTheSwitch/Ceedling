@@ -26,8 +26,9 @@ module Contract
   # the oracle about the tree as it then stands.
   class Runner
 
-    # One build step's report and the compiler's answers for the tree it built
-    Build = Struct.new( :task, :report, :compiler, :output, :probe, keyword_init: true )
+    # One build step's report, the compiler's answers for the tree it built, and the
+    # oracle's search order with the tree's header directories, for comparing orders
+    Build = Struct.new( :task, :report, :compiler, :search_order, :header_dirs, :output, :probe, keyword_init: true )
 
     # One variant's builds. `skipped` gives the reason a variant could not run here.
     Result = Struct.new( :variant, :builds, :seconds, :skipped, keyword_init: true )
@@ -151,7 +152,15 @@ module Contract
         objects:     objects
       )
 
-      return Build.new( task: task, report: report, compiler: oracle.resolve( tree ), output: output, probe: probe )
+      return Build.new(
+        task:         task,
+        report:       report,
+        compiler:     oracle.resolve( tree ),
+        search_order: oracle.order( tree ),
+        header_dirs:  oracle.header_dirs( tree ),
+        output:       output,
+        probe:        probe
+      )
     end
 
     # Runs bin/ceedling in the project root. Decorations are off, so every platform logs

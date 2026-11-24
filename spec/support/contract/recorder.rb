@@ -123,6 +123,25 @@ module Contract
       end
     end
 
+    # Search paths that are Ceedling's own: generated, vendored, or outside the workspace
+    CEEDLING_OWN = ['build/', '%{ceedling}', '<'].freeze
+
+    # Raises unless Ceedling searches the header directories in the oracle's order.
+    #
+    # The oracle builds its `-I` list from the project file, apart from the configurator,
+    # so this keeps the two from drifting apart. Ceedling's own paths and its derived
+    # paths are left out, and so is any directory holding no header, since it can answer
+    # no include.
+    def self.search_order!(oracle, ceedling, derived:, header_dirs:, what:)
+      ours   = ceedling.reject { |dir| dir.start_with?( *CEEDLING_OWN ) || derived.include?( dir ) }
+      ours   = ours.select { |dir| header_dirs.include?( dir ) }
+      theirs = oracle.select { |dir| header_dirs.include?( dir ) }
+      return if ours == theirs
+
+      raise Mismatch, "#{what} searches its header directories in another order than the oracle:\n" \
+                      "  Ceedling #{ours.inspect}\n  oracle   #{theirs.inspect}"
+    end
+
     # Raises for a difference the row does not declare
     def self.declared!(found, declared, what)
       undeclared = found.reject { |key, _| declared.include?( key ) }

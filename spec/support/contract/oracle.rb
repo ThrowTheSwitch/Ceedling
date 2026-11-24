@@ -60,6 +60,23 @@ module Contract
       return answers
     end
 
+    # The `-I` order the oracle searches for `tree`, normalized as a report's paths are
+    def order(tree)
+      Workspace.create do |scratch|
+        TreeWriter.write( scratch, tree )
+        normalizer = Normalizer.new( scratch )
+        return search_order( scratch ).map { |dir| normalizer.path( dir ) }.uniq
+      end
+    end
+
+    # Each directory of `tree` holding a header, normalized. Only these can answer an
+    # include, so only these decide whether two search orders agree.
+    def header_dirs(tree)
+      extensions = Array( @project.dig( :extension, :header ) || '.h' ).map( &:to_s )
+      dirs = tree.keys.select { |path| extensions.include?( File.extname( path ) ) }
+      return dirs.map { |path| Normalizer.clean( Normalizer.slashed( File.dirname( path ) ) ) }.uniq.sort
+    end
+
     # The `-I` directories for a workspace, as the project file spells them, with globs
     # expanded as Ceedling documents them
     def search_order(scratch)
