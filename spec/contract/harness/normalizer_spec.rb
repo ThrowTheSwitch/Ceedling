@@ -49,6 +49,12 @@ describe Contract::Normalizer do
     expect( normalizer.text( gcc14 ) ).to eq( normalizer.text( gcc13 ) )
   end
 
+  it "writes Apple's undefined-symbols headline one way, since it varies by linker version and architecture" do
+    expect( normalizer.text( 'ld: Undefined symbols:' ) ).to eq( 'Undefined symbols:' )
+    expect( normalizer.text( 'Undefined symbols for architecture arm64:' ) ).to eq( 'Undefined symbols:' )
+    expect( normalizer.text( 'Undefined symbols for architecture x86_64:' ) ).to eq( 'Undefined symbols:' )
+  end
+
   it 'writes a temporary directory a build makes as <tmp>' do
     expect( normalizer.path( 'build/test/out/t/d20261124-522-t6kvro/helper.h' ) ).to eq( 'build/test/out/t/<tmp>/helper.h' )
   end
