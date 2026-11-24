@@ -1,0 +1,658 @@
+---
+id: LINK-001
+compiler:
+- src/drivers/foox.c "foox.hpp": src/drivers/foox.hpp
+  test/test_foox.c "drivers/mock_foox.hpp": missing
+current:
+  linux:
+    all:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Test Executables
+        error: 'build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:52: multiple definition of `foox_read''; build/test/out/test/test_foox/_t_/src/drivers/foox.o:src/drivers/foox.c:2: first defined here'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_foox.c for include path build directive macros...
+          - Parsing test_foox.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_foox.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_foox.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Mocks:
+          - Preprocessing header file for follow-on mock handling test/test_foox::foox.hpp...
+          Mocking:
+          - Generating mock for test/test_foox::foox.hpp...
+          Preprocessing Test Files:
+          - Preprocessing test file test_foox.c...
+          - Parsing test_foox.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_foox.c...
+          Test Runners:
+          - Generating runner for test_foox.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_foox.c...
+          - Compiling test/test_foox::foox.c...
+          - Compiling test/test_foox::mock_foox.c...
+          - Compiling test/test_foox::test_foox_runner.c...
+          - Compiling test/test_foox::unity.c...
+          - Compiling test/test_foox::cmock.c...
+          Building Test Executables:
+          - Linking test_foox.out...
+          - 'NOTICE: The linker output appears to report a symbol defined more than once. This test links both ''mock_foox.o'' and ''foox.o'', which may define the same functions.'
+          - 'HOW THIS HAPPENS:'
+          - "* A program may define each function and each global variable only once across all its object files."
+          - "* A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header."
+          - "* A test file that defines a function the source under test also defines places two definitions in one executable."
+          - "* A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them."
+          - 'OPTIONS:'
+          - 1. Declare header variables extern, and define each one in a single source file.
+          - 2. Make functions defined in headers static inline, or move their bodies into one source file.
+          - 3. Remove a test's own definition of a function the linked source already provides, or mock the source's header instead.
+          - '4. Don''t #include both a mock and its real header in one test and don''t name a mocked module''s source in TEST_SOURCE_FILE().'
+          - 'EXCEPTION: ''Default Test Linker'' (gcc) terminated with exit code [1] and output >>'
+          - "/usr/bin/ld: build/test/out/test/test_foox/_t_/drivers/mock_foox.o: in function `foox_read':"
+          - 'build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:52: multiple definition of `foox_read''; build/test/out/test/test_foox/_t_/src/drivers/foox.o:src/drivers/foox.c:2: first defined here'
+          - 'collect2: error: ld returned 1 exit status'
+          - 'Executed Command: gcc "build/test/out/test/test_foox/_t_/test/test_foox.o" "build/test/out/test/test_foox/_t_/src/drivers/foox.o" "build/test/out/test/test_foox/_t_/drivers/mock_foox.o" "build/test/out/test/test_foox/_t_/test_foox_runner.o" "build/test/out/test/test_foox/_t_/unity.o" "build/test/out/test/test_foox/_t_/cmock.o" -o "build/test/out/test/test_foox/_t_/test_foox.out"'
+      resolved:
+        test/test_foox.c "drivers/mock_foox.hpp": src/drivers/foox.hpp
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_foox/_t_
+            - build/test/mocks/test/test_foox/_t_/drivers
+            - src
+            - src/drivers
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks:
+            - build/test/mocks/test/test_foox/_t_/drivers
+            - build/test/mocks/test/test_foox/_t_
+        compile:
+          test/test_foox test/test_foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox src/drivers/foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/test/runners/test/test_foox_runner.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+          test/test_foox build/vendor/cmock/src/cmock.c:
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+        link:
+          build/test/out/test/test_foox/_t_/test_foox.out: []
+      placements:
+        mocks:
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_foox_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_foox/_t_/directives_only/raw/src/drivers/foox.hpp
+        - build/test/preprocess/files/test/test_foox/_t_/directives_only/raw/test/test_foox.c
+        - build/test/preprocess/files/test/test_foox/_t_/directives_only/src/drivers/foox.hpp
+        - build/test/preprocess/files/test/test_foox/_t_/directives_only/test/test_foox.c
+        - build/test/preprocess/files/test/test_foox/_t_/full_expansion/src/drivers/foox.hpp
+        - build/test/preprocess/files/test/test_foox/_t_/full_expansion/test/test_foox.c
+        - build/test/preprocess/files/test/test_foox/_t_/src/drivers/foox.hpp
+        - build/test/preprocess/files/test/test_foox/_t_/test/test_foox.c
+        objects:
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c: build/test/out/test/test_foox/_t_/drivers/mock_foox.o
+          test/test_foox build/test/runners/test/test_foox_runner.c: build/test/out/test/test_foox/_t_/test_foox_runner.o
+          test/test_foox build/vendor/cmock/src/cmock.c: build/test/out/test/test_foox/_t_/cmock.o
+          test/test_foox build/vendor/unity/src/unity.c: build/test/out/test/test_foox/_t_/unity.o
+          test/test_foox src/drivers/foox.c: build/test/out/test/test_foox/_t_/src/drivers/foox.o
+          test/test_foox test/test_foox.c: build/test/out/test/test_foox/_t_/test/test_foox.o
+        mock_headers:
+          drivers/mock_foox.hpp: src/drivers/foox.hpp
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/preprocess/files/test/test_foox/_t_/src/drivers/foox.hpp
+          runners:
+          - build/test/runners/test/test_foox_runner.c
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox.out:
+        - test/test_foox.c
+        - src/drivers/foox.c
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+        - build/test/runners/test/test_foox_runner.c
+        - build/vendor/unity/src/unity.c
+        - build/vendor/cmock/src/cmock.c
+      entered:
+        dependencies:
+          test/test_foox test/test_foox.c:
+          - raw: test/test_foox.c
+            path: test/test_foox.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox src/drivers/foox.c:
+          - raw: src/drivers/foox.c
+            path: src/drivers/foox.c
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/test/runners/test/test_foox_runner.c:
+          - raw: build/test/runners/test/test_foox_runner.c
+            path: build/test/runners/test/test_foox_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          test/test_foox build/vendor/cmock/src/cmock.c:
+          - raw: build/vendor/cmock/src/cmock.c
+            path: build/vendor/cmock/src/cmock.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers:
+          test/test_foox:
+          - raw: test/test_foox.c
+            path: test/test_foox.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+        mocks_read:
+          test/test_foox:
+            build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp: stand-in
+    none:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Test Executables
+        error: 'build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:52: multiple definition of `foox_read''; build/test/out/test/test_foox/_t_/src/drivers/foox.o:src/drivers/foox.c:2: first defined here'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes...'
+          - Parsing test_foox.c for build directive macros...
+          - Parsing test_foox.c for test case names...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_foox.c...
+          Determining Files to Be Generated...: []
+          Mocking:
+          - Generating mock for test/test_foox::foox.hpp...
+          Test Runners:
+          - Generating runner for test_foox.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_foox.c...
+          - Compiling test/test_foox::foox.c...
+          - Compiling test/test_foox::mock_foox.c...
+          - Compiling test/test_foox::test_foox_runner.c...
+          - Compiling test/test_foox::unity.c...
+          - Compiling test/test_foox::cmock.c...
+          Building Test Executables:
+          - Linking test_foox.out...
+          - 'NOTICE: The linker output appears to report a symbol defined more than once. This test links both ''mock_foox.o'' and ''foox.o'', which may define the same functions.'
+          - 'HOW THIS HAPPENS:'
+          - "* A program may define each function and each global variable only once across all its object files."
+          - "* A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header."
+          - "* A test file that defines a function the source under test also defines places two definitions in one executable."
+          - "* A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them."
+          - 'OPTIONS:'
+          - 1. Declare header variables extern, and define each one in a single source file.
+          - 2. Make functions defined in headers static inline, or move their bodies into one source file.
+          - 3. Remove a test's own definition of a function the linked source already provides, or mock the source's header instead.
+          - '4. Don''t #include both a mock and its real header in one test and don''t name a mocked module''s source in TEST_SOURCE_FILE().'
+          - 'EXCEPTION: ''Default Test Linker'' (gcc) terminated with exit code [1] and output >>'
+          - "/usr/bin/ld: build/test/out/test/test_foox/_t_/drivers/mock_foox.o: in function `foox_read':"
+          - 'build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:52: multiple definition of `foox_read''; build/test/out/test/test_foox/_t_/src/drivers/foox.o:src/drivers/foox.c:2: first defined here'
+          - 'collect2: error: ld returned 1 exit status'
+          - 'Executed Command: gcc "build/test/out/test/test_foox/_t_/test/test_foox.o" "build/test/out/test/test_foox/_t_/src/drivers/foox.o" "build/test/out/test/test_foox/_t_/drivers/mock_foox.o" "build/test/out/test/test_foox/_t_/test_foox_runner.o" "build/test/out/test/test_foox/_t_/unity.o" "build/test/out/test/test_foox/_t_/cmock.o" -o "build/test/out/test/test_foox/_t_/test_foox.out"'
+      resolved:
+        test/test_foox.c "drivers/mock_foox.hpp": src/drivers/foox.hpp
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_foox/_t_
+            - build/test/mocks/test/test_foox/_t_/drivers
+            - src
+            - src/drivers
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks:
+            - build/test/mocks/test/test_foox/_t_/drivers
+            - build/test/mocks/test/test_foox/_t_
+        compile:
+          test/test_foox test/test_foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox src/drivers/foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/test/runners/test/test_foox_runner.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+          test/test_foox build/vendor/cmock/src/cmock.c:
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+        link:
+          build/test/out/test/test_foox/_t_/test_foox.out: []
+      placements:
+        mocks:
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_foox_runner.c
+        preprocessed: []
+        objects:
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c: build/test/out/test/test_foox/_t_/drivers/mock_foox.o
+          test/test_foox build/test/runners/test/test_foox_runner.c: build/test/out/test/test_foox/_t_/test_foox_runner.o
+          test/test_foox build/vendor/cmock/src/cmock.c: build/test/out/test/test_foox/_t_/cmock.o
+          test/test_foox build/vendor/unity/src/unity.c: build/test/out/test/test_foox/_t_/unity.o
+          test/test_foox src/drivers/foox.c: build/test/out/test/test_foox/_t_/src/drivers/foox.o
+          test/test_foox test/test_foox.c: build/test/out/test/test_foox/_t_/test/test_foox.o
+        mock_headers:
+          drivers/mock_foox.hpp: src/drivers/foox.hpp
+        isolation: {}
+        generated:
+          mocks:
+          - src/drivers/foox.hpp
+          runners:
+          - build/test/runners/test/test_foox_runner.c
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox.out:
+        - test/test_foox.c
+        - src/drivers/foox.c
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+        - build/test/runners/test/test_foox_runner.c
+        - build/vendor/unity/src/unity.c
+        - build/vendor/cmock/src/cmock.c
+      entered:
+        dependencies:
+          test/test_foox test/test_foox.c:
+          - raw: test/test_foox.c
+            path: test/test_foox.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox src/drivers/foox.c:
+          - raw: src/drivers/foox.c
+            path: src/drivers/foox.c
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/test/runners/test/test_foox_runner.c:
+          - raw: build/test/runners/test/test_foox_runner.c
+            path: build/test/runners/test/test_foox_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          test/test_foox build/vendor/cmock/src/cmock.c:
+          - raw: build/vendor/cmock/src/cmock.c
+            path: build/vendor/cmock/src/cmock.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers: {}
+        mocks_read: {}
+    tests:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Test Executables
+        error: 'build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:52: multiple definition of `foox_read''; build/test/out/test/test_foox/_t_/src/drivers/foox.o:src/drivers/foox.c:2: first defined here'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_foox.c for include path build directive macros...
+          - Parsing test_foox.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_foox.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_foox.c...'
+          Determining Files to Be Generated...: []
+          Mocking:
+          - Generating mock for test/test_foox::foox.hpp...
+          Preprocessing Test Files:
+          - Preprocessing test file test_foox.c...
+          - Parsing test_foox.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_foox.c...
+          Test Runners:
+          - Generating runner for test_foox.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_foox.c...
+          - Compiling test/test_foox::foox.c...
+          - Compiling test/test_foox::mock_foox.c...
+          - Compiling test/test_foox::test_foox_runner.c...
+          - Compiling test/test_foox::unity.c...
+          - Compiling test/test_foox::cmock.c...
+          Building Test Executables:
+          - Linking test_foox.out...
+          - 'NOTICE: The linker output appears to report a symbol defined more than once. This test links both ''mock_foox.o'' and ''foox.o'', which may define the same functions.'
+          - 'HOW THIS HAPPENS:'
+          - "* A program may define each function and each global variable only once across all its object files."
+          - "* A definition in a header, a function body or a variable without extern, is repeated in every source that #includes the header."
+          - "* A test file that defines a function the source under test also defines places two definitions in one executable."
+          - "* A mock defines every function its header declares; linking a mock and the source it stands in for duplicates them."
+          - 'OPTIONS:'
+          - 1. Declare header variables extern, and define each one in a single source file.
+          - 2. Make functions defined in headers static inline, or move their bodies into one source file.
+          - 3. Remove a test's own definition of a function the linked source already provides, or mock the source's header instead.
+          - '4. Don''t #include both a mock and its real header in one test and don''t name a mocked module''s source in TEST_SOURCE_FILE().'
+          - 'EXCEPTION: ''Default Test Linker'' (gcc) terminated with exit code [1] and output >>'
+          - "/usr/bin/ld: build/test/out/test/test_foox/_t_/drivers/mock_foox.o: in function `foox_read':"
+          - 'build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:52: multiple definition of `foox_read''; build/test/out/test/test_foox/_t_/src/drivers/foox.o:src/drivers/foox.c:2: first defined here'
+          - 'collect2: error: ld returned 1 exit status'
+          - 'Executed Command: gcc "build/test/out/test/test_foox/_t_/test/test_foox.o" "build/test/out/test/test_foox/_t_/src/drivers/foox.o" "build/test/out/test/test_foox/_t_/drivers/mock_foox.o" "build/test/out/test/test_foox/_t_/test_foox_runner.o" "build/test/out/test/test_foox/_t_/unity.o" "build/test/out/test/test_foox/_t_/cmock.o" -o "build/test/out/test/test_foox/_t_/test_foox.out"'
+      resolved:
+        test/test_foox.c "drivers/mock_foox.hpp": src/drivers/foox.hpp
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_foox/_t_
+            - build/test/mocks/test/test_foox/_t_/drivers
+            - src
+            - src/drivers
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks:
+            - build/test/mocks/test/test_foox/_t_/drivers
+            - build/test/mocks/test/test_foox/_t_
+        compile:
+          test/test_foox test/test_foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox src/drivers/foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/test/runners/test/test_foox_runner.c:
+          - build/test/mocks/test/test_foox/_t_
+          - build/test/mocks/test/test_foox/_t_/drivers
+          - src
+          - src/drivers
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_foox build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+          test/test_foox build/vendor/cmock/src/cmock.c:
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+        link:
+          build/test/out/test/test_foox/_t_/test_foox.out: []
+      placements:
+        mocks:
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_foox_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_foox/_t_/directives_only/raw/test/test_foox.c
+        - build/test/preprocess/files/test/test_foox/_t_/directives_only/test/test_foox.c
+        - build/test/preprocess/files/test/test_foox/_t_/full_expansion/test/test_foox.c
+        - build/test/preprocess/files/test/test_foox/_t_/test/test_foox.c
+        objects:
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c: build/test/out/test/test_foox/_t_/drivers/mock_foox.o
+          test/test_foox build/test/runners/test/test_foox_runner.c: build/test/out/test/test_foox/_t_/test_foox_runner.o
+          test/test_foox build/vendor/cmock/src/cmock.c: build/test/out/test/test_foox/_t_/cmock.o
+          test/test_foox build/vendor/unity/src/unity.c: build/test/out/test/test_foox/_t_/unity.o
+          test/test_foox src/drivers/foox.c: build/test/out/test/test_foox/_t_/src/drivers/foox.o
+          test/test_foox test/test_foox.c: build/test/out/test/test_foox/_t_/test/test_foox.o
+        mock_headers:
+          drivers/mock_foox.hpp: src/drivers/foox.hpp
+        isolation: {}
+        generated:
+          mocks:
+          - src/drivers/foox.hpp
+          runners:
+          - build/test/runners/test/test_foox_runner.c
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox.out:
+        - test/test_foox.c
+        - src/drivers/foox.c
+        - build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+        - build/test/runners/test/test_foox_runner.c
+        - build/vendor/unity/src/unity.c
+        - build/vendor/cmock/src/cmock.c
+      entered:
+        dependencies:
+          test/test_foox test/test_foox.c:
+          - raw: test/test_foox.c
+            path: test/test_foox.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox src/drivers/foox.c:
+          - raw: src/drivers/foox.c
+            path: src/drivers/foox.c
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c:
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/test/runners/test/test_foox_runner.c:
+          - raw: build/test/runners/test/test_foox_runner.c
+            path: build/test/runners/test/test_foox_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+          test/test_foox build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          test/test_foox build/vendor/cmock/src/cmock.c:
+          - raw: build/vendor/cmock/src/cmock.c
+            path: build/vendor/cmock/src/cmock.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers:
+          test/test_foox:
+          - raw: test/test_foox.c
+            path: test/test_foox.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+            path: build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp
+          - raw: src/drivers/foox.hpp
+            path: src/drivers/foox.hpp
+        mocks_read:
+          test/test_foox:
+            build/test/mocks/test/test_foox/_t_/drivers/mock_foox.hpp: stand-in

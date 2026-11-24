@@ -1,0 +1,25 @@
+id: ORC-001
+title: The spelling a -I . search gives the .d file and the line markers
+modes: [tests]
+tree:
+  src/drivers/bar.h: |
+    #ifndef BAR_H
+    #define BAR_H
+    #include "foo.h"
+    #define BAR_K FOO_K
+    #endif
+  src/drivers/foo.h: |
+    #ifndef FOO_H
+    #define FOO_H
+    #define FOO_K 3
+    #endif
+  test/test_dot.c: |
+    #include "unity.h"
+    #include "src/drivers/bar.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_dot(void) { TEST_ASSERT_EQUAL(3, BAR_K); }
+project:
+  :paths:
+    :include: [.]
+target: ~

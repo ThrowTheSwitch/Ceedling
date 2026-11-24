@@ -1,0 +1,31 @@
+id: MOCK-001
+title: A mock named with a mock suffix as well as a prefix
+modes: [none, tests]
+legs:
+  cmock:
+    note: CMock writes the mock
+  fff:
+    plugins: [fff]
+    note: The FFF plugin writes the mock as a fake
+tree:
+  src/drivers/foox.h: |
+    #ifndef FOOX_H
+    #define FOOX_H
+    int foox_read(void);
+    #endif
+  src/drivers/foox.c: |
+    #include "foox.h"
+    int foox_read(void) { return 1; }
+  test/test_foox.c: |
+    #include "unity.h"
+    #include "drivers/mock_foox_sfx.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_mocked(void) { TEST_ASSERT_EQUAL(0, 0); }
+project:
+  :paths:
+    :include: [src]
+  :cmock:
+    :mock_prefix: mock_
+    :mock_suffix: _sfx
+target: ~

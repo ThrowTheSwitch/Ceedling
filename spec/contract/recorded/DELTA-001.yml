@@ -1,0 +1,588 @@
+---
+id: DELTA-001
+compiler:
+- src/p/p.c "p.h": src/p/p.h
+  src/p/p.c "m1.h": src/m/m1.h
+  test/test_p.c "mock_m1.h": missing
+  test/test_p.c TEST_PARTIAL_PUBLIC_MODULE(p): src/p/p.h
+- src/p/p.c "p.h": src/p/p.h
+  src/p/p.c "m1.h": src/m/m1.h
+  test/test_p.c "mock_m1.h": missing
+  test/test_p.c "mock_m2.h": missing
+  test/test_p.c TEST_PARTIAL_PUBLIC_MODULE(p): src/p/p.h
+current:
+  linux:
+    all:
+    - task: test:all
+      outcome:
+        status: pass
+        stage:
+        error:
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_p.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_p.c for include path build directive macros...
+          - Parsing test_p.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_p.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_p.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing & Mocking Partials:
+          - Preprocessing partial header for test/test_p::p.h...
+          - Preprocessing header file for follow-on Partials handling test/test_p::p.h...
+          - Full-preprocessing for Partial reconciliation test/test_p::p.h...
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_p::p.c...
+          - Preprocessing source file for follow-on Partials handling test/test_p::p.c...
+          - Full-preprocessing for Partial reconciliation test/test_p::p.c...
+          Partials:
+          - Generating Partial implementation for test/test_p::p...
+          Preprocessing for Mocks:
+          - Preprocessing header file for follow-on mock handling test/test_p::m1.h...
+          Mocking:
+          - Generating mock for test/test_p::m1.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_p.c...
+          - Parsing test_p.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_p.c...
+          Test Runners:
+          - Generating runner for test_p.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_p.c...
+          - Compiling test/test_p::ceedling_partial_p_impl.c...
+          - Compiling test/test_p::mock_m1.c...
+          - Compiling test/test_p::test_p_runner.c...
+          - Compiling test/test_p::unity.c...
+          - Compiling test/test_p::cmock.c...
+          Building Test Executables:
+          - Linking test_p.out...
+          Executing:
+          - Running test_p.out...
+          - test_p.c:7:test_run:PASS
+      resolved:
+        test/test_p.c "mock_m1.h": src/m/m1.h
+        test/test_p.c TEST_PARTIAL_PUBLIC_MODULE(p): src/p/p.h
+        test/test_p.c TEST_PARTIAL_PUBLIC_MODULE(p) source: src/p/p.c
+      search_paths:
+        tests:
+          test/test_p:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_p/_t_
+            - build/test/mocks/test/test_p/_t_/m
+            - build/test/partials/test/test_p/_t_
+            - src
+            - src/m
+            - src/n
+            - src/p
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks:
+            - build/test/mocks/test/test_p/_t_/m
+        compile:
+          test/test_p test/test_p.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/test/mocks/test/test_p/_t_/m/mock_m1.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/test/runners/test/test_p_runner.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+          test/test_p build/vendor/cmock/src/cmock.c:
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+        link:
+          build/test/out/test/test_p/_t_/test_p.out: []
+      placements:
+        mocks:
+        - build/test/mocks/test/test_p/_t_/m/mock_m1.c
+        - build/test/mocks/test/test_p/_t_/m/mock_m1.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+        - build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+        runners:
+        - build/test/runners/test/test_p_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/test/test_p.c
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/test/test_p.c
+        - build/test/preprocess/files/test/test_p/_t_/expanded_code/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/expanded_code/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/test/test_p.c
+        - build/test/preprocess/files/test/test_p/_t_/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/test/test_p.c
+        objects:
+          test/test_p build/test/mocks/test/test_p/_t_/m/mock_m1.c: build/test/out/test/test_p/_t_/m/mock_m1.o
+          test/test_p build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c: build/test/out/test/test_p/_t_/ceedling_partial_p_impl.o
+          test/test_p build/test/runners/test/test_p_runner.c: build/test/out/test/test_p/_t_/test_p_runner.o
+          test/test_p build/vendor/cmock/src/cmock.c: build/test/out/test/test_p/_t_/cmock.o
+          test/test_p build/vendor/unity/src/unity.c: build/test/out/test/test_p/_t_/unity.o
+          test/test_p test/test_p.c: build/test/out/test/test_p/_t_/test/test_p.o
+        mock_headers:
+          mock_m1.h: src/m/m1.h
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/preprocess/files/test/test_p/_t_/src/m/m1.h
+          runners:
+          - build/test/runners/test/test_p_runner.c
+      link_set:
+        build/test/out/test/test_p/_t_/test_p.out:
+        - test/test_p.c
+        - build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+        - build/test/mocks/test/test_p/_t_/m/mock_m1.c
+        - build/test/runners/test/test_p_runner.c
+        - build/vendor/unity/src/unity.c
+        - build/vendor/cmock/src/cmock.c
+      entered:
+        dependencies:
+          test/test_p test/test_p.c:
+          - raw: test/test_p.c
+            path: test/test_p.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+          test/test_p build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c:
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          test/test_p build/test/mocks/test/test_p/_t_/m/mock_m1.c:
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.c
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          test/test_p build/test/runners/test/test_p_runner.c:
+          - raw: build/test/runners/test/test_p_runner.c
+            path: build/test/runners/test/test_p_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          test/test_p build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          test/test_p build/vendor/cmock/src/cmock.c:
+          - raw: build/vendor/cmock/src/cmock.c
+            path: build/vendor/cmock/src/cmock.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers:
+          test/test_p:
+          - raw: test/test_p.c
+            path: test/test_p.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+        mocks_read:
+          test/test_p:
+            build/test/mocks/test/test_p/_t_/m/mock_m1.h: stand-in
+    - task: test:all
+      outcome:
+        status: pass
+        stage:
+        error:
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_p.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_p.c for include path build directive macros...
+          - Parsing test_p.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_p.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_p.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing & Mocking Partials:
+          - Preprocessing partial header for test/test_p::p.h...
+          - Preprocessing header file for follow-on Partials handling test/test_p::p.h...
+          - Full-preprocessing for Partial reconciliation test/test_p::p.h...
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_p::p.c...
+          - Preprocessing source file for follow-on Partials handling test/test_p::p.c...
+          - Full-preprocessing for Partial reconciliation test/test_p::p.c...
+          Partials:
+          - Generating Partial implementation for test/test_p::p...
+          Preprocessing for Mocks:
+          - Skipping mock preprocessing for 1 mock (nothing changed)...
+          - Preprocessing header file for follow-on mock handling test/test_p::m2.h...
+          Mocking:
+          - Generating mock for test/test_p::m2.h...
+          - Skipping mock generation for 1 mock (nothing changed)...
+          Preprocessing Test Files:
+          - Preprocessing test file test_p.c...
+          - Parsing test_p.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_p.c...
+          Test Runners:
+          - Generating runner for test_p.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_p.c...
+          - Compiling test/test_p::ceedling_partial_p_impl.c...
+          - Compiling test/test_p::mock_m1.c...
+          - Compiling test/test_p::mock_m2.c...
+          - Compiling test/test_p::test_p_runner.c...
+          - Skipping compilation for 2 objects (nothing changed)...
+          Building Test Executables:
+          - Linking test_p.out...
+          Executing:
+          - Running test_p.out...
+          - test_p.c:8:test_run:PASS
+      resolved:
+        test/test_p.c "mock_m1.h": src/m/m1.h
+        test/test_p.c "mock_m2.h": src/n/m2.h
+        test/test_p.c TEST_PARTIAL_PUBLIC_MODULE(p): src/p/p.h
+        test/test_p.c TEST_PARTIAL_PUBLIC_MODULE(p) source: src/p/p.c
+      search_paths:
+        tests:
+          test/test_p:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_p/_t_
+            - build/test/mocks/test/test_p/_t_/m
+            - build/test/mocks/test/test_p/_t_/n
+            - build/test/partials/test/test_p/_t_
+            - src
+            - src/m
+            - src/n
+            - src/p
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks:
+            - build/test/mocks/test/test_p/_t_/m
+            - build/test/mocks/test/test_p/_t_/n
+        compile:
+          test/test_p test/test_p.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/mocks/test/test_p/_t_/n
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/mocks/test/test_p/_t_/n
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/test/mocks/test/test_p/_t_/m/mock_m1.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/mocks/test/test_p/_t_/n
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/test/mocks/test/test_p/_t_/n/mock_m2.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/mocks/test/test_p/_t_/n
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_p build/test/runners/test/test_p_runner.c:
+          - build/test/mocks/test/test_p/_t_
+          - build/test/mocks/test/test_p/_t_/m
+          - build/test/mocks/test/test_p/_t_/n
+          - build/test/partials/test/test_p/_t_
+          - src
+          - src/m
+          - src/n
+          - src/p
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+        link:
+          build/test/out/test/test_p/_t_/test_p.out: []
+      placements:
+        mocks:
+        - build/test/mocks/test/test_p/_t_/m/mock_m1.c
+        - build/test/mocks/test/test_p/_t_/m/mock_m1.h
+        - build/test/mocks/test/test_p/_t_/n/mock_m2.c
+        - build/test/mocks/test/test_p/_t_/n/mock_m2.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+        - build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+        runners:
+        - build/test/runners/test/test_p_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/src/n/m2.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/raw/test/test_p.c
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/src/n/m2.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/directives_only/test/test_p.c
+        - build/test/preprocess/files/test/test_p/_t_/expanded_code/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/expanded_code/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/src/n/m2.h
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/full_expansion/test/test_p.c
+        - build/test/preprocess/files/test/test_p/_t_/src/m/m1.h
+        - build/test/preprocess/files/test/test_p/_t_/src/n/m2.h
+        - build/test/preprocess/files/test/test_p/_t_/src/p/p.c
+        - build/test/preprocess/files/test/test_p/_t_/src/p/p.h
+        - build/test/preprocess/files/test/test_p/_t_/test/test_p.c
+        objects:
+          test/test_p build/test/mocks/test/test_p/_t_/m/mock_m1.c: build/test/out/test/test_p/_t_/m/mock_m1.o
+          test/test_p build/test/mocks/test/test_p/_t_/n/mock_m2.c: build/test/out/test/test_p/_t_/n/mock_m2.o
+          test/test_p build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c: build/test/out/test/test_p/_t_/ceedling_partial_p_impl.o
+          test/test_p build/test/runners/test/test_p_runner.c: build/test/out/test/test_p/_t_/test_p_runner.o
+          test/test_p test/test_p.c: build/test/out/test/test_p/_t_/test/test_p.o
+        mock_headers:
+          mock_m1.h: src/m/m1.h
+          mock_m2.h: src/n/m2.h
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/preprocess/files/test/test_p/_t_/src/n/m2.h
+          runners:
+          - build/test/runners/test/test_p_runner.c
+      link_set:
+        build/test/out/test/test_p/_t_/test_p.out:
+        - test/test_p.c
+        - build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+        - build/test/mocks/test/test_p/_t_/m/mock_m1.c
+        - build/test/mocks/test/test_p/_t_/n/mock_m2.c
+        - build/test/runners/test/test_p_runner.c
+        - build/vendor/unity/src/unity.c
+        - build/vendor/cmock/src/cmock.c
+      entered:
+        dependencies:
+          test/test_p test/test_p.c:
+          - raw: test/test_p.c
+            path: test/test_p.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          - raw: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+            path: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+          - raw: src/n/m2.h
+            path: src/n/m2.h
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+          test/test_p build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c:
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.c
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          test/test_p build/test/mocks/test/test_p/_t_/m/mock_m1.c:
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.c
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          test/test_p build/test/mocks/test/test_p/_t_/n/mock_m2.c:
+          - raw: build/test/mocks/test/test_p/_t_/n/mock_m2.c
+            path: build/test/mocks/test/test_p/_t_/n/mock_m2.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+            path: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+          - raw: src/n/m2.h
+            path: src/n/m2.h
+          test/test_p build/test/runners/test/test_p_runner.c:
+          - raw: build/test/runners/test/test_p_runner.c
+            path: build/test/runners/test/test_p_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          - raw: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+            path: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+          - raw: src/n/m2.h
+            path: src/n/m2.h
+        markers:
+          test/test_p:
+          - raw: test/test_p.c
+            path: test/test_p.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+            path: build/test/mocks/test/test_p/_t_/m/mock_m1.h
+          - raw: src/m/m1.h
+            path: src/m/m1.h
+          - raw: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+            path: build/test/mocks/test/test_p/_t_/n/mock_m2.h
+          - raw: src/n/m2.h
+            path: src/n/m2.h
+          - raw: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+            path: build/test/partials/test/test_p/_t_/ceedling_partial_p_impl.h
+        mocks_read:
+          test/test_p:
+            build/test/mocks/test/test_p/_t_/m/mock_m1.h: mock
+            build/test/mocks/test/test_p/_t_/n/mock_m2.h: stand-in

@@ -1,0 +1,195 @@
+---
+id: MOCK-001
+compiler:
+- src/drivers/foox.c "foox.h": src/drivers/foox.h
+  test/test_foox.c "drivers/mock_foox_sfx.h": missing
+current:
+  linux:
+    none/cmock:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting Essential Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes...'
+          - Parsing test_foox.c for build directive macros...
+          - Parsing test_foox.c for test case names...
+          - 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}
+    none/fff:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting Essential Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes...'
+          - Parsing test_foox.c for build directive macros...
+          - Parsing test_foox.c for test case names...
+          - 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}
+    tests/cmock:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting More Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_foox.c for include path build directive macros...
+          - Parsing test_foox.c for Partials directive macros...
+          - 'WARNING: No header files found in project.'
+          - 'OPTIONS:'
+          - 1. Add search paths to :paths >> :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.
+          - 2. Verify header files with `ceedling paths:include` and/or `ceedling files:include`.
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_foox.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_foox.c...'
+          - 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+            final:
+            - build/test/mocks/test/test_foox/_t_
+            - src
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}
+    tests/fff:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting More Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_foox.c for include path build directive macros...
+          - Parsing test_foox.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_foox.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_foox.c...'
+          - 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+            final:
+            - build/test/mocks/test/test_foox/_t_
+            - "../../../home/user/Ceedling/plugins/fff/src"
+            - "../../../home/user/Ceedling/plugins/fff/vendor/fff"
+            - src
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}

@@ -1,0 +1,30 @@
+id: ISO-001
+title: Sibling isolation for a mocked inline header reached through -I .
+modes: [tests]
+tree:
+  src/drivers/foo.h: |
+    #ifndef FOO_H
+    #define FOO_H
+    static inline int foo_twice(int x) { return 2 * x; }
+    #endif
+  src/drivers/helper.h: |
+    #include "foo.h"
+  test/test_helper.c: |
+    #include "unity.h"
+    #include "src/drivers/helper.h"
+    #include "src/drivers/mock_foo.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_twice(void) { foo_twice_ExpectAndReturn(1, 7); TEST_ASSERT_EQUAL(7, foo_twice(1)); }
+project:
+  :paths:
+    :include: [.]
+    :source: [src/**]
+    :test: [test/**]
+  :cmock:
+    :treat_inlines: :include
+divergences:
+  - at: resolved test/test_helper.c "src/drivers/mock_foo.h"
+    kind: convention
+    note: A mock include names the mocked header, which the compiler never sees
+target: ~

@@ -1,0 +1,46 @@
+id: PART-002
+title: A Partial module named by a word the compiler predefines as a macro
+platforms: [linux]
+platform_note: GCC predefines unix as 1 on Linux only, and the row is about that expansion
+modes: [all]
+tree:
+  src/unix.h: |
+    #ifndef UNIX_MODULE_H
+    #define UNIX_MODULE_H
+    int unix_pub(void);
+    #endif
+  src/unix.c: |
+    #include "unix.h"
+    int unix_pub(void) { return 5; }
+  test/test_unix.c: |
+    #include "unity.h"
+    #include "ceedling.h"
+    #include TEST_PARTIAL_PUBLIC_MODULE(unix)
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_pub(void) { TEST_ASSERT_EQUAL(5, unix_pub()); }
+  test/test_unix_at.c: |
+    #include "unity.h"
+    #include "ceedling.h"
+    #include TEST_PARTIAL_PUBLIC_MODULE_AT(src, unix)
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_pub(void) { TEST_ASSERT_EQUAL(5, unix_pub()); }
+project:
+  :project:
+    :use_partials: true
+  :paths:
+    :include: [src]
+    :source: [src]
+divergences:
+  - at: resolved test/test_unix.c TEST_PARTIAL_PUBLIC_MODULE(unix)
+    kind: defect
+    note: >-
+      The compiler expands the module argument unix to 1 and includes
+      ceedling_partial_1_impl.h, while Ceedling reads the argument as the text unix
+  - at: resolved test/test_unix_at.c TEST_PARTIAL_PUBLIC_MODULE_AT(src, unix)
+    kind: defect
+    note: >-
+      The directory form's join expands the module argument too, so the compiler includes
+      src/ceedling_partial_1_impl.h while Ceedling reads the text unix
+target: ~

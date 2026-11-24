@@ -1,0 +1,149 @@
+---
+id: COV-001
+compiler:
+- src/a/util.c "util.h": src/a/util.h
+  src/b/util.c "util.h": src/b/util.h
+  src/m.c "m.h": src/m.h
+  test/test_m.c "m.h": src/m.h
+current:
+  linux:
+    none/gcov:
+    - task: gcov:all
+      outcome:
+        status: pass
+        stage:
+        error:
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_m.c for user & system #includes...'
+          - Parsing test_m.c for build directive macros...
+          - Parsing test_m.c for test case names...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_m.c...
+          Determining Files to Be Generated...: []
+          Test Runners:
+          - Generating runner for test_m.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling with coverage test_m.c...
+          - Compiling with coverage test/test_m::m.c...
+          - Compiling with coverage test/test_m::test_m_runner.c...
+          - Compiling with coverage test/test_m::unity.c...
+          Building Test Executables:
+          - Linking test_m.out...
+          Executing:
+          - Running test_m.out...
+          - test_m.c:5:test_twice:PASS
+          Processing Untested Sources:
+          - Compiling with coverage util.c...
+          - Compiling with coverage util.c...
+      resolved:
+        test/test_m.c "m.h" source:
+        - src/m.c
+      search_paths:
+        tests:
+          test/test_m:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_m/_t_
+            - src
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks: []
+        compile:
+          test/test_m test/test_m.c:
+          - build/test/mocks/test/test_m/_t_
+          - src
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_m src/m.c:
+          - build/test/mocks/test/test_m/_t_
+          - src
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_m build/test/runners/test/test_m_runner.c:
+          - build/test/mocks/test/test_m/_t_
+          - src
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_m build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+          util src/a/util.c:
+          - src
+          util src/b/util.c:
+          - src
+        link:
+          build/gcov/out/test/test_m/_t_/test_m.out: []
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_m_runner.c
+        preprocessed: []
+        objects:
+          test/test_m build/test/runners/test/test_m_runner.c: build/gcov/out/test/test_m/_t_/test_m_runner.o
+          test/test_m build/vendor/unity/src/unity.c: build/gcov/out/test/test_m/_t_/unity.o
+          test/test_m src/m.c: build/gcov/out/test/test_m/_t_/src/m.o
+          test/test_m test/test_m.c: build/gcov/out/test/test_m/_t_/test/test_m.o
+          util src/a/util.c: build/gcov/out/src/a/util.o
+          util src/b/util.c: build/gcov/out/src/b/util.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners:
+          - build/test/runners/test/test_m_runner.c
+      link_set:
+        build/gcov/out/test/test_m/_t_/test_m.out:
+        - test/test_m.c
+        - src/m.c
+        - build/test/runners/test/test_m_runner.c
+        - build/vendor/unity/src/unity.c
+      entered:
+        dependencies:
+          test/test_m test/test_m.c:
+          - raw: test/test_m.c
+            path: test/test_m.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/m.h
+            path: src/m.h
+          test/test_m src/m.c:
+          - raw: src/m.c
+            path: src/m.c
+          - raw: src/m.h
+            path: src/m.h
+          test/test_m build/test/runners/test/test_m_runner.c:
+          - raw: build/test/runners/test/test_m_runner.c
+            path: build/test/runners/test/test_m_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/m.h
+            path: src/m.h
+          test/test_m build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          util src/a/util.c:
+          - raw: src/a/util.c
+            path: src/a/util.c
+          - raw: src/a/util.h
+            path: src/a/util.h
+          util src/b/util.c:
+          - raw: src/b/util.c
+            path: src/b/util.c
+          - raw: src/b/util.h
+            path: src/b/util.h
+        markers: {}
+        mocks_read: {}

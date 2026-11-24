@@ -1,0 +1,413 @@
+---
+id: PART-004
+compiler:
+- src/lock/lock.c "src/lock/lock.h": src/lock/lock.h
+  src/lock/lock.h "src/log/log.h": src/log/log.h
+  src/log/log.c "src/log/log.h": src/log/log.h
+  src/log/log.c "src/lock/lock.h": src/lock/lock.h
+  test/test_log.c TEST_PARTIAL_MODULE(log): src/log/log.h
+  test/test_log.c MOCK_PARTIAL_PUBLIC_MODULE(lock): src/lock/lock.h
+current:
+  linux:
+    all/mock_first:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Objects
+        error: 'build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h:6:15: error: unknown type name ''log_op_t'''
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_log.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_log.c for include path build directive macros...
+          - Parsing test_log.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_log.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_log.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing & Mocking Partials:
+          - Preprocessing partial header for test/test_log::lock.h...
+          - Preprocessing header file for follow-on Partials handling test/test_log::lock.h...
+          - Full-preprocessing for Partial reconciliation test/test_log::lock.h...
+          - Preprocessing partial header for test/test_log::log.h...
+          - Preprocessing header file for follow-on Partials handling test/test_log::log.h...
+          - Full-preprocessing for Partial reconciliation test/test_log::log.h...
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_log::log.c...
+          - Preprocessing source file for follow-on Partials handling test/test_log::log.c...
+          - Full-preprocessing for Partial reconciliation test/test_log::log.c...
+          Partials:
+          - Generating Partial mockable interface for test/test_log::lock...
+          - Generating shared Partial types for test/test_log::log...
+          - Generating Partial implementation for test/test_log::log...
+          Mocking:
+          - Generating mock for test/test_log::ceedling_partial_lock_interface.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_log.c...
+          - Parsing test_log.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_log.c...
+          Test Runners:
+          - Generating runner for test_log.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_log.c...
+          - 'EXCEPTION: ''Default Test Compiler'' (gcc) terminated with exit code [1] and output >>'
+          - In file included from build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h:6,
+          - 'from test/test_log.c:3:'
+          - 'build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h:6:15: error: unknown type name ''log_op_t'''
+          - 6 | int lock_take(log_op_t op);
+          - "|               ^~~~~~~~"
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h:33:65: error: unknown type name ''log_op_t'''
+          - 33 | void lock_take_CMockExpectAndReturn(UNITY_LINE_TYPE cmock_line, log_op_t op, int cmock_to_return);
+          - "|                                                                 ^~~~~~~~"
+          - 'test/test_log.c: In function ''test_level'':'
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h:32:53: warning: implicit declaration of function ''lock_take_CMockExpectAndReturn''; did you mean ''lock_take_ExpectAndReturn''? [-Wimplicit-function-declaration]'
+          - '32 | #define lock_take_ExpectAndReturn(op, cmock_retval) lock_take_CMockExpectAndReturn(__LINE__, op, cmock_retval)'
+          - "|                                                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          - 'test/test_log.c:8:25: note: in expansion of macro ''lock_take_ExpectAndReturn'''
+          - 8 | void test_level(void) { lock_take_ExpectAndReturn(LOG_WRITE, 1); TEST_ASSERT_EQUAL(2, log_level()); }
+          - "|                         ^~~~~~~~~~~~~~~~~~~~~~~~~"
+          - 'Executed Command: gcc -I"build/test/mocks/test/test_log/_t_" -I"build/test/partials/test/test_log/_t_" -I"." -I"src" -I"src/lock" -I"src/log" -I"build/vendor/unity/src" -I"build/vendor/cmock/src" -I"build/vendor/ceedling" -D"CMOCK_MOCK_PREFIX=mock_" -D"CEEDLING_PARTIALS_PREFIX=ceedling_partial_" -DGNU_COMPILER -g -c "test/test_log.c" -o "build/test/out/test/test_log/_t_/test/test_log.o" -MMD -MF "build/test/dependencies/test/test_log/_t_/test/test_log.d"'
+      resolved:
+        test/test_log.c MOCK_PARTIAL_PUBLIC_MODULE(lock): src/lock/lock.h
+        test/test_log.c MOCK_PARTIAL_PUBLIC_MODULE(lock) source: none
+        test/test_log.c TEST_PARTIAL_MODULE(log): src/log/log.h
+        test/test_log.c TEST_PARTIAL_MODULE(log) source: src/log/log.c
+      search_paths:
+        tests:
+          test/test_log:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_log/_t_
+            - build/test/partials/test/test_log/_t_
+            - "."
+            - src
+            - src/lock
+            - src/log
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks: []
+        compile:
+          test/test_log test/test_log.c:
+          - build/test/mocks/test/test_log/_t_
+          - build/test/partials/test/test_log/_t_
+          - "."
+          - src
+          - src/lock
+          - src/log
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+        link: {}
+      placements:
+        mocks:
+        - build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c
+        - build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+        - build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.c
+        - build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+        - build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+        runners:
+        - build/test/runners/test/test_log_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/test/test_log.c
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/test/test_log.c
+        - build/test/preprocess/files/test/test_log/_t_/expanded_code/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/expanded_code/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/expanded_code/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/test/test_log.c
+        - build/test/preprocess/files/test/test_log/_t_/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/test/test_log.c
+        objects:
+          test/test_log test/test_log.c: build/test/out/test/test_log/_t_/test/test_log.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+          runners:
+          - build/test/runners/test/test_log_runner.c
+      link_set: {}
+      entered:
+        dependencies:
+          test/test_log test/test_log.c:
+          - raw: test/test_log.c
+            path: test/test_log.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+            path: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+        markers:
+          test/test_log:
+          - raw: test/test_log.c
+            path: test/test_log.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+            path: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+        mocks_read:
+          test/test_log:
+            build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h: stand-in
+    all/test_first:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Objects
+        error: 'build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h:6:15: error: unknown type name ''log_op_t'''
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_log.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_log.c for include path build directive macros...
+          - Parsing test_log.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_log.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_log.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing & Mocking Partials:
+          - Preprocessing partial header for test/test_log::log.h...
+          - Preprocessing header file for follow-on Partials handling test/test_log::log.h...
+          - Full-preprocessing for Partial reconciliation test/test_log::log.h...
+          - Preprocessing partial header for test/test_log::lock.h...
+          - Preprocessing header file for follow-on Partials handling test/test_log::lock.h...
+          - Full-preprocessing for Partial reconciliation test/test_log::lock.h...
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_log::log.c...
+          - Preprocessing source file for follow-on Partials handling test/test_log::log.c...
+          - Full-preprocessing for Partial reconciliation test/test_log::log.c...
+          Partials:
+          - Generating shared Partial types for test/test_log::log...
+          - Generating Partial implementation for test/test_log::log...
+          - Generating Partial mockable interface for test/test_log::lock...
+          Mocking:
+          - Generating mock for test/test_log::ceedling_partial_lock_interface.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_log.c...
+          - Parsing test_log.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_log.c...
+          Test Runners:
+          - Generating runner for test_log.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_log.c...
+          - Compiling test/test_log::ceedling_partial_log_impl.c...
+          - Compiling test/test_log::mock_ceedling_partial_lock_interface.c...
+          - 'EXCEPTION: ''Default Test Compiler'' (gcc) terminated with exit code [1] and output >>'
+          - In file included from build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h:6,
+          - 'from build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:6:'
+          - 'build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h:6:15: error: unknown type name ''log_op_t'''
+          - 6 | int lock_take(log_op_t op);
+          - "|               ^~~~~~~~"
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h:33:65: error: unknown type name ''log_op_t'''
+          - 33 | void lock_take_CMockExpectAndReturn(UNITY_LINE_TYPE cmock_line, log_op_t op, int cmock_to_return);
+          - "|                                                                 ^~~~~~~~"
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:16:3: error: unknown type name ''log_op_t'''
+          - 16 |   log_op_t Expected_op;
+          - "|   ^~~~~~~~"
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:53:15: error: unknown type name ''log_op_t'''
+          - 53 | int lock_take(log_op_t op)
+          - "|               ^~~~~~~~"
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:74:90: error: unknown type name ''log_op_t'''
+          - 74 | void CMockExpectParameters_lock_take(CMOCK_lock_take_CALL_INSTANCE* cmock_call_instance, log_op_t op);
+          - "|                                                                                          ^~~~~~~~"
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:75:90: error: unknown type name ''log_op_t'''
+          - 75 | void CMockExpectParameters_lock_take(CMOCK_lock_take_CALL_INSTANCE* cmock_call_instance, log_op_t op)
+          - "|                                                                                          ^~~~~~~~"
+          - 'build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:81:65: error: unknown type name ''log_op_t'''
+          - 81 | void lock_take_CMockExpectAndReturn(UNITY_LINE_TYPE cmock_line, log_op_t op, int cmock_to_return)
+          - "|                                                                 ^~~~~~~~"
+          - 'Executed Command: gcc -I"build/test/mocks/test/test_log/_t_" -I"build/test/partials/test/test_log/_t_" -I"." -I"src" -I"src/lock" -I"src/log" -I"build/vendor/unity/src" -I"build/vendor/cmock/src" -I"build/vendor/ceedling" -D"CMOCK_MOCK_PREFIX=mock_" -D"CEEDLING_PARTIALS_PREFIX=ceedling_partial_" -DGNU_COMPILER -g -c "build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c" -o "build/test/out/test/test_log/_t_/mock_ceedling_partial_lock_interface.o" -MMD -MF "build/test/dependencies/test/test_log/_t_/mock_ceedling_partial_lock_interface.d"'
+      resolved:
+        test/test_log.c MOCK_PARTIAL_PUBLIC_MODULE(lock): src/lock/lock.h
+        test/test_log.c MOCK_PARTIAL_PUBLIC_MODULE(lock) source: none
+        test/test_log.c TEST_PARTIAL_MODULE(log): src/log/log.h
+        test/test_log.c TEST_PARTIAL_MODULE(log) source: src/log/log.c
+      search_paths:
+        tests:
+          test/test_log:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_log/_t_
+            - build/test/partials/test/test_log/_t_
+            - "."
+            - src
+            - src/lock
+            - src/log
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks: []
+        compile:
+          test/test_log test/test_log.c:
+          - build/test/mocks/test/test_log/_t_
+          - build/test/partials/test/test_log/_t_
+          - "."
+          - src
+          - src/lock
+          - src/log
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_log build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.c:
+          - build/test/mocks/test/test_log/_t_
+          - build/test/partials/test/test_log/_t_
+          - "."
+          - src
+          - src/lock
+          - src/log
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+          test/test_log build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:
+          - build/test/mocks/test/test_log/_t_
+          - build/test/partials/test/test_log/_t_
+          - "."
+          - src
+          - src/lock
+          - src/log
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+        link: {}
+      placements:
+        mocks:
+        - build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c
+        - build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+        - build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.c
+        - build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+        - build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+        runners:
+        - build/test/runners/test/test_log_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/raw/test/test_log.c
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/directives_only/test/test_log.c
+        - build/test/preprocess/files/test/test_log/_t_/expanded_code/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/expanded_code/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/expanded_code/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/full_expansion/test/test_log.c
+        - build/test/preprocess/files/test/test_log/_t_/src/lock/lock.h
+        - build/test/preprocess/files/test/test_log/_t_/src/log/log.c
+        - build/test/preprocess/files/test/test_log/_t_/src/log/log.h
+        - build/test/preprocess/files/test/test_log/_t_/test/test_log.c
+        objects:
+          test/test_log build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c: build/test/out/test/test_log/_t_/mock_ceedling_partial_lock_interface.o
+          test/test_log build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.c: build/test/out/test/test_log/_t_/ceedling_partial_log_impl.o
+          test/test_log test/test_log.c: build/test/out/test/test_log/_t_/test/test_log.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+          runners:
+          - build/test/runners/test/test_log_runner.c
+      link_set: {}
+      entered:
+        dependencies:
+          test/test_log test/test_log.c:
+          - raw: test/test_log.c
+            path: test/test_log.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+          - raw: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+            path: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+          test/test_log build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.c:
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.c
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.c
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_types.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+          test/test_log build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c:
+          - raw: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c
+            path: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+            path: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_lock_interface.h
+        markers:
+          test/test_log:
+          - raw: test/test_log.c
+            path: test/test_log.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+            path: build/test/partials/test/test_log/_t_/ceedling_partial_log_impl.h
+          - raw: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+            path: build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h
+        mocks_read:
+          test/test_log:
+            build/test/mocks/test/test_log/_t_/mock_ceedling_partial_lock_interface.h: stand-in

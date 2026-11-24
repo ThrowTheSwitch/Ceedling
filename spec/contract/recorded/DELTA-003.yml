@@ -1,0 +1,262 @@
+---
+id: DELTA-003
+compiler:
+- src/c/bar.h "foo.h": src/b/foo.h
+  test/test_bar.c "mock_bar.h": missing
+- src/c/bar.h "foo.h": src/a/foo.h
+  test/test_bar.c "mock_bar.h": missing
+current:
+  linux:
+    mocks:
+    - task: test:all
+      outcome:
+        status: pass
+        stage:
+        error:
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_bar.c for user & system #includes...'
+          - Parsing test_bar.c for build directive macros...
+          - Parsing test_bar.c for test case names...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_bar.c...
+          Determining Files to Be Generated...: []
+          Preprocessing for Mocks:
+          - Preprocessing header file for follow-on mock handling test/test_bar::bar.h...
+          Mocking:
+          - Generating mock for test/test_bar::bar.h...
+          Test Runners:
+          - Generating runner for test_bar.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_bar.c...
+          - Compiling test/test_bar::mock_bar.c...
+          - Compiling test/test_bar::test_bar_runner.c...
+          - Compiling test/test_bar::unity.c...
+          - Compiling test/test_bar::cmock.c...
+          Building Test Executables:
+          - Linking test_bar.out...
+          Executing:
+          - Running test_bar.out...
+          - test_bar.c:5:test_bar:PASS
+      resolved:
+        test/test_bar.c "mock_bar.h": src/c/bar.h
+      search_paths:
+        tests:
+          test/test_bar:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_bar/_t_
+            - src/a
+            - src/b
+            - src/c
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks:
+            - build/test/mocks/test/test_bar/_t_
+        compile:
+          test/test_bar test/test_bar.c:
+          - build/test/mocks/test/test_bar/_t_
+          - src/a
+          - src/b
+          - src/c
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_bar build/test/mocks/test/test_bar/_t_/mock_bar.c:
+          - build/test/mocks/test/test_bar/_t_
+          - src/a
+          - src/b
+          - src/c
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_bar build/test/runners/test/test_bar_runner.c:
+          - build/test/mocks/test/test_bar/_t_
+          - src/a
+          - src/b
+          - src/c
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_bar build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+          test/test_bar build/vendor/cmock/src/cmock.c:
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+        link:
+          build/test/out/test/test_bar/_t_/test_bar.out: []
+      placements:
+        mocks:
+        - build/test/mocks/test/test_bar/_t_/mock_bar.c
+        - build/test/mocks/test/test_bar/_t_/mock_bar.h
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_bar_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_bar/_t_/directives_only/raw/src/c/bar.h
+        - build/test/preprocess/files/test/test_bar/_t_/directives_only/src/c/bar.h
+        - build/test/preprocess/files/test/test_bar/_t_/full_expansion/src/c/bar.h
+        - build/test/preprocess/files/test/test_bar/_t_/src/c/bar.h
+        objects:
+          test/test_bar build/test/mocks/test/test_bar/_t_/mock_bar.c: build/test/out/test/test_bar/_t_/mock_bar.o
+          test/test_bar build/test/runners/test/test_bar_runner.c: build/test/out/test/test_bar/_t_/test_bar_runner.o
+          test/test_bar build/vendor/cmock/src/cmock.c: build/test/out/test/test_bar/_t_/cmock.o
+          test/test_bar build/vendor/unity/src/unity.c: build/test/out/test/test_bar/_t_/unity.o
+          test/test_bar test/test_bar.c: build/test/out/test/test_bar/_t_/test/test_bar.o
+        mock_headers:
+          mock_bar.h: src/c/bar.h
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/preprocess/files/test/test_bar/_t_/src/c/bar.h
+          runners:
+          - build/test/runners/test/test_bar_runner.c
+      link_set:
+        build/test/out/test/test_bar/_t_/test_bar.out:
+        - test/test_bar.c
+        - build/test/mocks/test/test_bar/_t_/mock_bar.c
+        - build/test/runners/test/test_bar_runner.c
+        - build/vendor/unity/src/unity.c
+        - build/vendor/cmock/src/cmock.c
+      entered:
+        dependencies:
+          test/test_bar test/test_bar.c:
+          - raw: test/test_bar.c
+            path: test/test_bar.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_bar/_t_/mock_bar.h
+            path: build/test/mocks/test/test_bar/_t_/mock_bar.h
+          - raw: src/c/bar.h
+            path: src/c/bar.h
+          - raw: src/b/foo.h
+            path: src/b/foo.h
+          test/test_bar build/test/mocks/test/test_bar/_t_/mock_bar.c:
+          - raw: build/test/mocks/test/test_bar/_t_/mock_bar.c
+            path: build/test/mocks/test/test_bar/_t_/mock_bar.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_bar/_t_/mock_bar.h
+            path: build/test/mocks/test/test_bar/_t_/mock_bar.h
+          - raw: src/c/bar.h
+            path: src/c/bar.h
+          - raw: src/b/foo.h
+            path: src/b/foo.h
+          test/test_bar build/test/runners/test/test_bar_runner.c:
+          - raw: build/test/runners/test/test_bar_runner.c
+            path: build/test/runners/test/test_bar_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/test/mocks/test/test_bar/_t_/mock_bar.h
+            path: build/test/mocks/test/test_bar/_t_/mock_bar.h
+          - raw: src/c/bar.h
+            path: src/c/bar.h
+          - raw: src/b/foo.h
+            path: src/b/foo.h
+          test/test_bar build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          test/test_bar build/vendor/cmock/src/cmock.c:
+          - raw: build/vendor/cmock/src/cmock.c
+            path: build/vendor/cmock/src/cmock.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers: {}
+        mocks_read: {}
+    - task: test:all
+      outcome:
+        status: pass
+        stage:
+        error:
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_bar.c for user & system #includes...'
+          - Parsing test_bar.c for test case names...
+          - Skipping build directive macro scanning for 1 test file (nothing changed)...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_bar.c...
+          Determining Files to Be Generated...: []
+          Preprocessing for Mocks:
+          - Skipping mock preprocessing for 1 mock (nothing changed)...
+          Mocking:
+          - Skipping mock generation for 1 mock (nothing changed)...
+          Test Runners:
+          - Skipping test runner generation for 1 test runner (nothing changed)...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Skipping compilation for 5 objects (nothing changed)...
+          Building Test Executables:
+          - Skipping linking for 1 executable (nothing changed)...
+          Executing:
+          - Skipping test execution for 1 test (reusing cached results)...
+      resolved:
+        test/test_bar.c "mock_bar.h": src/c/bar.h
+      search_paths:
+        tests:
+          test/test_bar:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_bar/_t_
+            - src/a
+            - src/b
+            - src/c
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks:
+            - build/test/mocks/test/test_bar/_t_
+        compile: {}
+        link: {}
+      placements:
+        mocks:
+        - build/test/mocks/test/test_bar/_t_/mock_bar.c
+        - build/test/mocks/test/test_bar/_t_/mock_bar.h
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_bar_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_bar/_t_/directives_only/raw/src/c/bar.h
+        - build/test/preprocess/files/test/test_bar/_t_/directives_only/src/c/bar.h
+        - build/test/preprocess/files/test/test_bar/_t_/full_expansion/src/c/bar.h
+        - build/test/preprocess/files/test/test_bar/_t_/src/c/bar.h
+        objects: {}
+        mock_headers:
+          mock_bar.h: src/c/bar.h
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}

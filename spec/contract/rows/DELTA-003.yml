@@ -1,0 +1,40 @@
+id: DELTA-003
+title: A delta build after a new header shadows one a mocked header includes
+modes: [mocks]
+tree:
+  src/a/.keep: ''
+  src/b/foo.h: |
+    #ifndef FOO_H
+    #define FOO_H
+    #define FOO_K 1
+    #endif
+  src/c/bar.h: |
+    #ifndef BAR_H
+    #define BAR_H
+    #include "foo.h"
+    #define BAR_K FOO_K
+    int bar_get(void);
+    #endif
+  test/test_bar.c: |
+    #include "unity.h"
+    #include "mock_bar.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_bar(void) { bar_get_ExpectAndReturn(BAR_K); TEST_ASSERT_EQUAL(BAR_K, bar_get()); }
+project:
+  :paths:
+    :include: [src/a, src/b, src/c]
+steps:
+  - build: test:all
+  - write:
+      src/a/foo.h: |
+        #ifndef FOO_H
+        #define FOO_H
+        #define FOO_K 2
+        #endif
+  - build: test:all
+divergences:
+  - at: resolved test/test_bar.c "mock_bar.h"
+    kind: convention
+    note: A mock include names the mocked header, which the compiler never sees
+target: ~

@@ -1,0 +1,184 @@
+---
+id: RES-001
+compiler:
+- src/a.h "sub/config.h": src/sub/config.h
+  src/config.c "config.h": src/config.h
+  src/sub/config.c "config.h": src/sub/config.h
+  test/test_config.c "a.h": src/a.h
+  test/test_config.c "config.h": src/config.h
+current:
+  linux:
+    tests:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Test Executables
+        error: 'test/test_config.c:6:(.text+<offset>): undefined reference to `config_get'''
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_config.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_config.c for include path build directive macros...
+          - Parsing test_config.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_config.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_config.c...'
+          - 'NOTICE: Multiple files satisfy #include ''config.h'' within test/test_config.c; chose ''src/sub/config.h'' by search-path priority. Other candidates passed over: src/config.h. If this choice is wrong, add more path to that #include statement to select a different file -- or watch for a compilation error naming the real mismatch.'
+          Determining Files to Be Generated...: []
+          Preprocessing Test Files:
+          - Preprocessing test file test_config.c...
+          - Parsing test_config.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_config.c...
+          Test Runners:
+          - Generating runner for test_config.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_config.c...
+          - Compiling test/test_config::config.c...
+          - Compiling test/test_config::test_config_runner.c...
+          - Compiling test/test_config::unity.c...
+          Building Test Executables:
+          - Linking test_config.out...
+          - 'NOTICE: The linker output appears to report missing symbols.'
+          - 'POSSIBLE CAUSES:'
+          - "* This test lacks #include statements corresponding to needed source files (see notes below)."
+          - "* Project file paths omit source files corresponding to #include statements in this test."
+          - "* Macros or #ifdefs, evaluated with this test's defines, leave out an #include statement the test needs."
+          - "* This test does not #include needed mocks (that triggers their generation)."
+          - 'NOTES:'
+          - "* A test file directs the build of a test executable with #include statements."
+          - "* By convention, Ceedling assumes header filenames correspond to source filenames."
+          - "* Which code files to compile and link are determined by #include statements."
+          - "* An #include statement convention directs the generation of mocks from header files."
+          - 'OPTIONS:'
+          - '1. Doublecheck this test''s #include statements.'
+          - 2. Simplify complex macros or fully specify symbols for this test in :project >> :defines.
+          - 3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.
+          - 4. Mock the header that declares a missing function, so the mock supplies it.
+          - See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.
+          - 'EXCEPTION: ''Default Test Linker'' (gcc) terminated with exit code [1] and output >>'
+          - "/usr/bin/ld: build/test/out/test/test_config/_t_/test/test_config.o: in function `test_config':"
+          - 'test/test_config.c:6:(.text+<offset>): undefined reference to `config_get'''
+          - 'collect2: error: ld returned 1 exit status'
+          - 'Executed Command: gcc "build/test/out/test/test_config/_t_/test/test_config.o" "build/test/out/test/test_config/_t_/src/sub/config.o" "build/test/out/test/test_config/_t_/test_config_runner.o" "build/test/out/test/test_config/_t_/unity.o" -o "build/test/out/test/test_config/_t_/test_config.out"'
+      resolved:
+        test/test_config.c "a.h": src/a.h
+        test/test_config.c "a.h" source: []
+        test/test_config.c "config.h": src/sub/config.h
+        test/test_config.c "config.h" source:
+        - src/sub/config.c
+      search_paths:
+        tests:
+          test/test_config:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_config/_t_
+            - src
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks: []
+        compile:
+          test/test_config test/test_config.c:
+          - build/test/mocks/test/test_config/_t_
+          - src
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_config src/sub/config.c:
+          - build/test/mocks/test/test_config/_t_
+          - src
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_config build/test/runners/test/test_config_runner.c:
+          - build/test/mocks/test/test_config/_t_
+          - src
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_config build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+        link:
+          build/test/out/test/test_config/_t_/test_config.out: []
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_config_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_config/_t_/directives_only/raw/test/test_config.c
+        - build/test/preprocess/files/test/test_config/_t_/directives_only/test/test_config.c
+        - build/test/preprocess/files/test/test_config/_t_/full_expansion/test/test_config.c
+        - build/test/preprocess/files/test/test_config/_t_/test/test_config.c
+        objects:
+          test/test_config build/test/runners/test/test_config_runner.c: build/test/out/test/test_config/_t_/test_config_runner.o
+          test/test_config build/vendor/unity/src/unity.c: build/test/out/test/test_config/_t_/unity.o
+          test/test_config src/sub/config.c: build/test/out/test/test_config/_t_/src/sub/config.o
+          test/test_config test/test_config.c: build/test/out/test/test_config/_t_/test/test_config.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners:
+          - build/test/runners/test/test_config_runner.c
+      link_set:
+        build/test/out/test/test_config/_t_/test_config.out:
+        - test/test_config.c
+        - src/sub/config.c
+        - build/test/runners/test/test_config_runner.c
+        - build/vendor/unity/src/unity.c
+      entered:
+        dependencies:
+          test/test_config test/test_config.c:
+          - raw: test/test_config.c
+            path: test/test_config.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/a.h
+            path: src/a.h
+          - raw: src/sub/config.h
+            path: src/sub/config.h
+          - raw: src/config.h
+            path: src/config.h
+          test/test_config src/sub/config.c:
+          - raw: src/sub/config.c
+            path: src/sub/config.c
+          - raw: src/sub/config.h
+            path: src/sub/config.h
+          test/test_config build/test/runners/test/test_config_runner.c:
+          - raw: build/test/runners/test/test_config_runner.c
+            path: build/test/runners/test/test_config_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/a.h
+            path: src/a.h
+          - raw: src/sub/config.h
+            path: src/sub/config.h
+          test/test_config build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers:
+          test/test_config:
+          - raw: test/test_config.c
+            path: test/test_config.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/a.h
+            path: src/a.h
+          - raw: src/sub/config.h
+            path: src/sub/config.h
+          - raw: src/config.h
+            path: src/config.h
+        mocks_read: {}

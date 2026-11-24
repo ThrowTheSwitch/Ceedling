@@ -1,0 +1,30 @@
+id: LINK-001
+title: A mocked .hpp header and the source that implements it
+modes: [none, tests, all]
+tree:
+  src/drivers/foox.hpp: |
+    #ifndef FOOX_HPP
+    #define FOOX_HPP
+    int foox_read(void);
+    #endif
+  src/drivers/foox.c: |
+    #include "foox.hpp"
+    int foox_read(void) { return 1; }
+  test/test_foox.c: |
+    #include "unity.h"
+    #include "drivers/mock_foox.hpp"
+    TEST_SOURCE_FILE("src/drivers/foox.c")
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_mocked(void) { foox_read_ExpectAndReturn(7); TEST_ASSERT_EQUAL(7, foox_read()); }
+project:
+  :extension:
+    :header: [.h, .hpp]
+  :paths:
+    :include: [src/**]
+    :source: [src/**]
+divergences:
+  - at: resolved test/test_foox.c "drivers/mock_foox.hpp"
+    kind: convention
+    note: A mock include names the mocked header, which the compiler never sees
+target: ~

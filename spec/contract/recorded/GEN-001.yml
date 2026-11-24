@@ -1,0 +1,63 @@
+---
+id: GEN-001
+compiler:
+- src/x_runner.c "x_runner.h": src/x_runner.h
+  test/test_x_runner.c "x_runner.h": src/x_runner.h
+current:
+  linux:
+    none:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Objects
+        error: 'EXCEPTION: Found no file `test_x_runner.c` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_x_runner.c for user & system #includes...'
+          - Parsing test_x_runner.c for build directive macros...
+          - Parsing test_x_runner.c for test case names...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_x_runner.c...
+          Determining Files to Be Generated...: []
+          Test Runners:
+          - Generating runner for test_x_runner.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - 'EXCEPTION: Found no file `test_x_runner.c` in search paths.'
+      resolved:
+        test/test_x_runner.c "x_runner.h" source:
+        - src/x_runner.c
+      search_paths:
+        tests:
+          test/test_x_runner:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_x_runner/_t_
+            - src
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks: []
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_x_runner_runner.c
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners:
+          - build/test/runners/test/test_x_runner_runner.c
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}

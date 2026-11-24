@@ -1,0 +1,216 @@
+---
+id: ISO-001
+compiler:
+- src/drivers/helper.h "foo.h": src/drivers/foo.h
+  test/test_helper.c "src/drivers/helper.h": src/drivers/helper.h
+  test/test_helper.c "src/drivers/mock_foo.h": missing
+current:
+  linux:
+    tests:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Executing
+        error: 'test_helper.c:6:test_twice:FAIL: Expected 7 Was 2'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_helper.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_helper.c for include path build directive macros...
+          - Parsing test_helper.c for Partials directive macros...
+          - 'WARNING: No header files found in project.'
+          - 'OPTIONS:'
+          - 1. Add search paths to :paths >> :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.
+          - 2. Verify header files with `ceedling paths:include` and/or `ceedling files:include`.
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_helper.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_helper.c...'
+          Determining Files to Be Generated...: []
+          Mocking:
+          - Generating mock for test/test_helper::foo.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_helper.c...
+          - Parsing test_helper.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_helper.c...
+          Test Runners:
+          - Generating runner for test_helper.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_helper.c...
+          - Compiling test/test_helper::mock_foo.c...
+          - Compiling test/test_helper::test_helper_runner.c...
+          - Compiling test/test_helper::unity.c...
+          - Compiling test/test_helper::cmock.c...
+          Building Test Executables:
+          - Linking test_helper.out...
+          Executing:
+          - Running test_helper.out...
+          - 'test_helper.c:6:test_twice:FAIL: Expected 7 Was 2'
+      resolved:
+        test/test_helper.c "src/drivers/helper.h": src/drivers/helper.h
+        test/test_helper.c "src/drivers/helper.h" source: []
+        test/test_helper.c "src/drivers/mock_foo.h": src/drivers/foo.h
+      search_paths:
+        tests:
+          test/test_helper:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_helper/_t_
+            - build/test/mocks/test/test_helper/_t_/src/drivers
+            - "."
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks:
+            - build/test/mocks/test/test_helper/_t_/src/drivers
+            - build/test/mocks/test/test_helper/_t_
+        compile:
+          test/test_helper test/test_helper.c:
+          - build/test/mocks/test/test_helper/_t_
+          - build/test/mocks/test/test_helper/_t_/src/drivers
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_helper build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.c:
+          - build/test/mocks/test/test_helper/_t_
+          - build/test/mocks/test/test_helper/_t_/src/drivers
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_helper build/test/runners/test/test_helper_runner.c:
+          - build/test/mocks/test/test_helper/_t_
+          - build/test/mocks/test/test_helper/_t_/src/drivers
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_helper build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+          test/test_helper build/vendor/cmock/src/cmock.c:
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+        link:
+          build/test/out/test/test_helper/_t_/test_helper.out: []
+      placements:
+        mocks:
+        - build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.c
+        - build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+        standins: []
+        copies:
+        - build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+        partials: []
+        runners:
+        - build/test/runners/test/test_helper_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_helper/_t_/directives_only/raw/test/test_helper.c
+        - build/test/preprocess/files/test/test_helper/_t_/directives_only/test/test_helper.c
+        - build/test/preprocess/files/test/test_helper/_t_/full_expansion/test/test_helper.c
+        - build/test/preprocess/files/test/test_helper/_t_/test/test_helper.c
+        objects:
+          test/test_helper build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.c: build/test/out/test/test_helper/_t_/src/drivers/mock_foo.o
+          test/test_helper build/test/runners/test/test_helper_runner.c: build/test/out/test/test_helper/_t_/test_helper_runner.o
+          test/test_helper build/vendor/cmock/src/cmock.c: build/test/out/test/test_helper/_t_/cmock.o
+          test/test_helper build/vendor/unity/src/unity.c: build/test/out/test/test_helper/_t_/unity.o
+          test/test_helper test/test_helper.c: build/test/out/test/test_helper/_t_/test/test_helper.o
+        mock_headers:
+          src/drivers/mock_foo.h: "./src/drivers/foo.h"
+        isolation: {}
+        generated:
+          mocks:
+          - src/drivers/foo.h
+          runners:
+          - build/test/runners/test/test_helper_runner.c
+      link_set:
+        build/test/out/test/test_helper/_t_/test_helper.out:
+        - test/test_helper.c
+        - build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.c
+        - build/test/runners/test/test_helper_runner.c
+        - build/vendor/unity/src/unity.c
+        - build/vendor/cmock/src/cmock.c
+      entered:
+        dependencies:
+          test/test_helper test/test_helper.c:
+          - raw: test/test_helper.c
+            path: test/test_helper.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/drivers/helper.h
+            path: src/drivers/helper.h
+          - raw: src/drivers/foo.h
+            path: src/drivers/foo.h
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+          test/test_helper build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.c:
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.c
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+          test/test_helper build/test/runners/test/test_helper_runner.c:
+          - raw: build/test/runners/test/test_helper_runner.c
+            path: build/test/runners/test/test_helper_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: src/drivers/helper.h
+            path: src/drivers/helper.h
+          - raw: src/drivers/foo.h
+            path: src/drivers/foo.h
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+          test/test_helper build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          test/test_helper build/vendor/cmock/src/cmock.c:
+          - raw: build/vendor/cmock/src/cmock.c
+            path: build/vendor/cmock/src/cmock.c
+          - raw: build/vendor/cmock/src/cmock.h
+            path: build/vendor/cmock/src/cmock.h
+          - raw: build/vendor/cmock/src/cmock_internals.h
+            path: build/vendor/cmock/src/cmock_internals.h
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers:
+          test/test_helper:
+          - raw: test/test_helper.c
+            path: test/test_helper.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: "./src/drivers/helper.h"
+            path: src/drivers/helper.h
+          - raw: "./src/drivers/foo.h"
+            path: src/drivers/foo.h
+          - raw: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+            path: build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h
+        mocks_read:
+          test/test_helper:
+            build/test/mocks/test/test_helper/_t_/src/drivers/mock_foo.h: stand-in

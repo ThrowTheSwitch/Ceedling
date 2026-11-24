@@ -1,0 +1,145 @@
+---
+id: ORC-001
+compiler:
+- src/drivers/bar.h "foo.h": src/drivers/foo.h
+  test/test_dot.c "src/drivers/bar.h": src/drivers/bar.h
+current:
+  linux:
+    tests:
+    - task: test:all
+      outcome:
+        status: pass
+        stage:
+        error:
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_dot.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_dot.c for include path build directive macros...
+          - Parsing test_dot.c for Partials directive macros...
+          - 'WARNING: No header files found in project.'
+          - 'OPTIONS:'
+          - 1. Add search paths to :paths >> :include in your project file and/or use TEST_INCLUDE_PATH() in your test files.
+          - 2. Verify header files with `ceedling paths:include` and/or `ceedling files:include`.
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_dot.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_dot.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing Test Files:
+          - Preprocessing test file test_dot.c...
+          - Parsing test_dot.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_dot.c...
+          Test Runners:
+          - Generating runner for test_dot.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_dot.c...
+          - Compiling test/test_dot::test_dot_runner.c...
+          - Compiling test/test_dot::unity.c...
+          Building Test Executables:
+          - Linking test_dot.out...
+          Executing:
+          - Running test_dot.out...
+          - test_dot.c:5:test_dot:PASS
+      resolved:
+        test/test_dot.c "src/drivers/bar.h": src/drivers/bar.h
+        test/test_dot.c "src/drivers/bar.h" source: []
+      search_paths:
+        tests:
+          test/test_dot:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_dot/_t_
+            - "."
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            mocks: []
+        compile:
+          test/test_dot test/test_dot.c:
+          - build/test/mocks/test/test_dot/_t_
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_dot build/test/runners/test/test_dot_runner.c:
+          - build/test/mocks/test/test_dot/_t_
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          test/test_dot build/vendor/unity/src/unity.c:
+          - build/vendor/unity/src
+        link:
+          build/test/out/test/test_dot/_t_/test_dot.out: []
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners:
+        - build/test/runners/test/test_dot_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_dot/_t_/directives_only/raw/test/test_dot.c
+        - build/test/preprocess/files/test/test_dot/_t_/directives_only/test/test_dot.c
+        - build/test/preprocess/files/test/test_dot/_t_/full_expansion/test/test_dot.c
+        - build/test/preprocess/files/test/test_dot/_t_/test/test_dot.c
+        objects:
+          test/test_dot build/test/runners/test/test_dot_runner.c: build/test/out/test/test_dot/_t_/test_dot_runner.o
+          test/test_dot build/vendor/unity/src/unity.c: build/test/out/test/test_dot/_t_/unity.o
+          test/test_dot test/test_dot.c: build/test/out/test/test_dot/_t_/test/test_dot.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners:
+          - build/test/runners/test/test_dot_runner.c
+      link_set:
+        build/test/out/test/test_dot/_t_/test_dot.out:
+        - test/test_dot.c
+        - build/test/runners/test/test_dot_runner.c
+        - build/vendor/unity/src/unity.c
+      entered:
+        dependencies:
+          test/test_dot test/test_dot.c:
+          - raw: test/test_dot.c
+            path: test/test_dot.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/drivers/bar.h
+            path: src/drivers/bar.h
+          - raw: src/drivers/foo.h
+            path: src/drivers/foo.h
+          test/test_dot build/test/runners/test/test_dot_runner.c:
+          - raw: build/test/runners/test/test_dot_runner.c
+            path: build/test/runners/test/test_dot_runner.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: src/drivers/bar.h
+            path: src/drivers/bar.h
+          - raw: src/drivers/foo.h
+            path: src/drivers/foo.h
+          test/test_dot build/vendor/unity/src/unity.c:
+          - raw: build/vendor/unity/src/unity.c
+            path: build/vendor/unity/src/unity.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+        markers:
+          test/test_dot:
+          - raw: test/test_dot.c
+            path: test/test_dot.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: "./src/drivers/bar.h"
+            path: src/drivers/bar.h
+          - raw: "./src/drivers/foo.h"
+            path: src/drivers/foo.h
+        mocks_read: {}

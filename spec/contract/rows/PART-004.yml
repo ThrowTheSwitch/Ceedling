@@ -1,0 +1,58 @@
+id: PART-004
+title: A Mock Partial whose header includes another Partial module's header
+modes: [all]
+legs:
+  test_first:
+    note: The Test Partial's include comes before the Mock Partial's
+    steps:
+      - write:
+          test/test_log.c: |
+            #include "unity.h"
+            #include "ceedling.h"
+            #include TEST_PARTIAL_MODULE(log)
+            TEST_PARTIAL_CONFIG(log, log_level, )
+            #include MOCK_PARTIAL_PUBLIC_MODULE(lock)
+            void setUp(void) {}
+            void tearDown(void) {}
+            void test_level(void) { lock_take_ExpectAndReturn(LOG_WRITE, 1); TEST_ASSERT_EQUAL(2, log_level()); }
+      - build: test:all
+  mock_first:
+    note: The Mock Partial's include comes before the Test Partial's
+    steps:
+      - write:
+          test/test_log.c: |
+            #include "unity.h"
+            #include "ceedling.h"
+            #include MOCK_PARTIAL_PUBLIC_MODULE(lock)
+            #include TEST_PARTIAL_MODULE(log)
+            TEST_PARTIAL_CONFIG(log, log_level, )
+            void setUp(void) {}
+            void tearDown(void) {}
+            void test_level(void) { lock_take_ExpectAndReturn(LOG_WRITE, 1); TEST_ASSERT_EQUAL(2, log_level()); }
+      - build: test:all
+tree:
+  src/log/log.h: |
+    #ifndef LOG_H
+    #define LOG_H
+    typedef enum { LOG_READ, LOG_WRITE } log_op_t;
+    int log_level(void);
+    #endif
+  src/log/log.c: |
+    #include "src/log/log.h"
+    #include "src/lock/lock.h"
+    int log_level(void) { return lock_take(LOG_WRITE) ? 2 : 0; }
+  src/lock/lock.h: |
+    #ifndef LOCK_H
+    #define LOCK_H
+    #include "src/log/log.h"
+    int lock_take(log_op_t op);
+    #endif
+  src/lock/lock.c: |
+    #include "src/lock/lock.h"
+    int lock_take(log_op_t op) { return op == LOG_WRITE; }
+project:
+  :project:
+    :use_partials: true
+  :paths:
+    :include: [., src/**]
+target: ~
