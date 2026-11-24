@@ -42,6 +42,13 @@ describe Contract::Normalizer do
     expect( normalizer.text( "note: in expansion of macro “X”" ) ).to eq( 'note: in expansion of macro "X"' )
   end
 
+  it "drops a diagnostic's trailing option tag, which GCC versions spell differently" do
+    gcc13 = "test/t.c:5:7: error: implicit declaration of function 'f' [-Werror=implicit-function-declaration]"
+    gcc14 = "test/t.c:5:7: error: implicit declaration of function 'f' [-Wimplicit-function-declaration]"
+    expect( normalizer.text( gcc13 ) ).to eq( "test/t.c:5:7: error: implicit declaration of function 'f'" )
+    expect( normalizer.text( gcc14 ) ).to eq( normalizer.text( gcc13 ) )
+  end
+
   it 'writes a temporary directory a build makes as <tmp>' do
     expect( normalizer.path( 'build/test/out/t/d20261124-522-t6kvro/helper.h' ) ).to eq( 'build/test/out/t/<tmp>/helper.h' )
   end
