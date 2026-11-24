@@ -69,13 +69,16 @@ module Contract
 
     # Free text, such as an error line, with every workspace path made relative. Times
     # and a linker's section offsets, which vary with nothing a row controls, are masked.
-    # Typographic quotes become plain ones, since a compiler picks them by locale.
+    # Typographic quotes become plain ones, since a compiler picks them by locale. A
+    # diagnostic's trailing option tag is dropped, since GCC 13 writes `[-Werror=x]` where
+    # GCC 14 writes `[-Wx]`.
     def text(line)
       return raw( line )
         .gsub( /\b\d+(\.\d+)? (milliseconds|seconds|sec)\b/, '<time>' )
         .gsub( /\(All: [^)]*\)/, '(<time>)' )
         .gsub( /\+0x\h+/, '+<offset>' )
         .tr( "‘’“”", %q(''"") )
+        .sub( / \[-W[^\]]+\]\z/, '' )
     end
 
     # -------------------------------------------------------------------------
