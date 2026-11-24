@@ -73,11 +73,11 @@ A row expecting a failed build records the failure in its current column. A fail
 
 ## What the runner reports
 
-The runner builds each variant, one mode of one leg, in a fresh temporary workspace. It writes the tree and a `project.yml`, then runs `bin/ceedling` in a subprocess with the probe plugin enabled and console decorations off. The probe records each compile, link, mock and runner through plugin hooks, each test's pipeline record at stage 5 through `TestInvoker#state`, and the whole record again at `post_test_build`. After each build step the runner turns the probe's record and the build's log into a report.
+The runner builds each variant, one mode of one leg, in a fresh temporary workspace. It writes the tree and a `project.yml`, then runs `bin/ceedling` in a subprocess with the probe plugin enabled and console decorations off. Every row compiles with `-Werror=implicit-function-declaration` after its own compile flags, since GCC 13 only warns where GCC 14 and Clang reject, and a row's outcome must not depend on the compiler's version. The probe records each compile, link, mock and runner through plugin hooks, each test's pipeline record at stage 5 through `TestInvoker#state`, and the whole record again at `post_test_build`. After each build step the runner turns the probe's record and the build's log into a report.
 
 | Section | Content |
 |---|---|
-| `outcome` | `pass` or `fail` by exit status, the first error line and the stage it fell under, and `stages`, each stage heading's progress lines |
+| `outcome` | `pass` or `fail` by exit status, the first error line and the stage it fell under, and `stages`, each stage heading's progress lines. Tool output and guidance text are left out of `stages`, since their wording varies by compiler and release. |
 | `resolved` | Ceedling's answer for each test-file `#include` it holds a belief about: a mock's header, a Partial's module header and source, a plain header, and the linked sources sharing that header's stem |
 | `search_paths` | Per test, the derived paths and refusals, the search paths and mock search paths at stage 5, and the final paths where isolation changed them. Per object, its compile search paths. Per executable, its link library paths. |
 | `placements` | The mocks, stand-ins, header copies, Partials, runners and preprocessed files on disk, each object compiled, each mock's header as Ceedling holds it, isolation copies, and what this build generated |
@@ -86,7 +86,7 @@ The runner builds each variant, one mode of one leg, in a fresh temporary worksp
 
 A resolved entry is keyed by its includer and directive, as `test/test_a.c "a.h"`, `test/test_a.c <a.h>` or `test/test_a.c TEST_PARTIAL_MODULE(a)`. A Partial's source and a header's paired sources add ` source` to the key. Without test preprocessing a plain `#include` holds only its text, so only its paired sources are reported.
 
-Every path is normalized before it is compared. It is relative to the project root, with forward slashes and no `.` segments. A file beside the project keeps its `../`, a far file starts `%{far}/`, a file in this checkout starts `%{ceedling}/`, and any other file outside the workspace is `<system>`. A temporary directory name a build makes is `<tmp>`. In log text, times and linker section offsets are masked.
+Every path is normalized before it is compared. It is relative to the project root, with forward slashes and no `.` segments. A file beside the project keeps its `../`, a far file starts `%{far}/`, a file in this checkout starts `%{ceedling}/`, whether written absolutely or as a climb from the project, and any other file outside the workspace is `<system>`. A temporary directory name a build makes is `<tmp>`. In log text, times and linker section offsets are masked, typographic quotes become plain ones, and a diagnostic's trailing option tag, such as `[-Wimplicit-function-declaration]`, is dropped.
 
 ## The oracle
 
