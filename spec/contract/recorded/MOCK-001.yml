@@ -366,3 +366,184 @@ current:
         dependencies: {}
         markers: {}
         mocks_read: {}
+  windows:
+    none/cmock:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting Essential Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes...'
+          - Parsing test_foox.c for build directive macros...
+          - Parsing test_foox.c for test case names...
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}
+    none/fff:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting Essential Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes...'
+          - Parsing test_foox.c for build directive macros...
+          - Parsing test_foox.c for test case names...
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}
+    tests/cmock:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting More Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_foox.c for include path build directive macros...
+          - Parsing test_foox.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_foox.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_foox.c...'
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+            final:
+            - build/test/mocks/test/test_foox/_t_
+            - src
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}
+    tests/fff:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Collecting More Test Context
+        error: 'EXCEPTION: Found no file `drivers/foox_sfx.h` in search paths.'
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_foox.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_foox.c for include path build directive macros...
+          - Parsing test_foox.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_foox.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_foox.c...'
+      resolved: {}
+      search_paths:
+        tests:
+          test/test_foox:
+            derived: []
+            refusals: {}
+            test: []
+            mocks: []
+            final:
+            - build/test/mocks/test/test_foox/_t_
+            - "%{ceedling}/plugins/fff/src"
+            - "%{ceedling}/plugins/fff/vendor/fff"
+            - src
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+        compile: {}
+        link: {}
+      placements:
+        mocks: []
+        standins: []
+        copies: []
+        partials: []
+        runners: []
+        preprocessed: []
+        objects: {}
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks: []
+          runners: []
+      link_set: {}
+      entered:
+        dependencies: {}
+        markers: {}
+        mocks_read: {}

@@ -331,3 +331,164 @@ current:
         mocks_read:
           test/test_a:
             build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.h: stand-in
+  windows:
+    all:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Objects
+        error: 'build/test/partials/test/test_a/_t_/ceedling_partial_b_types.h:6:16: error: redeclaration of enumerator ''B_OK'''
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_a.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_a.c for include path build directive macros...
+          - Parsing test_a.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_a.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_a.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing & Mocking Partials:
+          - Preprocessing partial header for test/test_a::a.h...
+          - Preprocessing header file for follow-on Partials handling test/test_a::a.h...
+          - Full-preprocessing for Partial reconciliation test/test_a::a.h...
+          - Preprocessing partial header for test/test_a::b.h...
+          - Preprocessing header file for follow-on Partials handling test/test_a::b.h...
+          - Full-preprocessing for Partial reconciliation test/test_a::b.h...
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_a::a.c...
+          - Preprocessing source file for follow-on Partials handling test/test_a::a.c...
+          - Full-preprocessing for Partial reconciliation test/test_a::a.c...
+          Partials:
+          - Generating Partial implementation for test/test_a::a...
+          - Generating shared Partial types for test/test_a::b...
+          - Generating Partial mockable interface for test/test_a::b...
+          Mocking:
+          - Generating mock for test/test_a::ceedling_partial_b_interface.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_a.c...
+          - Parsing test_a.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_a.c...
+          Test Runners:
+          - Generating runner for test_a.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_a.c...
+      resolved:
+        test/test_a.c MOCK_PARTIAL_PUBLIC_MODULE(b): src/b/b.h
+        test/test_a.c MOCK_PARTIAL_PUBLIC_MODULE(b) source: none
+        test/test_a.c TEST_PARTIAL_MODULE(a): src/a/a.h
+        test/test_a.c TEST_PARTIAL_MODULE(a) source: src/a/a.c
+      search_paths:
+        tests:
+          test/test_a:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_a/_t_
+            - build/test/partials/test/test_a/_t_
+            - "."
+            - src
+            - src/a
+            - src/b
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks: []
+        compile:
+          test/test_a test/test_a.c:
+          - build/test/mocks/test/test_a/_t_
+          - build/test/partials/test/test_a/_t_
+          - "."
+          - src
+          - src/a
+          - src/b
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+        link: {}
+      placements:
+        mocks:
+        - build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.c
+        - build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_a/_t_/ceedling_partial_a_impl.c
+        - build/test/partials/test/test_a/_t_/ceedling_partial_a_impl.h
+        - build/test/partials/test/test_a/_t_/ceedling_partial_b_interface.h
+        - build/test/partials/test/test_a/_t_/ceedling_partial_b_types.h
+        runners:
+        - build/test/runners/test/test_a_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/raw/src/a/a.c
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/raw/src/a/a.h
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/raw/src/b/b.h
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/raw/test/test_a.c
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/src/a/a.c
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/src/a/a.h
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/src/b/b.h
+        - build/test/preprocess/files/test/test_a/_t_/directives_only/test/test_a.c
+        - build/test/preprocess/files/test/test_a/_t_/expanded_code/src/a/a.c
+        - build/test/preprocess/files/test/test_a/_t_/expanded_code/src/a/a.h
+        - build/test/preprocess/files/test/test_a/_t_/expanded_code/src/b/b.h
+        - build/test/preprocess/files/test/test_a/_t_/full_expansion/src/a/a.c
+        - build/test/preprocess/files/test/test_a/_t_/full_expansion/src/a/a.h
+        - build/test/preprocess/files/test/test_a/_t_/full_expansion/src/b/b.h
+        - build/test/preprocess/files/test/test_a/_t_/full_expansion/test/test_a.c
+        - build/test/preprocess/files/test/test_a/_t_/src/a/a.c
+        - build/test/preprocess/files/test/test_a/_t_/src/a/a.h
+        - build/test/preprocess/files/test/test_a/_t_/src/b/b.h
+        - build/test/preprocess/files/test/test_a/_t_/test/test_a.c
+        objects:
+          test/test_a test/test_a.c: build/test/out/test/test_a/_t_/test/test_a.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/partials/test/test_a/_t_/ceedling_partial_b_interface.h
+          runners:
+          - build/test/runners/test/test_a_runner.c
+      link_set: {}
+      entered:
+        dependencies:
+          test/test_a test/test_a.c:
+          - raw: test/test_a.c
+            path: test/test_a.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_a/_t_/ceedling_partial_a_impl.h
+            path: build/test/partials/test/test_a/_t_/ceedling_partial_a_impl.h
+          - raw: src/a/helper.h
+            path: src/a/helper.h
+          - raw: src/b/b.h
+            path: src/b/b.h
+          - raw: build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.h
+            path: build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.h
+          - raw: build/test/partials/test/test_a/_t_/ceedling_partial_b_interface.h
+            path: build/test/partials/test/test_a/_t_/ceedling_partial_b_interface.h
+          - raw: build/test/partials/test/test_a/_t_/ceedling_partial_b_types.h
+            path: build/test/partials/test/test_a/_t_/ceedling_partial_b_types.h
+        markers:
+          test/test_a:
+          - raw: test/test_a.c
+            path: test/test_a.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_a/_t_/ceedling_partial_a_impl.h
+            path: build/test/partials/test/test_a/_t_/ceedling_partial_a_impl.h
+          - raw: build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.h
+            path: build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.h
+        mocks_read:
+          test/test_a:
+            build/test/mocks/test/test_a/_t_/mock_ceedling_partial_b_interface.h: stand-in
