@@ -100,6 +100,8 @@ The oracle answers one question per directive: given this includer, this spellin
 
 The oracle checks its own answers. An angle include answered from its includer's directory, which no search path names, raises an error, as does a probe with neither an entry nor a missing-file error.
 
+The oracle builds its `-I` list from the project file, apart from Ceedling's configurator, so every variant also checks that the two agree. Each build compares the oracle's order with each test's search paths at stage 5. Both keep only the directories that hold a header, since no other directory can answer an include. Ceedling's generated paths under `build/`, its vendored paths and its derived paths are left out. A difference fails the row and names both orders.
+
 `CONTRACT_CC` picks the compiler. The default is `gcc`, which is Apple Clang on macOS and MinGW GCC on Windows. A leg's `cc` overrides it for that leg.
 
 ## The three columns
