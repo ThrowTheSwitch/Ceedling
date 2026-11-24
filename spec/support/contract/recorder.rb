@@ -51,7 +51,9 @@ module Contract
       data['current'][platform] ||= {}
       ran.each { |result| data['current'][platform][result.variant.key] = Recorder.section( result ) }
 
-      data['current'][platform] = data['current'][platform].sort.to_h
+      # A section for a variant the row no longer has would never be compared again
+      keys = row.variants.map( &:key )
+      data['current'] = data['current'].transform_values { |sections| sections.select { |key, _| keys.include?( key ) }.sort.to_h }
       data['current'] = data['current'].sort.to_h
       return { 'id' => row.id, 'compiler' => data['compiler'], 'current' => data['current'] }
     end
@@ -130,16 +132,36 @@ module Contract
     #
     # The oracle builds its `-I` list from the project file, apart from the configurator,
     # so this keeps the two from drifting apart. Ceedling's own paths and its derived
-    # paths are left out, and so is any directory holding no header, since it can answer
-    # no include.
-    def self.search_order!(oracle, ceedling, derived:, header_dirs:, what:)
-      ours   = ceedling.reject { |dir| dir.start_with?( *CEEDLING_OWN ) || derived.include?( dir ) }
-      ours   = ours.select { |dir| header_dirs.include?( dir ) }
-      theirs = oracle.select { |dir| header_dirs.include?( dir ) }
+    # paths are left out. So is any directory with no header at or below it, since it
+    # can answer no include. A directory above a header counts, as `.` does for
+    # "src/drivers/bar.h". Two empty lists prove nothing, so they fail too.
+    def self.search_order!(oracle, ceedling, derived:, headers:, what:)
+      answers = ->( dir ) { headers.any? { |header| Check.below?( header, dir ) } }
+      ours    = ceedling.reject { |dir| dir.start_with?( *CEEDLING_OWN ) || derived.include?( dir ) }.select( &answers )
+      theirs  = oracle.select( &answers )
+
+      raise Mismatch, "#{what}: no searched directory holds a header, so no order can be compared" if ours.empty? && theirs.empty?
       return if ours == theirs
 
       raise Mismatch, "#{what} searches its header directories in another order than the oracle:\n" \
                       "  Ceedling #{ours.inspect}\n  oracle   #{theirs.inspect}"
+    end
+
+    # Whether normalized `path` lies at or below directory `dir`. The project root `.`
+    # holds every path but a climb out of it or a `%{...}` root.
+    def self.below?(path, dir)
+      return !path.start_with?( '../', '%' ) if dir == '.'
+
+      return path.start_with?( "#{dir}/" )
+    end
+
+    # Raises unless each live build matches the sections its own target promises
+    def self.target!(target, live, what)
+      unless target.size == live.size
+        raise Mismatch, "#{what} promises #{target.size} build#{target.size == 1 ? '' : 's'}, and #{live.size} ran"
+      end
+
+      equal!( target, live.each_with_index.map { |build, index| build.slice( *target[index].keys ) }, what )
     end
 
     # Raises for a difference the row does not declare

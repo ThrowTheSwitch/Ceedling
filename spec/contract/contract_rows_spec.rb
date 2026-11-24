@@ -109,17 +109,24 @@ describe 'Contract rows' do
           it "searches its header directories in Ceedling's configured order" do
             result = result_for( row, variant.key, runs_here )
 
+            # A test whose build stopped before stage 5 has no search paths to compare.
+            # Stage 5 always lists the vendor paths, so an empty list means it never ran.
+            compared = 0
             checked do
               result.builds.each_with_index do |build, index|
                 build.report['search_paths']['tests'].each do |test, paths|
+                  next if paths['test'].empty?
+
                   Contract::Check.search_order!(
                     build.search_order, paths['test'],
-                    derived: paths['derived'], header_dirs: build.header_dirs,
+                    derived: paths['derived'], headers: build.headers,
                     what: "#{row.id} #{variant.key} build #{index + 1} #{test}"
                   )
+                  compared += 1
                 end
               end
             end
+            skip( 'no build reached stage 5, so no search paths were recorded' ) if compared.zero?
           end
 
           unless row.target.nil?
@@ -129,8 +136,7 @@ describe 'Contract rows' do
               skip( "no target for #{variant.key}" ) if target.nil?
 
               pending( 'the redesign has not yet made this row meet its target' )
-              live = Contract::Recorder.section( result )
-              Contract::Check.equal!( target, live.map { |build| build.slice( *target.first.keys ) }, "#{row.id} #{variant.key} target" )
+              Contract::Check.target!( target, Contract::Recorder.section( result ), "#{row.id} #{variant.key} target" )
             end
           end
 

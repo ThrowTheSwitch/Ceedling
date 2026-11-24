@@ -27,8 +27,8 @@ module Contract
   class Runner
 
     # One build step's report, the compiler's answers for the tree it built, and the
-    # oracle's search order with the tree's header directories, for comparing orders
-    Build = Struct.new( :task, :report, :compiler, :search_order, :header_dirs, :output, :probe, keyword_init: true )
+    # oracle's search order with the tree's headers, for comparing orders
+    Build = Struct.new( :task, :report, :compiler, :search_order, :headers, :output, :probe, keyword_init: true )
 
     # One variant's builds. `skipped` gives the reason a variant could not run here.
     Result = Struct.new( :variant, :builds, :seconds, :skipped, keyword_init: true )
@@ -157,7 +157,7 @@ module Contract
         report:       report,
         compiler:     oracle.resolve( tree ),
         search_order: oracle.order( tree ),
-        header_dirs:  oracle.header_dirs( tree ),
+        headers:      oracle.headers( tree ),
         output:       output,
         probe:        probe
       )

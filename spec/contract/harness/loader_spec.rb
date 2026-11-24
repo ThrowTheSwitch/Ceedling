@@ -34,6 +34,11 @@ describe Contract::Loader do
     expect { parse( minimal.merge( 'target' => { 'none' => [] } ) ) }.to raise_error( Contract::RowError, /target for none promises no build/ )
   end
 
+  it "names a target's sections as a report holds them" do
+    require 'contract/report'
+    expect( Contract::Loader::TARGET_SECTIONS ).to eq( ['task'] + Contract::Report::SECTIONS )
+  end
+
   it 'rejects a target section the report does not have' do
     target = { 'none' => [{ 'resolve' => {} }] }
     expect { parse( minimal.merge( 'target' => target ) ) }.to raise_error( Contract::RowError, /target for none names resolve, which no report holds/ )

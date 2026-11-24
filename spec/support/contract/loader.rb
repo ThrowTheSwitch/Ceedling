@@ -60,6 +60,8 @@ module Contract
     AREAS        = %w[RES MOCK PART LINK GEN ISO DELTA COV ORC].freeze
     ROW_KEYS     = %w[id title platforms platform_note modes plugins tree project steps legs divergences target].freeze
     LEG_KEYS     = %w[plugins project steps requires cc note].freeze
+    # The sections a build report holds, as Report::SECTIONS names them, plus its task
+    TARGET_SECTIONS = %w[task outcome resolved search_paths placements link_set entered].freeze
     STEP_KINDS   = %w[build write delete clobber].freeze
     DIVERGENCE_KEYS  = %w[at kind note].freeze
     DIVERGENCE_KINDS = %w[defect convention].freeze
@@ -119,12 +121,30 @@ module Contract
         target:        data['target']
       )
 
-      target = data['target']
-      fail!( source, 'target maps each variant key to its promised build reports' ) unless target.nil? || (target.is_a?( Hash ) && target.values.all? { |builds| builds.is_a?( Array ) && builds.all? { |build| build.is_a?( Hash ) } })
+      target!( source, data['target'], row )
 
       fail!( source, 'Partials force :use_test_preprocessor :all, so a Partials row lists only the all mode' ) if row.partials? && row.modes != ['all']
 
       return row
+    end
+
+    # A target maps variant keys to promised build reports. A key naming no variant, or a
+    # section no report holds, would leave the target unchecked for good, so both fail.
+    def self.target!(source, target, row)
+      return if target.nil?
+
+      shape = target.is_a?( Hash ) && target.values.all? { |builds| builds.is_a?( Array ) && builds.all? { |build| build.is_a?( Hash ) } }
+      fail!( source, 'target maps each variant key to its promised build reports' ) unless shape
+
+      keys = row.variants.map( &:key )
+      target.each do |key, builds|
+        fail!( source, "target names #{key}, which is no variant of this row; its variants are #{keys.join( ', ' )}" ) unless keys.include?( key )
+        fail!( source, "target for #{key} promises no build" ) if builds.empty?
+
+        builds.flat_map( &:keys ).uniq.each do |section|
+          fail!( source, "target for #{key} names #{section}, which no report holds" ) unless TARGET_SECTIONS.include?( section )
+        end
+      end
     end
 
     def self.fail!(source, message)
