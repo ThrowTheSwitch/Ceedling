@@ -41,6 +41,17 @@ describe Contract::Runner do
       expect( project[:paths] ).to eq( test: ['test/**'], source: ['src/**'], include: ['src'] )
       expect( project[:plugins] ).to eq( load_paths: ['/probe'], enabled: ['contract_probe', 'gcov'] )
       expect( project[:gcov] ).to eq( summaries: false )
+      expect( project[:flags] ).to eq( test: { compile: ['-Werror=implicit-function-declaration'] } )
+    end
+  end
+
+  # GCC 13 warns about an implicit declaration and GCC 14 rejects it, so without the flag a
+  # row's outcome would depend on the compiler's version
+  it "adds the implicit-declaration error after a row's own compile flags" do
+    flagged = row( 'project' => { paths: { include: ['src'] }, flags: { test: { compile: ['-std=c17'] } } } )
+    Contract::Workspace.create do |workspace|
+      project = described_class.new( flagged ).project_for( flagged.variants.first, workspace, '/probe' )
+      expect( project[:flags][:test][:compile] ).to eq( ['-std=c17', '-Werror=implicit-function-declaration'] )
     end
   end
 
@@ -99,6 +110,9 @@ describe Contract::Runner do
     expect( report['outcome']['status'] ).to eq( 'fail' )
     expect( report['outcome']['stage'] ).to eq( 'Building Objects' )
     expect( report['outcome']['error'] ).to match( %r{\Asrc/a\.c:2:.*error:.*'y'} )
+    # A stage lists Ceedling's progress lines only. Tool output and guidance text vary by
+    # compiler and wording, and the error line already carries the failure.
+    expect( report['outcome']['stages'].values.flatten ).to all( end_with( '...' ) )
   end
 
   it 'applies write steps between builds, and the oracle sees the tree each build saw' do

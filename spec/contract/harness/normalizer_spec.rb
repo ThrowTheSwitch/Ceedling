@@ -6,6 +6,7 @@
 # =========================================================================
 
 require 'spec_helper'
+require 'pathname'
 require 'contract/normalizer'
 require 'contract/tree_writer'
 
@@ -27,6 +28,18 @@ describe Contract::Normalizer do
     expect( normalizer.path( '/var/far/deep/sdk/c.h' ) ).to eq( '%{far}/c.h' )
     expect( normalizer.path( '/usr/include/stdint.h' ) ).to eq( '<system>' )
     expect( normalizer.path( File.join( Contract::CHECKOUT, 'vendor', 'unity', 'src', 'unity.h' ) ) ).to eq( '%{ceedling}/vendor/unity/src/unity.h' )
+  end
+
+  it 'names a relative climb into this checkout by %{ceedling}, as it does an absolute path' do
+    climb = Pathname.new( File.join( Contract::CHECKOUT, 'plugins', 'fff', 'src' ) ).relative_path_from( Pathname.new( workspace.app ) ).to_s
+    expect( climb ).to start_with( '../' )
+    expect( normalizer.path( climb ) ).to eq( '%{ceedling}/plugins/fff/src' )
+    expect( normalizer.path( '../shared/b.h' ) ).to eq( '../shared/b.h' )
+  end
+
+  it 'writes typographic quotes in free text as plain ones, since the compiler picks them by locale' do
+    expect( normalizer.text( "src/a.c:2:33: error: ‘y’ undeclared" ) ).to eq( "src/a.c:2:33: error: 'y' undeclared" )
+    expect( normalizer.text( "note: in expansion of macro “X”" ) ).to eq( 'note: in expansion of macro "X"' )
   end
 
   it 'writes a temporary directory a build makes as <tmp>' do
