@@ -128,6 +128,27 @@ describe TestInvoker do
     end
   end
 
+  # Read by observers such as the contract harness's probe plugin, which runs in the
+  # post-test-build hook
+  describe "#state" do
+    it "is nil before any run" do
+      expect( @invoker.state ).to be_nil
+    end
+
+    it "is the run's pipeline state, still readable in the post-test-build hook" do
+      run_state = nil
+      allow(@test_pipeline_manager).to receive(:run) { |state| run_state = state }
+      expect(@plugin_manager).to receive(:post_test_build) do
+        expect( @invoker.state ).to be( run_state )
+      end
+
+      @invoker.setup_and_invoke( tests: ['test/TestFoo.c'] )
+
+      expect( @invoker.state ).to be( run_state )
+      expect( @invoker.state.tests ).to eq( ['test/TestFoo.c'] )
+    end
+  end
+
   describe "#each_test_with_sources" do
     it "yields each test's name and sources after a run" do
       testable = TestInvokerTypes::Testable.new( :name => 'a_test', :sources => ['src/Foo.c'] )
