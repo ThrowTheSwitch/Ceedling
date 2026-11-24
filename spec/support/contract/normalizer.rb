@@ -24,6 +24,7 @@ module Contract
     TMPNAME = /d\d{8}-\d+-[0-9a-z]+/.freeze
 
     def initialize(workspace)
+      @app   = Normalizer.slashed( workspace.app )
       @roots = [
         [workspace.app,  ''],
         [workspace.far,  '%{far}/'],
@@ -36,6 +37,13 @@ module Contract
     def path(raw)
       text = Normalizer.slashed( Normalizer.unquote( raw.to_s.strip ) )
       return text if text.empty?
+
+      # A climb out of the project into the checkout or the far directory is spelled as
+      # those roots are, since its length depends on where the workspace sits
+      if text.start_with?( '../' )
+        expanded = Normalizer.slashed( File.expand_path( text, @app ) )
+        text = expanded if @roots.any? { |dir, prefix| prefix.start_with?( '%' ) && Normalizer.within?( expanded, dir ) }
+      end
 
       if Normalizer.absolute?( text )
         root, prefix = @roots.find { |dir, _| Normalizer.within?( text, dir ) }
@@ -61,11 +69,13 @@ module Contract
 
     # Free text, such as an error line, with every workspace path made relative. Times
     # and a linker's section offsets, which vary with nothing a row controls, are masked.
+    # Typographic quotes become plain ones, since a compiler picks them by locale.
     def text(line)
       return raw( line )
         .gsub( /\b\d+(\.\d+)? (milliseconds|seconds|sec)\b/, '<time>' )
         .gsub( /\(All: [^)]*\)/, '(<time>)' )
         .gsub( /\+0x\h+/, '+<offset>' )
+        .tr( "‘’“”", %q(''"") )
     end
 
     # -------------------------------------------------------------------------
