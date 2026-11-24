@@ -71,7 +71,8 @@ module Contract
     # and a linker's section offsets, which vary with nothing a row controls, are masked.
     # Typographic quotes become plain ones, since a compiler picks them by locale. A
     # diagnostic's trailing option tag is dropped, since GCC 13 writes `[-Werror=x]` where
-    # GCC 14 writes `[-Wx]`.
+    # GCC 14 writes `[-Wx]`. Apple's undefined-symbols headline varies by linker version
+    # and architecture, so it is written one way.
     def text(line)
       return raw( line )
         .gsub( /\b\d+(\.\d+)? (milliseconds|seconds|sec)\b/, '<time>' )
@@ -79,6 +80,7 @@ module Contract
         .gsub( /\+0x\h+/, '+<offset>' )
         .tr( "‘’“”", %q(''"") )
         .sub( / \[-W[^\]]+\]\z/, '' )
+        .sub( /\A(ld: )?Undefined symbols( for architecture \w+)?:/, 'Undefined symbols:' )
     end
 
     # -------------------------------------------------------------------------
