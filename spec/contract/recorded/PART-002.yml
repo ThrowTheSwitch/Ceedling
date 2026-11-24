@@ -10,8 +10,8 @@ current:
     - task: test:all
       outcome:
         status: fail
-        stage: Building Test Executables
-        error: 'test/test_unix.c:6:(.text+<offset>): undefined reference to `unix_pub'''
+        stage: Building Objects
+        error: 'test/test_unix.c:6:44: error: implicit declaration of function ''unix_pub'''
         stages:
           Preparing Build Paths...: []
           Collecting Essential Test Context:
@@ -59,37 +59,6 @@ current:
           Determining Artifacts to Be Built...: []
           Building Objects:
           - Compiling test_unix.c...
-          - Compiling test_unix_at.c...
-          - Compiling test/test_unix::test_unix_runner.c...
-          - Compiling test/test_unix::unity.c...
-          - Compiling test/test_unix_at::test_unix_at_runner.c...
-          - Compiling test/test_unix_at::unity.c...
-          Building Test Executables:
-          - Linking test_unix.out...
-          - 'NOTICE: The linker output appears to report missing symbols.'
-          - 'POSSIBLE CAUSES:'
-          - "* This test lacks #include statements corresponding to needed source files (see notes below)."
-          - "* Project file paths omit source files corresponding to #include statements in this test."
-          - "* Macros or #ifdefs, evaluated with this test's defines, leave out an #include statement the test needs."
-          - "* This test does not #include needed mocks (that triggers their generation)."
-          - "* A Partial in this test leaves out a function the test or the Partial's code calls. A Partial carries only the functions its directive selects."
-          - 'NOTES:'
-          - "* A test file directs the build of a test executable with #include statements."
-          - "* By convention, Ceedling assumes header filenames correspond to source filenames."
-          - "* Which code files to compile and link are determined by #include statements."
-          - "* An #include statement convention directs the generation of mocks from header files."
-          - 'OPTIONS:'
-          - '1. Doublecheck this test''s #include statements.'
-          - 2. Simplify complex macros or fully specify symbols for this test in :project >> :defines.
-          - 3. If no header file corresponds to the needed source file, use the TEST_SOURCE_FILE() build directive macro in this test to inject a source file into the build.
-          - 4. Mock the header that declares a missing function, so the mock supplies it.
-          - 5. Select a function a Partial left out with +name in its directive, or select the whole module with TEST_PARTIAL_ALL_MODULE.
-          - See the docs on conventions, paths, preprocessing, compilation symbols, and build directive macros.
-          - 'EXCEPTION: ''Default Test Linker'' (gcc) terminated with exit code [1] and output >>'
-          - "/usr/bin/ld: build/test/out/test/test_unix/_t_/test/test_unix.o: in function `test_pub':"
-          - 'test/test_unix.c:6:(.text+<offset>): undefined reference to `unix_pub'''
-          - 'collect2: error: ld returned 1 exit status'
-          - 'Executed Command: gcc "build/test/out/test/test_unix/_t_/test/test_unix.o" "build/test/out/test/test_unix/_t_/test_unix_runner.o" "build/test/out/test/test_unix/_t_/unity.o" -o "build/test/out/test/test_unix/_t_/test_unix.out"'
       resolved:
         test/test_unix.c TEST_PARTIAL_PUBLIC_MODULE(unix): src/unix.h
         test/test_unix.c TEST_PARTIAL_PUBLIC_MODULE(unix) source: src/unix.c
@@ -128,35 +97,7 @@ current:
           - build/vendor/unity/src
           - build/vendor/cmock/src
           - build/vendor/ceedling
-          test/test_unix_at test/test_unix_at.c:
-          - build/test/mocks/test/test_unix_at/_t_
-          - build/test/partials/test/test_unix_at/_t_
-          - build/test/partials/test/test_unix_at/_t_/src
-          - src
-          - build/vendor/unity/src
-          - build/vendor/cmock/src
-          - build/vendor/ceedling
-          test/test_unix build/test/runners/test/test_unix_runner.c:
-          - build/test/mocks/test/test_unix/_t_
-          - build/test/partials/test/test_unix/_t_
-          - src
-          - build/vendor/unity/src
-          - build/vendor/cmock/src
-          - build/vendor/ceedling
-          test/test_unix build/vendor/unity/src/unity.c:
-          - build/vendor/unity/src
-          test/test_unix_at build/test/runners/test/test_unix_at_runner.c:
-          - build/test/mocks/test/test_unix_at/_t_
-          - build/test/partials/test/test_unix_at/_t_
-          - build/test/partials/test/test_unix_at/_t_/src
-          - src
-          - build/vendor/unity/src
-          - build/vendor/cmock/src
-          - build/vendor/ceedling
-          test/test_unix_at build/vendor/unity/src/unity.c:
-          - build/vendor/unity/src
-        link:
-          build/test/out/test/test_unix/_t_/test_unix.out: []
+        link: {}
       placements:
         mocks: []
         standins: []
@@ -201,12 +142,7 @@ current:
         - build/test/preprocess/files/test/test_unix_at/_t_/src/unix.h
         - build/test/preprocess/files/test/test_unix_at/_t_/test/test_unix_at.c
         objects:
-          test/test_unix build/test/runners/test/test_unix_runner.c: build/test/out/test/test_unix/_t_/test_unix_runner.o
-          test/test_unix build/vendor/unity/src/unity.c: build/test/out/test/test_unix/_t_/unity.o
           test/test_unix test/test_unix.c: build/test/out/test/test_unix/_t_/test/test_unix.o
-          test/test_unix_at build/test/runners/test/test_unix_at_runner.c: build/test/out/test/test_unix_at/_t_/test_unix_at_runner.o
-          test/test_unix_at build/vendor/unity/src/unity.c: build/test/out/test/test_unix_at/_t_/unity.o
-          test/test_unix_at test/test_unix_at.c: build/test/out/test/test_unix_at/_t_/test/test_unix_at.o
         mock_headers: {}
         isolation: {}
         generated:
@@ -214,11 +150,7 @@ current:
           runners:
           - build/test/runners/test/test_unix_at_runner.c
           - build/test/runners/test/test_unix_runner.c
-      link_set:
-        build/test/out/test/test_unix/_t_/test_unix.out:
-        - test/test_unix.c
-        - build/test/runners/test/test_unix_runner.c
-        - build/vendor/unity/src/unity.c
+      link_set: {}
       entered:
         dependencies:
           test/test_unix test/test_unix.c:
@@ -232,49 +164,6 @@ current:
             path: build/vendor/ceedling/ceedling.h
           - raw: build/test/partials/test/test_unix/_t_/ceedling_partial_1_impl.h
             path: build/test/partials/test/test_unix/_t_/ceedling_partial_1_impl.h
-          test/test_unix_at test/test_unix_at.c:
-          - raw: test/test_unix_at.c
-            path: test/test_unix_at.c
-          - raw: build/vendor/unity/src/unity.h
-            path: build/vendor/unity/src/unity.h
-          - raw: build/vendor/unity/src/unity_internals.h
-            path: build/vendor/unity/src/unity_internals.h
-          - raw: build/vendor/ceedling/ceedling.h
-            path: build/vendor/ceedling/ceedling.h
-          - raw: build/test/partials/test/test_unix_at/_t_/src/ceedling_partial_1_impl.h
-            path: build/test/partials/test/test_unix_at/_t_/src/ceedling_partial_1_impl.h
-          test/test_unix build/test/runners/test/test_unix_runner.c:
-          - raw: build/test/runners/test/test_unix_runner.c
-            path: build/test/runners/test/test_unix_runner.c
-          - raw: build/vendor/unity/src/unity.h
-            path: build/vendor/unity/src/unity.h
-          - raw: build/vendor/unity/src/unity_internals.h
-            path: build/vendor/unity/src/unity_internals.h
-          - raw: build/test/partials/test/test_unix/_t_/ceedling_partial_1_impl.h
-            path: build/test/partials/test/test_unix/_t_/ceedling_partial_1_impl.h
-          test/test_unix build/vendor/unity/src/unity.c:
-          - raw: build/vendor/unity/src/unity.c
-            path: build/vendor/unity/src/unity.c
-          - raw: build/vendor/unity/src/unity.h
-            path: build/vendor/unity/src/unity.h
-          - raw: build/vendor/unity/src/unity_internals.h
-            path: build/vendor/unity/src/unity_internals.h
-          test/test_unix_at build/test/runners/test/test_unix_at_runner.c:
-          - raw: build/test/runners/test/test_unix_at_runner.c
-            path: build/test/runners/test/test_unix_at_runner.c
-          - raw: build/vendor/unity/src/unity.h
-            path: build/vendor/unity/src/unity.h
-          - raw: build/vendor/unity/src/unity_internals.h
-            path: build/vendor/unity/src/unity_internals.h
-          - raw: build/test/partials/test/test_unix_at/_t_/src/ceedling_partial_1_impl.h
-            path: build/test/partials/test/test_unix_at/_t_/src/ceedling_partial_1_impl.h
-          test/test_unix_at build/vendor/unity/src/unity.c:
-          - raw: build/vendor/unity/src/unity.c
-            path: build/vendor/unity/src/unity.c
-          - raw: build/vendor/unity/src/unity.h
-            path: build/vendor/unity/src/unity.h
-          - raw: build/vendor/unity/src/unity_internals.h
-            path: build/vendor/unity/src/unity_internals.h
         markers:
           test/test_unix:
           - raw: test/test_unix.c
