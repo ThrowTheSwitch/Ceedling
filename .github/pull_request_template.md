@@ -19,6 +19,7 @@
 ### Software
 
  - [ ] Does it follow our [coding standard](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/ThrowTheSwitchCodingStandard.md)?
+ - [ ] Do new or changed log messages follow [Writing Log Messages](https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/mkdocs/development/log-messages.md)?
  - [ ] Are all existing tests passing?
  - [ ] Are there new tests added and passing?
  - [ ] Do new configuration options have defaults in `lib/ceedling/defaults.rb` and entries in the configuration reference (`docs/mkdocs/configuration/reference/`)?

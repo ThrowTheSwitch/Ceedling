@@ -46,6 +46,13 @@
     Which branch to work from, and how pushing a Git tag publishes a
     release or a pre-release.
 
+-   :material-message-text-outline: **[Writing Log Messages][log-messages]**
+
+    ---
+
+    How a message tells a C developer what went wrong, names everything
+    involved, and offers a fix, in compact or guidance form.
+
 -   :material-puzzle-edit: **[Plugin Development Guide][plugin-dev]**
 
     ---
@@ -62,6 +69,7 @@
 [contributing]:     https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/CONTRIBUTING.md
 [dev-workflow]:     workflow.md
 [releases]:         releases.md
+[log-messages]:     log-messages.md
 [security]:         https://github.com/ThrowTheSwitch/Ceedling?tab=security-ov-file
 [security-policy]:  https://github.com/ThrowTheSwitch/Ceedling/blob/master/docs/SECURITY.md
 [security-report]:  https://github.com/ThrowTheSwitch/Ceedling/security/advisories/new
