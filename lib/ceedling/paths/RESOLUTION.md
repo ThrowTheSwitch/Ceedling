@@ -27,7 +27,7 @@ An include record holds one `#include`: its include text, its form, its includer
 A search asks one question of each directory it tries: does this directory hold the include text? The model answers without asking the disk file by file.
 
 - **A directory of user files** answers from its listing. A directory outside the build root is listed once per build. Text with several segments descends listing by listing, so `drivers/uart.h` from `src` checks `src` for `drivers`, then `src/drivers` for `uart.h`.
-- **A generated directory** answers from the build plan's placements. A generated file resolves before it is written, as the compiler will find it.
+- **A generated directory** answers from the build plan's placements, which [PLACEMENT.md](PLACEMENT.md) describes. A generated file resolves before it is written, as the compiler will find it.
 - **A framework file's directory** answers from the build plan, which places the framework files.
 - **Names** compare under the key rule of the directory's root, so a directory on a file system that folds case answers `Foo.h` with `foo.h`.
 
@@ -36,7 +36,7 @@ A search asks one question of each directory it tries: does this directory hold 
 A search tries directories in order, and the first directory that holds the include text answers.
 
 1. **The quote rule.** A quoted include tries its includer's directory first. A generated includer's directory comes from the build plan.
-2. **The search order.** Each search path of the compile's search order follows, in order. The stage search order sets that list for each compile.
+2. **The search order.** Each search path of the compile's search order follows, in order. The stage search order sets that list for each compile, as [STAGES.md](STAGES.md#stage-search-orders) says.
 3. **Angle includes** skip step 1.
 
 Three rules shape each join.

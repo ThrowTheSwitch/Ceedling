@@ -2,6 +2,8 @@
 
 Ceedling turns text into files in three ways. **Resolution** finds the file an `#include` names, by the compiler's rules. **Conventions** layer Ceedling's own rules on a resolved result: mock names, pairing, Partial modules and `TEST_SOURCE_FILE()` entries. **Lookup** finds a user file in a collection from text a user wrote, such as a task argument. Every path is a `PathRef`, and every comparison of paths goes through `Matchinator`. Each path is resolved once and recorded in the build plan, and later stages read the record.
 
+Ceedling also places every file it generates. **Placement** turns each artifact's identity into one location, and overlays put generated files where the compiler's own search finds them. **Stage search orders** give each compile the directories it searches. The **build plan** records all of it for the run.
+
 These docs are for developers and coding agents. [GLOSSARY.md](GLOSSARY.md) defines every term they use, and they use no others.
 
 ## Contents
@@ -10,6 +12,10 @@ These docs are for developers and coding agents. [GLOSSARY.md](GLOSSARY.md) defi
 - [RESOLUTION.md](RESOLUTION.md) covers `Resolvinator`. It describes include records, the model a search runs on, the quote rule, results, resolution records, cross-checks and fallback.
 - [CONVENTIONS.md](CONVENTIONS.md) covers the four conventions. They are mock names (`MockNaminator`), pairing (`SourcePairinator`), Partial modules (`PartialModuleMatchinator`) and `TEST_SOURCE_FILE()` entries.
 - [LOOKUP.md](LOOKUP.md) covers `FileLookupinator` and `CollectionIndex`. It describes collections, the three kinds of lookup, ties and misses, and task arguments.
+- [PLACEMENT.md](PLACEMENT.md) covers `ArtifactIdentity`, `Placeinator`, overlays, pinned includes, isolation (`Isolator`) and `OwnershipLedger`.
+- [STAGES.md](STAGES.md) covers `SearchOrderinator` and `BuildPlan`. It describes the configured order, the order of each stage's runs, stage 4, stage 15, tool outputs, release planning and the dependency cache.
+- [PARTIALS.md](PARTIALS.md) covers routes (`PartialRoutinator`), Partial placement, remapping and module qualifiers (`PartialRemapinator`), and directive arguments.
+- [EXTENSIONS.md](EXTENSIONS.md) covers where later features plug in, starting with shared mocks.
 
 ## How an `#include` becomes a file
 
@@ -23,9 +29,18 @@ One `#include` passes through five steps. Each step reads only what the steps be
 
 Lookups run beside these steps, for build directives, Partial module sources and task arguments. A lookup never looks up a generated file. The build plan holds every generated file's placement.
 
+## How a generated file gets its place
+
+A generated file passes through four steps, recorded in the build plan as it goes.
+
+1. The planner forms the file's `ArtifactIdentity`: its kind, origin, fingerprint and owning test.
+2. `OwnershipLedger` records the identity, then removes the test's leftovers of that kind.
+3. `Placeinator` gives the identity its placement. A mock or substitute lands in the test's overlay, at its origin's build subpath.
+4. `SearchOrderinator` puts each overlay just ahead of the search path it repeats, so include text reaches the generated file as it would have reached the origin. Every `#include` Ceedling writes is pinned to its file.
+
 ## Components
 
-Every component lives in `lib/ceedling/paths/`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object.
+Every component lives in `lib/ceedling/paths/`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object. A record is a DIY object that keeps its state between builds.
 
 | Component | File | Kind | Job | Described in |
 | --- | --- | --- | --- | --- |
@@ -38,10 +53,18 @@ Every component lives in `lib/ceedling/paths/`. A value or a set of primitives u
 | `PartialModuleMatchinator` | `partial_module_matchinator.rb` | service | A Partial directive's module header and source | [CONVENTIONS.md](CONVENTIONS.md#partial-modules-partialmodulematchinator) |
 | `FileLookupinator` | `file_lookupinator.rb` | service | Lookups in collections | [LOOKUP.md](LOOKUP.md) |
 | `CollectionIndex` | `collection_index.rb` | value | One collection's index | [LOOKUP.md](LOOKUP.md#collectionindex) |
+| `ArtifactIdentity` | `artifact_identity.rb` | value | An artifact's kind, origin, fingerprint and owner | [PLACEMENT.md](PLACEMENT.md#artifact-identity) |
+| `Placeinator` | `placeinator.rb` | service | Every placement below the build root, and every generated name | [PLACEMENT.md](PLACEMENT.md#placeinator) |
+| `Isolator` | `isolator.rb` | service | The isolation copies each test enters | [PLACEMENT.md](PLACEMENT.md#isolation) |
+| `OwnershipLedger` | `ownership_ledger.rb` | record | The owners of each artifact, and leftover removal | [PLACEMENT.md](PLACEMENT.md#ownershipledger) |
+| `SearchOrderinator` | `search_orderinator.rb` | service | The stage search order of each run | [STAGES.md](STAGES.md#stage-search-orders) |
+| `BuildPlan` | `build_plan.rb` | value | What one build compiles, links and places, and where each path resolved | [STAGES.md](STAGES.md#buildplan) |
+| `PartialRoutinator` | `partial_routinator.rb` | service | Each test's routes headers | [PARTIALS.md](PARTIALS.md#routes) |
+| `PartialRemapinator` | `partial_remapinator.rb` | service | Remapped Partial includes and module qualifiers | [PARTIALS.md](PARTIALS.md#remapping) |
 
 ## Rules every component keeps
 
-Eight rules hold across the components. A change to any of them must keep all eight.
+Eleven rules hold across the components. A change to any of them must keep all eleven.
 
 1. **Compiler-faithful first.** Resolution follows the compiler's rules. A convention runs only on a resolved result, and each convention has one implementation.
 2. **One path, one value.** Intake makes a `PathRef`. Code compares `PathRef`s by key and never compares spellings as text.
@@ -51,13 +74,22 @@ Eight rules hold across the components. A change to any of them must keep all ei
 6. **Resolve once.** Each path is resolved once per build and recorded in the build plan. No later stage searches or looks up again.
 7. **Generated files are planned.** Their placements come from the build plan, and no lookup returns one.
 8. **Forward slashes.** Every path Ceedling holds uses `/`. Intake converts.
+9. **One placement authority.** Only `Placeinator` forms a path below the build root, and it forms each one from an artifact identity. No code reads an identity back from a path.
+10. **Pinned includes.** Every `#include` Ceedling writes names its file by absolute spelling, so no search or shadowing can redirect it.
+11. **Removal by record.** During a build, only `OwnershipLedger` removes an artifact, and only one it recorded.
 
 ## Neighbors
 
 - `lib/ceedling/filesystem/` holds `ProjectPaths`, whose spelling functions `PathRef` builds on, and `BuildSubpath`, which forms `PathRef`'s build subpath. It also holds collection building, whose results `CollectionIndex` indexes.
-- Partials, mocks and the build plan consume these components' answers. They never repeat a convention's rule.
+- `lib/ceedling/test_invoker/` holds the test pipeline's stages and planner, which fill the build plan. `lib/ceedling/release_invoker/` does the same for a release.
+- `lib/ceedling/partials/` generates Partials. It takes placements, routes and remaps from these components.
+- Partials, mocks and the stages consume these components' answers. They never repeat a convention's rule.
+
+## User docs
+
+The user docs under `docs/mkdocs/` describe these behaviors for users. Each track B PR corrects the user docs on the behavior it changes, as uncommitted diffs reviewed last. Every page it touches on paths or `#include`s links the Glossary section of `testing-guide/conventions.md`.
 
 ## Specs
 
 - **Unit.** Each component has `spec/units/paths/<file>_spec.rb`. Case-folding and Windows examples stub the case probe's table, so they run on every host.
-- **Contract.** The rows in `spec/contract/` pin what resolution, pairing and lookups give in real builds, beside the compiler's answer, on every platform. The `RES`, `MOCK`, `PART` and `LINK` areas cover these components.
+- **Contract.** The rows in `spec/contract/` pin what resolution, pairing, lookups and placement give in real builds, beside the compiler's answer, on every platform. The `RES`, `MOCK`, `PART` and `LINK` areas cover resolution and the conventions. The `GEN`, `ISO`, `DELTA` and `COV` areas cover placement, isolation, delta builds and coverage. Each PR adds the rows its fixes meet.

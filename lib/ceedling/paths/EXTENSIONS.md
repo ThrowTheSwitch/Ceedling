@@ -1,0 +1,57 @@
+# Extensions
+
+Placement, ownership and stage search orders all key on artifact identity, so a later feature changes one rule rather than a layout. Each extension point below names the component that changes and what stays fixed. The first and largest is sharing one generated artifact among the tests that need an identical one.
+
+## Contents
+
+- [Shared artifacts](#shared-artifacts) covers the identity rule that sharing changes, and what follows from it.
+- [Shared mocks](#shared-mocks) walks one kind through every component.
+- [Other kinds](#other-kinds) covers which other artifacts can be shared.
+- [Substituted module headers](#substituted-module-headers) covers a later step for Partials.
+- [Plugins](#plugins) covers how plugins place and find artifacts.
+- [New kinds and stages](#new-kinds-and-stages) covers adding an artifact kind or a stage.
+
+## Shared artifacts
+
+Sharing drops the owner from one kind's identity. Two tests whose artifacts have equal kind, origin and fingerprint then hold one identity, and so one artifact.
+
+- **`ArtifactIdentity`.** The owner is empty for a shared kind. The fingerprint must then cover every setting that can differ between tests, since nothing else keeps their artifacts apart.
+- **`Placeinator`.** A shared identity places below a root named by its fingerprint, in place of the test's root. Each test's order then lists the overlay of every root its artifacts sit in.
+- **`OwnershipLedger`.** An entry already holds several owners. A shared artifact becomes a leftover only when its last owner no longer plans it.
+- **What stays.** Resolution, pinned includes, the stage search order table and the build plan's shape do not change.
+
+## Shared mocks
+
+A mock's identity is its mocked header plus its settings. Sharing it touches each component in turn.
+
+1. **Fingerprint.** It already holds `:cmock` configuration, the generator, `:treat_inlines` and the mock include folder. Under mock preprocessing it also holds the mocked header's preprocessing settings and its order's digest, which cover a test's defines and `TEST_INCLUDE_PATH()` directories.
+2. **Placement.** The mock and CMock's copy sit below the fingerprint's overlay root. A test's isolation copies stay in its own overlay, since they depend on the test's substitutes.
+3. **Generation.** Stage 10 runs once per shared identity, and every owner's plan names the same placement.
+4. **Objects.** A mock's object compiles with its test's order, so mock objects stay per test until that order no longer depends on the test.
+5. **Names.** The mock include folder names the guard and lifecycle functions, and it is in the fingerprint. So only tests that write a header with the same folder share its mock.
+6. **Docs.** The user docs promise each test its own generated mocks, so sharing needs a BreakingChanges entry.
+
+## Other kinds
+
+Each kind can be shared once its fingerprint covers every per-test setting.
+
+- **Preprocessed mocked headers** share when their tool, flags, defines and order digest match.
+- **Objects** of one source share when their tool, flags, defines and order digest match.
+- **Partials** stay per test. A Partial mock's input is the test's own interface header, and a Partial's remaps depend on the test's other Partials.
+
+## Substituted module headers
+
+A Partial module's header could be substituted in the overlay, as CMock's copy substitutes a mocked header. Every `#include` of the module header would then reach the Partial's version, and isolation would carry the quote rule to it. Guard spoofing and remapping would go. The change sits in `PartialRemapinator` and `Isolator` alone.
+
+## Plugins
+
+Plugins take every generated path from the build plan and ask `Placeinator` for any new one. A plugin never forms a path below the build root.
+
+- **Mock hooks** receive each mock's placement and mocked header.
+- **Coverage plugins** read each object's placement and source from the build plan.
+- **FFF** is a mock generator. Its class is in the mock's fingerprint, and it reads the mock's placement, folder and pinned include from the plan.
+- **Conventions.** A plugin calls the core component for a convention, such as `MockNaminator` for mock names, and never repeats its rule.
+
+## New kinds and stages
+
+A new artifact kind adds a row to the placement rules and the fingerprint table in [PLACEMENT.md](PLACEMENT.md). `Placeinator` places it, and the ledger owns it. A new stage that compiles or preprocesses adds a row to `SearchOrderinator`'s table in [STAGES.md](STAGES.md) and records its runs in the build plan.
