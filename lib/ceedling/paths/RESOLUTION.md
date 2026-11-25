@@ -71,7 +71,7 @@ The dependency cache saves each target's records between builds. A delta build m
 - its hit changed, as any dependency change marks it;
 - a file with the include text appears in one of its misses, so a new header now shadows the old one.
 
-Under isolation, the isolation copy's origin gates the rebuild, never the copy itself.
+Under isolation, the isolation copy's origin gates the rebuild, never the copy itself, as [ISOLATION.md](ISOLATION.md#rebuilds) says.
 
 ## Cross-checks
 

@@ -12,7 +12,9 @@ These docs are for developers and coding agents. [GLOSSARY.md](GLOSSARY.md) defi
 - [RESOLUTION.md](RESOLUTION.md) covers `Resolvinator`. It describes include records, the model a search runs on, the quote rule, results, resolution records, cross-checks and fallback.
 - [CONVENTIONS.md](CONVENTIONS.md) covers the four conventions. They are mock names (`MockNaminator`), pairing (`SourcePairinator`), Partial modules (`PartialModuleMatchinator`) and `TEST_SOURCE_FILE()` entries.
 - [LOOKUP.md](LOOKUP.md) covers `FileLookupinator` and `CollectionIndex`. It describes collections, the three kinds of lookup, ties and misses, and task arguments.
-- [PLACEMENT.md](PLACEMENT.md) covers `ArtifactIdentity`, `Placeinator`, overlays, pinned includes, isolation (`Isolator`) and `OwnershipLedger`.
+- [PLACEMENT.md](PLACEMENT.md) covers `ArtifactIdentity`, `Placeinator`, overlays and pinned includes. It describes the layout, the rule for each artifact kind, reach directories, stand-ins and release placement.
+- [ISOLATION.md](ISOLATION.md) covers `Isolator`. It describes the quote rule's gap, planning, isolation copies, sources and rebuilds.
+- [OWNERSHIP.md](OWNERSHIP.md) covers `OwnershipLedger`. It describes entries, leftovers, and clean and clobber.
 - [STAGES.md](STAGES.md) covers `SearchOrderinator` and `BuildPlan`. It describes the configured order, the order of each stage's runs, stage 4, stage 15, tool outputs, release planning and the dependency cache.
 - [PARTIALS.md](PARTIALS.md) covers routes (`PartialRoutinator`), Partial placement, remapping and module qualifiers (`PartialRemapinator`), and directive arguments.
 - [EXTENSIONS.md](EXTENSIONS.md) covers where later features plug in, starting with shared mocks.
@@ -55,8 +57,8 @@ Every component lives in `lib/ceedling/paths/`. A value or a set of primitives u
 | `CollectionIndex` | `collection_index.rb` | value | One collection's index | [LOOKUP.md](LOOKUP.md#collectionindex) |
 | `ArtifactIdentity` | `artifact_identity.rb` | value | An artifact's kind, origin, fingerprint and owner | [PLACEMENT.md](PLACEMENT.md#artifact-identity) |
 | `Placeinator` | `placeinator.rb` | service | Every placement below the build root, and every generated name | [PLACEMENT.md](PLACEMENT.md#placeinator) |
-| `Isolator` | `isolator.rb` | service | The isolation copies each test enters | [PLACEMENT.md](PLACEMENT.md#isolation) |
-| `OwnershipLedger` | `ownership_ledger.rb` | record | The owners of each artifact, and leftover removal | [PLACEMENT.md](PLACEMENT.md#ownershipledger) |
+| `Isolator` | `isolator.rb` | service | The isolation copies each test enters | [ISOLATION.md](ISOLATION.md) |
+| `OwnershipLedger` | `ownership_ledger.rb` | record | The owners of each artifact, and leftover removal | [OWNERSHIP.md](OWNERSHIP.md) |
 | `SearchOrderinator` | `search_orderinator.rb` | service | The stage search order of each run | [STAGES.md](STAGES.md#stage-search-orders) |
 | `BuildPlan` | `build_plan.rb` | value | What one build compiles, links and places, and where each path resolved | [STAGES.md](STAGES.md#buildplan) |
 | `PartialRoutinator` | `partial_routinator.rb` | service | Each test's routes headers | [PARTIALS.md](PARTIALS.md#routes) |

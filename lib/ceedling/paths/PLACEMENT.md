@@ -1,6 +1,6 @@
 # Placement
 
-`Placeinator` turns every artifact's identity into its location, and no other code forms a path below the build root. An identity is an artifact's kind, origin, fingerprint and owner. Generated files that user text reaches sit in each test's overlays, just ahead of the search paths they repeat, so the compiler's own search finds them. Every `#include` Ceedling writes is pinned to its file. `Isolator` plans which user files a test enters through isolation copies, and `OwnershipLedger` records what each test owns, so a delta build removes leftovers by record.
+`Placeinator` turns every artifact's identity into its location, and no other code forms a path below the build root. An identity is an artifact's kind, origin, fingerprint and owner. Generated files that user text reaches sit in each test's overlays, just ahead of the search paths they repeat, so the compiler's own search finds them. Every `#include` Ceedling writes is pinned to its file. [ISOLATION.md](ISOLATION.md) covers the copies that carry the quote rule to a substitute, and [OWNERSHIP.md](OWNERSHIP.md) covers the records a delta build removes leftovers by.
 
 ## Contents
 
@@ -8,8 +8,6 @@
 - [Placeinator](#placeinator) covers the layout, the rule for each artifact kind, names, path length and release placement.
 - [Overlays](#overlays) covers how include text reaches mocks and substitutes, reach directories and stand-ins.
 - [Pinned includes](#pinned-includes) covers the text of every `#include` Ceedling writes.
-- [Isolation](#isolation) covers `Isolator` and the copies that carry the quote rule to a substitute.
-- [OwnershipLedger](#ownershipledger) covers ownership records and leftovers.
 - [CMock settings](#cmock-settings) covers the settings Ceedling owns.
 - [Code](#code) lists the files and the interface.
 
@@ -71,7 +69,7 @@ Below its root, each kind takes one rule. A build subpath is `PathRef`'s view of
 
 - **Mock.** The build subpath of its mocked header's directory, then its mock name. A mock of a generated header, such as a Partial's interface, sits beside that header.
 - **CMock's copy** under `:treat_inlines` ↳ `:include`. Beside its mock, under the mocked header's name. It is a recorded output of its mock.
-- **Isolation copy.** Its origin's build subpath, under the origin's name.
+- **Isolation copy.** Its origin's build subpath, under the origin's name, as [ISOLATION.md](ISOLATION.md#copies) says.
 - **Stand-in.** The place its mock or Partial will take, below the stand-in root.
 - **Partial.** As [PARTIALS.md](PARTIALS.md#placement) says.
 - **Preprocessed file.** Its origin's build subpath below its kind's preprocess root.
@@ -136,42 +134,6 @@ Every `#include` Ceedling writes is a pinned include. It names its file by absol
 
 Line markers and dependency files then name each pinned file by its absolute spelling. Intake makes it a `PathRef` like any other path.
 
-## Isolation
-
-Isolation makes every include in a test's build reach the test's substitutes, including includes the quote rule would send to the origin. `Isolator` plans it from the build plan's resolution records, and `Placeinator` places each copy.
-
-- **Substitutes.** Under `:treat_inlines` ↳ `:include`, CMock's copy substitutes each mocked header. Overlays carry every search-order path to it.
-- **The gap.** A file beside a substituted header that quote-includes it reaches the origin, since the quote rule tries the includer's directory before any search path.
-- **The rule.** Every user file the test's build enters that reaches a substituted header by the quote rule, directly or through other such files, gets an isolation copy. Each copy sits at its origin's build subpath in the overlay, with pinned includes. Overlays reach the copy, and the copy reaches the substitutes.
-- **Sources.** A source in that set compiles from its copy.
-- **`#line`.** Each copy opens with a `#line 1` directive naming its origin, so compiler messages, `__FILE__` and line markers name the origin.
-- **Rebuilds.** The dependency cache records a copy's origin, never the copy, as the dependency of every target that entered the copy.
-- **Timing.** `Isolator` plans header copies at stage 5 and source copies at stage 14, once a test's sources are final. Both precede stage 15.
-- **Stability.** A copy is an artifact like any other, owned in the ledger and rewritten only when its text changes. A compile database records the compile as it ran, so a replay compiles the same copy.
-
-`Isolator` reads the include records of every header and source the test's compiles enter. The text scan reads each such file once per change to it.
-
-## OwnershipLedger
-
-`OwnershipLedger` records which tests own each artifact. A delta build removes leftovers by that record and never by inference.
-
-- **An entry** maps a placement to its identity, its owners and the stage that writes it.
-- **Recorded first.** Each stage records its planned artifacts before it writes them, and the ledger saves then. A run that stops partway leaves no artifact unrecorded.
-- **Saved** with the dependency cache, one ledger per build context.
-- **Several owners.** An entry may list several owners, and it stays while any owner remains.
-
-### Leftovers
-
-A leftover is an artifact that no identity in this build owns. The ledger removes it before any later stage can search it.
-
-- **When.** Once a test's plan for a kind is complete, the ledger removes each artifact of that kind the test owned last build and no longer plans. Stand-ins complete at stage 4, mocks, Partials, runners and header copies at stage 5, and objects, source copies and results at stage 14.
-- **Owners that leave.** When the ledger loads, an owner whose test file is no longer in the test collection leaves every entry. An entry with no owner left is removed.
-- **Exact names.** A rerun removes a test's results by their placements, never by a glob.
-- **Only its own.** The ledger removes only files it recorded. A file it never recorded stays until a clobber.
-- **Clean.** `ceedling clean` removes every recorded artifact and empties the ledger. A clobber removes the build root.
-
-Plugin mock hooks receive each mock's placement from the build plan, so they always see the current mocks.
-
 ## CMock settings
 
 `Placeinator` alone decides where CMock writes. Configuration strips each `:cmock` setting that would move CMock's output, and logs each strip at COMPLAIN with a NOTICE label. The stripped setting is `:subdir`. `:cmock` ↳ `:mock_path` sets the base of every overlay root. Ceedling sets each mock's output directory and its pinned include itself.
@@ -180,6 +142,4 @@ Plugin mock hooks receive each mock's placement from the build plan, so they alw
 
 - `lib/ceedling/paths/artifact_identity.rb` holds `ArtifactIdentity`, an immutable value.
 - `lib/ceedling/paths/placeinator.rb` holds `Placeinator`, a DIY object. `place( identity )` returns a `PathRef`, `overlay( dir, owner )` gives a directory's overlay, and `roots` gives the generated roots for `Matchinator.generated?`.
-- `lib/ceedling/paths/isolator.rb` holds `Isolator`, a DIY object. `plan( test )` returns the isolation copies for one test's part of the build plan.
-- `lib/ceedling/paths/ownership_ledger.rb` holds `OwnershipLedger`, a record that saves through the dependency cache store. `record( identities, stage: )`, `remove_leftovers( owner, kind, planned )` and `leave( owners )` are its interface.
-- Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of areas `GEN`, `ISO`, `DELTA` and `COV` build real projects.
+- Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of areas `GEN` and `COV` build real projects.
