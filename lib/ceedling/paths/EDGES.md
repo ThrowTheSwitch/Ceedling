@@ -120,7 +120,7 @@ Each `:libraries` entry, under `:test`, `:release` or `:system`, is a library na
 The library files a link depends on decide relinks, never what links. A library search is the linker's trial of the library roots for a library name, and `Linkinator` follows its shape.
 
 - **A name.** For each library name, the first library root in `-L` order that holds any candidate answers, and every candidate in it counts.
-- **Candidates.** `lib<name>` with each library extension: `.a`, `.so`, `.dylib`, `.tbd`, `.dll.a`, `.lib`, `.dll` and `:extension` ↳ `:libraries`. On Windows, `<name>` with `.dll.a`, `.lib` and `.dll` too. A name that holds `/` keeps its directories after the prefix, so `sub/q` gives `libsub/q.a`.
+- **Candidates.** `lib<name>` with each library extension: `.a`, `.so`, `.dylib`, `.tbd`, `.dll.a`, `.lib`, `.dll` and `:extension` ↳ `:libraries`. On Windows, `<name>` with `.dll.a`, `.lib` and `.dll` too.
 - **An exact name.** `:<file>` joins each library root in order, and the first that holds it answers.
 - **Case.** Extensions and names compare by key, so `foo.LIB` counts where its root folds case.
 - **A library path** counts as itself, and so does each library file a plugin publishes.

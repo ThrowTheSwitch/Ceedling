@@ -28,7 +28,7 @@ An `ArtifactIdentity` is an immutable value that names one artifact. Two equal i
 
 ### Fingerprints
 
-A fingerprint covers settings and the values the build plan derives from them, such as an order's digest. The dependency cache covers input files. Together they cover everything that changes an artifact.
+A fingerprint covers settings, supplemented where needed by build details derived from them, such as an order's digest. The dependency cache covers input files. Together they cover everything that changes an artifact.
 
 | Kind | Fingerprint | Input files |
 | --- | --- | --- |
