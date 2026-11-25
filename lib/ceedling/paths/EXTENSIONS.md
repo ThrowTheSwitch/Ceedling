@@ -15,8 +15,9 @@ Placement, ownership and stage search orders all key on artifact identity, so a 
 
 Sharing drops the owner from one kind's identity. Two tests whose artifacts have equal kind, origin and fingerprint then hold one identity, and so one artifact.
 
-- **`ArtifactIdentity`.** The owner is empty for a shared kind. The fingerprint must then cover every setting that can differ between tests, since nothing else keeps their artifacts apart.
-- **`Placeinator`.** A shared identity places below a root named by its fingerprint, in place of the test's root. Each test's order then lists the overlay of every root its artifacts sit in.
+- **`ArtifactIdentity`.** The owner is empty for a shared kind. The fingerprint must then cover everything that can differ between tests, since nothing else keeps their artifacts apart. That includes the files an artifact's pinned includes name wherever a test's substitutes change them.
+- **`Placeinator`.** A shared identity places below its own root, named by the identity's digest, in place of the test's root. The root holds that artifact and its recorded outputs alone. So a test's overlays hold exactly the files its own overlay root would, and each include reaches the file it reaches without sharing.
+- **`SearchOrderinator`.** Each test's order lists the overlay of every root its artifacts sit in. A test that reads many shared roots has a longer order.
 - **`OwnershipLedger`.** An entry already holds several owners. A shared artifact becomes a leftover only when its last owner no longer plans it.
 - **What stays.** Resolution, pinned includes, the stage search order table and the build plan's shape do not change.
 
@@ -24,12 +25,14 @@ Sharing drops the owner from one kind's identity. Two tests whose artifacts have
 
 A mock's identity is its mocked header plus its settings. Sharing it touches each component in turn.
 
-1. **Fingerprint.** It already holds `:cmock` configuration, the generator, `:treat_inlines` and the mock include folder. Under mock preprocessing it also holds the mocked header's preprocessing settings and its order's digest, which cover a test's defines and `TEST_INCLUDE_PATH()` directories.
-2. **Placement.** The mock and CMock's copy sit below the fingerprint's overlay root. A test's isolation copies stay in its own overlay, since they depend on the test's substitutes.
-3. **Generation.** Stage 10 runs once per shared identity, and every owner's plan names the same placement.
-4. **Objects.** A mock's object compiles with its test's order, so mock objects stay per test until that order no longer depends on the test.
-5. **Names.** The mock include folder names the guard and lifecycle functions, and it is in the fingerprint. So only tests that write a header with the same folder share its mock.
-6. **Docs.** The user docs promise each test its own generated mocks, so sharing needs a BreakingChanges entry.
+1. **Fingerprint.** It already holds `:cmock` configuration, the generator, `:treat_inlines`, the mock include folder and, under `:treat_inlines` ↳ `:include`, the files CMock's copy pins. Under mock preprocessing it also holds the mocked header's preprocessing settings and its order's digest, which cover a test's defines and `TEST_INCLUDE_PATH()` directories.
+2. **Pins.** CMock's copy pins the test's substitute for each hit, so two tests share a mock only when its copy pins the same files. A copy that pins one of the test's isolation copies names a file of that test alone, so its mock stays one per test. A copy that pins another shared copy names that mock's placement. So stage 5 forms a test's mock identities in include order, and mocked headers that include each other take one digest together.
+3. **Placement.** The mock and CMock's copy sit in the identity's own root. A reach directory sits in the root of the mock it reaches. A test's isolation copies stay in its own overlay, since they depend on the test's substitutes. A mock of a generated header, such as a Partial's interface, keeps its owner and sits beside that header.
+4. **Generation.** Under mock preprocessing, the preprocessed mocked header shares with its mock, so a shared mock has one input. Stages 9 and 10 run once per shared identity, and every owner's plan names the same placements.
+5. **Objects.** A mock's object compiles with its test's order, so mock objects stay per test until that order no longer depends on the test.
+6. **Names.** The mock include folder names the guard and lifecycle functions, and it is in the fingerprint. So only tests that write a header with the same folder share its mock.
+7. **Hooks.** A shared mock generates once, so its mock hooks run once and receive every owner.
+8. **Docs.** The user docs promise each test its own generated mocks, so sharing needs a BreakingChanges entry.
 
 ## Other kinds
 

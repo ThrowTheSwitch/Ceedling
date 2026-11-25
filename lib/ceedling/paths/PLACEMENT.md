@@ -28,11 +28,11 @@ An `ArtifactIdentity` is an immutable value that names one artifact. Two equal i
 
 ### Fingerprints
 
-A fingerprint covers settings, and the dependency cache covers input files. Together they cover everything that changes an artifact.
+A fingerprint covers settings and the values the build plan derives from them, such as an order's digest. The dependency cache covers input files. Together they cover everything that changes an artifact.
 
 | Kind | Fingerprint | Input files |
 | --- | --- | --- |
-| mock | `:cmock` configuration less `:verbosity`, the generator, `:treat_inlines`, the mock include folder, whether it mocks a Partial | the mocked header or its preprocessed file, and each `:cmock` ↳ `:unity_helper_path` file |
+| mock | `:cmock` configuration less `:verbosity`, the generator, `:treat_inlines`, the mock include folder, whether it mocks a Partial, and under `:treat_inlines` ↳ `:include` the files CMock's copy pins | the mocked header or its preprocessed file, and each `:cmock` ↳ `:unity_helper_path` file |
 | preprocessed file | the tool, flags, defines, forced fallback and the run's search order digest | the origin and every user file its line markers name |
 | Partial | `:partials` configuration, the directive's selection, preprocessing settings | the module's header and source and their preprocessed files |
 | object | the tool, flags, defines and the run's search order digest | the source and every header its dependency file lists |
@@ -40,6 +40,7 @@ A fingerprint covers settings, and the dependency cache covers input files. Toge
 | executable | the link tool, flags and libraries | its objects |
 
 - **Per-test settings** enter through flags, defines and the search order digest. Those cover a test's own defines, `:use_test_definition` and its `TEST_INCLUDE_PATH()` directories.
+- **Pinned substitutes.** Under `:treat_inlines` ↳ `:include`, the file CMock reads pins the test's substitute for each hit, and CMock's copy keeps those pins. A mock that joins or leaves a test changes the pins in the copies of other mocked headers that include its header. So the files a copy pins are in the fingerprints of its mock and of its preprocessed file, and those mocks regenerate.
 - **Unity helper files** are inputs of every mock, so editing one regenerates the mocks that use it.
 
 ## Placeinator
