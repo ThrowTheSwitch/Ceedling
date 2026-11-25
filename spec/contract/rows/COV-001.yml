@@ -1,0 +1,56 @@
+id: COV-001
+title: Two same-named untested sources under a coverage plugin
+modes: [none]
+legs:
+  gcov:
+    plugins: [gcov]
+    project:
+      :gcov:
+        :untested_sources: :compile
+        :summaries: false
+    steps:
+      - build: gcov:all
+  bullseye:
+    plugins: [bullseye]
+    requires: [covc]
+    note: Runs only where Bullseye's covc is on the PATH
+    project:
+      :bullseye:
+        :untested_sources: :compile
+    steps:
+      - build: bullseye:all
+tree:
+  src/a/util.h: |
+    #ifndef A_UTIL_H
+    #define A_UTIL_H
+    int a_util(int x);
+    #endif
+  src/a/util.c: |
+    #include "util.h"
+    int a_util(int x) { return x + 1; }
+  src/b/util.h: |
+    #ifndef B_UTIL_H
+    #define B_UTIL_H
+    int b_util(int x);
+    #endif
+  src/b/util.c: |
+    #include "util.h"
+    int b_util(int x) { return x + 2; }
+  src/m.h: |
+    #ifndef M_H
+    #define M_H
+    int m_twice(int x);
+    #endif
+  src/m.c: |
+    #include "m.h"
+    int m_twice(int x) { return 2 * x; }
+  test/test_m.c: |
+    #include "unity.h"
+    #include "m.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_twice(void) { TEST_ASSERT_EQUAL(4, m_twice(2)); }
+project:
+  :paths:
+    :include: [src]
+target: ~

@@ -1,0 +1,403 @@
+---
+id: PART-001
+compiler:
+- src/drivers/sensor.c "sensor.h": src/drivers/sensor.h
+  test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor): src/drivers/sensor.h
+  test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor): src/drivers/sensor.h
+current:
+  linux:
+    all:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Objects
+        error: 'build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h:4:1: error: unknown type name ''sensor_val_t'''
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_sensor.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_sensor.c for include path build directive macros...
+          - Parsing test_sensor.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_sensor.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_sensor.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_sensor::sensor.c...
+          - Preprocessing source file for follow-on Partials handling test/test_sensor::sensor.c...
+          - Full-preprocessing for Partial reconciliation test/test_sensor::sensor.c...
+          Partials:
+          - Generating Partial implementation for test/test_sensor::src/drivers/sensor...
+          - Generating Partial mockable interface for test/test_sensor::src/drivers/sensor...
+          Mocking:
+          - Generating mock for test/test_sensor::ceedling_partial_sensor_interface.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_sensor.c...
+          - Parsing test_sensor.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_sensor.c...
+          Test Runners:
+          - Generating runner for test_sensor.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_sensor.c...
+      resolved:
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor): none
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor): none
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c
+      search_paths:
+        tests:
+          test/test_sensor:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_sensor/_t_
+            - build/test/partials/test/test_sensor/_t_
+            - build/test/partials/test/test_sensor/_t_/src/drivers
+            - "."
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks: []
+        compile:
+          test/test_sensor test/test_sensor.c:
+          - build/test/mocks/test/test_sensor/_t_
+          - build/test/partials/test/test_sensor/_t_
+          - build/test/partials/test/test_sensor/_t_/src/drivers
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+        link: {}
+      placements:
+        mocks:
+        - build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.c
+        - build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.c
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+        runners:
+        - build/test/runners/test/test_sensor_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/raw/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/raw/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/expanded_code/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/full_expansion/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/full_expansion/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/test/test_sensor.c
+        objects:
+          test/test_sensor test/test_sensor.c: build/test/out/test/test_sensor/_t_/test/test_sensor.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+          runners:
+          - build/test/runners/test/test_sensor_runner.c
+      link_set: {}
+      entered:
+        dependencies:
+          test/test_sensor test/test_sensor.c:
+          - raw: test/test_sensor.c
+            path: test/test_sensor.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+          - raw: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+            path: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+        markers:
+          test/test_sensor:
+          - raw: test/test_sensor.c
+            path: test/test_sensor.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+          - raw: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+            path: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+        mocks_read:
+          test/test_sensor:
+            build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h: stand-in
+  macos:
+    all:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Objects
+        error: 'build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h:4:1: error: unknown type name ''sensor_val_t'''
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_sensor.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_sensor.c for include path build directive macros...
+          - Parsing test_sensor.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_sensor.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_sensor.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_sensor::sensor.c...
+          - Preprocessing source file for follow-on Partials handling test/test_sensor::sensor.c...
+          - Full-preprocessing for Partial reconciliation test/test_sensor::sensor.c...
+          Partials:
+          - Generating Partial implementation for test/test_sensor::src/drivers/sensor...
+          - Generating Partial mockable interface for test/test_sensor::src/drivers/sensor...
+          Mocking:
+          - Generating mock for test/test_sensor::ceedling_partial_sensor_interface.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_sensor.c...
+          - Parsing test_sensor.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_sensor.c...
+          Test Runners:
+          - Generating runner for test_sensor.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_sensor.c...
+      resolved:
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor): none
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor): none
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c
+      search_paths:
+        tests:
+          test/test_sensor:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_sensor/_t_
+            - build/test/partials/test/test_sensor/_t_
+            - build/test/partials/test/test_sensor/_t_/src/drivers
+            - "."
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks: []
+        compile:
+          test/test_sensor test/test_sensor.c:
+          - build/test/mocks/test/test_sensor/_t_
+          - build/test/partials/test/test_sensor/_t_
+          - build/test/partials/test/test_sensor/_t_/src/drivers
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+        link: {}
+      placements:
+        mocks:
+        - build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.c
+        - build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.c
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+        runners:
+        - build/test/runners/test/test_sensor_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/raw/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/raw/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/expanded_code/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/full_expansion/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/full_expansion/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/test/test_sensor.c
+        objects:
+          test/test_sensor test/test_sensor.c: build/test/out/test/test_sensor/_t_/test/test_sensor.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+          runners:
+          - build/test/runners/test/test_sensor_runner.c
+      link_set: {}
+      entered:
+        dependencies:
+          test/test_sensor test/test_sensor.c:
+          - raw: test/test_sensor.c
+            path: test/test_sensor.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+          - raw: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+            path: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+        markers:
+          test/test_sensor:
+          - raw: test/test_sensor.c
+            path: test/test_sensor.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+          - raw: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+            path: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+        mocks_read:
+          test/test_sensor:
+            build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h: stand-in
+  windows:
+    all:
+    - task: test:all
+      outcome:
+        status: fail
+        stage: Building Objects
+        error: 'build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h:4:1: error: unknown type name ''sensor_val_t'''
+        stages:
+          Preparing Build Paths...: []
+          Collecting Essential Test Context:
+          - 'Parsing test_sensor.c for user & system #includes (fallback for preprocessing failures)...'
+          - Parsing test_sensor.c for include path build directive macros...
+          - Parsing test_sensor.c for Partials directive macros...
+          Ingesting Test Configurations:
+          - Collecting search paths, flags, and defines for test_sensor.c...
+          Collecting More Test Context:
+          - 'Extracting #includes from test_sensor.c...'
+          Determining Files to Be Generated...: []
+          Preprocessing for Testing Partials:
+          - Preprocessing partial source for test/test_sensor::sensor.c...
+          - Preprocessing source file for follow-on Partials handling test/test_sensor::sensor.c...
+          - Full-preprocessing for Partial reconciliation test/test_sensor::sensor.c...
+          Partials:
+          - Generating Partial implementation for test/test_sensor::src/drivers/sensor...
+          - Generating Partial mockable interface for test/test_sensor::src/drivers/sensor...
+          Mocking:
+          - Generating mock for test/test_sensor::ceedling_partial_sensor_interface.h...
+          Preprocessing Test Files:
+          - Preprocessing test file test_sensor.c...
+          - Parsing test_sensor.c for test source directive macros...
+          Collecting Test Runner Details:
+          - Parsing test case names test_sensor.c...
+          Test Runners:
+          - Generating runner for test_sensor.c...
+          Determining Artifacts to Be Built...: []
+          Building Objects:
+          - Compiling test_sensor.c...
+      resolved:
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor): none
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor): none
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c
+      search_paths:
+        tests:
+          test/test_sensor:
+            derived: []
+            refusals: {}
+            test:
+            - build/test/mocks/test/test_sensor/_t_
+            - build/test/partials/test/test_sensor/_t_
+            - build/test/partials/test/test_sensor/_t_/src/drivers
+            - "."
+            - build/vendor/unity/src
+            - build/vendor/cmock/src
+            - build/vendor/ceedling
+            mocks: []
+        compile:
+          test/test_sensor test/test_sensor.c:
+          - build/test/mocks/test/test_sensor/_t_
+          - build/test/partials/test/test_sensor/_t_
+          - build/test/partials/test/test_sensor/_t_/src/drivers
+          - "."
+          - build/vendor/unity/src
+          - build/vendor/cmock/src
+          - build/vendor/ceedling
+        link: {}
+      placements:
+        mocks:
+        - build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.c
+        - build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+        standins: []
+        copies: []
+        partials:
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.c
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+        - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+        runners:
+        - build/test/runners/test/test_sensor_runner.c
+        preprocessed:
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/raw/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/raw/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/directives_only/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/expanded_code/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/full_expansion/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/full_expansion/test/test_sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/src/drivers/sensor.c
+        - build/test/preprocess/files/test/test_sensor/_t_/test/test_sensor.c
+        objects:
+          test/test_sensor test/test_sensor.c: build/test/out/test/test_sensor/_t_/test/test_sensor.o
+        mock_headers: {}
+        isolation: {}
+        generated:
+          mocks:
+          - build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+          runners:
+          - build/test/runners/test/test_sensor_runner.c
+      link_set: {}
+      entered:
+        dependencies:
+          test/test_sensor test/test_sensor.c:
+          - raw: test/test_sensor.c
+            path: test/test_sensor.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+          - raw: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+            path: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_interface.h
+        markers:
+          test/test_sensor:
+          - raw: test/test_sensor.c
+            path: test/test_sensor.c
+          - raw: build/vendor/unity/src/unity.h
+            path: build/vendor/unity/src/unity.h
+          - raw: build/vendor/unity/src/unity_internals.h
+            path: build/vendor/unity/src/unity_internals.h
+          - raw: build/vendor/ceedling/ceedling.h
+            path: build/vendor/ceedling/ceedling.h
+          - raw: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+            path: build/test/partials/test/test_sensor/_t_/src/drivers/ceedling_partial_sensor_impl.h
+          - raw: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+            path: build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h
+        mocks_read:
+          test/test_sensor:
+            build/test/mocks/test/test_sensor/_t_/src/drivers/mock_ceedling_partial_sensor_interface.h: stand-in

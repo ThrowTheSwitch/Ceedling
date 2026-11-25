@@ -1,0 +1,42 @@
+id: PART-001
+title: A Partial module header reached only by joining -I .
+modes: [all]
+tree:
+  src/drivers/sensor.h: |
+    #ifndef SENSOR_H
+    #define SENSOR_H
+    #define SENSOR_SCALE 3
+    typedef int sensor_val_t;
+    sensor_val_t sensor_read(void);
+    sensor_val_t sensor_twice(void);
+    #endif
+  src/drivers/sensor.c: |
+    #include "sensor.h"
+    sensor_val_t sensor_read(void) { return 1; }
+    sensor_val_t sensor_twice(void) { return 2 * sensor_read(); }
+  test/test_sensor.c: |
+    #include "unity.h"
+    #include "ceedling.h"
+    #include TEST_PARTIAL_MODULE_AT(src/drivers, sensor)
+    TEST_PARTIAL_CONFIG_AT(src/drivers, sensor, sensor_twice, )
+    #include MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor)
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_twice(void) { sensor_val_t v = SENSOR_SCALE; sensor_read_ExpectAndReturn(v); TEST_ASSERT_EQUAL(2 * SENSOR_SCALE, sensor_twice()); }
+project:
+  :project:
+    :use_partials: true
+  :paths:
+    :include: [.]
+    :source: [src/**]
+divergences:
+  - at: resolved test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor)
+    kind: defect
+    note: >-
+      The module header is looked up by trailing match in a collection that lists each
+      search path shallowly, so -I . never holds src/drivers/sensor.h, which the compiler
+      reaches by joining
+  - at: resolved test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor)
+    kind: defect
+    note: The Mock Partial looks its module header up the same shallow way
+target: ~

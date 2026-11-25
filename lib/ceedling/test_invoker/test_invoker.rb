@@ -12,6 +12,9 @@ class TestInvoker
 
   include TestInvokerTypes
 
+  # The current or last run's PipelineState, nil before any run, for read-only observers
+  attr_reader :state
+
   # -------------------------------------------------------------------------
   # Dependency injection
   # -------------------------------------------------------------------------

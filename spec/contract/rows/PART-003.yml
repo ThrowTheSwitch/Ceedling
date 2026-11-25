@@ -1,0 +1,44 @@
+id: PART-003
+title: A Partial types header after the real header arrived first, untagged type
+modes: [all]
+tree:
+  src/a/a.h: |
+    #ifndef A_H
+    #define A_H
+    int a_run(void);
+    #endif
+  src/a/helper.h: |
+    #ifndef HELPER_H
+    #define HELPER_H
+    #include "b.h"
+    #endif
+  src/a/a.c: |
+    #include "a.h"
+    #include "helper.h"
+    #include "b.h"
+    int a_run(void) { return b_status() == B_OK ? 1 : 0; }
+  src/b/b.h: |
+    #ifndef B_H
+    #define B_H
+    typedef enum { B_OK, B_FAIL } b_status_E;
+    b_status_E b_status(void);
+    #endif
+  src/b/b.c: |
+    #include "b.h"
+    b_status_E b_status(void) { return B_FAIL; }
+  test/test_a.c: |
+    #include "unity.h"
+    #include "ceedling.h"
+    #include TEST_PARTIAL_MODULE(a)
+    TEST_PARTIAL_CONFIG(a, a_run, )
+    #include MOCK_PARTIAL_PUBLIC_MODULE(b)
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_run(void) { b_status_ExpectAndReturn(B_OK); TEST_ASSERT_EQUAL(1, a_run()); }
+project:
+  :project:
+    :use_partials: true
+  :paths:
+    :include: [., src/**]
+
+target: ~

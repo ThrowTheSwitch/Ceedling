@@ -1,0 +1,44 @@
+id: RES-001
+title: A pathless include of a header that shares its name with one at another depth
+modes: [tests]
+tree:
+  src/config.h: |
+    #ifndef CONFIG_H
+    #define CONFIG_H
+    int config_get(void);
+    #endif
+  src/config.c: |
+    #include "config.h"
+    int config_get(void) { return 1; }
+  src/sub/config.h: |
+    #ifndef SUB_CONFIG_H
+    #define SUB_CONFIG_H
+    int sub_config_get(void);
+    #endif
+  src/sub/config.c: |
+    #include "config.h"
+    int sub_config_get(void) { return 2; }
+  src/a.h: |
+    #ifndef A_H
+    #define A_H
+    #include "sub/config.h"
+    #endif
+  test/test_config.c: |
+    #include "unity.h"
+    #include "a.h"
+    #include "config.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_config(void) { TEST_ASSERT_EQUAL(1, config_get()); }
+project:
+  :paths:
+    :include: [src]
+    :source: [src/**]
+divergences:
+  - at: resolved test/test_config.c "config.h"
+    kind: defect
+    note: >-
+      Reconciliation pairs the pathless include with the first same-named header the
+      preprocessor entered at any depth, here the one a.h reaches, not the header the
+      compiler's search order finds
+target: ~

@@ -1,0 +1,59 @@
+id: DELTA-001
+title: A delta build after a second mock joins a test that uses a Partial
+modes: [all]
+tree:
+  src/m/m1.h: |
+    #ifndef M1_H
+    #define M1_H
+    int m1_get(void);
+    #endif
+  src/n/m2.h: |
+    #ifndef M2_H
+    #define M2_H
+    int m2_get(void);
+    #endif
+  src/p/p.h: |
+    #ifndef P_H
+    #define P_H
+    int p_run(void);
+    #endif
+  src/p/p.c: |
+    #include "p.h"
+    #include "m1.h"
+    int p_run(void) { return m1_get(); }
+  test/test_p.c: |
+    #include "unity.h"
+    #include "ceedling.h"
+    #include "mock_m1.h"
+    #include TEST_PARTIAL_PUBLIC_MODULE(p)
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_run(void) { m1_get_ExpectAndReturn(4); TEST_ASSERT_EQUAL(4, p_run()); }
+project:
+  :project:
+    :use_partials: true
+  :paths:
+    :include: [src/**]
+  :cmock:
+    :treat_inlines: :exclude
+steps:
+  - build: test:all
+  - write:
+      test/test_p.c: |
+        #include "unity.h"
+        #include "ceedling.h"
+        #include "mock_m1.h"
+        #include "mock_m2.h"
+        #include TEST_PARTIAL_PUBLIC_MODULE(p)
+        void setUp(void) {}
+        void tearDown(void) {}
+        void test_run(void) { m1_get_ExpectAndReturn(4); TEST_ASSERT_EQUAL(4, p_run()); }
+  - build: test:all
+divergences:
+  - at: resolved test/test_p.c "mock_m1.h"
+    kind: convention
+    note: A mock include names the mocked header, which the compiler never sees
+  - at: resolved test/test_p.c "mock_m2.h"
+    kind: convention
+    note: A mock include names the mocked header, which the compiler never sees
+target: ~

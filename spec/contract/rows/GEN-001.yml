@@ -1,0 +1,22 @@
+id: GEN-001
+title: A test of a module whose name ends in _runner
+modes: [none]
+tree:
+  src/x_runner.h: |
+    #ifndef X_RUNNER_H
+    #define X_RUNNER_H
+    int x_runner_step(int x);
+    #endif
+  src/x_runner.c: |
+    #include "x_runner.h"
+    int x_runner_step(int x) { return x + 1; }
+  test/test_x_runner.c: |
+    #include "unity.h"
+    #include "x_runner.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_step(void) { TEST_ASSERT_EQUAL(2, x_runner_step(1)); }
+project:
+  :paths:
+    :include: [src]
+target: ~

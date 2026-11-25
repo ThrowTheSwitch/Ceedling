@@ -1,0 +1,54 @@
+id: DELTA-002
+title: A delta build after a mocked header moves to a deeper directory
+modes: [none, all]
+legs:
+  updated:
+    note: The test moves to the moved header's new function
+    steps:
+      - build: test:all
+      - delete: [src/foo.h]
+      - write:
+          src/drivers/foo.h: |
+            #ifndef FOO_H
+            #define FOO_H
+            int foo_b(void);
+            #endif
+          test/test_foo.c: |
+            #include "unity.h"
+            #include "mock_foo.h"
+            void setUp(void) {}
+            void tearDown(void) {}
+            void test_foo(void) { foo_b_ExpectAndReturn(2); TEST_ASSERT_EQUAL(2, foo_b()); }
+      - build: test:all
+  unchanged:
+    note: The test still calls the function the header no longer declares
+    steps:
+      - build: test:all
+      - delete: [src/foo.h]
+      - write:
+          src/drivers/foo.h: |
+            #ifndef FOO_H
+            #define FOO_H
+            int foo_b(void);
+            #endif
+      - build: test:all
+tree:
+  src/foo.h: |
+    #ifndef FOO_H
+    #define FOO_H
+    int foo_a(void);
+    #endif
+  test/test_foo.c: |
+    #include "unity.h"
+    #include "mock_foo.h"
+    void setUp(void) {}
+    void tearDown(void) {}
+    void test_foo(void) { foo_a_ExpectAndReturn(1); TEST_ASSERT_EQUAL(1, foo_a()); }
+project:
+  :paths:
+    :include: [src/**]
+divergences:
+  - at: resolved test/test_foo.c "mock_foo.h"
+    kind: convention
+    note: A mock include names the mocked header, which the compiler never sees
+target: ~
