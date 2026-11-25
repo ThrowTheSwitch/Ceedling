@@ -21,7 +21,7 @@ A route is the name a Partial directive's `#include` expands to, keyed by the di
 - **Content.** For a test whose line 3 reads `#include TEST_PARTIAL_MODULE_AT(sensors/soil, Calibration)`, the header holds one define for it.
 
 ```c
-#define __PARTIALS_ROUTE_L3 "/w/proj/build/test/partials/test/test_cal/_t_/src/sensors/soil/ceedling_partial_Calibration_impl.h"
+#define __PARTIALS_ROUTE_L3 "/w/proj/build/test/partials/test/test_cal/_t_/src/sensors/soil/ceedling_partial_sensors_soil_Calibration_impl.h"
 ```
 
 - **Lines.** Compilers differ on the `__LINE__` of a directive continued over several lines. So a route is defined under every line its directive spans. No two directives share a line, so the names never collide.
