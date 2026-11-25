@@ -51,6 +51,7 @@ Plugins take every generated path from the build plan and ask `Placeinator` for 
 - **Coverage plugins** read each object's placement and source from the build plan.
 - **FFF** is a mock generator. Its class is in the mock's fingerprint, and it reads the mock's placement, folder and pinned include from the plan.
 - **Conventions.** A plugin calls the core component for a convention, such as `MockNaminator` for mock names, and never repeats its rule.
+- **Entries, compiles and coverage.** [EDGES.md](EDGES.md#plugins) covers how a plugin adds entries, which order its compiles take and how coverage scope is set.
 
 ## New kinds and stages
 

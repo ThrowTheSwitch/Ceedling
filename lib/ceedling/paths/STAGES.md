@@ -40,6 +40,7 @@ A directory appears once, at its first place, by key.
 | 11 | the test file's full expansion | overlays, the configured order, the Partials root |
 | 15 | the test file, its sources, runner, mocks, Partials and support files | overlays, the configured order, the Partials root |
 | 15 | a framework source | the configured order |
+| plugin | an untested source, a cppcheck analysis | the configured order, less `TEST_INCLUDE_PATH()` directories |
 | release | a release source | the release's configured order |
 
 - **User files only.** Stages 6, 7 and 9 read user files alone. So a mock that joins or leaves a test reruns none of their runs.
@@ -99,7 +100,7 @@ The build plan names each file a tool run writes, from the tool's configuration.
 A release build plans its sources, objects and link as a test build does. It needs only `:paths` ↳ `:source`.
 
 - **Sources.** The release's sources are the source collection. Each object records its source, so no object is matched back to a source by its path.
-- **Order.** A release source compiles with the release's configured order, which holds no generated directory.
+- **Order.** A release source compiles with the release's configured order, which holds no generated directory. It is the configured order without its test parts: the include roots, then the library roots, each glob in its expansion order, then `:release_toolchain_include`, then the directories that `:files` ↳ `:include` headers outside every root add. So a header a test's compile reaches through those roots, a release compile reaches too.
 - **Test roots.** A release needs no `:paths` ↳ `:test`. A test task in a project with no test roots fails and names that setting.
 - **Outputs.** The target and artifacts follow [PLACEMENT.md](PLACEMENT.md#release-placement).
 

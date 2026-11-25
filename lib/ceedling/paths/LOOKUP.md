@@ -1,6 +1,6 @@
 # Lookup
 
-`FileLookupinator` finds a user file in a collection from text a user wrote. It does one job, by Ceedling's rules, on collections built once at load. It never looks up a generated file, since the build plan records every generated file's placement.
+`FileLookupinator` finds a user file in a collection from text a user wrote. It does one job, by Ceedling's rules, on collections built once per run. It never looks up a generated file, since the build plan records every generated file's placement.
 
 ## Contents
 
@@ -16,7 +16,7 @@
 
 A collection holds the user files of one kind. The kinds are tests, sources, headers, support files and assembly files, plus the test and release build inputs.
 
-- **Built once.** Configuration builds each collection from `:paths` and `:files`, after every plugin has added its files, and then freezes it.
+- **Built once.** `Collectinator` builds each collection at the collection point, from `:paths`, `:files` and every plugin's entries, and then freezes it, as [EDGES.md](EDGES.md#the-collection-point) says.
 - **Order.** A collection follows `:paths` order, each glob in its expansion order, then `:files` additions in order.
 - **User files only.** Framework files and generated files belong to no collection. The build plan places them.
 - **Configuration only.** A test's `TEST_INCLUDE_PATH()` directories add search paths to that test alone. They add nothing to any collection.

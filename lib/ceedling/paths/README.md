@@ -4,6 +4,8 @@ Ceedling turns text into files in three ways. **Resolution** finds the file an `
 
 Ceedling also places every file it generates. **Placement** turns each artifact's identity into one location, and overlays put generated files where the compiler's own search finds them. **Stage search orders** give each compile the directories it searches. The **build plan** records all of it for the run.
 
+Paths leave Ceedling at **the edges**: command lines, the link, plugins and tasks. Every root list and collection is built once, at the collection point. A tool template owns its quoting, and no substituted value is expanded. The link follows the linker's library search, and plugins read the build plan rather than repeating a rule.
+
 These docs are for developers and coding agents. [GLOSSARY.md](GLOSSARY.md) defines every term they use, and they use no others.
 
 ## Contents
@@ -17,6 +19,7 @@ These docs are for developers and coding agents. [GLOSSARY.md](GLOSSARY.md) defi
 - [OWNERSHIP.md](OWNERSHIP.md) covers `OwnershipLedger`. It describes entries, leftovers, and clean and clobber.
 - [STAGES.md](STAGES.md) covers `SearchOrderinator` and `BuildPlan`. It describes the configured order, the order of each stage's runs, stage 4, stage 15, tool outputs, release planning and the dependency cache.
 - [PARTIALS.md](PARTIALS.md) covers routes (`PartialRoutinator`), Partial placement, remapping and module qualifiers (`PartialRemapinator`), and directive arguments.
+- [EDGES.md](EDGES.md) covers configuration intake and the shell-operator check, `Collectinator`, command lines (`CommandLineBuildinator`), the link (`Linkinator`), plugins and coverage scope (`CoverageScopinator`), test selection (`TestSelectinator`), the launcher and Windows.
 - [EXTENSIONS.md](EXTENSIONS.md) covers where later features plug in, starting with shared mocks.
 
 ## How an `#include` becomes a file
@@ -42,7 +45,7 @@ A generated file passes through four steps, recorded in the build plan as it goe
 
 ## Components
 
-Every component lives in `lib/ceedling/paths/`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object. A record is a DIY object that keeps its state between builds.
+Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`, which lives in `lib/ceedling/tools/` beside `ToolExecutor`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object. A record is a DIY object that keeps its state between builds.
 
 | Component | File | Kind | Job | Described in |
 | --- | --- | --- | --- | --- |
@@ -63,10 +66,15 @@ Every component lives in `lib/ceedling/paths/`. A value or a set of primitives u
 | `BuildPlan` | `build_plan.rb` | value | What one build compiles, links and places, and where each path resolved | [STAGES.md](STAGES.md#buildplan) |
 | `PartialRoutinator` | `partial_routinator.rb` | service | Each test's routes headers | [PARTIALS.md](PARTIALS.md#routes) |
 | `PartialRemapinator` | `partial_remapinator.rb` | service | Remapped Partial includes and module qualifiers | [PARTIALS.md](PARTIALS.md#remapping) |
+| `Collectinator` | `collectinator.rb` | service | Every root list, collection and index, built once at the collection point | [EDGES.md](EDGES.md#collectinator) |
+| `CommandLineBuildinator` | `lib/ceedling/tools/command_line_buildinator.rb` | service | Each tool run's command line, from its template and values | [EDGES.md](EDGES.md#command-lines) |
+| `Linkinator` | `linkinator.rb` | service | Each link's arguments and library files, and each test run's loader path | [EDGES.md](EDGES.md#the-link) |
+| `CoverageScopinator` | `coverage_scopinator.rb` | service | The files a coverage report covers, the untested sources and Partial credit | [EDGES.md](EDGES.md#coverage-scope) |
+| `TestSelectinator` | `test_selectinator.rb` | service | The tests a selection task runs | [EDGES.md](EDGES.md#test-selection) |
 
 ## Rules every component keeps
 
-Eleven rules hold across the components. A change to any of them must keep all eleven.
+Fourteen rules hold across the components. A change to any of them must keep all fourteen.
 
 1. **Compiler-faithful first.** Resolution follows the compiler's rules. A convention runs only on a resolved result, and each convention has one implementation.
 2. **One path, one value.** Intake makes a `PathRef`. Code compares `PathRef`s by key and never compares spellings as text.
@@ -79,10 +87,15 @@ Eleven rules hold across the components. A change to any of them must keep all e
 9. **One placement authority.** Only `Placeinator` forms a path below the build root, and it forms each one from an artifact identity. No code reads an identity back from a path.
 10. **Pinned includes.** Every `#include` Ceedling writes names its file by absolute spelling, so no search or shadowing can redirect it.
 11. **Removal by record.** During a build, only `OwnershipLedger` removes an artifact, and only one it recorded.
+12. **Collect once.** Root lists and collections are built once per run, at the collection point, and never change after it. Plugins add entries through configuration alone.
+13. **Expand only what the author wrote.** Ruby expansion runs once on each configuration value and tool template, and never on a substituted value.
+14. **Templates quote, nothing escapes.** A tool template quotes each path it receives. Ceedling escapes no path for a shell, and warns at load on a shell operator.
 
 ## Neighbors
 
-- `lib/ceedling/filesystem/` holds `ProjectPaths`, whose spelling functions `PathRef` builds on, and `BuildSubpath`, which forms `PathRef`'s build subpath. It also holds collection building, whose results `CollectionIndex` indexes.
+- `lib/ceedling/filesystem/` holds `ProjectPaths`, whose spelling functions `PathRef` builds on, and `BuildSubpath`, which forms `PathRef`'s build subpath. It also holds the glob expansion `Collectinator` calls.
+- `lib/ceedling/tools/` holds `ToolExecutor`, which runs each command line, `ToolValidator` and `ShellQuoting`. `lib/ceedling/ruby_expandinator.rb` holds `RubyExpandinator`.
+- `plugins/` call these components for every path rule, as [EDGES.md](EDGES.md#plugins) says.
 - `lib/ceedling/test_invoker/` holds the test pipeline's stages and planner, which fill the build plan. `lib/ceedling/release_invoker/` does the same for a release.
 - `lib/ceedling/partials/` generates Partials. It takes placements, routes and remaps from these components.
 - Partials, mocks and the stages consume these components' answers. They never repeat a convention's rule.

@@ -48,13 +48,13 @@ An inner `..` follows the kernel, which resolves a symlink before it climbs. So 
 
 ### The case rule
 
-Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case probe answers that once per root, at load.
+Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case probe answers that once per root, at the collection point.
 
 - **The probe** stats each root's directory under a case-swapped spelling and compares the result with the root's own. It probes the project root and the build root too.
 - **Keys.** A path takes the finding of the nearest probed directory above it. Where that file system folds case, the key is the real spelling folded by `downcase`. Elsewhere the key keeps its case. `downcase` keeps `Straße.h` and `STRASSE.h` apart, as NTFS does.
 - **Logging.** Each root's finding is logged at OBNOXIOUS. A case mismatch the file system accepts resolves with no message, as it does for the compiler.
 
-Configuration builds the probe's table once and hands it to `PathRef`. `PathRef` reads no configuration.
+`Collectinator` builds the probe's table once, as [EDGES.md](EDGES.md#the-collection-point) says, and hands it to `PathRef`. `PathRef` reads no configuration.
 
 ### Equality
 
