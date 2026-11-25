@@ -155,13 +155,40 @@ module Contract
       return path.start_with?( "#{dir}/" )
     end
 
-    # Raises unless each live build matches the sections its own target promises
-    def self.target!(target, live, what)
+    # The executable extension Ceedling's defaults give the running platform
+    EXE = Contract.windows? ? '.exe' : '.out'
+
+    # Raises unless each live build matches the sections its own target promises. `%{exe}`
+    # in a target is `exe`, so one target names an executable on every platform.
+    def self.target!(target, live, what, exe: EXE)
       unless target.size == live.size
         raise Mismatch, "#{what} promises #{target.size} build#{target.size == 1 ? '' : 's'}, and #{live.size} ran"
       end
 
-      equal!( target, live.each_with_index.map { |build, index| build.slice( *target[index].keys ) }, what )
+      target = expand( target, exe )
+      equal!( target, live.each_with_index.map { |build, index| promised( target[index], build ) }, what )
+    end
+
+    # `value` with `%{exe}` replaced in every key and string
+    def self.expand(value, exe)
+      case value
+      when Hash   then value.to_h { |key, inner| [expand( key, exe ), expand( inner, exe )] }
+      when Array  then value.map { |inner| expand( inner, exe ) }
+      when String then value.gsub( '%{exe}', exe )
+      else value
+      end
+    end
+
+    # The part of `live` a target speaks for. A mapping promises only the keys it names, at
+    # every depth, so a target can promise a test's outcome without its progress lines. A
+    # list or a value is compared whole. A named key the report lacks stays out of the part,
+    # so the comparison reports it missing.
+    def self.promised(promise, live)
+      return live unless promise.is_a?( Hash ) && live.is_a?( Hash )
+
+      return promise.each_with_object( {} ) do |(key, value), part|
+        part[key] = promised( value, live[key] ) if live.key?( key )
+      end
     end
 
     # Raises for a difference the row does not declare

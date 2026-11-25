@@ -110,7 +110,12 @@ A row has three columns, and each example checks one of them for one variant.
 
 - **Compiler** covers `resolved` only, since the link set, placements and search paths have no compiler answer. It is stored once, not per platform, as one list of answers per build step. Every variant on every platform asserts that its live oracle equals it, so a toolchain that resolves differently fails the row.
 - **Current** covers every section. Each platform has its own section in the recorded file, and in it one list of build reports per variant. A variant asserts its live reports equal its platform's section. A missing section fails.
-- **Target** is the behavior the redesign promises. A row's `target` maps a variant key to its promised build reports, one per build, each giving only the sections it promises. The loader rejects a key that names no variant, an empty list and a section no report holds. Each build is compared by its own promised sections. A row with a target asserts it as pending until a change makes it pass.
+- **Target** is the behavior the redesign promises. A row's `target` maps a variant key to its promised build reports, one per build, each giving only the sections it promises. A row with a target asserts it as pending until a change makes it pass.
+  - **Promised keys.** Within a section, a mapping promises only the keys it names, at every depth, and a list or a value is compared whole. So a target can promise an `outcome`'s `status` without its progress lines, or one object's placement among many.
+  - **Builds.** Each build is compared by its own promised sections. An empty build report promises nothing for its build, as a delta row's first build may.
+  - **Executables.** `%{exe}` in a target stands for the executable extension Ceedling's defaults give the running platform, `.exe` on Windows and `.out` elsewhere. So one target names a test's executable on every platform.
+  - **Loading.** The loader rejects a key that names no variant, an empty list, a section no report holds, an empty mapping inside a section and a target whose every build promises nothing.
+  - **Met targets.** A target the build already meets fails as fixed, since its example is pending. So a target promises only behavior a change has yet to make.
 
 Recording drops a section for a variant the row no longer has, on every platform, so no stale section lingers uncompared.
 
