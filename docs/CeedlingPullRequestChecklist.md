@@ -15,6 +15,7 @@ The same checklist appears in the description of every new pull request. It live
 ### Software
 
  - [ ] Does it follow our [coding standard](ThrowTheSwitchCodingStandard.md)?
+ - [ ] Do new or changed log messages follow [Writing Log Messages](mkdocs/development/log-messages.md)?
  - [ ] Are all existing tests passing?
  - [ ] Are there new tests added and passing?
  - [ ] Do new configuration options have defaults in `lib/ceedling/defaults.rb` and entries in the configuration reference (`docs/mkdocs/configuration/reference/`)?
