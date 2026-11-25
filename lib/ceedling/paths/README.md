@@ -74,7 +74,7 @@ Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`,
 
 ## Rules every component keeps
 
-Fourteen rules hold across the components. A change to any of them must keep all fourteen.
+Fifteen rules hold across the components. A change to any of them must keep all fifteen.
 
 1. **Compiler-faithful first.** Resolution follows the compiler's rules. A convention runs only on a resolved result, and each convention has one implementation.
 2. **One path, one value.** Intake makes a `PathRef`. Code compares `PathRef`s by key and never compares spellings as text.
@@ -90,6 +90,7 @@ Fourteen rules hold across the components. A change to any of them must keep all
 12. **Collect once.** Root lists and collections are built once per run, at the collection point, and never change after it. Plugins add entries through configuration alone.
 13. **Expand only what the author wrote.** Ruby expansion runs once on each configuration value and tool template, and never on a substituted value.
 14. **Templates quote, nothing escapes.** A tool template quotes each path it receives. Ceedling escapes no path for a shell, and warns at load on a shell operator.
+15. **Messages speak to C developers.** A message says in plain words what went wrong. It names every file, line, `#include` and setting involved, and gives the fix when it knows one. A NOTICE or WARNING logs at its cause's first occurrence in a run, and repeats log only at OBNOXIOUS. Every message follows the developer docs' page on writing log messages, `docs/mkdocs/development/log-messages.md`.
 
 ## Neighbors
 

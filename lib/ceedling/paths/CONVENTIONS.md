@@ -74,11 +74,11 @@ The entry's source also replaces the paired source of every header with its stem
 
 ## Messages
 
-Every settled tie and every failure in these conventions has one shape, so users meet one vocabulary.
+Every settled tie and every failure in these conventions has one shape, so users meet one vocabulary. Each keeps rule 15 of [README.md](README.md#rules-every-component-keeps).
 
-- **A settled tie** logs at COMPLAIN with a NOTICE label. It names the text, the answer, the order that chose it and the other candidates.
-- **A failure** names the text, every candidate in the configured order, and the fix.
-- **Terms.** Messages use glossary terms only, such as include text, search order, root and paired source.
+- **A settled tie** logs at COMPLAIN with a NOTICE label, at its first occurrence in a run. In plain words, it names the text as written, the file and line that hold it, the answer, the order that chose it and the other candidates.
+- **A failure** names the text, the file that holds it, every candidate in the configured order, and the fix. A failure with two or more fixes, or one whose fix needs a short explanation first, takes the guidance layout.
+- **Terms.** Messages use glossary terms only, such as include text, search order, root and paired source. A term of Ceedling's own, such as paired source, appears beside a clause that says what it means.
 
 ## Code
 
