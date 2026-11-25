@@ -19,4 +19,13 @@ tree:
 project:
   :paths:
     :include: [src]
-target: ~
+target:
+  none:
+    - outcome:
+        status: pass
+      link_set:
+        build/test/out/test/test_x_runner/_t_/test_x_runner%{exe}:
+          - test/test_x_runner.c
+          - src/x_runner.c
+          - build/test/runners/test/test_x_runner_runner.c
+          - build/vendor/unity/src/unity.c

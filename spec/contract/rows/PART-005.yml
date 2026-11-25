@@ -44,4 +44,7 @@ project:
     :test:
       :compile: [-std=c17]
 
-target: ~
+target:
+  all:
+    - outcome:
+        status: pass

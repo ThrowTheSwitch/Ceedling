@@ -41,4 +41,10 @@ project:
   :paths:
     :include: [., src/**]
 
-target: ~
+target:
+  all:
+    - outcome:
+        status: pass
+      placements:
+        objects:
+          test/test_a build/test/partials/test/test_a/_t_/ceedling_partial_a_impl.c: build/test/out/test/test_a/_t_/ceedling_partial_a_impl.o

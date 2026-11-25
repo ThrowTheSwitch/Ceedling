@@ -27,4 +27,11 @@ divergences:
   - at: resolved test/test_helper.c "src/drivers/mock_foo.h"
     kind: convention
     note: A mock include names the mocked header, which the compiler never sees
-target: ~
+target:
+  tests:
+    - outcome:
+        status: pass
+      placements:
+        copies:
+          - build/test/mocks/test/test_helper/_t_/src/drivers/foo.h
+          - build/test/mocks/test/test_helper/_t_/src/drivers/helper.h

@@ -43,4 +43,12 @@ divergences:
     note: >-
       The directory form's join expands the module argument too, so the compiler includes
       src/ceedling_partial_1_impl.h while Ceedling reads the text unix
-target: ~
+target:
+  all:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_unix.c TEST_PARTIAL_PUBLIC_MODULE(unix): src/unix.h
+        test/test_unix.c TEST_PARTIAL_PUBLIC_MODULE(unix) source: src/unix.c
+        test/test_unix_at.c TEST_PARTIAL_PUBLIC_MODULE_AT(src, unix): src/unix.h
+        test/test_unix_at.c TEST_PARTIAL_PUBLIC_MODULE_AT(src, unix) source: src/unix.c

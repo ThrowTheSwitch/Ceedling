@@ -37,4 +37,11 @@ divergences:
   - at: resolved test/test_bar.c "mock_bar.h"
     kind: convention
     note: A mock include names the mocked header, which the compiler never sees
-target: ~
+target:
+  mocks:
+    - {}
+    - outcome:
+        status: pass
+      placements:
+        generated:
+          mocks: [build/test/preprocess/files/test/test_bar/_t_/src/c/bar.h]
