@@ -51,7 +51,7 @@ Fix: put the directory that holds gcc-14 on your PATH.
 
 ### Guidance
 
-The guidance layout serves a fix that only makes sense after a short explanation of C or of Ceedling, and any message with two or more fixes. `Reportinator.generate_guidance()` builds it, so every guidance message shares one layout.
+The guidance layout serves a fix that only makes sense after a short explanation of C or of Ceedling, and any message with two or more fixes. Alternatives count as separate fixes, so "rename or move the directory" becomes two numbered options. `Reportinator.generate_guidance()` builds it, so every guidance message shares one layout.
 
 ```ruby
 message = Reportinator.generate_guidance(
