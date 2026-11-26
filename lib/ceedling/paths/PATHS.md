@@ -14,14 +14,25 @@ A `PathRef` is an immutable value for one file or directory. Stages pass `PathRe
 
 ### Intake
 
-A path enters Ceedling as written text and a base directory. `PathRef.of( text, base: )` applies the intake rules once. The base is the project root for configuration and the launcher. For an include text it is the directory that answered the search.
+A path enters Ceedling as written text and a base directory. `PathRef.of( text, base: )` applies the intake rules once, in the order listed below.
 
+- **Escapes** come first, since each source escapes its own text. A line marker's filename is a C string literal, so intake unescapes it once. A dependency file's names are make-rule text, so intake unescapes them by make's rule: `2n+1` backslashes before a space or `#` stand for `n` backslashes and that character, and `$$` stands for `$`.
 - **Separators.** On Windows, `\` becomes `/`. Elsewhere `\` is a legal filename character and stays.
-- **Home.** `~` and `~/…` expand to the home directory. `~user` names a directory called `~user` below the base, on every platform.
-- **Escapes.** A line marker's filename is a C string literal, so intake unescapes it once. A dependency file's names are make-rule text, so intake unescapes `\ `, `\#` and `$$` once.
+- **Home.** In configuration and the launcher's options, `~` and `~/…` expand to the home directory, and `~user` names a directory called `~user` below the base, on every platform. Include text, line markers and dependency files keep `~` as written, since the compiler reads it literally.
 - **Ends.** A trailing `/` drops. A bare root such as `/` or `C:/` stays. A Windows drive letter is upper case.
 
-Paths enter at these points: configuration load (`:paths`, `:files`, tool paths and plugin paths), the launcher's options (`--project`, `--logfile`, `--mixin` and `:which_ceedling`), build directives, include records, line markers and dependency files. Each one calls `PathRef.of`. Mixin files are deduplicated by key, so one file reached by two spellings merges once.
+Paths enter at these points, each with its base.
+
+| Intake point | Base |
+| --- | --- |
+| configuration load: `:paths`, `:files`, tool paths and plugin paths | the project root |
+| the launcher's options: `--project`, `CEEDLING_PROJECT_FILE`, `--logfile`, `--mixin`, mixin load paths and `:which_ceedling` | the project root, which the launcher starts in |
+| `TEST_INCLUDE_PATH()` directories | the project root |
+| `TEST_SOURCE_FILE()` entries | each source root in turn, as [CONVENTIONS.md](CONVENTIONS.md#test_source_file-entries) says |
+| include records | the directory that answered the search |
+| line markers and dependency files | the project root, where every tool runs |
+
+Each one calls `PathRef.of`. Mixin files are deduplicated by key, so one file reached by two spellings merges once.
 
 ### Spellings
 
@@ -42,9 +53,10 @@ A `PathRef` has five spellings and one derived view. Each spelling after the wri
 
 An inner `..` follows the kernel, which resolves a symlink before it climbs. So before an inner `..` collapses, the absolute spelling resolves the part before it on disk, where that part exists. With `lnk` → `real/sub`, the text `lnk/../b.h` is `real/b.h`, the file the compiler opens.
 
-- Past the existing part, `.` and `..` collapse as text, since nothing on disk can redirect them yet.
-- A leading `..` needs no read, because the project root's spelling is already real.
+- Past the existing part, `.` and `..` collapse as text, since nothing on disk can redirect them yet. That forms spellings of paths not on disk yet, such as placements. A search never collapses past a missing directory, as [RESOLUTION.md](RESOLUTION.md#the-model) says.
+- A leading `..` in configuration text needs no read, since its base is the project root, whose spelling is already real. Include text joins its search path first, so its leading `..` is an inner `..` of the joined path.
 - Each distinct prefix is read once per build.
+- **Windows.** The Windows file system API collapses `.` and `..` as text before it follows a symlink or junction. So on Windows the rule collapses as text, and `lnk/../b.h` names the `b.h` beside `lnk`.
 
 ### The case rule
 
@@ -53,7 +65,7 @@ Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case
 - **The probe** stats an entry inside the directory, one whose name holds a cased letter, under a case-swapped spelling, and compares the result with the entry's own. A directory with no such entry takes its parent's finding.
 - **When.** The collection point probes every root, the project root and the build root. A key asked for before it, as the launcher's mixins and the checks at configuration load ask, takes its own directory's finding, which `PathRef` probes once on first need. The collection point reuses every finding made before it.
 - **Keys.** A path takes the finding of the nearest probed directory above it. Where that file system folds case, the key is the real spelling folded by `downcase`. Elsewhere the key keeps its case. `downcase` keeps `Straße.h` and `STRASSE.h` apart, as NTFS does.
-- **Logging.** Each finding is logged at OBNOXIOUS. A case mismatch the file system accepts resolves with no message, as it does for the compiler.
+- **Logging.** Each finding is logged at OBNOXIOUS. A case mismatch the file system accepts resolves with no message from Ceedling. GCC accepts it silently, and Clang warns with `-Wnonportable-include-path`.
 
 `PathRef` holds the probe's table for the run. `Collectinator` fills it for every root at the collection point, as [EDGES.md](EDGES.md#the-collection-point) says, and `PathRef` adds each directory it probes on first need. `PathRef` reads no configuration.
 

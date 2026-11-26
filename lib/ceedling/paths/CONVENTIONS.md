@@ -26,7 +26,7 @@ An include is a mock include only when resolution says so. Classification follow
 
 1. **The include text resolves to a user file.** Then it is a plain include, whatever its name. A real `MockupDisplay.h` under the prefix `Mock` is a header, not a mock.
 2. **Otherwise its basename carries the prefix and suffix.** Then `mocked_header_text` gives the mocked header's include text. That text resolves from the same includer through the same search order, with generated directories left out.
-3. **The mocked header resolves.** Then the include is a mock include, and the mocked header is the mock's origin. If it doesn't resolve, the build fails, naming both include texts.
+3. **The mocked header resolves.** Then the include is a mock include, and the mocked header is the mock's origin. If it doesn't resolve, the build fails, naming both include texts. At stage 4 that failure waits for the pass's last round, as [STAGES.md](STAGES.md#stage-4) says.
 
 - **Absolute text.** A mock include written as an absolute path names a file no overlay can supply, since absolute text gets no search. It fails where classification meets it, before any compile. The error names the `#include` and asks for include text written from a search path.
 
@@ -72,7 +72,7 @@ A `TEST_SOURCE_FILE()` entry names a source relative to the source roots, as inc
 - **Joins.** The entry joins each root in turn. A climbing entry collapses by the `..` rule.
 - **Absolute entries** name their file directly.
 - **Only collected sources answer.** A test, a support file or a framework file never does.
-- **First answer wins.** Further answers log a COMPLAIN NOTICE that names the roots.
+- **First answer wins.** Further answers that are other files, by key, log a COMPLAIN NOTICE that names the roots. A climbing entry that reaches one file from two roots is one answer.
 - **No answer** fails, naming the entry and every root tried.
 
 The entry's source also replaces the paired source of every header with its stem, as [Rules on the paired source](#rules-on-the-paired-source) says. Each test checks its own entries once.

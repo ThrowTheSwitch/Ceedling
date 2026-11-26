@@ -21,9 +21,14 @@ A test's configured order is its user search paths, in the order the compiler se
 1. The test's `TEST_INCLUDE_PATH()` directories, in the order the test writes them.
 2. Its test roots that hold a header, then its support roots, include roots and library roots, each glob in its expansion order.
 3. The framework directories, then `:test_toolchain_include`.
-4. The directories that `:files` ↳ `:include` headers outside every root add.
+4. The directories that `:files` ↳ `:include` headers add, which the test's own include text implies.
 
 A directory appears once, at its first place, by key.
+
+- **Which directory.** A quoted include text of the test file, or a mock include's mocked header text, may reach no file through the quote rule and items 1 to 3. When a `:files` ↳ `:include` header ends with that text by trailing match, the header's path less the text's segments joins the order at item 4. Joined with that directory, the text names the header, and every configured directory stays ahead of it. So `#include "path/to/mock_sensor.h"` for `src/path/to/sensor.h` adds `src`.
+- **None added.** Climbing and absolute text add none, and neither does a header whose own directory is already a search path, whose include is then a near miss. A bare text whose header lies outside the project root adds none, since that directory may hold system headers the order would shadow. Its near miss's error then asks for include text that names the header's parent directory, which adds the directory above it.
+- **Logging.** Each added directory logs at COMPLAIN with a NOTICE label at its first occurrence in a run, naming the test, the include text and the header.
+- **System directories.** A search path that is also one of the compiler's own system directories is searched by the compiler as a system directory, after every other search path. The configured order doesn't model that, so such a directory belongs in no `:paths` entry.
 
 ## Stage search orders
 
@@ -55,12 +60,13 @@ A directory appears once, at its first place, by key.
 
 Stage 4 finds the test file's includes with their macros evaluated, before any mock exists. It reads only stand-ins and user files, and it holds nothing aside. Its overlays below the stand-in root recreate symlinks and form reach directories, as [PLACEMENT.md](PLACEMENT.md#stand-ins) says.
 
-1. **First pass.** The ledger first removes every stand-in the test owned last build, as [OWNERSHIP.md](OWNERSHIP.md#leftovers) says. The preprocessor then runs `-M -MG` on the test file itself, with stage 4's order. `-MG` lists each file it can't find. Each missing file that classifies as a mock include, by [CONVENTIONS.md](CONVENTIONS.md#classification), gets a stand-in.
-2. **Rounds.** A new stand-in pins its mocked header, whose macros can name another mock. So the first pass runs again after any round that added a stand-in. It stops when a round adds none, which is usually after the first.
+1. **First pass.** The ledger first removes every stand-in the test owned last build, as [OWNERSHIP.md](OWNERSHIP.md#leftovers) says. The preprocessor then runs `-M -MG` on the test file itself, with stage 4's order. `-MG` lists each file it can't find, by its include text alone. Each listed name is classified from the include records of the files the pass entered, which give its includer and form. Each one that classifies as a mock include, by [CONVENTIONS.md](CONVENTIONS.md#classification), gets a stand-in.
+2. **Rounds.** A new stand-in pins its mocked header, whose macros can name another mock. So the first pass runs again after any round that added a stand-in. It stops when a round adds none, which is usually after the first. A classification failure waits for the last round, and fails only when that round still lists its mock include, since a later round's macros can turn its branch off.
 3. **Second pass.** The directives-only run writes line markers, and its `-dI` flag prints each `#include` it executes. A printed directive is active, even when an include guard or `#pragma once` stops the compiler entering its file again. A directive the pass never printed sits in a branch that is off. Each depth-1 entry gives its directive's header, as [RESOLUTION.md](RESOLUTION.md#include-records) says, and a printed directive with no entry resolves by the model.
 
-A mock that a macro from another header names is found this way, since the first pass opens that header. Fallback runs as [RESOLUTION.md](RESOLUTION.md#fallback) says.
+A mock that a macro from another header names is found this way, since the first pass opens that header. Fallback runs as [RESOLUTION.md](RESOLUTION.md#fallback) says. When the second pass fails, the fallback keeps only the test file's records that the first pass reached.
 
+- **What the first pass sees.** It reads user files and stand-ins alone, with the test's defines, since its order holds no compiler directory. So a macro that only a system header or a compile flag defines is unseen there, and a mock named under such a macro needs the macro under `:defines`.
 - **Without `-dI`.** A directives-only tool overridden without `-dI` prints no directives. Stage 4 then counts every text-scan directive of the test file as active, and logs one COMPLAIN NOTICE that names the flag.
 
 ## BuildPlan
@@ -69,7 +75,7 @@ The build plan is the record of what one build compiles, links and places, and w
 
 | Part, per test | Holds | Written at |
 | --- | --- | --- |
-| resolution records | the resolution of every include record in each user file the test's runs enter | stages 2 to 5, and 11 |
+| resolution records | the resolution of every include record in each user file the test's runs enter. Stage 14 resolves the records of each planned object's compile with that object's own stage search order | stages 2 to 5, 11 and 14 |
 | mocks | each mock's identity, placement, include texts and folder | stage 5 |
 | Partials | each Partial's identity, placement, module header and source, and route lines | stage 5 |
 | pairing | each resolved header's paired source, or none | stage 5, or stage 14 under test preprocessing |
@@ -103,7 +109,7 @@ The build plan names each file a tool run writes, from the tool's configuration.
 A release build plans its sources, objects and link as a test build does. It needs only `:paths` ↳ `:source`.
 
 - **Sources.** The release's sources are the source collection, which holds no test file, as [EDGES.md](EDGES.md#the-collection-point) says. Each object records its source, so no object is matched back to a source by its path.
-- **Order.** A release source compiles with the release's configured order, which holds no generated directory. It is the configured order without its test parts: the include roots, then the library roots, each glob in its expansion order, then `:release_toolchain_include`, then the directories that `:files` ↳ `:include` headers outside every root add. So a header a test's compile reaches through those roots, a release compile reaches too.
+- **Order.** A release source compiles with the release's configured order, which holds no generated directory. It is the configured order without its test parts: the include roots, then the library roots, each glob in its expansion order, then `:release_toolchain_include`, then the directories that `:files` ↳ `:include` headers add. Those follow item 4's rule of [The configured order](#the-configured-order), applied to the quoted include texts of the release's sources. So a header a test's compile reaches through those roots, a release compile reaches too.
 - **Test roots.** A release needs no `:paths` ↳ `:test`. A test task in a project with no test roots fails and names that setting.
 - **Outputs.** The target and artifacts follow [PLACEMENT.md](PLACEMENT.md#release-placement).
 

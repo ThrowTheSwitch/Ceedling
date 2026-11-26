@@ -35,7 +35,7 @@ A fingerprint covers settings, supplemented where needed by build details derive
 | mock | `:cmock` configuration less `:verbosity`, the generator, `:treat_inlines`, the mock include folder, whether it mocks a Partial, and under `:treat_inlines` ↳ `:include` the files CMock's copy pins | the mocked header or its preprocessed file, and each `:cmock` ↳ `:unity_helper_path` file |
 | preprocessed file | the tool, flags, defines, forced fallback, the run's search order digest, and the files its pinned includes name | the origin and every user file its line markers name |
 | Partial | `:partials` configuration, the directive's selection, preprocessing settings, and the files its pinned includes name | the module's header and source and their preprocessed files |
-| object | the tool, flags, defines, the run's search order digest, and the files pinned by each isolation copy its compile enters | the source and every header its dependency file lists |
+| object | the tool, flags, defines, the run's search order digest, and the files pinned by each isolation copy its compile enters | the source and every file its compile's resolution records hit, as [RESOLUTION.md](RESOLUTION.md#cross-checks) says |
 | runner | the runner and Unity configuration, the test's mock list, and the files its pinned includes name | the test file or its preprocessed file |
 | executable | the link tool, flags and libraries | its objects |
 

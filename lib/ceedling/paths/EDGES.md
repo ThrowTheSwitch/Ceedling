@@ -206,9 +206,9 @@ Tasks that take a file name look it up as [LOOKUP.md](LOOKUP.md#task-arguments) 
 
 ## The launcher
 
-The launcher reads paths before configuration loads. Every one enters by `PathRef.of` from the working directory, as [PATHS.md](PATHS.md#intake) says: `--project`, `CEEDLING_PROJECT_FILE`, `--logfile`, `--mixin`, mixin load paths and `:which_ceedling`.
+The launcher reads paths before configuration loads. Every one enters by `PathRef.of` from the project root, the directory the launcher starts in, as [PATHS.md](PATHS.md#intake) says: `--project`, `CEEDLING_PROJECT_FILE`, `--logfile`, `--mixin`, mixin load paths and `:which_ceedling`.
 
-- **`~user`** names a directory of that name in the working directory, on every platform. `~` and `~/` name the home directory.
+- **`~user`** names a directory of that name in the project root, on every platform. `~` and `~/` name the home directory.
 - **Mixins** deduplicate by key, so one file reached by two spellings merges once. Each mixin's key takes its directory's case finding, which `PathRef` probes on first need, since the collection point comes later, as [PATHS.md](PATHS.md#the-case-rule) says.
 - **Order.** Project discovery, the mixin load-path order and installation selection keep their documented order. `gem`, in any case, names the running launcher.
 - **Components.** The launcher uses `PathRef` and `Matchinator` alone, since neither needs a DIY object or configuration.
@@ -217,7 +217,8 @@ The launcher reads paths before configuration loads. Every one enters by `PathRe
 
 The Windows rules, each where it is described:
 
-- **Separators.** Intake makes `\` a `/` in every path, line markers and dependency files included. See [PATHS.md](PATHS.md#intake).
+- **Separators.** Intake makes `\` a `/` in every path, include text, line markers and dependency files included. See [PATHS.md](PATHS.md#intake).
+- **`..`.** The file system collapses `..` as text, across a symlink or junction too. See [PATHS.md](PATHS.md#the--rule).
 - **Command lines.** Arguments keep `/`, and only the executable takes `\`. See [The Windows executable](#the-windows-executable).
 - **Operators.** `%` and `"`. See [Shell operators](#shell-operators).
 - **Drives.** A path on another drive keeps its absolute spelling, and its build subpath carries a drive marker. See [PATHS.md](PATHS.md#spellings) and [PLACEMENT.md](PLACEMENT.md#each-kinds-place).

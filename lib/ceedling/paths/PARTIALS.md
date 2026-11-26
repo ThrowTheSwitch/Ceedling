@@ -51,6 +51,7 @@ A Partial carries its module's includes, each pinned to its resolution record's 
 - **Staleness.** A Partial's fingerprint holds the files its pins name, so it regenerates whenever a pin changes. That happens when a Partial module whose header it includes joins the test, leaves it or changes between Test and Mock, and when the test gains or loses a substitute for a header it includes.
 - **One definition.** A types header writes its types only when its module's own header has not arrived first. The interface and implementation headers set a flag before they define the module header's include guard, and the types header writes under that flag, as the extras header does.
 - **The module header elsewhere.** A Mock Partial's interface defines its module header's include guard, so a user header that includes the module header afterward adds nothing.
+- **Collisions it can't prevent.** A Partial's content can still meet its module header's real declarations another way, such as through a header that remapping doesn't reach. A compile that then fails on a redeclaration gets guidance from BuildStepDoctor's `HeaderCollisionSpecialist`, which names the header that arrived a second way.
 
 ## Module qualifiers
 
