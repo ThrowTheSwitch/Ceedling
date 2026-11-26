@@ -39,7 +39,7 @@ A route is the name a Partial directive's `#include` expands to, keyed by the di
 
 ## Remapping
 
-A Partial carries its module's includes, each pinned to its resolution record's hit. `PartialRemapinator` remaps an include whose hit is another Partial module's header in the same test. The pinned include then names that module's Partial header.
+A Partial carries its module's includes, each pinned to its resolution record's hit, or to the test's substitute for it, as every pinned include is. `PartialRemapinator` remaps an include whose hit is another Partial module's header in the same test. The pinned include then names that module's Partial header.
 
 | The other module is | The include names its |
 | --- | --- |
@@ -48,6 +48,7 @@ A Partial carries its module's includes, each pinned to its resolution record's 
 | both | interface header |
 
 - **By key.** The remap compares the hit's key with each Partial module header's key. It never compares names or trailing segments.
+- **Staleness.** A Partial's fingerprint holds the files its pins name, so it regenerates whenever a pin changes. That happens when a Partial module whose header it includes joins the test, leaves it or changes between Test and Mock, and when the test gains or loses a substitute for a header it includes.
 - **One definition.** A types header writes its types only when its module's own header has not arrived first. The interface and implementation headers set a flag before they define the module header's include guard, and the types header writes under that flag, as the extras header does.
 - **The module header elsewhere.** A Mock Partial's interface defines its module header's include guard, so a user header that includes the module header afterward adds nothing.
 

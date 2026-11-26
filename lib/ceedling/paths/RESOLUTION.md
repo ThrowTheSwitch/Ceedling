@@ -68,7 +68,7 @@ A `ResolutionRecord` holds one resolution. The build plan holds every record for
 | `misses` | Every directory tried before the hit, in order |
 | `shadowed` | Every later directory that also held the include text |
 
-The dependency cache saves each target's records between builds. A delta build marks a target stale in two cases:
+The dependency cache saves each target's records between builds. A target that writes pinned includes, such as a runner, a Partial or an isolation copy, holds the records whose hits it pins, since its text follows them. A delta build marks a target stale in two cases:
 
 - its hit changed, as any dependency change marks it;
 - a file with the include text appears in one of its misses, so a new header now shadows the old one.

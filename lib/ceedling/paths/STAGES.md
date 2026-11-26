@@ -43,7 +43,7 @@ A directory appears once, at its first place, by key.
 | plugin | an untested source, a cppcheck analysis | the configured order, less `TEST_INCLUDE_PATH()` directories |
 | release | a release source | the release's configured order |
 
-- **User files only.** Stages 6, 7 and 9 read user files alone. So a mock that joins or leaves a test reruns none of their runs.
+- **User files only.** Stages 6, 7 and 9 search user files alone, so a mock that joins or leaves a test changes none of their orders. Under `:treat_inlines` ↳ `:include` it still reruns stage 9 for each mocked header whose pins change, as [PLACEMENT.md](PLACEMENT.md#fingerprints) says.
 - **Generated text.** Stages 8, 10 and 13 run no compiler search. The files they write hold pinned includes.
 - **Routes headers.** A routes header sits at the top of its root, which ends the order of each run that reads a Partial directive.
 - **Framework sources.** `unity.c`, `cmock.c` and `cexception.c` compile with the configured order and no overlays. A `unity_config.h` under `:paths` ↳ `:include` and a directory under `:test_toolchain_include` reach them as they reach the test file.
@@ -55,7 +55,7 @@ A directory appears once, at its first place, by key.
 
 Stage 4 finds the test file's includes with their macros evaluated, before any mock exists. It reads only stand-ins and user files, and it holds nothing aside. Its overlays below the stand-in root recreate symlinks and form reach directories, as [PLACEMENT.md](PLACEMENT.md#stand-ins) says.
 
-1. **First pass.** The preprocessor runs `-M -MG` on the test file itself, with stage 4's order. `-MG` lists each file it can't find. Each missing file that classifies as a mock include, by [CONVENTIONS.md](CONVENTIONS.md#classification), gets a stand-in.
+1. **First pass.** The ledger first removes every stand-in the test owned last build, as [OWNERSHIP.md](OWNERSHIP.md#leftovers) says. The preprocessor then runs `-M -MG` on the test file itself, with stage 4's order. `-MG` lists each file it can't find. Each missing file that classifies as a mock include, by [CONVENTIONS.md](CONVENTIONS.md#classification), gets a stand-in.
 2. **Rounds.** A new stand-in pins its mocked header, whose macros can name another mock. So the first pass runs again after any round that added a stand-in. It stops when a round adds none, which is usually after the first.
 3. **Second pass.** The directives-only run writes line markers. Each depth-1 entry gives its directive's header, as [RESOLUTION.md](RESOLUTION.md#include-records) says.
 

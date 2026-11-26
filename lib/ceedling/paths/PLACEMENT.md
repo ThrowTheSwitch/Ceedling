@@ -33,14 +33,17 @@ A fingerprint covers settings, supplemented where needed by build details derive
 | Kind | Fingerprint | Input files |
 | --- | --- | --- |
 | mock | `:cmock` configuration less `:verbosity`, the generator, `:treat_inlines`, the mock include folder, whether it mocks a Partial, and under `:treat_inlines` ↳ `:include` the files CMock's copy pins | the mocked header or its preprocessed file, and each `:cmock` ↳ `:unity_helper_path` file |
-| preprocessed file | the tool, flags, defines, forced fallback and the run's search order digest | the origin and every user file its line markers name |
-| Partial | `:partials` configuration, the directive's selection, preprocessing settings | the module's header and source and their preprocessed files |
-| object | the tool, flags, defines and the run's search order digest | the source and every header its dependency file lists |
-| runner | the runner and Unity configuration, and the test's mock and include lists | the test file or its preprocessed file |
+| preprocessed file | the tool, flags, defines, forced fallback, the run's search order digest, and the files its pinned includes name | the origin and every user file its line markers name |
+| Partial | `:partials` configuration, the directive's selection, preprocessing settings, and the files its pinned includes name | the module's header and source and their preprocessed files |
+| object | the tool, flags, defines, the run's search order digest, and the files pinned by each isolation copy its compile enters | the source and every header its dependency file lists |
+| runner | the runner and Unity configuration, the test's mock list, and the files its pinned includes name | the test file or its preprocessed file |
 | executable | the link tool, flags and libraries | its objects |
 
 - **Per-test settings** enter through flags, defines and the search order digest. Those cover a test's own defines, `:use_test_definition` and its `TEST_INCLUDE_PATH()` directories.
-- **Pinned substitutes.** Under `:treat_inlines` ↳ `:include`, the file CMock reads pins the test's substitute for each hit, and CMock's copy keeps those pins. A mock that joins or leaves a test changes the pins in the copies of other mocked headers that include its header. So the files a copy pins are in the fingerprints of its mock and of its preprocessed file, and those mocks regenerate.
+- **Pins.** An artifact whose text holds pinned includes holds the files they name in its fingerprint. A pin names the test's substitute for a hit, or another Partial module's Partial header. So when a test gains or loses a substitute or a Partial, the pins of every artifact that includes its header change, and those artifacts regenerate.
+- **Pins in CMock's copy.** Under `:treat_inlines` ↳ `:include`, the file CMock reads pins the test's substitute for each hit, and CMock's copy keeps those pins. So the files a copy pins are in the fingerprints of its mock and of its preprocessed file.
+- **Pins in isolation copies.** An object holds the pins of every isolation copy its compile enters, its source's own copy included. A mock that joins or leaves a test then recompiles each object whose compile enters a copy, or stops entering one.
+- **Records.** A target that writes pinned includes also holds the resolution records whose hits it pins, as [RESOLUTION.md](RESOLUTION.md#resolution-records) says. A new shadowing header then makes it stale, as it does the objects that searched.
 - **Unity helper files** are inputs of every mock, so editing one regenerates the mocks that use it.
 
 ## Placeinator
@@ -125,7 +128,7 @@ Stage 4 runs before any mock or Partial exists, so it searches the stand-in root
 - **Overlays below the stand-in root** follow the rules of [Overlays](#overlays): the same listing, recreated symlinks and reach directories, formed below the stand-in root.
 - **A mock's stand-in** pins its mocked header, so stage 4 sees the header's macros as the compile will through the mock.
 - **A Partial's stand-in** is blank. Stage 4's routes header routes each Partial directive to it.
-- **Rewrites.** A stand-in is rewritten only when its text changes.
+- **Rewrites.** Within one build, a stand-in is rewritten only when its text changes. Stage 4 starts each run with none of the test's stand-ins from its last build, as [OWNERSHIP.md](OWNERSHIP.md#leftovers) says.
 
 ## Pinned includes
 

@@ -41,6 +41,8 @@ A source in the isolated set compiles from its copy, in every object of its test
 
 The dependency cache records a copy's origin, never the copy, as the dependency of every target that entered the copy. The build plan maps each copy to its origin, so no dependency file is rewritten.
 
+A copy's pins are in the fingerprint of every object whose compile enters it, as [PLACEMENT.md](PLACEMENT.md#fingerprints) says. So a change to the test's substitutes rebuilds those objects, though the origin is unchanged.
+
 ## Code
 
 - `lib/ceedling/paths/isolator.rb` holds `Isolator`, a DIY object. It depends on the build plan and `Placeinator`.
