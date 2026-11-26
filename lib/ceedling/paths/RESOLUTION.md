@@ -62,7 +62,7 @@ A search ends in a hit or leaves the include text unresolved. Each outcome has o
 - **Unresolved.** An include text no directory answers is left to the compiler, which may find a system header in its own directories.
 - **A letter-case slip.** On a root whose file system keeps case, a directory of the search may hold the include text but for letter case, as `src/uart.h` holds `Uart.h`. Ceedling logs that at COMPLAIN with a WARNING label, naming the include as written, its file and line, and the file. The include is still left to the compiler.
 - **A near miss.** No directory answers a quoted include, but a user header ends with the include text by trailing match. It is judged after the directories `:files` ↳ `:include` headers add have joined the order, as [STAGES.md](STAGES.md#the-configured-order) says. Its handling depends on whether the compile processes the directive.
-  - **A test file directive the compile processes** stops the build before any compile. That is one stage 4's first pass lists among the files it can't find, or any test file directive without test preprocessing. The error names the include text, the header and both fixes: a search path that joins the text to the header, or include text written from a search path.
+  - **A test file directive the compile processes** stops the build before any compile. That is one stage 4's first pass lists among the files it can't find, or any test file directive without test preprocessing. The error names the include as written, its file and line, every header that ends with the include text, and the fixes: a search path that joins the text to a header, and include text written from a search path, given only where a search path lies above one of the headers.
   - **Any other record,** such as a header's text-scan record, may sit in a branch that is off. Its near miss logs at COMPLAIN with a NOTICE label, naming the include as written, its file and line, and the header. The include is left to the compiler. If the compile then fails on it, a BuildStepDoctor specialist names the header.
   - **The compiler's own directories** are never read, since search paths come only from configuration.
 
@@ -105,7 +105,7 @@ When a file's directives-only preprocessing fails, resolution runs on the file's
 
 ## Code
 
-- `lib/ceedling/paths/resolvinator.rb` holds `Resolvinator`, a DIY object. It depends on the build plan, for placements, and on the logger. It keeps the listings for one build.
+- `lib/ceedling/paths/resolvinator.rb` holds `Resolvinator`, a DIY object. It reads the run's build plan, for placements, as [STAGES.md](STAGES.md#code) says, and depends on the logger. It keeps the listings for one build.
 - `lib/ceedling/paths/resolution_record.rb` holds `ResolutionRecord`, an immutable value.
 - `resolve( include, search_order: )` returns a `ResolutionRecord`. `listing( dir )` returns one directory's names under its key rule.
 - Specs: `spec/units/paths/resolvinator_spec.rb` stubs listings and placements. The contract rows of area `RES` build real projects.

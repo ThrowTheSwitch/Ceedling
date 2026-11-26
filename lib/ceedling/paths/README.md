@@ -28,24 +28,24 @@ One `#include` passes through five steps. Each step reads only what the steps be
 
 1. A text scan or line markers give an include record: the include text, its form, its includer and its line.
 2. `Resolvinator` searches. A quoted include tries its includer's directory first. Every include then tries the compile's search order. The first directory that holds the include text answers.
-3. `MockNaminator` classifies the result. An include that resolves to no user file, and whose basename carries the mock prefix and suffix, is a mock include. Its mocked header resolves as any include text does.
+3. `MockNaminator` classifies the result, with the `Resolvinator` its caller passes. An include that resolves to no user file, and whose basename carries the mock prefix and suffix, is a mock include. Its mocked header's text resolves from the same includer, in the same form, with generated directories left out.
 4. `SourcePairinator` pairs the resolved header with the source that implements it.
 5. The resolution record, with its misses, joins the build plan. Later stages read it, and the dependency cache saves it for delta builds.
 
-Lookups run beside these steps, for build directives, Partial module sources and task arguments. A lookup never looks up a generated file. The build plan holds every generated file's placement.
+Lookups run beside these steps, for build directives, pairing's mirror and stem tiers, Partial module headers and sources, and task arguments. A lookup never looks up a generated file. The build plan holds every generated file's placement.
 
 ## How a generated file gets its place
 
 A generated file passes through four steps, recorded in the build plan as it goes.
 
 1. The planner forms the file's `ArtifactIdentity`: its kind, origin, fingerprint and owning test.
-2. `OwnershipLedger` records the identity, then removes the test's leftovers of that kind.
-3. `Placeinator` gives the identity its placement. A mock or substitute lands in the test's overlay, at its origin's build subpath.
+2. `Placeinator` gives the identity its placement. A mock of a user header, or a substitute, lands in the test's overlay, at its origin's build subpath. A mock of a generated header sits beside that header.
+3. `OwnershipLedger` records the placement with its identity, then removes the test's leftovers of that kind.
 4. `SearchOrderinator` puts each overlay just ahead of the search path it repeats, so include text reaches the generated file as it would have reached the origin. Every `#include` Ceedling writes for a resolved file is pinned to that file.
 
 ## Components
 
-Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`, which lives in `lib/ceedling/tools/` beside `ToolExecutor`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object. A record is a DIY object that keeps its state between builds.
+Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`, which lives in `lib/ceedling/tools/` beside `ToolExecutor`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object. A record is a DIY object that keeps its state between builds. A value a service reads for one run, such as the run's `BuildPlan`, reaches it from the run's invoker, as [STAGES.md](STAGES.md#code) says, never through DIY.
 
 | Component | File | Kind | Job | Described in |
 | --- | --- | --- | --- | --- |
@@ -53,13 +53,13 @@ Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`,
 | `Matchinator` | `matchinator.rb` | primitives | Segments, trailing match, containment, generated-directory tests | [PATHS.md](PATHS.md#matchinator) |
 | `Resolvinator` | `resolvinator.rb` | service | Resolution by the compiler's rules | [RESOLUTION.md](RESOLUTION.md) |
 | `ResolutionRecord` | `resolution_record.rb` | value | One resolution and its misses | [RESOLUTION.md](RESOLUTION.md#resolution-records) |
-| `MockNaminator` | `mock_naminator.rb` | primitives | A mock name and its mocked header's include text, and mock classification | [CONVENTIONS.md](CONVENTIONS.md#mock-names-mocknaminator) |
+| `MockNaminator` | `mock_naminator.rb` | primitives | A mock name and its mocked header's include text, and mock classification with a resolver its caller passes | [CONVENTIONS.md](CONVENTIONS.md#mock-names-mocknaminator) |
 | `SourcePairinator` | `source_pairinator.rb` | service | Pairing a resolved header with its source | [CONVENTIONS.md](CONVENTIONS.md#pairing-sourcepairinator) |
 | `PartialModuleMatchinator` | `partial_module_matchinator.rb` | service | A Partial directive's module header and source | [CONVENTIONS.md](CONVENTIONS.md#partial-modules-partialmodulematchinator) |
 | `FileLookupinator` | `file_lookupinator.rb` | service | Lookups in collections | [LOOKUP.md](LOOKUP.md) |
 | `CollectionIndex` | `collection_index.rb` | value | One collection's index | [LOOKUP.md](LOOKUP.md#collectionindex) |
 | `ArtifactIdentity` | `artifact_identity.rb` | value | An artifact's kind, origin, fingerprint and owner | [PLACEMENT.md](PLACEMENT.md#artifact-identity) |
-| `Placeinator` | `placeinator.rb` | service | Every placement below the build root, and every generated name | [PLACEMENT.md](PLACEMENT.md#placeinator) |
+| `Placeinator` | `placeinator.rb` | service | Every placement below the build root, and every generated name but mock names | [PLACEMENT.md](PLACEMENT.md#placeinator) |
 | `Isolator` | `isolator.rb` | service | The isolation copies each test enters | [ISOLATION.md](ISOLATION.md) |
 | `OwnershipLedger` | `ownership_ledger.rb` | record | The owners of each artifact, and leftover removal | [OWNERSHIP.md](OWNERSHIP.md) |
 | `SearchOrderinator` | `search_orderinator.rb` | service | The stage search order of each run | [STAGES.md](STAGES.md#stage-search-orders) |
@@ -90,7 +90,7 @@ Fifteen rules hold across the components. A change to any of them must keep all 
 12. **Collect once per build.** Root lists and collections are built once per build, at its collection point, and never change after it. The test family's tasks share one collection point in a run, and the release has its own, after its `:pre_release` hooks. Plugins add entries through configuration alone.
 13. **Expand only what the author wrote.** Ruby expansion runs once on each configuration value and tool template, and never on a substituted value.
 14. **Templates quote, nothing escapes.** A tool template quotes each path it receives. Ceedling escapes no path for a shell, and warns at load on a shell operator.
-15. **Messages speak to C developers.** A message says in plain words what went wrong. It names every file, line, `#include` and setting involved, and gives the fix when it knows one. A NOTICE or WARNING logs at its cause's first occurrence in a run, and repeats log only at OBNOXIOUS. Every message follows the developer docs' page on writing log messages, `docs/mkdocs/development/log-messages.md`.
+15. **Messages speak to C developers.** A message says in plain words what went wrong. It names every file, line, `#include`, setting and test involved, and gives the fix when it knows one. A NOTICE or WARNING logs at its cause's first occurrence in a run, and repeats log only at OBNOXIOUS. Every message follows the developer docs' page on writing log messages, `docs/mkdocs/development/log-messages.md`.
 
 ## Neighbors
 

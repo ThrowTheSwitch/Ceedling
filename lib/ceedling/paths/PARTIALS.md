@@ -77,8 +77,8 @@ Ceedling reads each directive's module directory and module as text, from the te
 
 A directive that the text scan doesn't read has no route, and the compiler reports an `#include` with no file name. A BuildStepDoctor specialist, `PartialRouteSpecialist`, explains that failure.
 
-- **Symptoms.** GCC's `#include expects "FILENAME" or <FILENAME>` or Clang's `expected "FILENAME" or <FILENAME>`, on a line that holds a Partial directive.
-- **Guidance.** It names the line and the two usual causes: a directive assembled by another macro, or one split in a way the text scan doesn't follow.
+- **Symptoms.** GCC's `#include expects "FILENAME" or <FILENAME>` or Clang's `expected "FILENAME" or <FILENAME>`, on a line whose `#include` names a macro, in a test that includes `ceedling.h`. The line need not hold a Partial directive, since a directive another macro assembles expands where that macro is used. Clang's "expanded from macro" note names the macro.
+- **Guidance.** It quotes the line as written, and names the two usual causes: a directive assembled by another macro, or one split in a way the text scan doesn't follow.
 
 ## Code
 

@@ -18,7 +18,7 @@ A mock name is the mocked header's name with the mock prefix before its stem and
 - **`mock_name( header_text )`** adds the prefix and suffix to the basename and keeps every directory segment.
 - **`mocked_header_text( include_text )`** removes them, or returns nil when the basename doesn't carry both.
 - **Configuration.** A mock prefix and a mock suffix that are both empty fail at load, naming `:cmock` ↳ `:mock_prefix` and `:mock_suffix`, since every name would then be a mock name. Either one alone may be empty. Both are literal text, so no character in them is special.
-- **Callers.** Every core stage calls it, and so do the gcov, Bullseye and FFF plugins.
+- **Callers.** Every core stage calls it, and so does the FFF plugin, which generates mocks. The coverage plugins tell mocks apart by the build plan's kinds, never by name, as [EDGES.md](EDGES.md#coverage-scope) says.
 
 ### Classification
 
@@ -74,7 +74,7 @@ A `TEST_SOURCE_FILE()` entry names a source relative to the source roots, as inc
 - **Absolute entries** name their file directly.
 - **Only collected sources answer.** A test, a support file or a framework file never does.
 - **First answer wins.** Further answers that are other files, by key, log a COMPLAIN NOTICE that names the roots. A climbing entry that reaches one file from two roots is one answer.
-- **No answer** fails, naming the entry and every root tried.
+- **No answer** fails, naming the entry, its file and line, and every root tried. Where the entry, read from the project root, names a collected source below a source root, the error gives the entry rewritten from that root. Where it names a source below a root that no entry collects, the error says so and names `:files` ↳ `:source`.
 
 The entry's source also replaces the paired source of every header with its stem, as [Rules on the paired source](#rules-on-the-paired-source) says. Each test checks its own entries once.
 
@@ -82,12 +82,12 @@ The entry's source also replaces the paired source of every header with its stem
 
 Every settled tie and every failure in these conventions has one shape, so users meet one vocabulary. Each keeps rule 15 of [README.md](README.md#rules-every-component-keeps).
 
-- **A settled tie** logs at COMPLAIN with a NOTICE label, at its first occurrence in a run. In plain words, it names the text as written, the file and line that hold it, the answer, the order that chose it and the other candidates.
-- **A failure** names the text, the file that holds it, every candidate in the configured order, and the fix. A failure with two or more fixes, or one whose fix needs a short explanation first, takes the guidance layout.
+- **A settled tie** logs at COMPLAIN with a NOTICE label, at its first occurrence in a run. In plain words, it names the text as written, the file and line that hold it, the test whose build it is, the answer, the order that chose it and the other candidates.
+- **A failure** names the text, the file and line that hold it, the test whose build it is, every candidate in the configured order, and the fix. A failure with two or more fixes, or one whose fix needs a short explanation first, takes the guidance layout.
 - **Terms.** Messages use glossary terms only, such as include text, search order, root and paired source. A term of Ceedling's own, such as paired source, appears beside a clause that says what it means.
 
 ## Code
 
-- `lib/ceedling/paths/mock_naminator.rb` holds `MockNaminator`. Its functions take the prefix and suffix and depend on no DIY object, so plugins require the file directly.
+- `lib/ceedling/paths/mock_naminator.rb` holds `MockNaminator`. Its functions take the prefix and suffix and depend on no DIY object, so plugins require the file directly. Classification needs resolution, so `classify( include, resolve: )` takes the resolver as an argument, and each stage that classifies passes its `Resolvinator`.
 - `lib/ceedling/paths/source_pairinator.rb` and `partial_module_matchinator.rb` hold DIY objects. Each depends on `Resolvinator`, `FileLookupinator` and the logger.
 - Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of areas `MOCK`, `LINK` and `PART` build real projects.

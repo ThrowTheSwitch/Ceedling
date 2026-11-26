@@ -22,7 +22,7 @@ An entry maps a placement to its identity, its owners and the stage that writes 
 
 ## Leftovers
 
-A leftover is an artifact that no identity in this build owns. The ledger removes it before any later stage can search it.
+A leftover is an artifact that no owner in this build plans. The ledger removes it before any later stage can search it.
 
 - **When.** Once a test's plan for an artifact kind is complete, the ledger removes each artifact of that kind the test owned last build and no longer plans. Mocks, CMock's copies, Partials, routes headers, runners, preprocessed files and the isolation copies of headers that stage 5 plans complete at stage 5. Objects and their outputs, executables, source copies, the isolation copies of headers that stage 14 plans, and results complete at stage 14.
 - **The release.** A release artifact's owner is the release. Its leftovers are the release artifacts the last release planned and this one doesn't, and the ledger removes them once the release's plan is complete.

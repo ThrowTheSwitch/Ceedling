@@ -84,11 +84,11 @@ Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case
 | `contains?( dir, path )` | Whether `dir` is `path` or one of its ancestors, by whole segments |
 | `subpath_below( dir, path )` | The segments from `dir` down to `path`, or nil outside it |
 | `segment_run?( path, text )` | Whether the text's segments appear as one unbroken run in the path's project-relative segments, compared under the key rule of the path's root |
-| `generated?( path, roots )` | Whether the path lies in one of the build's generated directories |
+| `generated?( path, generated_roots )` | Whether the path lies in one of the build's generated roots |
 
 - **Trailing match** needs whole segments. `drivers/uart.h` matches `src/drivers/uart.h` and never `src/xdrivers/uart.h`. Text with `..` collapses by the `..` rule before it is matched.
 - **Case.** Each comparison uses the key rule of the path's root.
-- **Containment** answers every question of the form "inside": root membership, coverage filters and generated-directory tests. The filter that keeps generated files out of preprocessed dependencies calls `generated?( path, roots )` with the build plan's generated roots, so it also catches a `:cmock` ↳ `:mock_path` outside the build root.
+- **Containment** answers every question of the form "inside": root membership, coverage filters and generated-directory tests. The filter that keeps generated files out of preprocessed dependencies calls `generated?( path, generated_roots )` with the build plan's generated roots, so it also catches a `:cmock` ↳ `:mock_path` outside the build root.
 - **`segment_run?`** selects tests for path tasks. A task argument `unit` selects `test/unit/test_a.c` and never `test/unit_extra/test_b.c`. It reads the project-relative spelling, so the project's own parent directories never match, and a symlinked test directory matches as configured.
 
 ## Code

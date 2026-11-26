@@ -68,7 +68,7 @@ Each artifact kind has its root. Below each root but the runners and results roo
 | dependencies root, `<build root>/<context>/dependencies/<test>/_t_/` | dependency files |
 | results root, `<build root>/<context>/results/` | results, at the test's directories |
 
-- **Outside the build root.** `:cmock` ↳ `:mock_path` may sit outside the build root. Containment never stands for "generated": `Matchinator.generated?( path, roots )` tests a path against the build plan's generated roots.
+- **Outside the build root.** `:cmock` ↳ `:mock_path` may sit outside the build root. Containment never stands for "generated": `Matchinator.generated?( path, generated_roots )` tests a path against the build plan's generated roots.
 - **Build contexts.** The out, dependencies and results roots sit below the run's build context, such as `test` or `gcov`, which `Placeinator` takes from the run, since an identity holds no context. Every other root, and each artifact in it, is shared by the build contexts. A context that rewrites one of those files leaves the file no longer matching the digest another context saved, so the artifact is stale there, as [STAGES.md](STAGES.md#the-dependency-cache) says.
 
 ### Each kind's place
@@ -175,5 +175,5 @@ Line markers and dependency files then name each pinned file by its absolute spe
 ## Code
 
 - `lib/ceedling/paths/artifact_identity.rb` holds `ArtifactIdentity`, an immutable value.
-- `lib/ceedling/paths/placeinator.rb` holds `Placeinator`, a DIY object. `place( identity )` returns a `PathRef`, `overlay( dir, owner )` gives a directory's overlay, and `roots` gives the generated roots for `Matchinator.generated?`. `shortened_bases` gives the table of bases and markers, and `unshortened( path )` gives a build path with every marker written back.
+- `lib/ceedling/paths/placeinator.rb` holds `Placeinator`, a DIY object. `place( identity )` returns a `PathRef`, `overlay( dir, owner )` gives a directory's overlay, and `generated_roots` gives the generated roots for `Matchinator.generated?`. `shortened_bases` gives the table of bases and markers, and `unshortened( path )` gives a build path with every marker written back.
 - Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of areas `GEN` and `COV` build real projects.
