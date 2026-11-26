@@ -48,13 +48,14 @@ An inner `..` follows the kernel, which resolves a symlink before it climbs. So 
 
 ### The case rule
 
-Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case probe answers that once per root, at the collection point.
+Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case probe answers that once for each directory it is asked about.
 
-- **The probe** stats each root's directory under a case-swapped spelling and compares the result with the root's own. It probes the project root and the build root too.
+- **The probe** stats an entry inside the directory, one whose name holds a cased letter, under a case-swapped spelling, and compares the result with the entry's own. A directory with no such entry takes its parent's finding.
+- **When.** The collection point probes every root, the project root and the build root. A key asked for before it, as the launcher's mixins and the checks at configuration load ask, takes its own directory's finding, which `PathRef` probes once on first need. The collection point reuses every finding made before it.
 - **Keys.** A path takes the finding of the nearest probed directory above it. Where that file system folds case, the key is the real spelling folded by `downcase`. Elsewhere the key keeps its case. `downcase` keeps `Straße.h` and `STRASSE.h` apart, as NTFS does.
-- **Logging.** Each root's finding is logged at OBNOXIOUS. A case mismatch the file system accepts resolves with no message, as it does for the compiler.
+- **Logging.** Each finding is logged at OBNOXIOUS. A case mismatch the file system accepts resolves with no message, as it does for the compiler.
 
-`Collectinator` builds the probe's table once, as [EDGES.md](EDGES.md#the-collection-point) says, and hands it to `PathRef`. `PathRef` reads no configuration.
+`PathRef` holds the probe's table for the run. `Collectinator` fills it for every root at the collection point, as [EDGES.md](EDGES.md#the-collection-point) says, and `PathRef` adds each directory it probes on first need. `PathRef` reads no configuration.
 
 ### Equality
 
@@ -80,6 +81,6 @@ Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case
 
 ## Code
 
-- `lib/ceedling/paths/path_ref.rb` holds `PathRef`, and `lib/ceedling/paths/matchinator.rb` holds `Matchinator`. Neither depends on a DIY object or on configuration. The probe's table is passed in.
+- `lib/ceedling/paths/path_ref.rb` holds `PathRef`, and `lib/ceedling/paths/matchinator.rb` holds `Matchinator`. Neither depends on a DIY object or on configuration. `Collectinator` fills the probe's table for the roots, and `PathRef` probes any other directory itself.
 - `PathRef` builds on `ProjectPaths` in `lib/ceedling/filesystem/` for its absolute, real and relative forms, and on `BuildSubpath` for its build subpath.
 - Specs: `spec/units/paths/path_ref_spec.rb` and `matchinator_spec.rb`.

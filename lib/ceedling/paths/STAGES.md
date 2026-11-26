@@ -57,9 +57,11 @@ Stage 4 finds the test file's includes with their macros evaluated, before any m
 
 1. **First pass.** The ledger first removes every stand-in the test owned last build, as [OWNERSHIP.md](OWNERSHIP.md#leftovers) says. The preprocessor then runs `-M -MG` on the test file itself, with stage 4's order. `-MG` lists each file it can't find. Each missing file that classifies as a mock include, by [CONVENTIONS.md](CONVENTIONS.md#classification), gets a stand-in.
 2. **Rounds.** A new stand-in pins its mocked header, whose macros can name another mock. So the first pass runs again after any round that added a stand-in. It stops when a round adds none, which is usually after the first.
-3. **Second pass.** The directives-only run writes line markers. Each depth-1 entry gives its directive's header, as [RESOLUTION.md](RESOLUTION.md#include-records) says.
+3. **Second pass.** The directives-only run writes line markers, and its `-dI` flag prints each `#include` it executes. A printed directive is active, even when an include guard or `#pragma once` stops the compiler entering its file again. A directive the pass never printed sits in a branch that is off. Each depth-1 entry gives its directive's header, as [RESOLUTION.md](RESOLUTION.md#include-records) says, and a printed directive with no entry resolves by the model.
 
 A mock that a macro from another header names is found this way, since the first pass opens that header. Fallback runs as [RESOLUTION.md](RESOLUTION.md#fallback) says.
+
+- **Without `-dI`.** A directives-only tool overridden without `-dI` prints no directives. Stage 4 then counts every text-scan directive of the test file as active, and logs one COMPLAIN NOTICE that names the flag.
 
 ## BuildPlan
 
@@ -100,7 +102,7 @@ The build plan names each file a tool run writes, from the tool's configuration.
 
 A release build plans its sources, objects and link as a test build does. It needs only `:paths` ↳ `:source`.
 
-- **Sources.** The release's sources are the source collection. Each object records its source, so no object is matched back to a source by its path.
+- **Sources.** The release's sources are the source collection, which holds no test file, as [EDGES.md](EDGES.md#the-collection-point) says. Each object records its source, so no object is matched back to a source by its path.
 - **Order.** A release source compiles with the release's configured order, which holds no generated directory. It is the configured order without its test parts: the include roots, then the library roots, each glob in its expansion order, then `:release_toolchain_include`, then the directories that `:files` ↳ `:include` headers outside every root add. So a header a test's compile reaches through those roots, a release compile reaches too.
 - **Test roots.** A release needs no `:paths` ↳ `:test`. A test task in a project with no test roots fails and names that setting.
 - **Outputs.** The target and artifacts follow [PLACEMENT.md](PLACEMENT.md#release-placement).

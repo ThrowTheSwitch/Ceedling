@@ -32,7 +32,8 @@ An isolation copy sits at its origin's build subpath in the overlay, under the o
 
 - **Pinned includes.** The copy pins each of its origin's includes, so its own includes never depend on its directory. A computed include stays as written and logs at COMPLAIN with a WARNING label, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
 - **`#line`.** Each copy opens with a `#line 1` directive naming its origin. Compiler messages, `__FILE__` and line markers then name the origin.
-- **Stability.** A copy is an artifact like any other, owned in the ledger and rewritten only when its text changes. A compile database records the compile as it ran, so a replay compiles the same copy.
+- **Stability.** A copy is an artifact like any other, owned in the ledger and rewritten only when its text changes.
+- **The compilation database** names a copy's origin in the copy's place, as [EDGES.md](EDGES.md#compile_commandsjson) says. A replay can then reach a file beside the origin where the compile reached the test's substitute.
 
 ## Sources
 

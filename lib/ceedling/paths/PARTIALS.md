@@ -56,7 +56,8 @@ A Partial carries its module's includes, each pinned to its resolution record's 
 
 Two same-named modules in one test need distinct C names, since C has one namespace. A module qualifier keeps the names Ceedling forms apart.
 
-- **The qualifier.** An `_AT` directive's module directory as written, with each `/` as `_`. `TEST_PARTIAL_PUBLIC_MODULE_AT(a, util)` qualifies its names by `a`.
+- **The qualifier.** An `_AT` directive's module directory, as [Directive arguments](#directive-arguments) reads it, with each `/` and every other character a C name can't hold written as `_`, as the module's own name is. `TEST_PARTIAL_PUBLIC_MODULE_AT(a, util)` qualifies its names by `a`, and `_AT(drivers-v2, util)` by `drivers_v2`.
+- **Collisions.** Folding can give two directives one name, as `_AT(a/b, util)` and `_AT(a, b_util)` both give `a_b_util`. Two directives in one test whose qualified names fold alike fail before compiling, and the error lists both.
 - **Bare directives** stay unqualified, since one test can't hold two bare modules of one name.
 - **What it covers.** Every C name Ceedling forms from the module's name, such as a `PARTIAL_TYPE()` type and a promoted static. It also covers the Partial's file names, so CMock's names for two Mock Partials stay apart whatever `:mock_name_include_folder` says. Routes keep file names out of the test.
 - **In a test.** A test names a qualified module as `<qualifier>_<module>`, as in `PARTIAL_TYPE(a_util, s_ctx)`.

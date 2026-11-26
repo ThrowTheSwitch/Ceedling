@@ -18,9 +18,10 @@
 An include record holds one `#include`: its include text, its form, its includer and its line. Every resolution starts from one.
 
 - **The text scan** gives a record for each `#include` line as written. It reads any include text between the quotes or angle brackets, whatever characters it holds.
-- **Line markers** give the headers the preprocessor entered. Each depth-1 entry answers one directive of the file being preprocessed.
+- **Line markers** give the headers the preprocessor entered. Each depth-1 entry answers one directive of the file being preprocessed. A depth-1 entry from the command line, as a forced include gives, answers no directive.
+- **Printed directives.** Stage 4's second pass also prints each `#include` it executes, with its form and its include text after macro expansion, as [STAGES.md](STAGES.md#stage-4) says. A printed directive is active, even where an include guard or `#pragma once` leaves it no depth-1 entry.
 - **The form** comes from the text scan's record for the same directive, since line markers don't carry it.
-- **A computed `#include`**, whose include text a macro gives, has no text-scan record. Line markers show what it entered. The entry is matched to its directive's line by the includer's key, never by basename.
+- **A computed `#include`**, whose include text a macro gives, has no text-scan record. Its printed directive gives its include text and form, and line markers show what it entered. The entry is matched to its directive's line by the includer's key, never by basename.
 - **`#include_next`** gives a record as `#include` does, marked as a next include, since its search starts later, as [The search](#the-search) says.
 
 ## The model
@@ -54,7 +55,10 @@ A search ends in a hit or leaves the include text unresolved. Each outcome has o
 - **A hit** is the `PathRef` of the file the answering directory holds.
 - **Shadowing.** When later directories of the same search also hold the include text, the hit shadows them. Ceedling logs it at COMPLAIN with a NOTICE label. The message names the include text, the hit, the search order and each shadowed candidate.
 - **Unresolved.** An include text no directory answers is left to the compiler, which may find a system header in its own directories.
-- **A near miss stops the build.** If no directory answers a quoted include but a user header ends with the include text by trailing match, the build stops before any compile. The error names the include text, the header and both fixes: a search path that joins the text to the header, or include text written from a search path.
+- **A near miss.** No directory answers a quoted include, but a user header ends with the include text by trailing match. Its handling depends on whether the compile processes the directive.
+  - **A test file directive the compile processes** stops the build before any compile. That is one stage 4's first pass lists among the files it can't find, or any test file directive without test preprocessing. The error names the include text, the header and both fixes: a search path that joins the text to the header, or include text written from a search path.
+  - **Any other record,** such as a header's text-scan record, may sit in a branch that is off. Its near miss logs at COMPLAIN with a NOTICE label, naming the include as written, its file and line, and the header. The include is left to the compiler. If the compile then fails on it, a BuildStepDoctor specialist names the header.
+  - **The compiler's own directories** are never read, since search paths come only from configuration.
 
 ## Resolution records
 
@@ -80,7 +84,7 @@ Under isolation, the isolation copy's origin gates the rebuild, never the copy i
 Where a build has them, line markers and dependency files show what the compiler entered. They confirm the model and never replace it.
 
 - Line markers exist only with test or mock preprocessing on. A dependency file exists only after a compile, from a toolchain that writes one.
-- Each depth-1 line-marker entry checks its directive's record. Each dependency file's names check its object's records. Both comparisons are by key.
+- Each depth-1 line-marker entry checks its directive's record. A printed directive with no entry checks nothing, since the compiler entered its file earlier. Each dependency file's names check its object's records. Both comparisons are by key.
 - A mismatch logs at COMPLAIN with a NOTICE label that names both answers. Dependency tracking then uses the compiler's answer.
 
 ## Fallback

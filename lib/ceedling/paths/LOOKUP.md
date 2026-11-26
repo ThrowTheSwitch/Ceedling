@@ -19,6 +19,7 @@ A collection holds the user files of one kind. The kinds are tests, sources, hea
 - **Built once.** `Collectinator` builds each collection at the collection point, from `:paths`, `:files` and every plugin's entries, and then freezes it, as [EDGES.md](EDGES.md#the-collection-point) says.
 - **Order.** A collection follows `:paths` order, each glob in its expansion order, then `:files` additions in order.
 - **User files only.** Framework files and generated files belong to no collection. The build plan places them.
+- **Test files** are in the test collection alone, so no lookup of a source returns one, as [EDGES.md](EDGES.md#the-collection-point) says.
 - **Configuration only.** A test's `TEST_INCLUDE_PATH()` directories add search paths to that test alone. They add nothing to any collection.
 
 ## CollectionIndex

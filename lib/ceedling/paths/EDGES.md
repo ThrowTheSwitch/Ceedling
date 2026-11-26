@@ -42,7 +42,7 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 | `cmd.exe` and direct spawn, on Windows | `%`, `"` | `%` hands the line to `cmd.exe`, which expands `%NAME%` inside quotes. `"` ends the argument |
 
 - **Never counted.** Glob syntax, text inside a Ruby expansion, and `\` on Windows, where it is a separator. `&`, `|`, `^`, `!`, `'` and spaces are plain text inside quotes on every platform.
-- **The warning.** Once per setting, at COMPLAIN, which carries a WARNING label. It names the setting, the entry and the operator, and says that the path is unsupported and gives unpredictable results.
+- **The warning.** Once per entry, at COMPLAIN, which carries a WARNING label. It names the setting, the entry and the operator, and says that the path is unsupported and gives unpredictable results. A setting with one value, such as the build root, warns once.
 
 ## Collectinator
 
@@ -52,6 +52,7 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 
 - **When.** The first time a task reads a root list or a collection. Rake runs a task's prerequisite tasks first, such as a Dependencies fetch and build, and every `:pre_build` and `:pre_release` hook fires before it. A file any of them writes into a root is collected like any other.
 - **What.** Glob expansion of every entry, the case probe for each root, each collection and its index, and the implicit roots.
+- **Test files.** A test file is in no other collection. `Collectinator` removes each file of the test collection from the source collection and the release inputs, by key. It logs the overlap once at COMPLAIN with a WARNING label, naming the entries that reach the test files.
 - **Frozen.** After the point, no code adds to or removes from a root list or a collection. A file a later stage writes is a generated file, which the build plan places.
 - **Listing tasks**, such as `files:header` and `paths:include`, reach the point with nothing before it.
 - **Hooks.** A hook that fires before the point receives no collection.
@@ -207,7 +208,7 @@ Tasks that take a file name look it up as [LOOKUP.md](LOOKUP.md#task-arguments) 
 The launcher reads paths before configuration loads. Every one enters by `PathRef.of` from the working directory, as [PATHS.md](PATHS.md#intake) says: `--project`, `CEEDLING_PROJECT_FILE`, `--logfile`, `--mixin`, mixin load paths and `:which_ceedling`.
 
 - **`~user`** names a directory of that name in the working directory, on every platform. `~` and `~/` name the home directory.
-- **Mixins** deduplicate by key, so one file reached by two spellings merges once.
+- **Mixins** deduplicate by key, so one file reached by two spellings merges once. Each mixin's key takes its directory's case finding, which `PathRef` probes on first need, since the collection point comes later, as [PATHS.md](PATHS.md#the-case-rule) says.
 - **Order.** Project discovery, the mixin load-path order and installation selection keep their documented order. `gem`, in any case, names the running launcher.
 - **Components.** The launcher uses `PathRef` and `Matchinator` alone, since neither needs a DIY object or configuration.
 
