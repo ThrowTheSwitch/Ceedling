@@ -88,6 +88,8 @@ Every settled tie and every failure in these conventions has one shape, so users
 
 ## Code
 
-- `lib/ceedling/paths/mock_naminator.rb` holds `MockNaminator`. Its functions take the prefix and suffix and depend on no DIY object, so plugins require the file directly. Classification needs resolution, so `classify( include, resolve: )` takes the resolver as an argument, and each stage that classifies passes its `Resolvinator`.
+- `lib/ceedling/paths/mock_naminator.rb` holds `MockNaminator`, one class with two faces.
+  - **Class functions.** `mock_name` and `mocked_header_text` take the prefix and suffix as arguments and depend on no DIY object, so plugins require the file and call them directly.
+  - **A DIY instance.** Core builds it with `Resolvinator` and the configuration. Its `classify( include, search_order: )` reads the prefix and suffix from configuration, resolves with its `Resolvinator`, and builds on the class functions. Plugins never classify, since they read mocks from the build plan.
 - `lib/ceedling/paths/source_pairinator.rb` and `partial_module_matchinator.rb` hold DIY objects. Each depends on `Resolvinator`, `FileLookupinator` and the logger.
 - Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of areas `MOCK`, `LINK` and `PART` build real projects.

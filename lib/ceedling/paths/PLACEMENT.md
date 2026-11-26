@@ -13,7 +13,7 @@
 
 ## Artifact identity
 
-An `ArtifactIdentity` is an immutable value that names one artifact. Two equal identities are one artifact, and one identity has one placement.
+An `ArtifactIdentity` is an immutable value that names one artifact. Two equal identities are one artifact, and one identity has one placement in a run, as [Layout](#layout) says of build contexts.
 
 | Field | Holds |
 | --- | --- |
@@ -69,7 +69,7 @@ Each artifact kind has its root. Below each root but the runners and results roo
 | results root, `<build root>/<context>/results/` | results, at the test's directories |
 
 - **Outside the build root.** `:cmock` ↳ `:mock_path` may sit outside the build root. Containment never stands for "generated": `Matchinator.generated?( path, generated_roots )` tests a path against the build plan's generated roots.
-- **Build contexts.** The out, dependencies and results roots sit below the run's build context, such as `test` or `gcov`, which `Placeinator` takes from the run, since an identity holds no context. Every other root, and each artifact in it, is shared by the build contexts. A context that rewrites one of those files leaves the file no longer matching the digest another context saved, so the artifact is stale there, as [STAGES.md](STAGES.md#the-dependency-cache) says.
+- **Build contexts.** The out, dependencies and results roots sit below the run's build context, such as `test` or `gcov`, which `Placeinator` takes from the run's build plan, since an identity holds no context. So one identity has one placement within a run, and its objects, dependency files and results move with the context. Every other root, and each artifact in it, is shared by the build contexts. A context that rewrites one of those files leaves the file no longer matching the digest another context saved, so the artifact is stale there, as [STAGES.md](STAGES.md#the-dependency-cache) says.
 
 ### Each kind's place
 

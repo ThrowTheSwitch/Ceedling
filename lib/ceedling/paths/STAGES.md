@@ -87,7 +87,7 @@ The build plan is the record of what one build compiles, links and places, and w
 | outputs | the runner, the executable, its results, and the files each tool run writes | stages 5 and 14 |
 
 - **Stand-ins first.** Under test preprocessing, stage 4 forms each mock's and each Partial's placement for its stand-in, so a Partial's module header and source resolve there, and a failure to find them stops the build at stage 4. Stage 5 then records the identities.
-- **Build-wide.** The plan also holds the generated roots and the framework files' placements.
+- **Build-wide.** The plan also holds the build context, the generated roots and the framework files' placements.
 - **Generated files resolve before they are written.** Resolution answers a generated directory from the plan's placements, as [RESOLUTION.md](RESOLUTION.md#the-model) says.
 - **Sources.** Each object records its source, so a compile reads its input from the plan. The Partial stages read a module's header and source there.
 - **Lifetime.** The plan lives in memory for one run. The dependency cache saves resolution records, and the ledger saves ownership.
@@ -127,5 +127,5 @@ The dependency cache saves each target's resolution records with their misses, i
 
 - `lib/ceedling/paths/search_orderinator.rb` holds `SearchOrderinator`, a DIY object. `order( stage:, run:, test: )` returns a list of `PathRef`s, and `digest( order )` returns its digest.
 - `lib/ceedling/paths/build_plan.rb` holds `BuildPlan`, a value with one part per test and a lock for its writers. The test and release planners fill it.
-- **Reaching the plan.** The test or release invoker makes each run's plan and hands it to the services that read it, such as `Resolvinator`, `Isolator`, `PartialRoutinator` and `CoverageScopinator`, as the run starts. Each holds it for the run, so no service builds a plan or reaches one through DIY.
+- **Reaching the plan.** The test or release invoker makes each run's plan and hands it to the services that read it, such as `Placeinator`, `Resolvinator`, `Isolator`, `PartialRoutinator` and `CoverageScopinator`, through one `start_run( plan )` call to each as the run starts. Each holds it for the run, so no service builds a plan or reaches one through DIY. `Placeinator` takes the run's build context from it.
 - Specs: `spec/units/paths/search_orderinator_spec.rb` checks every row of the table. The contract rows report each object's search paths, so the `DELTA` and `GEN` areas check the orders in real builds.

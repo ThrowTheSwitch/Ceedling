@@ -28,7 +28,7 @@ One `#include` passes through five steps. Each step reads only what the steps be
 
 1. A text scan or line markers give an include record: the include text, its form, its includer and its line.
 2. `Resolvinator` searches. A quoted include tries its includer's directory first. Every include then tries the compile's search order. The first directory that holds the include text answers.
-3. `MockNaminator` classifies the result, with the `Resolvinator` its caller passes. An include that resolves to no user file, and whose basename carries the mock prefix and suffix, is a mock include. Its mocked header's text resolves from the same includer, in the same form, with generated directories left out.
+3. `MockNaminator` classifies the result, through its DIY instance and its `Resolvinator`. An include that resolves to no user file, and whose basename carries the mock prefix and suffix, is a mock include. Its mocked header's text resolves from the same includer, in the same form, with generated directories left out.
 4. `SourcePairinator` pairs the resolved header with the source that implements it.
 5. The resolution record, with its misses, joins the build plan. Later stages read it, and the dependency cache saves it for delta builds.
 
@@ -45,7 +45,7 @@ A generated file passes through four steps, recorded in the build plan as it goe
 
 ## Components
 
-Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`, which lives in `lib/ceedling/tools/` beside `ToolExecutor`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object. A record is a DIY object that keeps its state between builds. A value a service reads for one run, such as the run's `BuildPlan`, reaches it from the run's invoker, as [STAGES.md](STAGES.md#code) says, never through DIY.
+Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`, which lives in `lib/ceedling/tools/` beside `ToolExecutor`. A value or a set of primitives uses no DIY objects and reads no configuration, so the launcher in `bin/` can use it. A service is a DIY object. A record is a DIY object that keeps its state between builds. One class may offer two faces, as `MockNaminator` does: class functions plugins call directly, and a DIY instance built on them. A value a service reads for one run, such as the run's `BuildPlan`, reaches it from the run's invoker, as [STAGES.md](STAGES.md#code) says, never through DIY.
 
 | Component | File | Kind | Job | Described in |
 | --- | --- | --- | --- | --- |
@@ -53,7 +53,7 @@ Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`,
 | `Matchinator` | `matchinator.rb` | primitives | Segments, trailing match, containment, generated-directory tests | [PATHS.md](PATHS.md#matchinator) |
 | `Resolvinator` | `resolvinator.rb` | service | Resolution by the compiler's rules | [RESOLUTION.md](RESOLUTION.md) |
 | `ResolutionRecord` | `resolution_record.rb` | value | One resolution and its misses | [RESOLUTION.md](RESOLUTION.md#resolution-records) |
-| `MockNaminator` | `mock_naminator.rb` | primitives | A mock name and its mocked header's include text, and mock classification with a resolver its caller passes | [CONVENTIONS.md](CONVENTIONS.md#mock-names-mocknaminator) |
+| `MockNaminator` | `mock_naminator.rb` | primitives and service | A mock name and its mocked header's include text, and mock classification | [CONVENTIONS.md](CONVENTIONS.md#mock-names-mocknaminator) |
 | `SourcePairinator` | `source_pairinator.rb` | service | Pairing a resolved header with its source | [CONVENTIONS.md](CONVENTIONS.md#pairing-sourcepairinator) |
 | `PartialModuleMatchinator` | `partial_module_matchinator.rb` | service | A Partial directive's module header and source | [CONVENTIONS.md](CONVENTIONS.md#partial-modules-partialmodulematchinator) |
 | `FileLookupinator` | `file_lookupinator.rb` | service | Lookups in collections | [LOOKUP.md](LOOKUP.md) |
