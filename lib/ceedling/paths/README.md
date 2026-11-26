@@ -85,7 +85,7 @@ Fifteen rules hold across the components. A change to any of them must keep all 
 7. **Generated files are planned.** Their placements come from the build plan, and no lookup returns one.
 8. **Forward slashes.** Every path Ceedling holds uses `/`. Intake converts.
 9. **One placement authority.** Only `Placeinator` forms a path below the build root, and it forms each one from an artifact identity. No code reads an identity back from a path.
-10. **Pinned includes.** Every `#include` Ceedling writes names its file by absolute spelling, so no search or shadowing can redirect it.
+10. **Pinned includes.** Every `#include` Ceedling writes names its file by absolute spelling, so no search or shadowing can redirect it. A header whose text holds `#include_next` is excepted. Its include stays as written, and Ceedling checks that it reaches the same file.
 11. **Removal by record.** During a build, only `OwnershipLedger` removes an artifact, and only one it recorded.
 12. **Collect once.** Root lists and collections are built once per run, at the collection point, and never change after it. Plugins add entries through configuration alone.
 13. **Expand only what the author wrote.** Ruby expansion runs once on each configuration value and tool template, and never on a substituted value.

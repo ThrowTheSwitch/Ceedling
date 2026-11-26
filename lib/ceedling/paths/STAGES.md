@@ -32,7 +32,7 @@ A directory appears once, at its first place, by key.
 | Stage | Run | Stage search order |
 | --- | --- | --- |
 | 2 | text scan | none. Resolution uses the configured order |
-| 4, first pass | `-M -MG` on the test file | the stand-in root's overlays, the configured order, the stand-in root |
+| 4, first pass | `-M -MG` on the test file | the stand-in root's overlays and reach directories, the configured order, the stand-in root |
 | 4, second pass | directives-only | the same as the first pass |
 | 5 | planning | none. Resolution uses the configured order |
 | 6, 7 | a Partial module's header and source | the configured order |
@@ -53,7 +53,7 @@ A directory appears once, at its first place, by key.
 
 ## Stage 4
 
-Stage 4 finds the test file's includes with their macros evaluated, before any mock exists. It reads only stand-ins and user files, and it holds nothing aside.
+Stage 4 finds the test file's includes with their macros evaluated, before any mock exists. It reads only stand-ins and user files, and it holds nothing aside. Its overlays below the stand-in root recreate symlinks and form reach directories, as [PLACEMENT.md](PLACEMENT.md#stand-ins) says.
 
 1. **First pass.** The preprocessor runs `-M -MG` on the test file itself, with stage 4's order. `-MG` lists each file it can't find. Each missing file that classifies as a mock include, by [CONVENTIONS.md](CONVENTIONS.md#classification), gets a stand-in.
 2. **Rounds.** A new stand-in pins its mocked header, whose macros can name another mock. So the first pass runs again after any round that added a stand-in. It stops when a round adds none, which is usually after the first.

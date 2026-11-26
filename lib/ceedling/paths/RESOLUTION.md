@@ -21,6 +21,7 @@ An include record holds one `#include`: its include text, its form, its includer
 - **Line markers** give the headers the preprocessor entered. Each depth-1 entry answers one directive of the file being preprocessed.
 - **The form** comes from the text scan's record for the same directive, since line markers don't carry it.
 - **A computed `#include`**, whose include text a macro gives, has no text-scan record. Line markers show what it entered. The entry is matched to its directive's line by the includer's key, never by basename.
+- **`#include_next`** gives a record as `#include` does, marked as a next include, since its search starts later, as [The search](#the-search) says.
 
 ## The model
 
@@ -38,6 +39,7 @@ A search tries directories in order, and the first directory that holds the incl
 1. **The quote rule.** A quoted include tries its includer's directory first. A generated includer's directory comes from the build plan.
 2. **The search order.** Each search path of the compile's search order follows, in order. The stage search order sets that list for each compile, as [STAGES.md](STAGES.md#stage-search-orders) says.
 3. **Angle includes** skip step 1.
+4. **`#include_next`** continues after the search path that answered its includer, as GCC and Clang do. The includer's resolution record gives that search path. An includer that the quote rule reached restarts at the first search path. One reached by absolute spelling, and the file being compiled, search as `#include` does.
 
 Three rules shape each join.
 

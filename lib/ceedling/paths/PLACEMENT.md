@@ -100,34 +100,39 @@ A release places its objects at their sources' build subpaths below `<build root
 
 An overlay lets include text reach a generated file exactly where the compiler would have reached its origin. The overlay of a directory is that directory's build subpath below the test's overlay root.
 
-- **Order.** In each compile that reads generated files through user text, each search path's overlay stands just ahead of that search path. Only an overlay that holds a generated file at or below it is listed.
+- **Order.** In each compile that reads generated files through user text, each search path's overlay stands just ahead of that search path. An overlay is listed when a recorded include text joined to it reaches a generated file. Climbing text counts, so `"../common/mock_defs.h"` through search path `src/app` lists `src/app`'s overlay, though the mock sits in `src/common`'s. `Placeinator` creates every overlay an order lists, since the kernel climbs only out of a directory that exists.
 - **Mocks.** A mock include's mocked header text resolves through some search path to its header. The mock include's own text then joins that search path's overlay first and reaches the header's mock. So `"mock_foo.h"` and `"drivers/mock_foo.h"`, with search paths `src` and `src/drivers`, reach the one mock of `src/drivers/foo.h`.
 - **Substitutes.** CMock's copy and each isolation copy carry their origin's name. Any include text that would reach the origin through a search path reaches its substitute in that path's overlay first.
-- **Quote-rule origins.** A mocked header that resolved by the quote rule, from a directory that is no search path, has its overlay at the end of the order. Its mock is found there, since no user file carries a mock name.
+- **Quote-rule origins.** A mocked header that resolved by the quote rule, from a directory that is no search path, has its includer directory's overlay at the end of the order, listed and created by the same rule. Its mock is found there, since no user file carries a mock name.
+- **Symlinks.** A generated file sits once, at its origin's build subpath, which follows the real spelling. Where a recorded join passes through a symlink below its search path, `Placeinator` recreates that link in each listed overlay, pointed at the overlay of the link's target. With `src/hal` → `../vendor/hal` and search path `src`, `"hal/mock_gpio.h"` joins `src`'s overlay, follows the recreated `hal` and reaches the mock in `vendor/hal`'s overlay. A linked header file gets one link for each generated file that takes its place: its substitute under the header's name, and its mock under the mock name. So one header keeps one place and one mock.
+- **Links on Windows.** A recreated directory link is a junction, and a recreated file link is a hard link. The build stops and names the link only when neither can be made.
 - **One mock per header.** A test that names one mocked header by two texts has one mock, named by the text with the most path. Both texts reach it.
 - **The mock include folder.** The folder of that text names the mock's include guard and lifecycle functions, and FFF's identifiers, as `:mock_name_include_folder` documents. It is part of the mock's fingerprint.
 
 ### Reach directories
 
-A climbing mock include can leave the overlay root, as `"../../ext/mock_sensor.h"` does from `test/` for a header outside the project. Its join then needs a reach directory, which `Placeinator` forms below the overlay root.
+A climbing include text can leave the overlay root, as `"../../ext/mock_sensor.h"` does from `test/` for a header outside the project. Its join then needs a reach directory, which `Placeinator` forms below the overlay root.
 
-- **The rule.** The reach directory is the mock's directory less the text's trailing named segments, plus one `_r_` segment for each `..`. Joined with the text, it gives the mock's placement.
-- **Its place.** It stands in the order where the search path that answered the mocked header stands.
+- **Which includes.** Every climbing include text whose join leaves the overlay root, whether it is a mock include or an include that reaches a substitute.
+- **The rule.** The reach directory is the generated file's directory less the text's trailing named segments, plus one `_r_` segment for each level the text climbs in all. So `"../inc/../../ext/mock_sensor.h"` takes two. Joined with the text, the reach directory gives the generated file's placement.
+- **Its place.** It stands in the order where the overlay of the search path that answered stands. A reach directory for a header the quote rule answered stands with the quote-rule overlays.
 - **Directories.** `Placeinator` creates every directory the join passes through, since the kernel resolves each `..` on disk.
 
 ### Stand-ins
 
 Stage 4 runs before any mock or Partial exists, so it searches the stand-in root's overlays in place of the overlay root's. It never reads a mock, copy or Partial an earlier build wrote.
 
+- **Overlays below the stand-in root** follow the rules of [Overlays](#overlays): the same listing, recreated symlinks and reach directories, formed below the stand-in root.
 - **A mock's stand-in** pins its mocked header, so stage 4 sees the header's macros as the compile will through the mock.
 - **A Partial's stand-in** is blank. Stage 4's routes header routes each Partial directive to it.
 - **Rewrites.** A stand-in is rewritten only when its text changes.
 
 ## Pinned includes
 
-Every `#include` Ceedling writes is a pinned include. It names its file by absolute spelling, so the compiler opens that file with no search and nothing can shadow it.
+Every `#include` Ceedling writes is a pinned include, apart from the case of `#include_next` below. It names its file by absolute spelling, so the compiler opens that file with no search and nothing can shadow it.
 
 - **Its file.** A pinned include names its resolution record's hit. Where the test substitutes the hit, it names the substitute.
+- **`#include_next` headers.** No pinned include names a header whose text holds `#include_next`. A header opened by absolute spelling searches its `#include_next` as an `#include`, which can enter the header itself again. So Ceedling writes that include as written, and checks that the generated file's own stage search order reaches the same hit. Where it doesn't, the build stops and names the header and the file the generated file would reach instead.
 - **Where they appear.** Runners pin each header the test file's records hit. Partials pin their module's includes, remapped as [PARTIALS.md](PARTIALS.md#remapping) says. The mocked header file CMock reads pins its origin's includes. Isolation copies pin their origin's includes. Routes pin their Partials.
 - **A mock's own include.** A mock pins its mocked header. Under `:treat_inlines` ↳ `:include` it pins CMock's copy beside it.
 - **Computed includes.** An `#include` that a macro names has no text to pin, so it stays as written and resolves through the search order. In an isolation copy, Ceedling logs each one at COMPLAIN with a WARNING label.
