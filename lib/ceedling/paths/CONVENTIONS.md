@@ -28,6 +28,8 @@ An include is a mock include only when resolution says so. Classification follow
 2. **Otherwise its basename carries the prefix and suffix.** Then `mocked_header_text` gives the mocked header's include text. That text resolves from the same includer through the same search order, with generated directories left out.
 3. **The mocked header resolves.** Then the include is a mock include, and the mocked header is the mock's origin. If it doesn't resolve, the build fails, naming both include texts.
 
+- **Absolute text.** A mock include written as an absolute path names a file no overlay can supply, since absolute text gets no search. It fails where classification meets it, before any compile. The error names the `#include` and asks for include text written from a search path.
+
 ## Pairing: SourcePairinator
 
 Pairing finds the source that implements a resolved header, so a test that includes `uart.h` links `uart.c`. A test's `TEST_SOURCE_FILE()` entry decides first. Otherwise three tiers run in order, and the first hit ends the search.
@@ -38,13 +40,13 @@ Pairing finds the source that implements a resolved header, so a test that inclu
 
 A header no tier answers pairs no source, as a header of types or macros needs none.
 
-- **An entry first.** A header whose stem a `TEST_SOURCE_FILE()` entry's source shares pairs that source, and no tier decides it. The stem tier never runs for that header, so a tie there never fails it.
+- **An entry first.** A header whose stem a `TEST_SOURCE_FILE()` entry's source shares pairs that source, and no tier runs for it. So no stem-tier tie can fail it.
 - **Timing.** Pairing is final once the test's entries are: at stage 5 without test preprocessing, and at stage 14 with it, since the entries then arrive at stage 11. A stem-tier tie fails, and the stem tier's NOTICE logs, only then.
 
 ### Rules on the paired source
 
 - **Mocks.** A mock removes its mocked header's paired source from the link set, by key.
-- **`TEST_SOURCE_FILE()`.** A directive's source replaces the paired source of every header with its stem. A COMPLAIN NOTICE names both: the directive's source, and the source the beside or mirror tier finds. Where neither tier finds one, the NOTICE names the header and the directive's source. This lets a test link an alternate implementation.
+- **`TEST_SOURCE_FILE()`.** A directive's source replaces the paired source of every header with its stem. This lets a test link an alternate implementation. Nothing logs, since the directive in the test names the source.
 - **Support sources.** A paired source that is also a support source links once.
 - **Every mode.** Pairing runs on the resolved header, so it follows the header the compiler takes, with or without test preprocessing.
 

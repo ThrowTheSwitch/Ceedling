@@ -25,6 +25,7 @@ Under `:treat_inlines` ↳ `:include`, CMock's copy substitutes each mocked head
 - **Timing.** Header copies are planned at stage 5, for the files the test's compiles enter by then. Source copies are planned at stage 14, once a test's sources are final, since `TEST_SOURCE_FILE()` entries arrive at stage 11 under test preprocessing. The header copies that only those sources enter are planned with them, at stage 14. All of it precedes stage 15, which writes no plan state.
 - **Writing.** A header copy is written as soon as it is planned, so it exists before any run that can enter it.
 - **No substitute, no copies.** A test that substitutes no header needs no isolation.
+- **`#include_next` headers.** A header whose text holds `#include_next` never gets a copy. The copy's next search would continue after the copy's overlay, at the search path that overlay repeats, and so enter the copy's own origin. So where the rule calls for one, planning stops the build and names the header and the substituted header it reaches. This matches [PLACEMENT.md](PLACEMENT.md#pinned-includes)'s rule for pinned includes.
 
 ## Copies
 
