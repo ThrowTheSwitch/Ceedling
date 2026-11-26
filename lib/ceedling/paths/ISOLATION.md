@@ -22,7 +22,8 @@ Under `:treat_inlines` ↳ `:include`, CMock's copy substitutes each mocked head
 - **The rule.** Every user file the test's build enters that reaches a substituted header by the quote rule, directly or through other such files, gets an isolation copy.
 - **By key.** Hits compare by key. So a file reached through any search path, `.` included, and by any spelling, counts the same way.
 - **Its input.** `Isolator` reads the include records of every header and source the test's compiles enter. The text scan reads each such file once per change to it.
-- **Timing.** Header copies are planned at stage 5. Source copies are planned at stage 14, once a test's sources are final, since `TEST_SOURCE_FILE()` entries arrive at stage 11 under test preprocessing. Both precede stage 15, which writes no plan state.
+- **Timing.** Header copies are planned at stage 5, for the files the test's compiles enter by then. Source copies are planned at stage 14, once a test's sources are final, since `TEST_SOURCE_FILE()` entries arrive at stage 11 under test preprocessing. The header copies that only those sources enter are planned with them, at stage 14. All of it precedes stage 15, which writes no plan state.
+- **Writing.** A header copy is written as soon as it is planned, so it exists before any run that can enter it.
 - **No substitute, no copies.** A test that substitutes no header needs no isolation.
 
 ## Copies
@@ -46,5 +47,5 @@ A copy's pins are in the fingerprint of every object whose compile enters it, as
 ## Code
 
 - `lib/ceedling/paths/isolator.rb` holds `Isolator`, a DIY object. It depends on the build plan and `Placeinator`.
-- `plan( test, stage: )` returns the isolation copies for one test's part of the build plan: header copies at stage 5 and source copies at stage 14.
+- `plan( test, stage: )` returns the isolation copies for one test's part of the build plan: header copies at stage 5, and at stage 14 the source copies with the header copies only those sources enter.
 - Specs: `spec/units/paths/isolator_spec.rb` stubs resolution records. The contract rows of area `ISO` build real projects.

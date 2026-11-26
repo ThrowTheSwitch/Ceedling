@@ -30,7 +30,7 @@ An include is a mock include only when resolution says so. Classification follow
 
 ## Pairing: SourcePairinator
 
-Pairing finds the source that implements a resolved header, so a test that includes `uart.h` links `uart.c`. Three tiers run in order, and the first hit ends the search.
+Pairing finds the source that implements a resolved header, so a test that includes `uart.h` links `uart.c`. A test's `TEST_SOURCE_FILE()` entry decides first. Otherwise three tiers run in order, and the first hit ends the search.
 
 1. **Beside.** A source in the header's own directory, with the header's stem and a source extension.
 2. **Mirror.** The header's path below its nearest base, with a source extension, found by root-relative lookup over the source roots. `include/drv/gpio.h`, below base `include`, pairs `src/drv/gpio.c`, below root `src`. A header below no base, such as one only `:files` supplies, skips this tier.
@@ -38,10 +38,13 @@ Pairing finds the source that implements a resolved header, so a test that inclu
 
 A header no tier answers pairs no source, as a header of types or macros needs none.
 
+- **An entry first.** A header whose stem a `TEST_SOURCE_FILE()` entry's source shares pairs that source, and no tier decides it. The stem tier never runs for that header, so a tie there never fails it.
+- **Timing.** Pairing is final once the test's entries are: at stage 5 without test preprocessing, and at stage 14 with it, since the entries then arrive at stage 11. A stem-tier tie fails, and the stem tier's NOTICE logs, only then.
+
 ### Rules on the paired source
 
 - **Mocks.** A mock removes its mocked header's paired source from the link set, by key.
-- **`TEST_SOURCE_FILE()`.** A directive's source replaces the paired source of every header with its stem. A COMPLAIN NOTICE names both. This lets a test link an alternate implementation.
+- **`TEST_SOURCE_FILE()`.** A directive's source replaces the paired source of every header with its stem. A COMPLAIN NOTICE names both: the directive's source, and the source the beside or mirror tier finds. Where neither tier finds one, the NOTICE names the header and the directive's source. This lets a test link an alternate implementation.
 - **Support sources.** A paired source that is also a support source links once.
 - **Every mode.** Pairing runs on the resolved header, so it follows the header the compiler takes, with or without test preprocessing.
 
@@ -52,7 +55,7 @@ A Partial directive names a module, and an `_AT` directive also names its module
 1. **Header by resolution.** The text `<module directory>/<module>` with each header extension, or `<module>` with each for a bare directive, resolves as a quoted include from the test file. It searches the test's own search order with generated directories left out, so another test's search paths never count. Extensions are tried in `:extension` order, and the first hit wins.
 2. **Header by trailing match.** For an `_AT` directive, a trailing match of the same text over the header collection follows a miss. One candidate is the header. Two or more fail, listing them and asking for more of the module directory.
 3. **Source by pairing.** `SourcePairinator` pairs the header.
-4. **A module with no header.** An `_AT` directive's source is a trailing match of `<module directory>/<module>`, with each source extension, over the source collection. A bare directive's source is a root-relative lookup of `<module>` over the source roots.
+4. **A module with no header.** A module has no header only when its header text, with each header extension, matches no file in the header collection: `<module directory>/<module>` by trailing match for an `_AT` directive, and `<module>` by basename for a bare one. An `_AT` directive's source is then a trailing match of `<module directory>/<module>`, with each source extension, over the source collection. A bare directive's source is a root-relative lookup of `<module>` over the source roots. A bare directive whose header the search order misses, while the header collection holds one, fails instead. The error lists those headers, and asks for a search path or an `_AT` directive.
 5. **Nothing found.** No header and no source fails, naming the directive and each text tried.
 
 - **Case.** Names compare under the key rule, so nothing folds case on its own.

@@ -22,7 +22,7 @@ An entry maps a placement to its identity, its owners and the stage that writes 
 
 A leftover is an artifact that no identity in this build owns. The ledger removes it before any later stage can search it.
 
-- **When.** Once a test's plan for an artifact kind is complete, the ledger removes each artifact of that kind the test owned last build and no longer plans. Mocks, Partials, runners and header copies complete at stage 5. Objects, source copies and results complete at stage 14.
+- **When.** Once a test's plan for an artifact kind is complete, the ledger removes each artifact of that kind the test owned last build and no longer plans. Mocks, Partials, runners and the header copies stage 5 plans complete at stage 5. Objects, source copies, the header copies stage 14 plans, and results complete at stage 14.
 - **Stand-ins.** Stage 4's rounds search the stand-ins that earlier rounds wrote, so their removal can't wait for stage 4's plan to complete. When stage 4 runs for a test, it starts by removing every stand-in the test owned last build, and each round writes the stand-ins it plans.
 - **Owners that leave.** When the ledger loads, an owner whose test file is no longer in the test collection leaves every entry. An entry with no owner left is removed.
 - **Exact names.** A rerun removes a test's results by their placements, never by a glob.

@@ -70,6 +70,7 @@ The build plan is the record of what one build compiles, links and places, and w
 | resolution records | the resolution of every include record in each user file the test's runs enter | stages 2 to 5, and 11 |
 | mocks | each mock's identity, placement, include texts and folder | stage 5 |
 | Partials | each Partial's identity, placement, module header and source, and route lines | stage 5 |
+| pairing | each resolved header's paired source, or none | stage 5, or stage 14 under test preprocessing |
 | stand-ins | each stand-in's placement | stage 4 |
 | isolation | each isolation copy with its origin | stages 5 and 14 |
 | objects | each object's identity, kind, source, placement and stage search order | stage 14 |
