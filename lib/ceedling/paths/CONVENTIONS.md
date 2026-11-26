@@ -25,8 +25,8 @@ A mock name is the mocked header's name with the mock prefix before its stem and
 An include is a mock include only when resolution says so. Classification follows three steps.
 
 1. **The include text resolves to a user file.** Then it is a plain include, whatever its name. A real `MockupDisplay.h` under the prefix `Mock` is a header, not a mock.
-2. **Otherwise its basename carries the prefix and suffix.** Then `mocked_header_text` gives the mocked header's include text. That text resolves from the same includer through the same search order, with generated directories left out.
-3. **The mocked header resolves.** Then the include is a mock include, and the mocked header is the mock's origin. If it doesn't resolve, the build fails, naming both include texts. At stage 4 that failure waits for the pass's last round, as [STAGES.md](STAGES.md#stage-4) says.
+2. **Otherwise its basename carries the prefix and suffix.** Then `mocked_header_text` gives the mocked header's include text. That text resolves in the mock include's form, from the same includer, through the same search order, with generated directories left out.
+3. **The mocked header resolves.** Then the include is a mock include, and the mocked header is the mock's origin. If it doesn't resolve, the build fails. The error quotes the mock include as written, its file and line, and the mocked header's include text. Where a user header ends with that text, as in a near miss, the error names the header and gives the near miss's two fixes, with the mock include rewritten. At stage 4 the failure waits for the pass's last round, as [STAGES.md](STAGES.md#stage-4) says.
 
 - **Absolute text.** A mock include written as an absolute path names a file no overlay can supply, since absolute text gets no search. It fails where classification meets it, before any compile. The error names the `#include` and asks for include text written from a search path.
 
@@ -47,6 +47,7 @@ A header no tier answers pairs no source, as a header of types or macros needs n
 
 - **Mocks.** A mock removes its mocked header's paired source from the link set, by key.
 - **`TEST_SOURCE_FILE()`.** A directive's source replaces the paired source of every header with its stem. This lets a test link an alternate implementation. Nothing logs, since the directive in the test names the source.
+- **Partials.** A Partial removes its module's recorded source from the link set, by key, and no other source.
 - **Support sources.** A paired source that is also a support source links once.
 - **Every mode.** Pairing runs on the resolved header, so it follows the header the compiler takes, with or without test preprocessing.
 
@@ -54,7 +55,7 @@ A header no tier answers pairs no source, as a header of types or macros needs n
 
 A Partial directive names a module, and an `_AT` directive also names its module directory. `PartialModuleMatchinator` gives the module's header and source, which become the Partial's origin.
 
-1. **Header by resolution.** The text `<module directory>/<module>` with each header extension, or `<module>` with each for a bare directive, resolves as a quoted include from the test file. It searches the test's own search order with generated directories left out, so another test's search paths never count. Extensions are tried in `:extension` order, and the first hit wins.
+1. **Header by resolution.** The text `<module directory>/<module>` with each header extension, or `<module>` with each for a bare directive, resolves as a quoted include from the test file. It searches the test's own search order with generated directories left out, so another test's search paths never count. Each header extension's hit is a candidate. The hit in the earliest directory of the search wins, and Ceedling logs the others at COMPLAIN with a NOTICE label. Two hits in one directory fail and list both, since only the configured order may settle a tie.
 2. **Header by trailing match.** For an `_AT` directive, a trailing match of the same text over the header collection follows a miss. One candidate is the header. Two or more fail, listing them and asking for more of the module directory.
 3. **Source by pairing.** `SourcePairinator` pairs the header.
 4. **A module with no header.** A module has no header only when its header text, with each header extension, matches no file in the header collection: `<module directory>/<module>` by trailing match for an `_AT` directive, and `<module>` by basename for a bare one. An `_AT` directive's source is then a trailing match of `<module directory>/<module>`, with each source extension, over the source collection. A bare directive's source is a root-relative lookup of `<module>` over the source roots. A bare directive whose header the search order misses, while the header collection holds one, fails instead. The error lists those headers, and asks for a search path or an `_AT` directive.

@@ -37,7 +37,7 @@ Each collection has one `CollectionIndex`, built with it. No lookup scans a coll
 
 ## Kinds of lookup
 
-A lookup takes its text as written. It swaps no extension, and it collapses `..` by the `..` rule before anything else.
+A lookup takes its text as written, after the normalization a task argument gets, as [Task arguments](#task-arguments) says. It swaps no extension, and it collapses `..` by the `..` rule before anything else.
 
 | Kind | Answer | Callers |
 | --- | --- | --- |
@@ -65,15 +65,17 @@ A lookup answers only from text a user wrote. Every question a build asks of its
 
 ## Task arguments
 
-Every task that takes a file name looks it up the same way, strictly. That covers `test:<name>`, `release:compile:<name>`, `release:assemble:<name>`, `cppcheck:<name>` and each plugin's test task.
+Every task that takes a file name normalizes it as its task form always has, then looks it up the same way, strictly. That covers `test:<name>`, `release:compile:<name>`, `release:assemble:<name>`, `cppcheck:<name>` and each plugin's test task.
 
+- **Test tasks.** `test:<name>` and each plugin's test task drop one source extension from the argument, and its last segment gains the test file prefix unless it already starts with it. So `uart`, `uart.c` and `test_uart` all name `test_uart.c`, and `a/uart` names `a/test_uart.c`.
+- **Extensions.** A name without one of its kind's extensions takes each in turn, and every one that matches a file is a candidate. So two test files that differ only in extension fail and list both. `release:compile:` and `release:assemble:` names end with a source or assembly extension, as their task forms require.
 - **Absolute arguments** are exact lookups.
 - **Other arguments** are trailing matches, so an ambiguous name fails and lists its candidates.
-- **Path tasks.** `test:path[<dir>]` and each plugin's path task select a test when `Matchinator.segment_run?` finds the argument's segments in the test's directory. `unit`, `test/unit`, `./test/unit` and `test/unit/` all select `test/unit/test_a.c`, and none selects `test/unit_extra/test_b.c`.
+- **Path tasks.** `test:path[<dir>]` and each plugin's path task select a test when `Matchinator.segment_run?` finds the argument's segments, as one unbroken run, in the project-relative spelling of the test's directory. `unit`, `test/unit`, `./test/unit` and `test/unit/` all select `test/unit/test_a.c`, and none selects `test/unit_extra/test_b.c`. An absolute or climbing argument enters by `PathRef.of` and selects each test below it, by containment.
 
 ## Code
 
 - `lib/ceedling/paths/file_lookupinator.rb` holds `FileLookupinator`, a DIY object. It depends on the frozen collections and the logger.
 - `lib/ceedling/paths/collection_index.rb` holds `CollectionIndex`, an immutable value built from one collection.
-- `exact( text, collection )`, `below_roots( text, roots, collection )` and `trailing( text, collection )` each return their answer or raise with the message above. `below_roots` returns the answer and the further answers, so the caller can log them.
+- `exact( text, collection )` and `below_roots( text, roots, collection )` return their answer, or nil on a miss, and `trailing( text, collection )` returns every candidate. `below_roots` returns the answer and the further answers, so the caller can log them. Each caller raises its own message, so pairing's tiers read a miss as "try the next tier", and each task raises the messages above.
 - Specs: `spec/units/paths/file_lookupinator_spec.rb` and `collection_index_spec.rb`. The index's specs check that every kind of lookup gives the same answer a full scan would.

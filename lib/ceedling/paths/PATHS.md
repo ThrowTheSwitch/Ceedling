@@ -71,11 +71,11 @@ Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case
 
 ### Equality
 
-`==`, `eql?` and `hash` use the key. Output that lists paths sorts by project-relative spelling, so it is stable from run to run.
+`==`, `eql?` and `hash` use the key. Output that lists paths sorts by project-relative spelling, so it is stable from run to run. A list of candidates is the exception: it keeps the configured or collection order that ranked them.
 
 ## Matchinator
 
-`Matchinator` holds the primitives every component compares paths with. Each works on keys and whole segments. No other component splits, matches or contains paths on its own.
+`Matchinator` holds the primitives every component compares paths with. Each works on whole segments, and on keys apart from `segment_run?`, which reads project-relative spellings. No other component splits, matches or contains paths on its own.
 
 | Function | Answer |
 | --- | --- |
@@ -83,13 +83,13 @@ Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case
 | `trailing?( path, text )` | Whether the text's segments equal the path's last segments |
 | `contains?( dir, path )` | Whether `dir` is `path` or one of its ancestors, by whole segments |
 | `subpath_below( dir, path )` | The segments from `dir` down to `path`, or nil outside it |
-| `segment_run?( path, text )` | Whether the text's segments appear in the path's segments, whole and in order |
+| `segment_run?( path, text )` | Whether the text's segments appear as one unbroken run in the path's project-relative segments, compared under the key rule of the path's root |
 | `generated?( path, roots )` | Whether the path lies in one of the build's generated directories |
 
 - **Trailing match** needs whole segments. `drivers/uart.h` matches `src/drivers/uart.h` and never `src/xdrivers/uart.h`. Text with `..` collapses by the `..` rule before it is matched.
 - **Case.** Each comparison uses the key rule of the path's root.
 - **Containment** answers every question of the form "inside": the build root's filter on preprocessed dependencies, generated-directory tests, root membership and coverage filters.
-- **`segment_run?`** selects tests for path tasks. A task argument `unit` selects `test/unit/test_a.c` and never `test/unit_extra/test_b.c`.
+- **`segment_run?`** selects tests for path tasks. A task argument `unit` selects `test/unit/test_a.c` and never `test/unit_extra/test_b.c`. It reads the project-relative spelling, so the project's own parent directories never match, and a symlinked test directory matches as configured.
 
 ## Code
 

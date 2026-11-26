@@ -192,7 +192,7 @@ The Dependencies plugin fetches, builds and links external dependencies.
 
 `TestSelectinator` gives the tests a selection task runs. Core's `test:path` and `test:pattern` call it, and so does each plugin's copy, in gcov, Bullseye, sanitize and valgrind.
 
-- **By path.** A test is selected when its directory holds the argument's segments, whole and in order, by `Matchinator.segment_run?`. `unit`, `test/unit`, `./test/unit` and `test/unit/` all select `test/unit/test_a.c`, and none selects `test/unit_extra/test_b.c`.
+- **By path.** A test is selected when the project-relative spelling of its directory holds the argument's segments as one unbroken run, by `Matchinator.segment_run?`. `unit`, `test/unit`, `./test/unit` and `test/unit/` all select `test/unit/test_a.c`, and none selects `test/unit_extra/test_b.c`. An absolute or climbing argument enters by `PathRef.of` from the project root, and selects each test that lies below it, by `Matchinator.contains?`.
 - **By pattern.** A test is selected when the argument, as a Ruby regular expression, matches the test's project-relative spelling.
 - **A missing argument** fails with one message that names the task's form, such as `test:path[test/unit]`.
 - **No match** logs the argument at ERRORS and runs nothing.
