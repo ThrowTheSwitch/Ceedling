@@ -25,6 +25,7 @@ An include record holds one `#include`: its include text, its form, its includer
 - **The form** comes from the text scan's record for the same directive, since line markers don't carry it.
 - **A computed `#include`**, whose include text a macro gives, has no text-scan record. Its printed directive gives its include text and form, and line markers show what it entered. The entry is matched to its directive's line by the includer's key, never by basename.
 - **`#include_next`** gives a record as `#include` does, marked as a next include, since its search starts later, as [The search](#the-search) says.
+- **`__has_include`.** Each `__has_include` and `__has_include_next` operand gives a record in the form it is written in, marked as a test, so a copy can pin it and its misses reach the dependency cache. A test that reaches no file is no near miss and logs nothing, since it only asks whether the file exists.
 
 ## The model
 

@@ -32,7 +32,7 @@ A directory appears once, at its first place, by key.
 
 ## Stage search orders
 
-`SearchOrderinator` gives each run one order, and the build plan records it. "Overlays" in the table means each search path's overlay just ahead of it, with quote-rule overlays and reach directories placed as [PLACEMENT.md](PLACEMENT.md#overlays) says.
+`SearchOrderinator` gives each run one order, and the build plan records it. "Overlays" in the table means each search path's overlay just ahead of it, with quote-rule overlays and reach directories placed as [PLACEMENT.md](PLACEMENT.md#overlays) says. Quote-rule overlays follow the configured order, and the Partials root comes last.
 
 | Stage | Run | Stage search order |
 | --- | --- | --- |
@@ -49,6 +49,7 @@ A directory appears once, at its first place, by key.
 | release | a release source | the release's configured order |
 
 - **User files only.** Stages 6, 7 and 9 search user files alone, so a mock that joins or leaves a test changes none of their orders. Under `:treat_inlines` ↳ `:include` it still reruns stage 9 for each mocked header whose pins change, as [PLACEMENT.md](PLACEMENT.md#fingerprints) says.
+- **Stage 9 in every mode.** Without mock preprocessing, stage 9 runs no tool. Under `:treat_inlines` ↳ `:include` it still writes the file CMock reads, the mocked header with its includes pinned, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
 - **Generated text.** Stages 8, 10 and 13 run no compiler search. The files they write hold pinned includes.
 - **Routes headers.** A routes header sits at the top of its root, which ends the order of each run that reads a Partial directive.
 - **Framework sources.** `unity.c`, `cmock.c` and `cexception.c` compile with the configured order and no overlays. A `unity_config.h` under `:paths` ↳ `:include` and a directory under `:test_toolchain_include` reach them as they reach the test file.
@@ -85,6 +86,7 @@ The build plan is the record of what one build compiles, links and places, and w
 | link set | the objects the test's executable links | stage 14 |
 | outputs | the runner, the executable, its results, and the files each tool run writes | stages 5 and 14 |
 
+- **Stand-ins first.** Under test preprocessing, stage 4 forms each mock's and each Partial's placement for its stand-in, so a Partial's module header and source resolve there, and a failure to find them stops the build at stage 4. Stage 5 then records the identities.
 - **Build-wide.** The plan also holds the generated roots and the framework files' placements.
 - **Generated files resolve before they are written.** Resolution answers a generated directory from the plan's placements, as [RESOLUTION.md](RESOLUTION.md#the-model) says.
 - **Sources.** Each object records its source, so a compile reads its input from the plan. The Partial stages read a module's header and source there.
@@ -115,7 +117,11 @@ A release build plans its sources, objects and link as a test build does. It nee
 
 ## The dependency cache
 
-The dependency cache saves each target's resolution records with their misses, its fingerprint and its input files. It also holds the ownership ledger. A delta build compares them with this build's plan, as [RESOLUTION.md](RESOLUTION.md#resolution-records) says. An isolation copy's origin stands for the copy in every record.
+The dependency cache saves each target's resolution records with their misses, its fingerprint, its input files and a digest of its own file, once the target is written. It also holds the ownership ledger. A delta build compares them with this build's plan, as [RESOLUTION.md](RESOLUTION.md#resolution-records) says. An isolation copy's origin stands for the copy in every record.
+
+- **Stale.** A target is stale when its fingerprint differs from the saved one, when an input file or a resolution record changed, or when its own file no longer matches the saved digest.
+- **After a failure.** A target whose run fails saves nothing new. Its saved fingerprint then still differs, so an old object that a compiler leaves in place stays stale.
+- **Build contexts.** Each build context keeps its own cache and ledger, and most generated roots are shared, as [PLACEMENT.md](PLACEMENT.md#layout) says. A file another context rewrote no longer matches the saved digest, so this context regenerates it.
 
 ## Code
 

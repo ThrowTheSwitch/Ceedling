@@ -13,11 +13,11 @@ Placement, ownership and stage search orders all key on artifact identity, so a 
 
 ## Shared artifacts
 
-Sharing drops the owner from one kind's identity. Two tests whose artifacts have equal kind, origin and fingerprint then hold one identity, and so one artifact.
+Sharing drops the owner from one kind's identity, apart from the artifacts that kind's rules keep per test, as [Shared mocks](#shared-mocks) keeps a mock of a generated header. Two tests whose artifacts have equal kind, origin and fingerprint then hold one identity, and so one artifact.
 
-- **`ArtifactIdentity`.** The owner is empty for a shared kind. The fingerprint must then cover everything that can differ between tests, since nothing else keeps their artifacts apart. That includes the files an artifact's pinned includes name wherever a test's substitutes change them.
-- **`Placeinator`.** A shared identity places below its own root, named by the identity's digest, in place of the test's root. The root holds that artifact and its recorded outputs alone. So a test's overlays hold exactly the files its own overlay root would, and each include reaches the file it reaches without sharing.
-- **`SearchOrderinator`.** Each test's order lists the overlay of every root its artifacts sit in. A test that reads many shared roots has a longer order.
+- **`ArtifactIdentity`.** The owner is empty for a shared identity. The fingerprint must then cover everything that can differ between tests, since nothing else keeps their artifacts apart. That includes the files an artifact's pinned includes name wherever a test's substitutes change them.
+- **`Placeinator`.** A shared identity places below its own root, named by the identity's digest, in place of the test's root. The root holds that artifact and its recorded outputs alone. So a test's overlays hold exactly the files its own overlay root would, and each include reaches the file it reaches without sharing. For a shared identity the fingerprint is part of the root's name, so a changed fingerprint makes a new artifact, and the old one becomes a leftover.
+- **`SearchOrderinator`.** Each test's order lists the overlay of every root its artifacts sit in. A test that reads many shared roots has a longer order, with one overlay per root for each search path that encloses its files, so about the shared mocks times their enclosing search paths.
 - **`OwnershipLedger`.** An entry already holds several owners. A shared artifact becomes a leftover only when its last owner no longer plans it.
 - **What stays.** Resolution, pinned includes, the stage search order table and the build plan's shape do not change.
 
@@ -31,14 +31,14 @@ A mock's identity is its mocked header plus its settings. Sharing it touches eac
 4. **Generation.** Under mock preprocessing, the preprocessed mocked header shares with its mock, so a shared mock has one input. Stages 9 and 10 run once per shared identity, and every owner's plan names the same placements.
 5. **Objects.** A mock's object compiles with its test's order, so mock objects stay per test until that order no longer depends on the test.
 6. **Names.** The mock include folder names the guard and lifecycle functions, and it is in the fingerprint. So only tests that write a header with the same folder share its mock.
-7. **Hooks.** A shared mock generates once, so its mock hooks run once and receive every owner.
+7. **Hooks.** A shared mock generates once, so its mock generation hooks, `pre_mock_generate` and `post_mock_generate`, run once and receive every owner. Its preprocessed mocked header shares with it, so `pre_mock_preprocess` and `post_mock_preprocess` do the same.
 8. **Docs.** The user docs promise each test its own generated mocks, so sharing needs a BreakingChanges entry.
 
 ## Other kinds
 
 Each kind can be shared once its fingerprint covers every per-test setting.
 
-- **Preprocessed mocked headers** share when their tool, flags, defines and order digest match.
+- **Preprocessed mocked headers** share when their tool, flags, defines, order digest and pinned files match.
 - **Objects** of one source share when their tool, flags, defines and order digest match.
 - **Partials** stay per test. A Partial mock's input is the test's own interface header, and a Partial's remaps depend on the test's other Partials.
 

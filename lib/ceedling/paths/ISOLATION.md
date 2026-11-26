@@ -25,14 +25,16 @@ Under `:treat_inlines` ↳ `:include`, CMock's copy substitutes each mocked head
 - **Timing.** Header copies are planned at stage 5, for the files the test's compiles enter by then. Source copies are planned at stage 14, once a test's sources are final, since `TEST_SOURCE_FILE()` entries arrive at stage 11 under test preprocessing. The header copies that only those sources enter are planned with them, at stage 14. All of it precedes stage 15, which writes no plan state.
 - **Writing.** A header copy is written as soon as it is planned, so it exists before any run that can enter it.
 - **No substitute, no copies.** A test that substitutes no header needs no isolation.
+- **Substituted headers.** A substituted header gets no isolation copy, since the build enters its substitute, which pins the header's includes. An isolation copy would otherwise take CMock's copy's place.
 - **`#include_next` headers.** A header whose text holds `#include_next` never gets a copy. The copy's next search would continue after the copy's overlay, at the search path that overlay repeats, and so enter the copy's own origin. So where the rule calls for one, planning stops the build and names the header and the substituted header it reaches. This matches [PLACEMENT.md](PLACEMENT.md#pinned-includes)'s rule for pinned includes.
 
 ## Copies
 
 An isolation copy sits at its origin's build subpath in the overlay, under the origin's name. Overlays reach it wherever user text would reach the origin through a search path, through a symlink, a climb or a shortened base included, as [PLACEMENT.md](PLACEMENT.md#overlays) says. The copy then reaches the substitutes.
 
-- **Pinned includes.** The copy pins each of its origin's includes, so its own includes never depend on its directory. A computed include stays as written and logs at COMPLAIN with a WARNING label, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
-- **`#line`.** Each copy opens with a `#line 1` directive naming its origin. Compiler messages, `__FILE__` and line markers then name the origin.
+- **Pinned includes.** The copy pins each of its origin's includes and `__has_include` operands, so nothing in it depends on its directory. A computed include stays as written and logs at COMPLAIN with a WARNING label, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
+- **Line counts.** A pinned include keeps its directive's line count, so a continued `#include` stays continued and every later line keeps its number. A Partial directive's route, keyed by `__LINE__`, then still matches.
+- **`#line`.** Each copy opens with a `#line 1` directive naming its origin by project-relative spelling, the one the compile would print. Compiler messages, `__FILE__` and the line markers after the copy's entry then name the origin. The line marker that enters the copy, and the dependency file, name the copy, which the build plan maps to its origin.
 - **Stability.** A copy is an artifact like any other, owned in the ledger and rewritten only when its text changes.
 - **The compilation database** names a copy's origin in the copy's place, as [EDGES.md](EDGES.md#compile_commandsjson) says. A replay can then reach a file beside the origin where the compile reached the test's substitute.
 

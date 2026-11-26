@@ -26,7 +26,7 @@ A route is the name a Partial directive's `#include` expands to, keyed by the di
 
 - **Lines.** Compilers differ on the `__LINE__` of a directive continued over several lines. So a route is defined under every line its directive spans. No two directives share a line, so the names never collide.
 - **Stage 4.** Stage 4 has its own routes header, at the top of the stand-in root, which routes each line to the Partial's blank stand-in.
-- **Rewrites.** A routes header is rewritten only when its content changes, which happens when a directive's text or line changes.
+- **Rewrites.** A routes header is rewritten only when its content changes, which happens when a directive's text or line changes, or its Partial's placement moves.
 
 ## Placement
 

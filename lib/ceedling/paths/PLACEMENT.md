@@ -1,6 +1,6 @@
 # Placement
 
-`Placeinator` turns every artifact's identity into its location, and no other code forms a path below the build root. An identity is an artifact's kind, origin, fingerprint and owner. Generated files that user text reaches sit in each test's overlays, just ahead of the search paths they repeat, so the compiler's own search finds them. Every `#include` Ceedling writes is pinned to its file. [ISOLATION.md](ISOLATION.md) covers the copies that carry the quote rule to a substitute, and [OWNERSHIP.md](OWNERSHIP.md) covers the records a delta build removes leftovers by.
+`Placeinator` turns every artifact's identity into its location, and no other code forms a path below the build root. An identity is an artifact's kind, origin, fingerprint and owner. Generated files that user text reaches sit in each test's overlays, just ahead of the search paths they repeat, so the compiler's own search finds them. Every `#include` Ceedling writes for a resolved file is pinned to that file. [ISOLATION.md](ISOLATION.md) covers the copies that carry the quote rule to a substitute, and [OWNERSHIP.md](OWNERSHIP.md) covers the records a delta build removes leftovers by.
 
 ## Contents
 
@@ -17,14 +17,14 @@ An `ArtifactIdentity` is an immutable value that names one artifact. Two equal i
 
 | Field | Holds |
 | --- | --- |
-| `kind` | The artifact kind, such as mock, stand-in, isolation copy, Partial, routes header, preprocessed file, runner, object, dependency file, executable, results or release target |
+| `kind` | The artifact kind, such as mock, CMock's copy, stand-in, isolation copy, Partial, routes header, preprocessed file, runner, object, dependency file, executable, results or release target |
 | `origin` | The origin's `PathRef`. A runner's and an executable's origin is the test file |
 | `fingerprint` | A digest of every setting that changes the artifact |
-| `owner` | The test that uses the artifact, or none for a release artifact |
+| `owner` | The test that uses the artifact. A release artifact's owner is the release |
 
 - **Equality** compares the kind, the origin's key, the fingerprint and the owner.
 - **The owner** is part of every test artifact's identity, so each test has its own. A later rule may drop it for a kind, as [EXTENSIONS.md](EXTENSIONS.md) describes.
-- **The fingerprint** never chooses a placement. The ledger records it with the artifact, and a changed fingerprint makes the artifact stale.
+- **The fingerprint** never chooses the placement of an artifact that has an owner. A shared kind's root takes its name from the identity, fingerprint included, as [EXTENSIONS.md](EXTENSIONS.md#shared-artifacts) says. The dependency cache saves it once the artifact is written, and a fingerprint that differs from the saved one makes the artifact stale, as [STAGES.md](STAGES.md#the-dependency-cache) says. The ledger records identities for ownership alone.
 
 ### Fingerprints
 
@@ -37,8 +37,11 @@ A fingerprint covers settings, supplemented where needed by build details derive
 | Partial | `:partials` configuration, the directive's selection, preprocessing settings, and the files its pinned includes name | the module's header and source and their preprocessed files |
 | object | the tool, flags, defines, the run's search order digest, and the files pinned by each isolation copy its compile enters | the source and every file its compile's resolution records hit, as [RESOLUTION.md](RESOLUTION.md#cross-checks) says |
 | runner | the runner and Unity configuration, the test's mock list, and the files its pinned includes name | the test file or its preprocessed file |
-| executable | the link tool, flags and libraries | its objects |
+| executable | the link tool, flags and libraries | its objects and its library files, as [EDGES.md](EDGES.md#library-files) says |
+| results | the test fixture tool and its arguments, `:use_backtrace` and its tools, and the loader path | the executable |
+| release target | the release link tool, flags and libraries | its objects and its library files |
 
+- **No fingerprint.** A stand-in, an isolation copy and a routes header take no setting of their own. Each is rewritten only when its text changes, and its text follows its pins and records. A `:release_build` ↳ `:artifacts` copy follows its file.
 - **Per-test settings** enter through flags, defines and the search order digest. Those cover a test's own defines, `:use_test_definition` and its `TEST_INCLUDE_PATH()` directories.
 - **Pins.** An artifact whose text holds pinned includes holds the files they name in its fingerprint. A pin names the test's substitute for a hit, or another Partial module's Partial header. So when a test gains or loses a substitute or a Partial, the pins of every artifact that includes its header change, and those artifacts regenerate.
 - **Pins in CMock's copy.** Under `:treat_inlines` ↳ `:include`, the file CMock reads pins the test's substitute for each hit, and CMock's copy keeps those pins. So the files a copy pins are in the fingerprints of its mock and of its preprocessed file.
@@ -52,7 +55,7 @@ A fingerprint covers settings, supplemented where needed by build details derive
 
 ### Layout
 
-Each artifact kind has one root, and each test has its own directory below it, ending `_t_`.
+Each artifact kind has its root. Below each root but the runners and results roots, each test has its own directory, ending `_t_`. The runners and results roots place by the test's directories. A routes header sits at the top of its test's directory in the Partials root, and stage 4's in the stand-in root.
 
 | Root | Holds |
 | --- | --- |
@@ -65,14 +68,15 @@ Each artifact kind has one root, and each test has its own directory below it, e
 | dependencies root, `<build root>/<context>/dependencies/<test>/_t_/` | dependency files |
 | results root, `<build root>/<context>/results/` | results, at the test's directories |
 
-`:cmock` ↳ `:mock_path` may sit outside the build root. Containment never stands for "generated": `Matchinator.generated?( path, roots )` tests a path against the build plan's generated roots.
+- **Outside the build root.** `:cmock` ↳ `:mock_path` may sit outside the build root. Containment never stands for "generated": `Matchinator.generated?( path, roots )` tests a path against the build plan's generated roots.
+- **Build contexts.** The out, dependencies and results roots sit below the run's build context, such as `test` or `gcov`, which `Placeinator` takes from the run, since an identity holds no context. Every other root, and each artifact in it, is shared by the build contexts. A context that rewrites one of those files leaves the file no longer matching the digest another context saved, so the artifact is stale there, as [STAGES.md](STAGES.md#the-dependency-cache) says.
 
 ### Each kind's place
 
 Below its root, each kind takes one rule. A build subpath is `PathRef`'s view of a directory, with markers for paths outside the project and for shortened bases.
 
 - **Mock.** The build subpath of its mocked header's directory, then its mock name. A mock of a generated header, such as a Partial's interface, sits beside that header.
-- **CMock's copy** under `:treat_inlines` ↳ `:include`. Beside its mock, under the mocked header's name. It is a recorded output of its mock.
+- **CMock's copy** under `:treat_inlines` ↳ `:include`. Beside its mock, under the mocked header's name. It is a recorded output of its mock. A mock of a generated header has no CMock's copy, since CMock's inline handling is off for it, as a generated header holds no inline body to strip. The copy would otherwise take the generated header's own place.
 - **Isolation copy.** Its origin's build subpath, under the origin's name, as [ISOLATION.md](ISOLATION.md#copies) says.
 - **Stand-in.** The place its mock or Partial will take, below the stand-in root.
 - **Partial.** As [PARTIALS.md](PARTIALS.md#placement) says.
@@ -122,7 +126,7 @@ An overlay lets include text reach a generated file exactly where the compiler w
 - **Order.** In each compile that reads generated files through user text, each search path's overlay stands just ahead of that search path. An overlay is listed when a recorded include text joined to it reaches a generated file. Climbing text counts, so `"../common/mock_defs.h"` through search path `src/app` lists `src/app`'s overlay, though the mock sits in `src/common`'s. `Placeinator` creates every overlay an order lists, since the kernel climbs only out of a directory that exists.
 - **Mocks.** A mock include's mocked header text resolves through some search path to its header. The mock include's own text then joins that search path's overlay first and reaches the header's mock. So `"mock_foo.h"` and `"drivers/mock_foo.h"`, with search paths `src` and `src/drivers`, reach the one mock of `src/drivers/foo.h`.
 - **Substitutes.** CMock's copy and each isolation copy carry their origin's name. Any include text that would reach the origin through a search path reaches its substitute in that path's overlay first.
-- **Quote-rule origins.** A mocked header that resolved by the quote rule, from a directory that is no search path, has its includer directory's overlay at the end of the order, listed and created by the same rule. Its mock is found there, since no user file carries a mock name.
+- **Quote-rule origins.** A mocked header that resolved by the quote rule, from a directory that is no search path, has its includer directory's overlay after the configured order, listed and created by the same rule. Only the Partials root follows it. Its mock is found there, since no user file answers the mock include's text.
 - **Symlinks.** A generated file sits once, at its origin's build subpath, which follows the real spelling. Where a recorded join passes through a symlink below its search path, `Placeinator` recreates that link in each listed overlay, pointed at the overlay of the link's target. With `src/hal` → `../vendor/hal` and search path `src`, `"hal/mock_gpio.h"` joins `src`'s overlay, follows the recreated `hal` and reaches the mock in `vendor/hal`'s overlay. A linked header file gets one link for each generated file that takes its place: its substitute under the header's name, and its mock under the mock name. So one header keeps one place and one mock.
 - **Shortened bases.** A join that enters a shortened base from outside it reaches the base by its own name, below its parent's build subpath. `Placeinator` makes that place a link to the base's overlay, as it recreates a symlink. With base `vendor/CMSIS/Include` shortened and search path `vendor` from a `TEST_INCLUDE_PATH()`, `"CMSIS/Include/mock_os.h"` joins `vendor`'s overlay, follows the link at `CMSIS/Include` and reaches the mock below the base's marker.
 - **Links on Windows.** A directory link, whether a recreated symlink or a shortened base's, is a junction, and a recreated file link is a hard link. The build stops and names the link only when neither can be made.
@@ -150,13 +154,16 @@ Stage 4 runs before any mock or Partial exists, so it searches the stand-in root
 
 ## Pinned includes
 
-Every `#include` Ceedling writes is a pinned include, apart from the case of `#include_next` below. It names its file by absolute spelling, so the compiler opens that file with no search and nothing can shadow it.
+Every `#include` Ceedling writes for a resolved file is a pinned include, apart from the case of `#include_next` below. It names its file by absolute spelling, so the compiler opens that file with no search and nothing can shadow it.
 
 - **Its file.** A pinned include names its resolution record's hit. Where the test substitutes the hit, it names the substitute.
+- **Nothing to pin.** An include that resolves to no file, such as a system header, keeps its text as written. So does each `:test_runner` ↳ `:includes` entry, as the runner docs promise, since no include record gives it.
 - **`#include_next` headers.** No pinned include names a header whose text holds `#include_next`. A header opened by absolute spelling searches its `#include_next` as an `#include`, which can enter the header itself again. So Ceedling writes that include as written, and checks that the generated file's own stage search order reaches the same hit. Where it doesn't, the build stops and names the header and the file the generated file would reach instead.
 - **Where they appear.** Runners pin each header the test file's records hit. Partials pin their module's includes, remapped as [PARTIALS.md](PARTIALS.md#remapping) says. The mocked header file CMock reads pins its origin's includes. Isolation copies pin their origin's includes. Routes pin their Partials.
+- **CMock's input in every mode.** Under `:treat_inlines` ↳ `:include`, CMock's copy keeps the includes of the file CMock reads, so that file must pin them. With mock preprocessing it is stage 9's preprocessed file. Without it, stage 9 still writes that file, as a preprocessed file with no tool: the mocked header with its includes pinned.
+- **`__has_include`.** A copy, CMock's or an isolation copy, also pins each quoted `__has_include` and `__has_include_next` operand to the file its origin's directory and search order reach. Otherwise the operand would search the copy's directory and could flip its branch. An operand that reaches no file stays as written.
 - **A mock's own include.** A mock pins its mocked header. Under `:treat_inlines` ↳ `:include` it pins CMock's copy beside it.
-- **Computed includes.** An `#include` that a macro names has no text to pin, so it stays as written and resolves through the search order. In an isolation copy, Ceedling logs each one at COMPLAIN with a WARNING label.
+- **Computed includes.** An `#include` that a macro names has no text to pin, so it stays as written and resolves through the search order. In an isolation copy, Ceedling logs each one at COMPLAIN with a WARNING label. A Partial directive's `#include` logs nothing, since its route names its file by absolute spelling.
 - **Roots.** A project root or build root whose absolute spelling holds a double quote fails at load and names the directory, since a pinned include can't hold one.
 
 Line markers and dependency files then name each pinned file by its absolute spelling. Intake makes it a `PathRef` like any other path.

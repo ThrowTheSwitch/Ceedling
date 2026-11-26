@@ -36,7 +36,7 @@ Each one calls `PathRef.of`. Mixin files are deduplicated by key, so one file re
 
 ### Spellings
 
-A `PathRef` has five spellings and one derived view. Each spelling after the written one is computed when first asked for, and memoized.
+A `PathRef` has five spellings and one derived view. Each spelling after the written one is computed when first asked for, and memoized. The real spelling and the key are memoized for the build by absolute spelling, so each distinct file reads disk once per build, however many `PathRef`s name it.
 
 | Spelling | `proj_src/lnk/a.h`, with `lnk` → `other` | Reads disk | Used for |
 | --- | --- | --- | --- |
@@ -88,7 +88,7 @@ Whether `Foo.h` names `foo.h` depends on the file system that holds it. The case
 
 - **Trailing match** needs whole segments. `drivers/uart.h` matches `src/drivers/uart.h` and never `src/xdrivers/uart.h`. Text with `..` collapses by the `..` rule before it is matched.
 - **Case.** Each comparison uses the key rule of the path's root.
-- **Containment** answers every question of the form "inside": the build root's filter on preprocessed dependencies, generated-directory tests, root membership and coverage filters.
+- **Containment** answers every question of the form "inside": root membership, coverage filters and generated-directory tests. The filter that keeps generated files out of preprocessed dependencies calls `generated?( path, roots )` with the build plan's generated roots, so it also catches a `:cmock` ↳ `:mock_path` outside the build root.
 - **`segment_run?`** selects tests for path tasks. A task argument `unit` selects `test/unit/test_a.c` and never `test/unit_extra/test_b.c`. It reads the project-relative spelling, so the project's own parent directories never match, and a symlinked test directory matches as configured.
 
 ## Code
