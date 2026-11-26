@@ -42,7 +42,7 @@ A directory appears once, at its first place, by key.
 | 5 | planning | none. Resolution uses the configured order |
 | 6, 7 | a Partial module's header and source | the configured order |
 | 9 | a mocked header | the configured order |
-| 11 | the test file's full expansion | overlays, the configured order, the Partials root |
+| 11 | the test file's full macro expansion | overlays, the configured order, the Partials root |
 | 15 | the test file, its sources, runner, mocks, Partials and support files | overlays, the configured order, the Partials root |
 | 15 | a framework source | the configured order |
 | plugin | an untested source, a cppcheck analysis | the configured order, less `TEST_INCLUDE_PATH()` directories |

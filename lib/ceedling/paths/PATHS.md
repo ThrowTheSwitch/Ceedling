@@ -43,7 +43,7 @@ A `PathRef` has five spellings and one derived view. Each spelling after the wri
 | written | `./proj_src/lnk/a.h` | no | messages that quote the author |
 | absolute | `/w/proj/proj_src/lnk/a.h` | for an inner `..` only | joins and the `..` rule |
 | real | `/w/proj/other/a.h` | yes | the key and the build subpath |
-| project-relative | `proj_src/lnk/a.h` | no | logs, the `-I` list and the contract tier |
+| project-relative | `proj_src/lnk/a.h` | no | logs, command lines and the contract tier |
 | key | `/w/proj/other/a.h`, case-folded where its root folds case | through real | equality, hashing and every index |
 
 - **Project-relative** keeps symlinked directories as configured, so logs and the compiler see the paths the configuration names. A path with no relative form, such as one on another Windows drive, keeps its absolute spelling here.

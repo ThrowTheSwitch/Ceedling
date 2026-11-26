@@ -16,7 +16,7 @@ A Partial directive's `#include` reaches its Partial through a route, which Ceed
 
 A route is the name a Partial directive's `#include` expands to, keyed by the directive's line. `PartialRoutinator` writes one routes header per test, which defines each route as its Partial file's absolute spelling, as a pinned include names its file.
 
-- **`ceedling.h`.** Every Partial directive that forms an `#include` expands to `__PARTIALS_ROUTE_L` joined with `__LINE__`. Neither the module directory nor the module appears in the expansion. The `CONFIG` directives expand to nothing.
+- **`ceedling.h`.** Every Partial directive that forms an `#include` expands to `__PARTIALS_ROUTE_L` joined with `__LINE__`. Neither the module directory nor the module appears in the macro expansion. The `CONFIG` directives expand to nothing.
 - **The header.** `ceedling.h` includes `CEEDLING_PARTIALS_ROUTES`, which each run that reads a Partial directive defines as `<ceedling_partials_routes.h>`. The header sits at the top of the Partials root, and that root ends the run's order.
 - **Content.** For a test whose line 3 reads `#include TEST_PARTIAL_MODULE_AT(sensors/soil, Calibration)`, the header holds one define for it.
 
@@ -84,6 +84,6 @@ A directive that the text scan doesn't read has no route, and the compiler repor
 
 - `lib/ceedling/paths/partial_routinator.rb` holds `PartialRoutinator`, a DIY object. `write( test )` writes a test's routes headers from its build plan part.
 - `lib/ceedling/paths/partial_remapinator.rb` holds `PartialRemapinator`, a DIY object. `remap( record, test )` gives an include's pinned file, and `qualifier( partial )` gives a module qualifier.
-- `lib/ceedling/ceedling.h` defines the directive macros. Partials generation stays in `lib/ceedling/partials/` and calls these components.
+- `lib/ceedling/ceedling.h` defines the Partial directives. Partials generation stays in `lib/ceedling/partials/` and calls these components.
 - `PartialRouteSpecialist` lives in `lib/ceedling/diagnostics/`.
 - Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of area `PART` build real projects, with GCC and Clang.

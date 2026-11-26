@@ -4,7 +4,7 @@ Ceedling turns text into files in three ways. **Resolution** finds the file an `
 
 Ceedling also places every file it generates. **Placement** turns each artifact's identity into one location, and overlays put generated files where the compiler's own search finds them. **Stage search orders** give each compile the directories it searches. The **build plan** records all of it for the run.
 
-Paths leave Ceedling at **the edges**: command lines, the link, plugins and tasks. Every root list and collection is built once, at the collection point. A tool template owns its quoting, and no substituted value is expanded. The link follows the linker's library search, and plugins read the build plan rather than repeating a rule.
+Paths leave Ceedling at **the edges**: command lines, the link, plugins and tasks. Every root list and collection is built once per build, at that build's collection point. A tool template owns its quoting, and no substituted value is expanded. The link follows the linker's library search, and plugins read the build plan rather than repeating a rule.
 
 These docs are for developers and coding agents. [GLOSSARY.md](GLOSSARY.md) defines every term they use, and they use no others.
 
@@ -66,7 +66,7 @@ Every component lives in `lib/ceedling/paths/`, except `CommandLineBuildinator`,
 | `BuildPlan` | `build_plan.rb` | value | What one build compiles, links and places, and where each path resolved | [STAGES.md](STAGES.md#buildplan) |
 | `PartialRoutinator` | `partial_routinator.rb` | service | Each test's routes headers | [PARTIALS.md](PARTIALS.md#routes) |
 | `PartialRemapinator` | `partial_remapinator.rb` | service | Remapped Partial includes and module qualifiers | [PARTIALS.md](PARTIALS.md#remapping) |
-| `Collectinator` | `collectinator.rb` | service | Every root list, collection and index, built once at the collection point | [EDGES.md](EDGES.md#collectinator) |
+| `Collectinator` | `collectinator.rb` | service | Every root list, collection and index, built once per build at its collection point | [EDGES.md](EDGES.md#collectinator) |
 | `CommandLineBuildinator` | `lib/ceedling/tools/command_line_buildinator.rb` | service | Each tool run's command line, from its template and values | [EDGES.md](EDGES.md#command-lines) |
 | `Linkinator` | `linkinator.rb` | service | Each link's arguments and library files, and each test run's loader path | [EDGES.md](EDGES.md#the-link) |
 | `CoverageScopinator` | `coverage_scopinator.rb` | service | The files a coverage report covers, the untested sources and Partial credit | [EDGES.md](EDGES.md#coverage-scope) |
@@ -87,7 +87,7 @@ Fifteen rules hold across the components. A change to any of them must keep all 
 9. **One placement authority.** Only `Placeinator` forms a path below the build root, and it forms each one from an artifact identity. No code reads an identity back from a path.
 10. **Pinned includes.** Every `#include` Ceedling writes for a resolved file names that file by absolute spelling, so no search or shadowing can redirect it. An include that resolves to no file, and a `:test_runner` ↳ `:includes` entry, keep their text as written. A header whose text holds `#include_next` is excepted. Its include stays as written, and Ceedling checks that it reaches the same file.
 11. **Removal by record.** During a build, only `OwnershipLedger` removes an artifact, and only one it recorded.
-12. **Collect once.** Root lists and collections are built once per run, at the collection point, and never change after it. Plugins add entries through configuration alone.
+12. **Collect once per build.** Root lists and collections are built once per build, at its collection point, and never change after it. The test family's tasks share one collection point in a run, and the release has its own, after its `:pre_release` hooks. Plugins add entries through configuration alone.
 13. **Expand only what the author wrote.** Ruby expansion runs once on each configuration value and tool template, and never on a substituted value.
 14. **Templates quote, nothing escapes.** A tool template quotes each path it receives. Ceedling escapes no path for a shell, and warns at load on a shell operator.
 15. **Messages speak to C developers.** A message says in plain words what went wrong. It names every file, line, `#include` and setting involved, and gives the fix when it knows one. A NOTICE or WARNING logs at its cause's first occurrence in a run, and repeats log only at OBNOXIOUS. Every message follows the developer docs' page on writing log messages, `docs/mkdocs/development/log-messages.md`.

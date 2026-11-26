@@ -1,6 +1,6 @@
 # Edges
 
-The edges are where a path leaves Ceedling's own model, for a shell, a tool, the linker, a plugin or a task. The same rules hold there. Configuration expands Ruby once, on text the author wrote, and warns at load on a shell operator. `Collectinator` builds every root list and collection once, at the collection point. `CommandLineBuildinator` turns a tool template and its values into a command line, and the template owns quoting. `Linkinator` gives each link its inputs and each test run its loader path. Plugins read the build plan and call core components, and `CoverageScopinator` tells the coverage plugins which sources a report covers. `TestSelectinator` picks the tests a selection task runs.
+The edges are where a path leaves Ceedling's own model, for a shell, a tool, the linker, a plugin or a task. The same rules hold there. Configuration expands Ruby once, on text the author wrote, and warns at load on a shell operator. `Collectinator` builds every root list and collection once per build, at that build's collection point. `CommandLineBuildinator` turns a tool template and its values into a command line, and the template owns quoting. `Linkinator` gives each link its inputs and each test run its loader path. Plugins read the build plan and call core components, and `CoverageScopinator` tells the coverage plugins which sources a report covers. `TestSelectinator` picks the tests a selection task runs.
 
 ## Contents
 
@@ -25,9 +25,9 @@ Configuration reads each path setting once, as written. Ruby expansion and the s
 - **Configuration values.** Each path setting, `:environment` value and plugin load path expands once, at load.
 - **Tool templates.** A tool's `:executable` and `:arguments` expand once, when the tool first builds a command line and before any value is substituted. So a template sees every constant Ceedling defines.
 - **Never a value.** A value substituted into a template, such as a path from a collection, a glob or the build plan, is never expanded. A file named `a#{x}.c` compiles under its own name.
-- **The gate.** `--ruby-replacement` enables expansion. With it off, configuration text that holds `#{` fails at load and names the setting. An escaped `\#{` is plain text either way, and loses its backslash.
+- **The gate.** `--ruby-replacement` enables Ruby expansion. With it off, configuration text that holds `#{` fails at load and names the setting. An escaped `\#{` is plain text either way, and loses its backslash.
 - **Validation.** A `#{` with no closing `}`, a Ruby syntax error and an exception the code raises each fail with one message. It names the setting, quotes the segment and gives Ruby's own message. No Ruby backtrace reaches the user.
-- **Quoting** inside an expansion is the author's.
+- **Quoting** inside a Ruby expansion is the author's.
 
 ### Shell operators
 
@@ -43,25 +43,27 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 
 - **Never counted.** Glob syntax, text inside a Ruby expansion, and `\` on Windows, where it is a separator. `&`, `|`, `^`, `!`, `'` and spaces are plain text inside quotes on every platform.
 - **The warning.** Once per entry, at COMPLAIN, which carries a WARNING label. It names the setting, the entry and the operator, and says that the path is unsupported and gives unpredictable results. A setting with one value, such as the build root, warns once.
+- **Errors first.** A setting that fails at load for its double quote, as the project root and the build root do, draws its error alone and no warning, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
 
 ## Collectinator
 
-`Collectinator` builds every root list, collection and `CollectionIndex` once per run, at the collection point, and freezes them. Every reader takes the same lists: the search orders, `-L`, lookups, coverage and plugins.
+`Collectinator` builds every root list, collection and `CollectionIndex` once per build, at that build's collection point, and freezes them. Every reader in a build takes the same lists: the search orders, `-L`, lookups, coverage and plugins.
 
 ### The collection point
 
-- **When.** The first time a task reads a root list or a collection. Rake runs a task's prerequisite tasks first, such as a Dependencies fetch and build, and every `:pre_build` and `:pre_release` hook fires before it. A file any of them writes into a root is collected like any other.
-- **What.** Glob expansion of every entry, the case probe for each root, each collection and its index, and the implicit roots. `Placeinator` forms its table of shortened bases from the bases there, as [PLACEMENT.md](PLACEMENT.md#shortened-bases) says.
+- **Once per build.** A run holds a collection point for the test family's tasks, such as test, gcov, Bullseye, sanitize and valgrind, which share it. It comes the first time one of them reads a root list or a collection. The release has its own, the first time it reads one. Every other task that reads a collection, such as a listing task or cppcheck, shares the test family's.
+- **Before it.** Rake runs a task's prerequisite tasks first, such as a Dependencies fetch and build. Every `:pre_build` hook fires before the first collection point, and the release's `:pre_release` hooks fire before its own. A file any of them writes into a root is collected like any other, so `ceedling test:all release` collects what the release's hooks write.
+- **What.** Glob expansion of every entry, the case probe for each root, each collection and its index, and the implicit roots. At the run's first collection point, `Placeinator` forms its table of shortened bases from the bases there, as [PLACEMENT.md](PLACEMENT.md#shortened-bases) says. The table depends only on the bases' spellings, so a later collection point reuses it.
 - **Test files.** A test file is in no other collection. `Collectinator` removes each file of the test collection from the source collection and the release inputs, by key. It logs the overlap once at COMPLAIN with a WARNING label, naming the entries that reach the test files.
-- **Frozen.** After the point, no code adds to or removes from a root list or a collection. A file a later stage writes is a generated file, which the build plan places.
-- **Listing tasks**, such as `files:header` and `paths:include`, reach the point with nothing before it.
+- **Frozen.** After a build's point, no code adds to or removes from that build's root lists or collections. A file a later stage writes is a generated file, which the build plan places.
+- **Listing tasks**, such as `files:header` and `paths:include`, reach the test family's point with nothing before it.
 - **Hooks.** A hook that fires before the point receives no collection.
 
 ### Roots
 
 - **One list per kind**: test, source, include, support and library roots.
 - **Glob expansion** follows `paths.md`. A glob yields each existing directory it matches, in expansion order. A glob whose base does not exist yields no root, and neither does a missing directory.
-- **The build root.** A directory at or below the build root, or one Ceedling creates, is no root of any kind.
+- **The build root.** A directory at or below the build root, or one a Ceedling setting names for generated files, such as `:cmock` ↳ `:mock_path`, is no root of any kind. A directory an external dependency's fetch creates can be a root.
 
 ### Plugin entries
 
@@ -160,8 +162,8 @@ Plugins follow core's rules by calling core, and no plugin holds its own copy of
 
 `CoverageScopinator` tells gcov and Bullseye which files a report covers. A file a tool reports enters through `PathRef.of` and is compared by key.
 
-- **In scope**: the user source of each object in the build plan.
-- **Out of scope**: every generated file and framework file, by the build plan's kinds, and every source a plugin entry contributed, such as an external dependency's. No filter matches a name, a prefix or a pattern. So `src/community.c`, `src/Mockups/driver.c` and `src/motor_runner.c` stay in scope.
+- **In scope**: the user source of each object in the build plan that is a source or a support file.
+- **Out of scope**: every test file, every generated file and framework file, by the build plan's kinds, and every source a plugin entry contributed, such as an external dependency's. No filter matches a name, a prefix or a pattern. So `src/community.c`, `src/Mockups/driver.c` and `src/motor_runner.c` stay in scope.
 - **Untested sources**: the source collection, less every source a link set holds, less the sources plugin entries contributed.
 - **Partials** credit their module's source, from the build plan's Partial records.
 - **Tool arguments.** Each tool's exclusion arguments list the out-of-scope files, or the generated roots that hold them, by absolute spelling. None is formed from raw path text.
@@ -182,7 +184,7 @@ The Dependencies plugin fetches, builds and links external dependencies.
 - **Working paths.** Each one falls back as its docs say. `:fetch` falls back to `:source`, `:source` to `:fetch`, `:build` to `:source` and then `:fetch`, and `:artifact` to `:build`. With none set, each is `dependencies/<task name>`.
 - **Cleaning** removes each working path after its fallbacks, except `:deploy`. An external dependency fetched by `:none` loses only its artifact path, never its source, and one with no fetch settings keeps every path.
 - **Missing artifacts.** When an artifact is missing at its path after the build, and `dependencies/<task name>` holds it, the build stops and names `:artifact` as the fix.
-- **Entries.** Its directories and sources join configuration as [plugin entries](#plugin-entries). Its built libraries are library paths, as [Library entries](#library-entries) says.
+- **Entries.** Its directories and sources join configuration as [plugin entries](#plugin-entries). Each built library's directory joins `:paths` ↳ `:libraries` as a plugin entry, so it reaches `-L`, `-I` and the loader path. The library itself links as a library path, as [Library entries](#library-entries) says.
 - **`:build_lib`** compiles an external dependency's sources with its include roots in configured order, each glob in its expansion order.
 - **Coverage.** Its sources are out of coverage scope.
 

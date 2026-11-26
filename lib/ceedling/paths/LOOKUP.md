@@ -1,6 +1,6 @@
 # Lookup
 
-`FileLookupinator` finds a user file in a collection from text a user wrote. It does one job, by Ceedling's rules, on collections built once per run. It never looks up a generated file, since the build plan records every generated file's placement.
+`FileLookupinator` finds a user file in a collection from text a user wrote. It does one job, by Ceedling's rules, on collections built once per build. It never looks up a generated file, since the build plan records every generated file's placement.
 
 ## Contents
 
@@ -16,7 +16,7 @@
 
 A collection holds the user files of one kind. The kinds are tests, sources, headers, support files and assembly files, plus the test and release build inputs.
 
-- **Built once.** `Collectinator` builds each collection at the collection point, from `:paths`, `:files` and every plugin's entries, and then freezes it, as [EDGES.md](EDGES.md#the-collection-point) says.
+- **Built once per build.** `Collectinator` builds each collection at its build's collection point, from `:paths`, `:files` and every plugin's entries, and then freezes it, as [EDGES.md](EDGES.md#the-collection-point) says.
 - **Order.** A collection follows `:paths` order, each glob in its expansion order, then `:files` additions in order.
 - **User files only.** Framework files and generated files belong to no collection. The build plan places them.
 - **Test files** are in the test collection alone, so no lookup of a source returns one, as [EDGES.md](EDGES.md#the-collection-point) says.
@@ -53,7 +53,7 @@ A lookup ends with one answer, several or none. Only a configured order may choo
 
 - **Root-relative** lookups settle a tie by root order. The first root's answer wins, and Ceedling logs the others at COMPLAIN with a NOTICE label.
 - **Trailing matches** have no order to settle a tie. Two or more candidates fail, listed in collection order.
-- **A miss** fails wherever the caller needs a file. The message names the text and the collection. On a root whose file system keeps case, it also names a collected file whose name differs only in case.
+- **A miss** fails wherever the caller needs a file. The message names the text and the kind of file looked for, such as a source file. On a root whose file system keeps case, it also names a collected file whose name differs only in case.
 
 ## What a lookup never answers
 
