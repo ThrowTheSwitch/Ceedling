@@ -36,7 +36,7 @@ A `PathRef` has five spellings and one derived view. Each spelling after the wri
 | key | `/w/proj/other/a.h`, case-folded where its root folds case | through real | equality, hashing and every index |
 
 - **Project-relative** keeps symlinked directories as configured, so logs and the compiler see the paths the configuration names. A path with no relative form, such as one on another Windows drive, keeps its absolute spelling here.
-- **Build subpath** is a view, not a spelling. `BuildSubpath.encode` forms it from the real spelling's directory, so two spellings of one directory share one build directory. An overlay recreates each symlink a join passes through, so include text written through a link still reaches the generated file at that build subpath, as [PLACEMENT.md](PLACEMENT.md#overlays) says.
+- **Build subpath** is a view, not a spelling. `BuildSubpath.encode` forms it from the real spelling's directory, so two spellings of one directory share one build directory. Below a shortened base it starts with the base's marker, from the table `Placeinator` passes, as [PLACEMENT.md](PLACEMENT.md#shortened-bases) says. An overlay recreates each symlink a join passes through, and links each shortened base a join enters. So include text written through a link, or into a base, still reaches the generated file at that build subpath, as [PLACEMENT.md](PLACEMENT.md#overlays) says.
 
 ### The `..` rule
 

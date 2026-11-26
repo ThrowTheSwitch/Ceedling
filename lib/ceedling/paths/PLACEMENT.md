@@ -5,7 +5,7 @@
 ## Contents
 
 - [Artifact identity](#artifact-identity) defines the value every placement starts from, and its fingerprints.
-- [Placeinator](#placeinator) covers the layout, the rule for each artifact kind, names, path length and release placement.
+- [Placeinator](#placeinator) covers the layout, the rule for each artifact kind, shortened bases, names, path length and release placement.
 - [Overlays](#overlays) covers how include text reaches mocks and substitutes, reach directories and stand-ins.
 - [Pinned includes](#pinned-includes) covers the text of every `#include` Ceedling writes.
 - [CMock settings](#cmock-settings) covers the settings Ceedling owns.
@@ -69,7 +69,7 @@ Each artifact kind has one root, and each test has its own directory below it, e
 
 ### Each kind's place
 
-Below its root, each kind takes one rule. A build subpath is `PathRef`'s view of a directory, with markers for paths outside the project.
+Below its root, each kind takes one rule. A build subpath is `PathRef`'s view of a directory, with markers for paths outside the project and for shortened bases.
 
 - **Mock.** The build subpath of its mocked header's directory, then its mock name. A mock of a generated header, such as a Partial's interface, sits beside that header.
 - **CMock's copy** under `:treat_inlines` ↳ `:include`. Beside its mock, under the mocked header's name. It is a recorded output of its mock.
@@ -79,6 +79,22 @@ Below its root, each kind takes one rule. A build subpath is `PathRef`'s view of
 - **Preprocessed file.** Its origin's build subpath below its kind's preprocess root.
 - **Object.** Its source's build subpath. A generated source's object takes the source's subpath below its own root. Its dependency file takes the same subpath below the dependencies root, and its list file sits beside it.
 - **Results.** The test's directories below the results root, with one exact file name per result.
+
+### Shortened bases
+
+A long base gives way to a short base marker in every build subpath below it. A build path then spells the marker and the mirror below the base, never the base's own path. For a vendor's include directory far outside the project, that saves most of every path below it.
+
+- **The bases** are those of the `:paths` ↳ `:source`, `:include`, `:test` and `:support` entries, as `Collectinator` gives them at the collection point. `TEST_INCLUDE_PATH()` directories, `:files` entries and implicit roots are not bases. Only the outermost of nested bases counts, so a whole tree shares one marker and keeps its mirror below it.
+- **Shorter only.** A base shortens only when its marker is shorter than its build subpath. So `src` and `test` never shorten, and a base far outside the project or deep inside it does.
+- **The marker** is `_<name>_<hash>`. The name is the base's own directory name less any leading `_`, or `root` when none is left. The hash is 8 upper-case hexadecimal digits of SHA-256 of the base's release build subpath, folded as the base's key folds. So two spellings of one base give one marker, and `../../../Keil_v5/ARM/CMSIS/Include` gives a marker such as `_Include_3F2A91C0`.
+- **One table.** `Placeinator` forms the table once, at the collection point, and every placement uses it. Test and release builds share it, so a base has one marker in both. The table depends only on the bases' spellings, so it holds from run to run. When a base changes, the files below it take new placements, and the ledger removes the old ones as leftovers.
+- **Collisions.** Two bases whose markers match stop the build at the collection point. The error names both bases and the marker.
+- **Escapes.** A user directory named like a base marker gains a leading `_`, as one named like any other marker does. So no user directory's build subpath begins with a base marker.
+- **Ceedling's own files.** A base inside the running Ceedling installation's own directories, by containment, already sits below the short `_ceedling_` marker and never shortens.
+- **Test names.** A test's directories take its name, which never shortens. Progress output, results and plugin artifacts name the test by it.
+- **Joins.** The compiler reaches a generated file in an overlay by joining include text to the overlay. A join that climbs out of a shortened base takes a reach directory, and one that enters a base from outside it follows a link, as [Overlays](#overlays) says. Every other build subpath below a base is read only by Ceedling.
+- **Traceability.** `<build root>/build_roots.yml` lists each marker and its base, and `Placeinator` removes the file when no base shortens. Each marker and its base log at DEBUG.
+- **User patterns.** A pattern a user writes against build paths matches each path with every marker written back as its base's build subpath. ReportGenerator's `:gcov_exclude` patterns match this way, as [EDGES.md](EDGES.md#coverage-scope) says.
 
 ### Names
 
@@ -108,16 +124,17 @@ An overlay lets include text reach a generated file exactly where the compiler w
 - **Substitutes.** CMock's copy and each isolation copy carry their origin's name. Any include text that would reach the origin through a search path reaches its substitute in that path's overlay first.
 - **Quote-rule origins.** A mocked header that resolved by the quote rule, from a directory that is no search path, has its includer directory's overlay at the end of the order, listed and created by the same rule. Its mock is found there, since no user file carries a mock name.
 - **Symlinks.** A generated file sits once, at its origin's build subpath, which follows the real spelling. Where a recorded join passes through a symlink below its search path, `Placeinator` recreates that link in each listed overlay, pointed at the overlay of the link's target. With `src/hal` → `../vendor/hal` and search path `src`, `"hal/mock_gpio.h"` joins `src`'s overlay, follows the recreated `hal` and reaches the mock in `vendor/hal`'s overlay. A linked header file gets one link for each generated file that takes its place: its substitute under the header's name, and its mock under the mock name. So one header keeps one place and one mock.
-- **Links on Windows.** A recreated directory link is a junction, and a recreated file link is a hard link. The build stops and names the link only when neither can be made.
+- **Shortened bases.** A join that enters a shortened base from outside it reaches the base by its own name, below its parent's build subpath. `Placeinator` makes that place a link to the base's overlay, as it recreates a symlink. With base `vendor/CMSIS/Include` shortened and search path `vendor` from a `TEST_INCLUDE_PATH()`, `"CMSIS/Include/mock_os.h"` joins `vendor`'s overlay, follows the link at `CMSIS/Include` and reaches the mock below the base's marker.
+- **Links on Windows.** A directory link, whether a recreated symlink or a shortened base's, is a junction, and a recreated file link is a hard link. The build stops and names the link only when neither can be made.
 - **One mock per header.** A test that names one mocked header by two texts has one mock, named by the text with the most path. Both texts reach it.
 - **The mock include folder.** The folder of that text names the mock's include guard and lifecycle functions, and FFF's identifiers, as `:mock_name_include_folder` documents. It is part of the mock's fingerprint.
 
 ### Reach directories
 
-A climbing include text can leave the overlay root, as `"../../ext/mock_sensor.h"` does from `test/` for a header outside the project. Its join then needs a reach directory, which `Placeinator` forms below the overlay root.
+A build subpath's leading markers stand for one directory: the project root when it has none, a shortened base, the directory a run of `_up_` climbs to, a drive or share, or the Ceedling installation. Below that directory, the build subpath repeats the real path segment for segment. So a join stays true only while it stays below the directory its search path's markers stand for. `"../../ext/mock_sensor.h"` from `test/` climbs out of the project, and `"../Source/mock_os.h"` from a shortened base's top directory climbs out of the base. Either join then needs a reach directory, which `Placeinator` forms below the overlay root.
 
-- **Which includes.** Every climbing include text whose join leaves the overlay root, whether it is a mock include or an include that reaches a substitute.
-- **The rule.** The reach directory is the generated file's directory less the text's trailing named segments, plus one `_r_` segment for each level the text climbs in all. So `"../inc/../../ext/mock_sensor.h"` takes two. Joined with the text, the reach directory gives the generated file's placement.
+- **Which includes.** Every climbing include text whose join climbs above the directory its search path's markers stand for, whether it is a mock include or an include that reaches a substitute. A join that leaves the overlay root is one of them.
+- **The rule.** The reach directory is the generated file's directory less the text's trailing named segments, plus one `_r_` segment for each level the text climbs in all. So `"../inc/../../ext/mock_sensor.h"` takes two. Joined with the text, the reach directory gives the generated file's placement. Where the trailing segments enter a shortened base, the generated file's directory is spelled through the base's link, as [Overlays](#overlays) says, before they come off.
 - **Its place.** It stands in the order where the overlay of the search path that answered stands. A reach directory for a header the quote rule answered stands with the quote-rule overlays.
 - **Directories.** `Placeinator` creates every directory the join passes through, since the kernel resolves each `..` on disk.
 
@@ -125,7 +142,7 @@ A climbing include text can leave the overlay root, as `"../../ext/mock_sensor.h
 
 Stage 4 runs before any mock or Partial exists, so it searches the stand-in root's overlays in place of the overlay root's. It never reads a mock, copy or Partial an earlier build wrote.
 
-- **Overlays below the stand-in root** follow the rules of [Overlays](#overlays): the same listing, recreated symlinks and reach directories, formed below the stand-in root.
+- **Overlays below the stand-in root** follow the rules of [Overlays](#overlays): the same listing, links and reach directories, formed below the stand-in root.
 - **A mock's stand-in** pins its mocked header, so stage 4 sees the header's macros as the compile will through the mock.
 - **A Partial's stand-in** is blank. Stage 4's routes header routes each Partial directive to it.
 - **Rewrites.** Within one build, a stand-in is rewritten only when its text changes. Stage 4 starts each run with none of the test's stand-ins from its last build, as [OWNERSHIP.md](OWNERSHIP.md#leftovers) says.
@@ -150,5 +167,5 @@ Line markers and dependency files then name each pinned file by its absolute spe
 ## Code
 
 - `lib/ceedling/paths/artifact_identity.rb` holds `ArtifactIdentity`, an immutable value.
-- `lib/ceedling/paths/placeinator.rb` holds `Placeinator`, a DIY object. `place( identity )` returns a `PathRef`, `overlay( dir, owner )` gives a directory's overlay, and `roots` gives the generated roots for `Matchinator.generated?`.
+- `lib/ceedling/paths/placeinator.rb` holds `Placeinator`, a DIY object. `place( identity )` returns a `PathRef`, `overlay( dir, owner )` gives a directory's overlay, and `roots` gives the generated roots for `Matchinator.generated?`. `shortened_bases` gives the table of bases and markers, and `unshortened( path )` gives a build path with every marker written back.
 - Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of areas `GEN` and `COV` build real projects.

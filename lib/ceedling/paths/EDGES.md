@@ -51,7 +51,7 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 ### The collection point
 
 - **When.** The first time a task reads a root list or a collection. Rake runs a task's prerequisite tasks first, such as a Dependencies fetch and build, and every `:pre_build` and `:pre_release` hook fires before it. A file any of them writes into a root is collected like any other.
-- **What.** Glob expansion of every entry, the case probe for each root, each collection and its index, and the implicit roots.
+- **What.** Glob expansion of every entry, the case probe for each root, each collection and its index, and the implicit roots. `Placeinator` forms its table of shortened bases from the bases there, as [PLACEMENT.md](PLACEMENT.md#shortened-bases) says.
 - **Test files.** A test file is in no other collection. `Collectinator` removes each file of the test collection from the source collection and the release inputs, by key. It logs the overlap once at COMPLAIN with a WARNING label, naming the entries that reach the test files.
 - **Frozen.** After the point, no code adds to or removes from a root list or a collection. A file a later stage writes is a generated file, which the build plan places.
 - **Listing tasks**, such as `files:header` and `paths:include`, reach the point with nothing before it.
@@ -165,6 +165,7 @@ Plugins follow core's rules by calling core, and no plugin holds its own copy of
 - **Untested sources**: the source collection, less every source a link set holds, less the sources plugin entries contributed.
 - **Partials** credit their module's source, from the build plan's Partial records.
 - **Tool arguments.** Each tool's exclusion arguments list the out-of-scope files, or the generated roots that hold them, by absolute spelling. None is formed from raw path text.
+- **User patterns.** ReportGenerator's `:gcov_exclude` patterns are the user's own, and match each notes file's build path. `Placeinator.unshortened` writes every base marker in that path back first, as [PLACEMENT.md](PLACEMENT.md#shortened-bases) says. So a pattern that names a long base's own directories, such as `Keil_v5/.*`, still excludes the files below it.
 
 ### compile_commands.json
 
@@ -221,7 +222,7 @@ The Windows rules, each where it is described:
 - **Operators.** `%` and `"`. See [Shell operators](#shell-operators).
 - **Drives.** A path on another drive keeps its absolute spelling, and its build subpath carries a drive marker. See [PATHS.md](PATHS.md#spellings) and [PLACEMENT.md](PLACEMENT.md#each-kinds-place).
 - **Case.** The case probe decides each root's rule. See [PATHS.md](PATHS.md#the-case-rule).
-- **Path length.** See [PLACEMENT.md](PLACEMENT.md#path-length).
+- **Path length.** Shortened bases keep build paths short, and every placement is checked against the limit. See [PLACEMENT.md](PLACEMENT.md#shortened-bases) and [PLACEMENT.md](PLACEMENT.md#path-length).
 - **DLLs.** The loader path is `PATH`, and the candidates include `.dll`. See [Test runs](#test-runs) and [Library files](#library-files).
 
 ## Code

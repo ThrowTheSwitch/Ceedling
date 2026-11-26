@@ -29,7 +29,7 @@ Under `:treat_inlines` ↳ `:include`, CMock's copy substitutes each mocked head
 
 ## Copies
 
-An isolation copy sits at its origin's build subpath in the overlay, under the origin's name. Overlays reach it wherever user text would reach the origin through a search path, through a symlink or a climb included, as [PLACEMENT.md](PLACEMENT.md#overlays) says. The copy then reaches the substitutes.
+An isolation copy sits at its origin's build subpath in the overlay, under the origin's name. Overlays reach it wherever user text would reach the origin through a search path, through a symlink, a climb or a shortened base included, as [PLACEMENT.md](PLACEMENT.md#overlays) says. The copy then reaches the substitutes.
 
 - **Pinned includes.** The copy pins each of its origin's includes, so its own includes never depend on its directory. A computed include stays as written and logs at COMPLAIN with a WARNING label, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
 - **`#line`.** Each copy opens with a `#line 1` directive naming its origin. Compiler messages, `__FILE__` and line markers then name the origin.

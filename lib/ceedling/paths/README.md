@@ -14,7 +14,7 @@ These docs are for developers and coding agents. [GLOSSARY.md](GLOSSARY.md) defi
 - [RESOLUTION.md](RESOLUTION.md) covers `Resolvinator`. It describes include records, the model a search runs on, the quote rule, results, resolution records, cross-checks and fallback.
 - [CONVENTIONS.md](CONVENTIONS.md) covers the four conventions. They are mock names (`MockNaminator`), pairing (`SourcePairinator`), Partial modules (`PartialModuleMatchinator`) and `TEST_SOURCE_FILE()` entries.
 - [LOOKUP.md](LOOKUP.md) covers `FileLookupinator` and `CollectionIndex`. It describes collections, the three kinds of lookup, ties and misses, and task arguments.
-- [PLACEMENT.md](PLACEMENT.md) covers `ArtifactIdentity`, `Placeinator`, overlays and pinned includes. It describes the layout, the rule for each artifact kind, reach directories, stand-ins and release placement.
+- [PLACEMENT.md](PLACEMENT.md) covers `ArtifactIdentity`, `Placeinator`, overlays and pinned includes. It describes the layout, the rule for each artifact kind, shortened bases, reach directories, stand-ins and release placement.
 - [ISOLATION.md](ISOLATION.md) covers `Isolator`. It describes the quote rule's gap, planning, isolation copies, sources and rebuilds.
 - [OWNERSHIP.md](OWNERSHIP.md) covers `OwnershipLedger`. It describes entries, leftovers, and clean and clobber.
 - [STAGES.md](STAGES.md) covers `SearchOrderinator` and `BuildPlan`. It describes the configured order, the order of each stage's runs, stage 4, stage 15, tool outputs, release planning and the dependency cache.
@@ -94,7 +94,7 @@ Fifteen rules hold across the components. A change to any of them must keep all 
 
 ## Neighbors
 
-- `lib/ceedling/filesystem/` holds `ProjectPaths`, whose spelling functions `PathRef` builds on, and `BuildSubpath`, which forms `PathRef`'s build subpath. It also holds the glob expansion `Collectinator` calls.
+- `lib/ceedling/filesystem/` holds `ProjectPaths`, whose spelling functions `PathRef` builds on, and `BuildSubpath`, which forms `PathRef`'s build subpath. It also holds the glob expansion `Collectinator` calls, and `BuildRoots`, which forms each base marker in `Placeinator`'s table.
 - `lib/ceedling/tools/` holds `ToolExecutor`, which runs each command line, `ToolValidator` and `ShellQuoting`. `lib/ceedling/ruby_expandinator.rb` holds `RubyExpandinator`.
 - `plugins/` call these components for every path rule, as [EDGES.md](EDGES.md#plugins) says.
 - `lib/ceedling/test_invoker/` holds the test pipeline's stages and planner, which fill the build plan. `lib/ceedling/release_invoker/` does the same for a release.
