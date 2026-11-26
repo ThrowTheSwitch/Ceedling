@@ -88,12 +88,12 @@ A long base gives way to a short base marker in every build subpath below it. A 
 - **Shorter only.** A base shortens only when its marker is shorter than its build subpath. So `src` and `test` never shorten, and a base far outside the project or deep inside it does.
 - **The marker** is `_<name>_<hash>`. The name is the base's own directory name less any leading `_`, or `root` when none is left. The hash is 8 upper-case hexadecimal digits of SHA-256 of the base's release build subpath, folded as the base's key folds. So two spellings of one base give one marker, and `../../../Keil_v5/ARM/CMSIS/Include` gives a marker such as `_Include_3F2A91C0`.
 - **One table.** `Placeinator` forms the table once, at the collection point, and every placement uses it. Test and release builds share it, so a base has one marker in both. The table depends only on the bases' spellings, so it holds from run to run. When a base changes, the files below it take new placements, and the ledger removes the old ones as leftovers.
-- **Collisions.** Two bases whose markers match stop the build at the collection point. The error names both bases and the marker.
+- **Collisions.** Two bases whose markers would match both keep their whole build subpaths, and the pair logs once at DEBUG. So no two bases share a marker, and the build goes on.
 - **Escapes.** A user directory named like a base marker gains a leading `_`, as one named like any other marker does. So no user directory's build subpath begins with a base marker.
 - **Ceedling's own files.** A base inside the running Ceedling installation's own directories, by containment, already sits below the short `_ceedling_` marker and never shortens.
 - **Test names.** A test's directories take its name, which never shortens. Progress output, results and plugin artifacts name the test by it.
 - **Joins.** The compiler reaches a generated file in an overlay by joining include text to the overlay. A join that climbs out of a shortened base takes a reach directory, and one that enters a base from outside it follows a link, as [Overlays](#overlays) says. Every other build subpath below a base is read only by Ceedling.
-- **Traceability.** `<build root>/build_roots.yml` lists each marker and its base, and `Placeinator` removes the file when no base shortens. Each marker and its base log at DEBUG.
+- **Traceability.** `<build root>/build_bases.yml` lists each marker and its base, and `Placeinator` removes the file when no base shortens. Each marker and its base log at DEBUG.
 - **User patterns.** A pattern a user writes against build paths matches each path with every marker written back as its base's build subpath. ReportGenerator's `:gcov_exclude` patterns match this way, as [EDGES.md](EDGES.md#coverage-scope) says.
 
 ### Names
@@ -137,6 +137,7 @@ A build subpath's leading markers stand for one directory: the project root when
 - **The rule.** The reach directory is the generated file's directory less the text's trailing named segments, plus one `_r_` segment for each level the text climbs in all. So `"../inc/../../ext/mock_sensor.h"` takes two. Joined with the text, the reach directory gives the generated file's placement. Where the trailing segments enter a shortened base, the generated file's directory is spelled through the base's link, as [Overlays](#overlays) says, before they come off.
 - **Its place.** It stands in the order where the overlay of the search path that answered stands. A reach directory for a header the quote rule answered stands with the quote-rule overlays.
 - **Directories.** `Placeinator` creates every directory the join passes through, since the kernel resolves each `..` on disk.
+- **Escapes.** In a test build, a user directory named like `_r_`, in any case and led by any number of `_`, gains a leading `_`, as one named like `_t_` does. So `src/_r_` has the overlay `src/__r_`, no user directory's overlay is a reach directory, and no reach directory answers an include meant for a user directory.
 
 ### Stand-ins
 
