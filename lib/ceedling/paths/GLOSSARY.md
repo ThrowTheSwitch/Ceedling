@@ -116,6 +116,7 @@ Lookup is Ceedling's own way of finding a user file from text a user wrote. Conv
 | module directory | The directory argument of an `_AT` Partial directive | U D | `_AT` directory |
 | route, routes header | The name a Partial directive's `#include` expands to, keyed by the directive's line. A test's routes header defines each route as its Partial file's absolute spelling | L U D C | — |
 | remap | Writing a Partial's `#include` of another Partial module's header as that module's Partial header | D C | — |
+| wanted macro | A macro a Partial header defines to say that another Partial header's items are wanted, because the module's own header hasn't arrived. Each is named `CEEDLING_PARTIAL_WANTED_<hash>_<MODULE>_<ROLE>` | D C | flag (for these) |
 | module qualifier | The text an `_AT` directive's module directory adds to the C names Ceedling forms from its module, so two same-named modules stay apart. Each `/` and every other character a C name can't hold is written as `_` | L U D C | — |
 
 ## Artifacts and placement
@@ -237,6 +238,7 @@ Each retired word with the term that replaces it, for a grep check. Some retired
 | expanded, lexical absolute, resolved (as a spelling) | absolute |
 | expansion (bare) | Ruby expansion, macro expansion or glob expansion |
 | find (for collections), search (for collections) | lookup |
+| flag (for a Partial header's `_WANTED` macro) | wanted macro |
 | find (for includes) | search |
 | header listing | listing |
 | header-root-relative query | root-relative lookup |
