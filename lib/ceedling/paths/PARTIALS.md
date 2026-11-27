@@ -74,9 +74,10 @@ Two same-named modules in one test need distinct C names, since C has one namesp
 Ceedling reads each directive's module directory and module as text, from the test file's text scan. The compiler never sees them, so no macro can change them.
 
 - **Macros are text.** `_AT(platform/linux, port)` names `platform/linux` on every toolchain, and a module named `unix` is the module `unix`.
-- **Spaces.** Spaces around each `/` drop, so `src / drivers` names `src/drivers`, as clang-format writes it.
-- **Quotes.** A module directory may be quoted. Ceedling strips one pair of double quotes and then applies the same rules.
-- **Rules.** A module directory is relative, holds no `..` and is not absolute. Each refusal names the directive and the rule.
+- **Spaces.** In an unquoted module directory or module, spaces next to each `/`, `-`, `+` and `.` drop, so `src / drivers - v2` names `src/drivers-v2` and `my - sensor` names `my-sensor`, undoing what clang-format writes. The trim runs before every rule, so a spaced `..` is still a climb.
+- **Quotes.** A module directory may be quoted. Ceedling strips one pair of double quotes and reads the text between them as written, with no C escapes and no trim, then applies the rules. So a directory whose name holds a spaced operator, as in `a - b`, is written quoted, as in `_AT("a - b", sensor)`. A module stays bare text, since its name is folded into C names.
+- **Rules.** A module directory is relative, holds no `..` and is not absolute. Each refusal names the directive, its file and line, and the rule.
+- **Characters C reads.** A directory that holds a comma, a parenthesis, an apostrophe or `/*` breaks the directive's macro call before Ceedling's rules apply, so it must be quoted. A BuildStepDoctor specialist, `PartialArgumentSpecialist`, explains the compiler's error for an unquoted one.
 
 ## A missing route
 
@@ -91,5 +92,5 @@ A directive that the text scan doesn't read has no route, and the compiler repor
 - `lib/ceedling/paths/partial_routinator.rb` holds `PartialRoutinator`, a DIY object. `write( test )` writes a test's routes headers from its build plan part.
 - `lib/ceedling/paths/partial_remapinator.rb` holds `PartialRemapinator`, a DIY object. `remap( record, test )` gives an include's pinned file, and `qualifier( partial )` gives a module qualifier.
 - `lib/ceedling/ceedling.h` defines the Partial directives. Partials generation stays in `lib/ceedling/partials/` and calls these components.
-- `PartialRouteSpecialist` lives in `lib/ceedling/diagnostics/`.
+- `PartialRouteSpecialist` and `PartialArgumentSpecialist` live in `lib/ceedling/diagnostics/`.
 - Specs: `spec/units/paths/<file>_spec.rb` for each file. The contract rows of area `PART` build real projects, with GCC and Clang.
