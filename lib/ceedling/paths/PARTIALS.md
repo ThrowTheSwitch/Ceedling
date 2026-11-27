@@ -25,6 +25,8 @@ A route is the name a Partial directive's `#include` expands to, keyed by the di
 ```
 
 - **Lines.** Compilers differ on the `__LINE__` of a directive continued over several lines. So a route is defined under every line its directive spans. No two directives share a line, so the names never collide.
+- **Assembled directives.** A directive written inside a `#define`, as in `#define SENSOR TEST_PARTIAL_MODULE(sensor)`, expands at each `#include SENSOR`. So its route is defined under each test file line whose `#include` names that macro.
+- **The test file alone.** A route is keyed by a line of the test file, so a Partial directive in a header the test includes could match the wrong route. Ceedling's text scan of the test's headers finds such a directive, and the build stops before compiling, naming the header and its line.
 - **Stage 4.** Stage 4 has its own routes header, at the top of the stand-in root, which routes each line to the Partial's blank stand-in.
 - **Rewrites.** A routes header is rewritten only when its content changes, which happens when a directive's text or line changes, or its Partial's placement moves.
 
@@ -79,7 +81,8 @@ Ceedling reads each directive's module directory and module as text, from the te
 A directive that the text scan doesn't read has no route, and the compiler reports an `#include` with no file name. A BuildStepDoctor specialist, `PartialRouteSpecialist`, explains that failure.
 
 - **Symptoms.** GCC's `#include expects "FILENAME" or <FILENAME>` or Clang's `expected "FILENAME" or <FILENAME>`, on a line whose `#include` names a macro, in a test that includes `ceedling.h`. The line need not hold a Partial directive, since a directive another macro assembles expands where that macro is used. Clang's "expanded from macro" note names the macro.
-- **Guidance.** It quotes the line as written, and names the two usual causes: a directive assembled by another macro, or one split in a way the text scan doesn't follow.
+- **Guidance.** It quotes the line as written, and names the two usual causes: a directive assembled in a way the text scan doesn't follow, or one split in a way it doesn't follow.
+- **Stage 4.** Stage 4's directives-only run meets a missing route first. It is attended like a full expansion, so the specialist's guidance stops the build there, in place of a fallback.
 
 ## Code
 
