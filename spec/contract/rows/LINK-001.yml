@@ -13,7 +13,7 @@ tree:
   test/test_foox.c: |
     #include "unity.h"
     #include "drivers/mock_foox.hpp"
-    TEST_SOURCE_FILE("src/drivers/foox.c")
+    TEST_SOURCE_FILE("drivers/foox.c")
     void setUp(void) {}
     void tearDown(void) {}
     void test_mocked(void) { foox_read_ExpectAndReturn(7); TEST_ASSERT_EQUAL(7, foox_read()); }
@@ -27,4 +27,40 @@ divergences:
   - at: resolved test/test_foox.c "drivers/mock_foox.hpp"
     kind: convention
     note: A mock include names the mocked header, which the compiler never sees
-target: ~
+target:
+  none:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_foox.c "drivers/mock_foox.hpp": src/drivers/foox.hpp
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox%{exe}:
+          - test/test_foox.c
+          - build/test/mocks/test/test_foox/_t_/src/drivers/mock_foox.c
+          - build/test/runners/test/test_foox_runner.c
+          - build/vendor/unity/src/unity.c
+          - build/vendor/cmock/src/cmock.c
+  tests:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_foox.c "drivers/mock_foox.hpp": src/drivers/foox.hpp
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox%{exe}:
+          - test/test_foox.c
+          - build/test/mocks/test/test_foox/_t_/src/drivers/mock_foox.c
+          - build/test/runners/test/test_foox_runner.c
+          - build/vendor/unity/src/unity.c
+          - build/vendor/cmock/src/cmock.c
+  all:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_foox.c "drivers/mock_foox.hpp": src/drivers/foox.hpp
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox%{exe}:
+          - test/test_foox.c
+          - build/test/mocks/test/test_foox/_t_/src/drivers/mock_foox.c
+          - build/test/runners/test/test_foox_runner.c
+          - build/vendor/unity/src/unity.c
+          - build/vendor/cmock/src/cmock.c

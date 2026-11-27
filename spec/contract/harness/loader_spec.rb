@@ -44,6 +44,22 @@ describe Contract::Loader do
     expect { parse( minimal.merge( 'target' => target ) ) }.to raise_error( Contract::RowError, /target for none names resolve, which no report holds/ )
   end
 
+  # A target mapping promises only the keys it names, so an empty one promises nothing
+  it 'rejects a target mapping that names no key, at any depth' do
+    target = { 'none' => [{ 'outcome' => { 'status' => 'pass' } }, { 'placements' => { 'objects' => {} } }] }
+    expect { parse( minimal.merge( 'target' => target ) ) }.to raise_error( Contract::RowError, /target for none build 2 promises nothing at placements > objects/ )
+  end
+
+  # A delta row's target may leave its first build as recorded
+  it 'takes an empty build report beside one that promises' do
+    row = parse( minimal.merge( 'target' => { 'none' => [{}, { 'outcome' => { 'status' => 'pass' } }] } ) )
+    expect( row.target['none'].first ).to eq( {} )
+  end
+
+  it 'rejects a target whose every build promises nothing' do
+    expect { parse( minimal.merge( 'target' => { 'none' => [{}, {}] } ) ) }.to raise_error( Contract::RowError, /target for none promises nothing in any build/ )
+  end
+
   it 'fills each optional field with its default' do
     row = parse( minimal )
 

@@ -169,6 +169,45 @@ describe Contract::Check do
     it 'fails a target that promises a different number of builds' do
       expect { described_class.target!( [{ 'outcome' => { 'status' => 'pass' } }], live, 'row' ) }.to raise_error( Contract::Mismatch, /promises 1 build, and 2 ran/ )
     end
+
+    # A real report holds more keys than a target names, such as each stage's progress lines
+    context 'with a full report' do
+      let( :report ) do
+        [{
+          'outcome'    => { 'status' => 'pass', 'stage' => nil, 'error' => nil, 'stages' => { 'Building Objects' => ['Compiling a.c...'] } },
+          'placements' => { 'mocks' => ['m/mock_a.h', 'm/mock_b.h'], 'objects' => { 't a.c' => 'o/a.o', 't b.c' => 'o/b.o' } }
+        }]
+      end
+
+      it 'compares only the keys a mapping names, at every depth' do
+        target = [{ 'outcome' => { 'status' => 'pass' }, 'placements' => { 'objects' => { 't a.c' => 'o/a.o' } } }]
+        expect { described_class.target!( target, report, 'row' ) }.not_to raise_error
+      end
+
+      it 'fails a named key whose value differs' do
+        target = [{ 'placements' => { 'objects' => { 't a.c' => 'o/x.o' } } }]
+        expect { described_class.target!( target, report, 'row' ) }.to raise_error( Contract::Mismatch, /\[0\] > placements > objects > t a\.c: recorded "o\/x\.o", observed "o\/a\.o"/ )
+      end
+
+      it 'fails a named key the report lacks' do
+        target = [{ 'placements' => { 'objects' => { 't c.c' => 'o/c.o' } } }]
+        expect { described_class.target!( target, report, 'row' ) }.to raise_error( Contract::Mismatch, /objects > t c\.c: recorded but not observed/ )
+      end
+
+      it 'compares a list whole' do
+        target = [{ 'placements' => { 'mocks' => ['m/mock_a.h'] } }]
+        expect { described_class.target!( target, report, 'row' ) }.to raise_error( Contract::Mismatch, /placements > mocks: recorded \["m\/mock_a\.h"\]/ )
+      end
+    end
+
+    # One target serves every platform, though Windows names an executable `.exe`
+    it "reads %{exe} as the platform's executable extension" do
+      target = [{ 'link_set' => { 'o/t%{exe}' => ['t.c'] } }]
+      live   = [{ 'link_set' => { 'o/t.exe' => ['t.c'] } }]
+
+      expect { described_class.target!( target, live, 'row', exe: '.exe' ) }.not_to raise_error
+      expect { described_class.target!( target, live, 'row', exe: '.out' ) }.to raise_error( Contract::Mismatch, /link_set > o\/t\.out: recorded but not observed/ )
+    end
   end
 
 end

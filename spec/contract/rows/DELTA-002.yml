@@ -51,4 +51,46 @@ divergences:
   - at: resolved test/test_foo.c "mock_foo.h"
     kind: convention
     note: A mock include names the mocked header, which the compiler never sees
-target: ~
+target:
+  none/updated:
+    - {}
+    - outcome:
+        status: pass
+      placements:
+        mocks:
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.c
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.h
+        mock_headers:
+          mock_foo.h: src/drivers/foo.h
+  none/unchanged:
+    - {}
+    - outcome:
+        status: fail
+        stage: Building Objects
+      placements:
+        mocks:
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.c
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.h
+        mock_headers:
+          mock_foo.h: src/drivers/foo.h
+  all/updated:
+    - {}
+    - outcome:
+        status: pass
+      placements:
+        mocks:
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.c
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.h
+        mock_headers:
+          mock_foo.h: src/drivers/foo.h
+  all/unchanged:
+    - {}
+    - outcome:
+        status: fail
+        stage: Building Objects
+      placements:
+        mocks:
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.c
+          - build/test/mocks/test/test_foo/_t_/drivers/mock_foo.h
+        mock_headers:
+          mock_foo.h: src/drivers/foo.h

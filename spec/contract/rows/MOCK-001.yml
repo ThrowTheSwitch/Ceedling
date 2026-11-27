@@ -28,4 +28,52 @@ project:
   :cmock:
     :mock_prefix: mock_
     :mock_suffix: _sfx
-target: ~
+target:
+  none/cmock:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_foox.c "drivers/mock_foox_sfx.h": src/drivers/foox.h
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox%{exe}:
+          - test/test_foox.c
+          - build/test/mocks/test/test_foox/_t_/drivers/mock_foox_sfx.c
+          - build/test/runners/test/test_foox_runner.c
+          - build/vendor/unity/src/unity.c
+          - build/vendor/cmock/src/cmock.c
+  none/fff:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_foox.c "drivers/mock_foox_sfx.h": src/drivers/foox.h
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox%{exe}:
+          - test/test_foox.c
+          - build/test/mocks/test/test_foox/_t_/drivers/mock_foox_sfx.c
+          - build/test/runners/test/test_foox_runner.c
+          - build/vendor/unity/src/unity.c
+          - build/vendor/cmock/src/cmock.c
+  tests/cmock:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_foox.c "drivers/mock_foox_sfx.h": src/drivers/foox.h
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox%{exe}:
+          - test/test_foox.c
+          - build/test/mocks/test/test_foox/_t_/drivers/mock_foox_sfx.c
+          - build/test/runners/test/test_foox_runner.c
+          - build/vendor/unity/src/unity.c
+          - build/vendor/cmock/src/cmock.c
+  tests/fff:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_foox.c "drivers/mock_foox_sfx.h": src/drivers/foox.h
+      link_set:
+        build/test/out/test/test_foox/_t_/test_foox%{exe}:
+          - test/test_foox.c
+          - build/test/mocks/test/test_foox/_t_/drivers/mock_foox_sfx.c
+          - build/test/runners/test/test_foox_runner.c
+          - build/vendor/unity/src/unity.c
+          - build/vendor/cmock/src/cmock.c

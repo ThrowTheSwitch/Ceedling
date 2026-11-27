@@ -55,4 +55,10 @@ project:
     :use_partials: true
   :paths:
     :include: [., src/**]
-target: ~
+target:
+  all/test_first:
+    - outcome:
+        status: pass
+  all/mock_first:
+    - outcome:
+        status: pass

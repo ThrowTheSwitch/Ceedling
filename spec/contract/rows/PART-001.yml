@@ -39,4 +39,12 @@ divergences:
   - at: resolved test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor)
     kind: defect
     note: The Mock Partial looks its module header up the same shallow way
-target: ~
+target:
+  all:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor): src/drivers/sensor.h
+        test/test_sensor.c MOCK_PARTIAL_PUBLIC_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor): src/drivers/sensor.h
+        test/test_sensor.c TEST_PARTIAL_MODULE_AT(src/drivers, sensor) source: src/drivers/sensor.c

@@ -129,7 +129,10 @@ module Contract
     end
 
     # A target maps variant keys to promised build reports. A key naming no variant, or a
-    # section no report holds, would leave the target unchecked for good, so both fail.
+    # section no report holds, would leave the target unchecked for good, so both fail. A
+    # target mapping promises only the keys it names, so an empty one inside a section
+    # promises nothing and fails too. An empty build report stands for a build the target
+    # leaves as recorded, such as a delta row's first build, but one build must promise.
     def self.target!(source, target, row)
       return if target.nil?
 
@@ -144,7 +147,26 @@ module Contract
         builds.flat_map( &:keys ).uniq.each do |section|
           fail!( source, "target for #{key} names #{section}, which no report holds" ) unless TARGET_SECTIONS.include?( section )
         end
+
+        fail!( source, "target for #{key} promises nothing in any build" ) if builds.all?( &:empty? )
+
+        builds.each_with_index do |build, index|
+          empty = build.lazy.filter_map { |section, value| empty_mapping( value, [section] ) }.first
+          fail!( source, "target for #{key} build #{index + 1} promises nothing at #{empty}" ) if empty
+        end
       end
+    end
+
+    # The path to the first mapping in `value` that names no key, as `a > b`, or nil
+    def self.empty_mapping(value, at = [])
+      return nil unless value.is_a?( Hash )
+      return at.join( ' > ' ) if value.empty?
+
+      value.each do |key, inner|
+        found = empty_mapping( inner, at + [key] )
+        return found if found
+      end
+      return nil
     end
 
     def self.fail!(source, message)

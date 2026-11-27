@@ -56,4 +56,16 @@ divergences:
   - at: resolved test/test_p.c "mock_m2.h"
     kind: convention
     note: A mock include names the mocked header, which the compiler never sees
-target: ~
+target:
+  all:
+    - {}
+    - outcome:
+        status: pass
+        stages:
+          Partials:
+            - Skipping Partial implementation generation for 1 implementation (nothing changed)...
+      entered:
+        mocks_read:
+          test/test_p:
+            build/test/preprocess/standins/test/test_p/_t_/src/m/mock_m1.h: stand-in
+            build/test/preprocess/standins/test/test_p/_t_/src/n/mock_m2.h: stand-in

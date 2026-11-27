@@ -41,4 +41,16 @@ divergences:
       Reconciliation pairs the pathless include with the first same-named header the
       preprocessor entered at any depth, here the one a.h reaches, not the header the
       compiler's search order finds
-target: ~
+target:
+  tests:
+    - outcome:
+        status: pass
+      resolved:
+        test/test_config.c "config.h": src/config.h
+        test/test_config.c "config.h" source: [src/config.c]
+      link_set:
+        build/test/out/test/test_config/_t_/test_config%{exe}:
+          - test/test_config.c
+          - src/config.c
+          - build/test/runners/test/test_config_runner.c
+          - build/vendor/unity/src/unity.c
