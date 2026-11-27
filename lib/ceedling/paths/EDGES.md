@@ -43,7 +43,7 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 
 - **Never counted.** Glob syntax, text inside a Ruby expansion, and `\` in a configuration path on every platform, since intake makes it a separator there, as [PATHS.md](PATHS.md#intake) says. So `\` counts on Linux and macOS only in a setting intake doesn't convert, such as the project root's own spelling. `&`, `|`, `^`, `!`, `'` and spaces are plain text inside quotes on every platform.
 - **The warning.** Once per entry, at COMPLAIN, which carries a WARNING label. It names the setting, the entry and the operator, and says that the path is unsupported and gives unpredictable results. A setting with one value, such as the build root, warns once.
-- **Errors first.** A setting that fails at load for its double quote, as the project root and the build root do, draws its error alone and no warning, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
+- **Errors first.** A setting that fails at load for its double quote, as the project root, the build root, `:cmock` ↳ `:mock_path` and the `:paths` roots do, draws its error alone and no warning, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
 
 ## Collectinator
 

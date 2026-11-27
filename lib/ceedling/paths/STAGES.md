@@ -125,7 +125,7 @@ The dependency cache saves each target's resolution records with their misses, i
 
 ## Code
 
-- `lib/ceedling/paths/search_orderinator.rb` holds `SearchOrderinator`, a DIY object. `order( stage:, run:, test: )` returns a list of `PathRef`s, and `digest( order )` returns its digest.
+- `lib/ceedling/paths/search_orderinator.rb` holds `SearchOrderinator`, a DIY object. `order( stage:, run:, test: )` returns a list of `PathRef`s, and `digest( order )` returns its digest. A plugin run, such as an untested source's compile, passes `test: nil`, since its order has no test part.
 - `lib/ceedling/paths/build_plan.rb` holds `BuildPlan`, a value with one part per test and a lock for its writers. The test and release planners fill it.
 - **Reaching the plan.** The test or release invoker makes each run's plan and hands it to the services that read it, such as `Placeinator`, `Resolvinator`, `Isolator`, `PartialRoutinator` and `CoverageScopinator`, through one `start_run( plan )` call to each as the run starts. Each holds it for the run, so no service builds a plan or reaches one through DIY. `Placeinator` takes the run's build context from it.
 - Specs: `spec/units/paths/search_orderinator_spec.rb` checks every row of the table. The contract rows report each object's search paths, so the `DELTA` and `GEN` areas check the orders in real builds.
