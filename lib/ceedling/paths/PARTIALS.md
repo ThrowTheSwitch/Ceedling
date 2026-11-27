@@ -34,20 +34,22 @@ A route is the name a Partial directive's `#include` expands to, keyed by the di
 
 `Placeinator` places a Partial's files at the build subpath of its module header's directory below the test's Partials root. A module with no header takes its source's directory. `PartialModuleMatchinator` gives the header and source, so the placement follows the header the compiler resolves, never the directive's text.
 
-- **Names.** A Partial's files are `ceedling_partial_<module>_impl.c` and `_impl.h`, `_interface.h`, `_types.h` and `_extras.h`. For an `_AT` directive, `<module>` carries its module qualifier.
+- **Names.** A Partial's files are `ceedling_partial_<module>_impl.c` and `_impl.h`, `_interface.h`, `_types.h` and `_extras.h`. `<module>` is folded as a C name is, so `my-sensor` writes `my_sensor`, and for an `_AT` directive it carries its module qualifier.
 - **Same-named modules.** Two modules of one name in one test sit in their own directories.
 - **Mock Partials.** CMock's mock of a Partial's interface sits beside the interface.
 - **Reach.** Routes reach every Partial file. The test's search order needs no Partial module directory.
 
 ## Remapping
 
-A Partial carries its module's includes, each pinned to its resolution record's hit, or to the test's substitute for it, as every pinned include is. `PartialRemapinator` remaps an include whose hit is another Partial module's header in the same test. The pinned include then names that module's Partial header.
+A Partial carries its module's includes, each pinned to its resolution record's hit, or to the test's substitute for it, as every pinned include is. `PartialRemapinator` remaps an include whose hit is another Partial module's header in the same test. The goal is fidelity: a Partial's copied code compiles as its module's source did. So the implementation source keeps the other module's real header, and the three headers name that module's Partial header.
 
-| The other module is | The include names its |
-| --- | --- |
-| a Test Partial | types header |
-| a Mock Partial | interface header |
-| both | interface header |
+| The other module is | In the implementation source, the include names its | In the implementation, interface and types headers, it names its |
+| --- | --- | --- |
+| a Test Partial | real header | types header |
+| a Mock Partial | real header | interface header |
+| both | real header | interface header |
+
+- **Why the source differs.** The implementation source is its own compile, which no other Partial header enters, so the real header gives its code every declaration its module's source had. The headers are included beside other Partial headers in the test, so they take the other module's Partial header, which keeps each type defined once.
 
 - **By key.** The remap compares the hit's key with each Partial module header's key. It never compares names or trailing segments.
 - **Staleness.** A Partial's fingerprint holds the files its pins name, so it regenerates whenever a pin changes. That happens when a Partial module whose header it includes joins the test, leaves it or changes between Test and Mock, and when the test gains or loses a substitute for a header it includes.
@@ -61,9 +63,9 @@ A Partial carries its module's includes, each pinned to its resolution record's 
 Two same-named modules in one test need distinct C names, since C has one namespace. A module qualifier keeps the names Ceedling forms apart.
 
 - **The qualifier.** An `_AT` directive's module directory, as [Directive arguments](#directive-arguments) reads it, with each `/` and every other character a C name can't hold written as `_`, as the module's own name is. `TEST_PARTIAL_PUBLIC_MODULE_AT(a, util)` qualifies its names by `a`, and `_AT(drivers-v2, util)` by `drivers_v2`.
-- **Collisions.** Folding can give two directives one name, as `_AT(a/b, util)` and `_AT(a, b_util)` both give `a_b_util`. Two directives in one test whose qualified names fold alike fail before compiling, and the error lists both.
+- **Collisions.** Folding can give two directives one name, as `_AT(a/b, util)` and `_AT(a, b_util)` both give `a_b_util`. So can a bare module beside a qualified one, as `a_util` beside `_AT(a, util)`, and two bare modules, as `my-sensor` beside `my_sensor`. Two directives in one test whose names fold alike fail at the text scan, before any compile, and the error lists both.
 - **Bare directives** stay unqualified, since one test can't hold two bare modules of one name.
-- **What it covers.** Every C name Ceedling forms from the module's name, such as a `PARTIAL_TYPE()` type and a promoted static. It also covers the Partial's file names, so CMock's names for two Mock Partials stay apart whatever `:mock_name_include_folder` says. Routes keep file names out of the test.
+- **What it covers.** Every C name Ceedling forms from the module's name, such as a `PARTIAL_TYPE()` type and a promoted static's type. A promoted static's variable, `partial_<function>_<variable>`, holds no module name, so it takes none. It also covers the Partial's file names, so CMock's names for two Mock Partials stay apart whatever `:mock_name_include_folder` says. Routes keep file names out of the test.
 - **In a test.** A test names a qualified module as `<qualifier>_<module>`, as in `PARTIAL_TYPE(a_util, s_ctx)`.
 - **Function names** stay the module's own. Two same-named modules that define one function name still collide at link, as C requires.
 
