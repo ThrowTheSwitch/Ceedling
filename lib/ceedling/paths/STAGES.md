@@ -121,7 +121,10 @@ A release build plans its sources, objects and link as a test build does. It nee
 
 The dependency cache saves each target's resolution records with their misses, its fingerprint, its input files and a digest of its own file, once the target is written. The ownership ledger saves beside it, as [OWNERSHIP.md](OWNERSHIP.md#entries) says. A delta build compares them with this build's plan, as [RESOLUTION.md](RESOLUTION.md#resolution-records) says. An isolation copy's origin stands for the copy in every record.
 
-- **Stale.** A target is stale when its fingerprint differs from the saved one, when an input file or a resolution record changed, or when its own file no longer matches the saved digest.
+- **Stale.** A target is stale when its fingerprint differs from the saved one, when an input file or a resolution record changed, when an output it writes beside it is missing or changed, or when its own file no longer matches the saved digest.
+- **Which records.** A target saves the records its run made active, from printed directives and line markers. Without test preprocessing, every text-scan record of its files counts.
+- **After a mismatch.** A record saves the compiler's hit. Its misses run up to the search path that holds that hit, or are empty when no search path of the order holds it, since the mismatch NOTICE has named the case.
+- **Once each.** Each order is saved once, by its digest, and each distinct resolution once, by includer, include text, form and order. A target holds their keys. The cache is rewritten only when an entry changed.
 - **After a failure.** A target whose run fails saves nothing new. Its saved fingerprint then still differs, so an old object that a compiler leaves in place stays stale.
 - **Build contexts.** Each build context keeps its own cache, and most generated roots are shared, as [PLACEMENT.md](PLACEMENT.md#layout) says. A file another context rewrote no longer matches the saved digest, so this context regenerates it.
 

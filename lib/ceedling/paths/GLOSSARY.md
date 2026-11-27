@@ -50,7 +50,7 @@ An entry yields roots. Some roots become search paths, and one compile's search 
 | search order | The search paths of one compile, in order | L U D C | search list, include path list, `-I` list (in prose) |
 | collection | The user files of one kind that Ceedling gathers at the collection point from `:paths` and `:files` | U D C | file list |
 | index | A collection's lookup table, keyed by key and by basename, built with its collection | D C | — |
-| configured order | A test's user search paths, in the order the compiler searches them. Every stage search order builds on it, and the release has its own | L U D C | — |
+| configured order | A test's user search paths, in the order the compiler searches them. Every stage search order builds on it, and the release has its own | L U D C | `@configured_headers` snapshot |
 | root order | The order of one kind's roots: `:paths` order, each glob in its expansion order, then the implicit roots. It settles a root-relative lookup's tie | U D | — |
 
 ## Kinds of file
@@ -85,7 +85,7 @@ Resolution is the compiler's rule, applied by Ceedling's own model of the search
 | shadow | A header earlier in the search order shadows a same-named header later in it | L U D | hide, mask |
 | miss | A directory a search tried before the one that held the file | D C | negative lookup |
 | near miss | A quoted include that no directory of its search answers, though a user header's path ends with its include text | L U D C | — |
-| resolution record | One include record's resolution, with its misses. The build plan holds every record for the run, and the dependency cache saves each target's | D C | `@configured_headers` snapshot |
+| resolution record | One include record's resolution, with its misses. The build plan holds every record for the run, and the dependency cache saves each target's | D C | — |
 | line markers | The preprocessor's output lines that name each file the compiler entered | L U D | linemarkers |
 | dependency file | The `.d` file a compiler writes, listing the headers an object entered | L U D | `.d` (alone, in prose) |
 | dependency cache | What Ceedling saves between builds so a delta build can tell what changed | U D C | — |
