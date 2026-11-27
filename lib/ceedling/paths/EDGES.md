@@ -117,6 +117,8 @@ Each `:libraries` entry, under `:test`, `:release` or `:system`, is a library na
 - **A library name** is every other entry. `:flag` turns it into an argument, `-l${1}` by default. `m`, `:libm.a` and MSVC's `mylib.lib` are names.
 - **Symbols.** YAML loads an unquoted `:libm.a` as a Symbol. Intake gives it back its colon.
 - **Plugins** publish each library they build as a library path, so a versioned `libv.so.1` links as that file.
+- **`:files` ↳ `:libraries`** entries are library paths. They collect at the collection point as any `:files` entry does, and join both links.
+- **A missing file.** A library path that names no file at the link stops the build before the linker runs, naming its entry, since the linker's own message names only the file.
 
 ### Library files
 
@@ -131,7 +133,7 @@ The library files a link depends on decide relinks, never what links. A library 
 
 ### Link arguments
 
-- **Order.** The link set's objects fill `${1}`. Every library entry fills `${4}` in configured order, a library path as itself and a library name through `:flag`. Each library root fills `${5}` through `:path_flag`.
+- **Order.** The link set's objects fill `${1}`. The library entries fill `${4}`, a library path as itself and a library name through `:flag`. A test link takes `:libraries` ↳ `:test`, then `:system`. A release link takes `:system`, then `:release`. Each key's entries keep their configured order, and `:files` ↳ `:libraries` entries follow them. Each library root fills `${5}` through `:path_flag`.
 - **Literal.** `:flag` and `:path_flag` substitute their value literally, as [Substitution](#substitution) says.
 - **MSVC.** With MSVC's `link`, a library name needs `:flag: '${1}.lib'` and `:path_flag: '/LIBPATH:"${1}"'`. A library path links as itself.
 

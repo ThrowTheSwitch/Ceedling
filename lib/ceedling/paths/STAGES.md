@@ -102,9 +102,10 @@ Stage 15 compiles every planned object with its planned input and order, as one 
 
 The build plan names each file a tool run writes, from the tool's configuration. A stage waits for a file only when the plan says the tool writes it.
 
-- A compiler whose flags write no dependency file has none planned.
+- **By placeholder.** A tool writes an output when its template names that output's placeholder, as the default compilers name the dependency file and a linker can name the map. A template that names none writes none.
+- A compiler whose arguments name no dependency file has none planned.
 - An assembler run plans no dependency file.
-- A link plans a map only when its flags ask for one.
+- A link plans a map only when its arguments name one.
 
 ## Release planning
 
@@ -112,6 +113,7 @@ A release build plans its sources, objects and link as a test build does. It nee
 
 - **Sources.** The release's sources are the source collection, which holds no test file, as [EDGES.md](EDGES.md#the-collection-point) says. Each object records its source, so no object is matched back to a source by its path.
 - **Order.** A release source compiles with the release's configured order, which holds no generated directory. It is the configured order without its test parts: the include roots, then the library roots, each glob in its expansion order, then `:release_toolchain_include`, then the directories that `:files` ↳ `:include` headers add. Those follow item 4's rule of [The configured order](#the-configured-order), applied to the quoted include texts of the release's sources. So a header a test's compile reaches through those roots, a release compile reaches too.
+- **Framework sources.** With `:use_exceptions`, the vendored `CException.c` compiles with the release's configured order, as a test's framework sources compile with the test's.
 - **Test roots.** A release needs no `:paths` ↳ `:test`. A test task in a project with no test roots fails and names that setting.
 - **Outputs.** The target and artifacts follow [PLACEMENT.md](PLACEMENT.md#release-placement).
 

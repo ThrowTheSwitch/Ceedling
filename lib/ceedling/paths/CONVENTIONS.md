@@ -32,7 +32,7 @@ An include is a mock include only when resolution says so. Classification follow
 
 ## Pairing: SourcePairinator
 
-Pairing finds the source that implements a resolved header, so a test that includes `uart.h` links `uart.c`. A test's `TEST_SOURCE_FILE()` entry decides first. Otherwise three tiers run in order, and the first hit ends the search.
+Pairing finds the source that implements a resolved header, so a test that includes `uart.h` links `uart.c`. It searches the source collection alone. A test's `TEST_SOURCE_FILE()` entry decides first. Otherwise three tiers run in order, and the first hit ends the search.
 
 1. **Beside.** A source in the header's own directory, with the header's stem and a source extension.
 2. **Mirror.** The header's path below its nearest base, with a source extension, found by root-relative lookup over the source roots. `include/drv/gpio.h`, below base `include`, pairs `src/drv/gpio.c`, below root `src`. A header below no base, such as one only `:files` supplies, skips this tier.
@@ -45,7 +45,7 @@ A header no tier answers pairs no source, as a header of types or macros needs n
 
 ### Rules on the paired source
 
-- **Mocks.** A mock removes its mocked header's paired source from the link set, by key.
+- **Mocks.** A mock removes its mocked header's paired source from the link set, by key. The rule runs after entries, so it removes an entry's source that pairs the mocked header too.
 - **`TEST_SOURCE_FILE()`.** A directive's source replaces the paired source of every header with its stem. This lets a test link an alternate implementation. Nothing logs, since the directive in the test names the source.
 - **Partials.** A Partial removes its module's recorded source from the link set, by key, and no other source.
 - **Support sources.** A paired source that is also a support source links once.

@@ -117,7 +117,7 @@ No code derives an identity, an owner or include text from a placement. The buil
 A release places its objects at their sources' build subpaths below `<build root>/release/out/`. Two rules hold for its outputs.
 
 - **The target.** A relative `:release_build` ↳ `:output` joins `<build root>/release/` and must stay below the build root. A climb out of it fails at load and names an absolute `:output` as the fix. An absolute or `~` output names the target as written.
-- **Artifacts.** `:release_build` ↳ `:artifacts` copy flat into `<build root>/artifacts/release/`. Two entries with one basename fail at load and list both.
+- **Artifacts.** `:release_build` ↳ `:artifacts` copy flat into `<build root>/artifacts/release/`. Two entries with one basename fail at load and list both. An entry named like the target or its map is not checked, so its copy replaces theirs.
 
 ## Overlays
 
