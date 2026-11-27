@@ -20,7 +20,7 @@ An `ArtifactIdentity` is an immutable value that names one artifact. Two equal i
 | `kind` | The artifact kind, such as mock, CMock's copy, stand-in, isolation copy, Partial, routes header, preprocessed file, runner, object, dependency file, executable, results or release target |
 | `origin` | The origin's `PathRef`. A runner's and an executable's origin is the test file |
 | `fingerprint` | A digest of every setting that changes the artifact |
-| `owner` | The test that uses the artifact. A release artifact's owner is the release |
+| `owner` | The test that uses the artifact. A release artifact's owner is the release, and an untested source's object's owner is its build context |
 
 - **Equality** compares the kind, the origin's key, the fingerprint and the owner.
 - **The owner** is part of every test artifact's identity, so each test has its own. A later rule may drop it for a kind, as [EXTENSIONS.md](EXTENSIONS.md) describes.
@@ -69,7 +69,7 @@ Each artifact kind has its root. Below each root but the runners and results roo
 | results root, `<build root>/<context>/results/` | results, at the test's directories |
 
 - **Outside the build root.** `:cmock` ↳ `:mock_path` may sit outside the build root. Containment never stands for "generated": `Matchinator.generated?( path, generated_roots )` tests a path against the build plan's generated roots.
-- **Build contexts.** The out, dependencies and results roots sit below the run's build context, such as `test` or `gcov`, which `Placeinator` takes from the run's build plan, since an identity holds no context. So one identity has one placement within a run, and its objects, dependency files and results move with the context. Every other root, and each artifact in it, is shared by the build contexts. A context that rewrites one of those files leaves the file no longer matching the digest another context saved, so the artifact is stale there, as [STAGES.md](STAGES.md#the-dependency-cache) says.
+- **Build contexts.** The out, dependencies and results roots sit below the run's build context, such as `test` or `gcov`, which `Placeinator` takes from the run's build plan, since an identity holds no context. So one identity has one placement within a run, and its objects, dependency files and results move with the context. Every other root, and each artifact in it, is shared by the build contexts, and one ledger records their owners, as [OWNERSHIP.md](OWNERSHIP.md#entries) says. A context that rewrites one of those files leaves the file no longer matching the digest another context saved, so the artifact is stale there, as [STAGES.md](STAGES.md#the-dependency-cache) says.
 
 ### Each kind's place
 
@@ -81,7 +81,7 @@ Below its root, each kind takes one rule. A build subpath is `PathRef`'s view of
 - **Stand-in.** The place its mock or Partial will take, below the stand-in root.
 - **Partial.** As [PARTIALS.md](PARTIALS.md#placement) says.
 - **Preprocessed file.** Its origin's build subpath below its kind's preprocess root.
-- **Object.** Its source's build subpath. A generated source's object takes the source's subpath below its own root. Its dependency file takes the same subpath below the dependencies root, and its list file sits beside it.
+- **Object.** Its source's build subpath. A generated source's object takes the source's subpath below its own root. An untested source's object has no test directory, so it sits at its source's build subpath just below `<build root>/<context>/out/`. Its dependency file takes the same subpath below the dependencies root, and its list file sits beside it.
 - **Results.** The test's directories below the results root, with one exact file name per result.
 
 ### Shortened bases

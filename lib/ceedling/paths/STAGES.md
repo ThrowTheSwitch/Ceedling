@@ -117,11 +117,11 @@ A release build plans its sources, objects and link as a test build does. It nee
 
 ## The dependency cache
 
-The dependency cache saves each target's resolution records with their misses, its fingerprint, its input files and a digest of its own file, once the target is written. It also holds the ownership ledger. A delta build compares them with this build's plan, as [RESOLUTION.md](RESOLUTION.md#resolution-records) says. An isolation copy's origin stands for the copy in every record.
+The dependency cache saves each target's resolution records with their misses, its fingerprint, its input files and a digest of its own file, once the target is written. The ownership ledger saves beside it, as [OWNERSHIP.md](OWNERSHIP.md#entries) says. A delta build compares them with this build's plan, as [RESOLUTION.md](RESOLUTION.md#resolution-records) says. An isolation copy's origin stands for the copy in every record.
 
 - **Stale.** A target is stale when its fingerprint differs from the saved one, when an input file or a resolution record changed, or when its own file no longer matches the saved digest.
 - **After a failure.** A target whose run fails saves nothing new. Its saved fingerprint then still differs, so an old object that a compiler leaves in place stays stale.
-- **Build contexts.** Each build context keeps its own cache and ledger, and most generated roots are shared, as [PLACEMENT.md](PLACEMENT.md#layout) says. A file another context rewrote no longer matches the saved digest, so this context regenerates it.
+- **Build contexts.** Each build context keeps its own cache, and most generated roots are shared, as [PLACEMENT.md](PLACEMENT.md#layout) says. A file another context rewrote no longer matches the saved digest, so this context regenerates it.
 
 ## Code
 
