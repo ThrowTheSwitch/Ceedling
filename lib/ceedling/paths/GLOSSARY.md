@@ -167,7 +167,7 @@ The build plan is the source of truth. Later stages read it and never search or 
 | shell operator | A character the host shell still reads inside a double-quoted argument: `$`, `` ` ``, `"` and `\` for `/bin/sh`, and `%` and `"` on Windows | L U D | special character |
 | library name, library path | A `:libraries` entry that names a library for `:flag`, or one that holds a separator, or starts with `~` or a drive, and names a file | L U D | — |
 | intake | Where a path enters Ceedling, from text and a base directory: configuration load, the launcher's options, a build directive scan, an include record, line markers or a dependency file | D C | — |
-| collection point | The moment, once per build, when `Collectinator` builds every root list, collection and index. The test family's tasks share one in a run, when one of them first reads a list, after its prerequisite tasks and the `:pre_build` hooks. The release has its own, after its prerequisite tasks and its `:pre_release` hooks | D C | — |
+| collection point | The moment, once per build, when `Collectinator` builds every root list, collection and index. The test family's tasks share one in a run, when one of them first reads a list, after its prerequisite tasks and the `:pre_build` and `:pre_test_build` hooks. The release has its own, after its prerequisite tasks and its `:pre_release_build` hooks | D C | — |
 | plugin entry | An entry a plugin adds to `:paths`, `:files` or `:libraries` through configuration. It records its plugin | D C | — |
 | command line | The one line of text a tool run hands to the host shell | L U D C | command-line spelling |
 | tool template | A tool's `:executable` and `:arguments` as configured | U D C | — |

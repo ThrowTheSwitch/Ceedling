@@ -41,7 +41,7 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 | `/bin/sh`, on Linux and macOS | `$`, `` ` ``, `"`, `\` | `$` and `` ` `` expand, `"` ends the argument, and `\` escapes the next character |
 | `cmd.exe` and direct spawn, on Windows | `%`, `"` | `%` hands the line to `cmd.exe`, which expands `%NAME%` inside quotes. `"` ends the argument |
 
-- **Never counted.** Glob syntax, text inside a Ruby expansion, and `\` on Windows, where it is a separator. `&`, `|`, `^`, `!`, `'` and spaces are plain text inside quotes on every platform.
+- **Never counted.** Glob syntax, text inside a Ruby expansion, and `\` in a configuration path on every platform, since intake makes it a separator there, as [PATHS.md](PATHS.md#intake) says. So `\` counts on Linux and macOS only in a setting intake doesn't convert, such as the project root's own spelling. `&`, `|`, `^`, `!`, `'` and spaces are plain text inside quotes on every platform.
 - **The warning.** Once per entry, at COMPLAIN, which carries a WARNING label. It names the setting, the entry and the operator, and says that the path is unsupported and gives unpredictable results. A setting with one value, such as the build root, warns once.
 - **Errors first.** A setting that fails at load for its double quote, as the project root and the build root do, draws its error alone and no warning, as [PLACEMENT.md](PLACEMENT.md#pinned-includes) says.
 
@@ -52,7 +52,7 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 ### The collection point
 
 - **Once per build.** A run holds a collection point for the test family's tasks, such as test, gcov, Bullseye, sanitize and valgrind, which share it. It comes the first time one of them reads a root list or a collection. The release has its own, the first time it reads one. Every other task that reads a collection, such as a listing task or cppcheck, shares the test family's.
-- **Before it.** Rake runs a task's prerequisite tasks first, such as a Dependencies fetch and build. Every `:pre_build` hook fires before the first collection point, and the release's `:pre_release` hooks fire before its own. A file any of them writes into a root is collected like any other, so `ceedling test:all release` collects what the release's hooks write.
+- **Before it.** Rake runs a task's prerequisite tasks first, such as a Dependencies fetch and build. A task that Rake matches by a rule, such as `test:<name>` or `release:compile:<file>`, runs `:prepare` in the rule's lookup step before it reads a collection, so its fetch comes first too. Every `:pre_build` and `:pre_test_build` hook fires before the test family's collection point, and the release's `:pre_release_build` hooks fire before its own. A file any of them writes into a root is collected like any other, so `ceedling test:all release` collects what the release's hooks write.
 - **What.** Glob expansion of every entry, the case probe for each root, each collection and its index, and the implicit roots. At the run's first collection point, `Placeinator` forms its table of shortened bases from the bases there, as [PLACEMENT.md](PLACEMENT.md#shortened-bases) says. The table depends only on the bases' spellings, so a later collection point reuses it.
 - **Test files.** A test file is in no other collection. `Collectinator` removes each file of the test collection from the source collection and the release inputs, by key. It logs the overlap once at COMPLAIN with a WARNING label, naming the entries that reach the test files.
 - **Frozen.** After a build's point, no code adds to or removes from that build's root lists or collections. A file a later stage writes is a generated file, which the build plan places.
@@ -61,9 +61,9 @@ Ceedling escapes no path for a shell. A path that holds a shell operator is outs
 
 ### Roots
 
-- **One list per kind**: test, source, include, support and library roots.
-- **Glob expansion** follows `paths.md`. A glob yields each existing directory it matches, in expansion order. A glob whose base does not exist yields no root, and neither does a missing directory.
-- **The build root.** A directory at or below the build root, or one a Ceedling setting names for generated files, such as `:cmock` ↳ `:mock_path`, is no root of any kind. A directory an external dependency's fetch creates can be a root.
+- **One list per kind**: test, source, include, support and library roots, and one for each other `:paths` key, such as `:test_toolchain_include` or a plugin's own key.
+- **Glob expansion** follows `paths.md`. A glob yields each existing directory it matches, in expansion order. A glob whose base does not exist yields no root, and neither does a missing directory. Each such entry logs once at COMPLAIN, which carries a WARNING label, naming the setting and the entry, since the check comes after every fetch and hook that could create it.
+- **The build root.** A directory Ceedling creates below the build root, or one a Ceedling setting names for generated files, such as `:cmock` ↳ `:mock_path`, is no root of any kind. An entry that names another directory below the build root collects, with a COMPLAIN WARNING that names the entry, as `paths.md` documents. A directory an external dependency's fetch creates can be a root.
 
 ### Plugin entries
 

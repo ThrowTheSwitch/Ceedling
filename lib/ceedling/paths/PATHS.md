@@ -17,15 +17,17 @@ A `PathRef` is an immutable value for one file or directory. Stages pass `PathRe
 A path enters Ceedling as written text and a base directory. `PathRef.of( text, base: )` applies the intake rules once, in the order listed below.
 
 - **Escapes** come first, since each source escapes its own text. A line marker's filename is a C string literal, so intake unescapes it once. A dependency file's names are make-rule text, so intake unescapes them by make's rule: `2n+1` backslashes before a space or `#` stand for `n` backslashes and that character, and `$$` stands for `$`.
-- **Separators.** On Windows, `\` becomes `/`. Elsewhere `\` is a legal filename character and stays.
-- **Home.** In configuration and the launcher's options, `~` and `~/…` expand to the home directory, and `~user` names a directory called `~user` below the base, on every platform. Include text, line markers and dependency files keep `~` as written, since the compiler reads it literally.
-- **Ends.** A trailing `/` drops. A bare root such as `/` or `C:/` stays. A Windows drive letter is upper case.
+- **Separators.** In configuration, the launcher's options and build directives, `\` becomes `/` on every platform, so a project file written on Windows builds elsewhere. In include text, line markers and dependency files, `\` becomes `/` on Windows alone, since elsewhere the compiler reads it as a filename character.
+- **Home.** In configuration, the launcher's options and build directives, `~` and `~/…` expand to the home directory, and `~user` names a directory called `~user` below the base, on every platform. Include text, line markers and dependency files keep `~` as written, since the compiler reads it literally.
+- **Ends.** In configuration, the launcher's options and build directives, leading and trailing whitespace drops. A trailing `/` drops. A bare root such as `/` or `C:/` stays. A Windows drive letter is upper case.
 
 Paths enter at these points, each with its base.
 
 | Intake point | Base |
 | --- | --- |
 | configuration load: `:paths`, `:files`, tool paths and plugin paths | the project root |
+| `:release_build` ↳ `:output` | the release's build directory, `<build root>/release/` |
+| a Dependencies plugin entry's `:artifacts` and `:includes` | that external dependency's artifact path, which the plugin joins before it adds the entry |
 | the launcher's options: `--project`, `CEEDLING_PROJECT_FILE`, `--logfile`, `--mixin`, mixin load paths and `:which_ceedling` | the project root, which the launcher starts in |
 | `TEST_INCLUDE_PATH()` directories | the project root |
 | `TEST_SOURCE_FILE()` entries | each source root in turn, as [CONVENTIONS.md](CONVENTIONS.md#test_source_file-entries) says |
