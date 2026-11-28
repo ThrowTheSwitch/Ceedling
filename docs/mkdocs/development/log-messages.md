@@ -24,6 +24,19 @@ It names every specific it has:
 
 A reader can then search their project and the docs for exactly what the message names.
 
+## Paths
+
+Every path in a message sits in single quotes, so a directory named `src` or `output` never reads as an English word. A directory ends with `/`.
+
+```
+#include "uart.h" in 'test/test_comm.c' reaches 'src/hal/uart.h' through the search path 'src/hal/'.
+```
+
+- **Everywhere.** A path in a sentence, in a list and in a heading takes the quotes alike.
+- **Fragments.** Part of a path that names no directory, such as the end a file's path must match, takes the quotes but no `/`.
+- **As written.** An `#include` and a directive keep their own delimiters, as in `#include "uart.h"` and `TEST_SOURCE_FILE("drivers/uart.c")`. They are C text, not paths.
+- **Values.** A configured value that is no path takes backticks, as a tool argument does.
+
 ## Words
 
 A plain sentence carries the meaning. Precise C words serve as its nouns, such as include text, search path, preprocessor and linker, because a C developer reads them reliably.
@@ -36,43 +49,47 @@ For each header a test includes, Ceedling links the source file that implements 
 
 An `#include` is quoted as written, so its delimiters show its form. Where the form changes the outcome, the message says how, as in "an `#include` with angle brackets skips the including file's directory". Don't call an include "user" or "system". Either form can reach a project's own header.
 
-## Two forms
+## Layout
 
-A message takes one of two forms, by what the reader needs.
+Every message with more than its lead shares one layout, which `Reportinator.generate_guidance()` builds. A message never writes its own `Fix:` line or headings. A lead alone may stay a plain string.
 
-### Compact
-
-The compact form serves one cause with one fix that needs no new knowledge. It is a lead line, an optional line saying why, and a `Fix:` line. Most of Ceedling's messages use it.
-
-```
-ERROR: :tools ↳ :test_compiler ↳ :executable ➡️ `gcc-14` does not exist in system search paths.
-Fix: put the directory that holds gcc-14 on your PATH.
-```
-
-### Guidance
-
-The guidance layout serves a fix that only makes sense after a short explanation of C or of Ceedling, and any message with two or more fixes. Alternatives count as separate fixes, so "rename or move the directory" becomes two numbered options. `Reportinator.generate_guidance()` builds it, so every guidance message shares one layout.
+One fix is a lone option, which reads as a plain sentence:
 
 ```ruby
 message = Reportinator.generate_guidance(
-  lead:     '#include "uart.h" in test/test_comm.c reaches no header through this test\'s search paths.',
-  causes:   'A compiler joins quoted include text to the including file\'s directory, then to each search path in order.',
-  notes:    ['src/hal/uart.h', 'vendor/uart/uart.h'],
-  options:  ['Add the directory of the header you mean to :paths ↳ :include.',
-             'Add it to this test alone with TEST_INCLUDE_PATH().'],
-  closing:  'See the Ceedling docs on search paths.',
-  headings: { notes: 'HEADERS NAMED uart.h' }
+  lead:    ':tools ↳ :test_compiler ↳ :executable ➡️ `gcc-14` does not exist in system search paths.',
+  options: 'Put the directory that holds gcc-14 on your PATH.'
 )
 ```
 
 ```
-#include "uart.h" in test/test_comm.c reaches no header through this test's search paths.
+:tools ↳ :test_compiler ↳ :executable ➡️ `gcc-14` does not exist in system search paths.
+
+Put the directory that holds gcc-14 on your PATH.
+```
+
+A fix that only makes sense after a short explanation of C or of Ceedling gives the explanation as a cause. Two or more fixes are numbered options. Alternatives count as separate fixes, so "rename or move the directory" becomes two options.
+
+```ruby
+message = Reportinator.generate_guidance(
+  lead:     %q{#include "uart.h" in 'test/test_comm.c' reaches no header through this test's search paths.},
+  causes:   'A compiler joins quoted include text to the including file\'s directory, then to each search path in order.',
+  notes:    ["'src/hal/uart.h'", "'vendor/uart/uart.h'"],
+  options:  ['Add the directory of the header you mean to :paths ↳ :include.',
+             'Add it to this test alone with TEST_INCLUDE_PATH().'],
+  closing:  'See the Ceedling docs on search paths.',
+  headings: { notes: "HEADERS NAMED 'uart.h'" }
+)
+```
+
+```
+#include "uart.h" in 'test/test_comm.c' reaches no header through this test's search paths.
 
 HOW THIS HAPPENS: A compiler joins quoted include text to the including file's directory, then to each search path in order.
 
-HEADERS NAMED uart.h:
-• src/hal/uart.h
-• vendor/uart/uart.h
+HEADERS NAMED 'uart.h':
+• 'src/hal/uart.h'
+• 'vendor/uart/uart.h'
 
 OPTIONS:
 1. Add the directory of the header you mean to :paths ↳ :include.
@@ -90,7 +107,7 @@ See the Ceedling docs on search paths.
 
 Wherever Ceedling can help a user resolve a problem, it should. The help comes from one of two places.
 
-- **Problems Ceedling finds itself.** A configuration check, a scan of a file's text or Ceedling's own logic each knows its cause directly. The code that finds the problem builds the message, with `Reportinator.generate_guidance()` when the guidance form fits, and raises or logs it.
+- **Problems Ceedling finds itself.** A configuration check, a scan of a file's text or Ceedling's own logic each knows its cause directly. The code that finds the problem builds the message with `Reportinator.generate_guidance()`, and raises or logs it.
 - **Toolchain failures.** A failed compilation, link or preprocessor run reports only in the toolchain's own words. The Build Step Doctor reads that output and its specialists add guidance on known causes. Since a specialist infers its cause, its lead hedges: "The compiler output appears to report… If so, …". `lib/ceedling/diagnostics/DOCTOR.md` explains how to add a diagnosis.
 
 ## Pointing to the docs
